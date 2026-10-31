@@ -54,8 +54,16 @@ jobs:
       - uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9
         with:
           lake-package-directory: formal
-          build: true
+          build: false
           use-mathlib-cache: false
+      - name: lake build (errors become annotations)
+        working-directory: formal
+        run: |
+          set -o pipefail
+          lake build 2>&1 | tee build.log || {
+            python3 scripts/annotate.py build.log
+            exit 1
+          }
 
   comparator:
     name: Palomar Comparator (expected to fail until the bridge is proved)
