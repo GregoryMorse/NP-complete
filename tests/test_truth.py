@@ -35,4 +35,5 @@ def check(name, members):
 if __name__ == '__main__':
     ok = check('factor', 200)
     ok &= check('gi', 30)
+    ok &= check('dlog', 150)
     sys.exit(0 if ok else 1)

@@ -1,0 +1,173 @@
+{
+ "name": "zdlog",
+ "counter_instructions": 343,
+ "registers": 27,
+ "virtual_registers": 78,
+ "register_classes": {
+  "_t_J193": [
+   "_t_J193",
+   "dl_Ar",
+   "dl_dt"
+  ],
+  "J": [
+   "J"
+  ],
+  "w": [
+   "w"
+  ],
+  "A": [
+   "A"
+  ],
+  "O": [
+   "O"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "dl_h": [
+   "dl_h"
+  ],
+  "dl_V": [
+   "dl_V"
+  ],
+  "dl_k": [
+   "dl_k"
+  ],
+  "dl_g": [
+   "dl_g"
+  ],
+  "P": [
+   "P"
+  ],
+  "dl_bit": [
+   "dl_bit"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "R1": [
+   "R1"
+  ],
+  "dl_cnt": [
+   "dl_cnt"
+  ],
+  "dl_rf_take": [
+   "dl_rf_take"
+  ],
+  "Lt": [
+   "Lt"
+  ],
+  "dl_m": [
+   "dl_m"
+  ],
+  "N": [
+   "N"
+  ],
+  "dl_D": [
+   "dl_D"
+  ],
+  "S": [
+   "S"
+  ],
+  "R": [
+   "R"
+  ],
+  "E": [
+   "E",
+   "K",
+   "dl_p"
+  ],
+  "_t_N208": [
+   "_t_N208",
+   "_t_dl_m79",
+   "dl_Y"
+  ],
+  "X": [
+   "X",
+   "_q_dl_U55",
+   "_t_Bs215",
+   "_t_dl_Pw61",
+   "_t_dl_h138",
+   "dl_Nq",
+   "dl_Pw2",
+   "dl_Z"
+  ],
+  "A2": [
+   "A2",
+   "U_lenS",
+   "V_mul",
+   "_q_Pc259",
+   "_q_U_lenJ200",
+   "_t_P254",
+   "_t_dl_D110",
+   "_t_dl_Y133",
+   "dl_A2",
+   "dl_Par",
+   "dl_Q",
+   "dl_U",
+   "dl_mt"
+  ],
+  "Bs": [
+   "Bs",
+   "F",
+   "Pc",
+   "T_inst",
+   "U_enc",
+   "U_left",
+   "U_lenJ",
+   "U_right",
+   "V_left",
+   "_q_U_lenS8",
+   "_q_X240",
+   "_t_J221",
+   "_t_N16",
+   "_t_S226",
+   "_t_S37",
+   "_t_dl_Y149",
+   "_t_dl_g156",
+   "_t_dl_m47",
+   "_t_dl_p105",
+   "_t_dl_p121",
+   "_t_dl_p166",
+   "_t_dl_p94",
+   "dl_A1",
+   "dl_Dt",
+   "dl_Pw",
+   "dl_Rm",
+   "dl_hT"
+  ]
+ },
+ "states": 2958,
+ "beep_state": 2158,
+ "register_order": [
+  "_t_J193",
+  "J",
+  "w",
+  "A",
+  "O",
+  "Tb",
+  "dl_h",
+  "dl_V",
+  "dl_k",
+  "dl_g",
+  "P",
+  "dl_bit",
+  "TR",
+  "R1",
+  "dl_cnt",
+  "dl_rf_take",
+  "Lt",
+  "dl_m",
+  "N",
+  "dl_D",
+  "S",
+  "R",
+  "E",
+  "_t_N208",
+  "X",
+  "A2",
+  "Bs"
+ ],
+ "sha256": "cc4717ca1def6780f561fd4a1af4d5f7a50a76d5216c9d39ca5aad7d906df58b",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

@@ -25,6 +25,8 @@ import zp_cm       # noqa: E402
 import zp_ref      # noqa: E402
 import twin_cm     # noqa: E402
 import regalloc    # noqa: E402
+import mult_cm     # noqa: E402
+import ntt_cm      # noqa: E402
 
 A = zp_ref.assemble
 # controlled candidate lists (brief §5.3): known-wrong candidates with known
@@ -44,12 +46,19 @@ VARIANTS = {
     'ctl_zp': dict(truth='L', candidates=CTL_L),
     'zfactor': dict(truth='factor'),
     'zgi': dict(truth='gi'),
+    'zdlog': dict(truth='dlog'),
+    'zpp': dict(truth='pp'),
+    'zpspace': dict(truth='pspace'),
+    'zconp': dict(truth='L', conp=True),
+    'zmul': 'mult',
+    'zntt': 'ntt',
     'twinprime': 'twin',
 }
 
 
 def build_variant(name, opts, iters=15000):
-    vprog = (twin_cm.build() if opts == 'twin' else zp_cm.build(**opts)).assemble()
+    builders = {'twin': twin_cm.build, 'mult': mult_cm.build, 'ntt': ntt_cm.build}
+    vprog = (builders[opts]() if isinstance(opts, str) else zp_cm.build(**opts)).assemble()
     pinned = ('M',) if opts == 'twin' else ('J', 'S')
     prog, order, _, classes = regalloc.allocate(vprog, pinned=pinned, iters=iters)
     table, info = tm.compile_cm(prog, order)

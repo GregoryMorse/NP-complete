@@ -97,6 +97,21 @@ def test_lockstep_zp():
     assert lockstep(p, order, 400000) > 1000
 
 
+def test_lockstep_all_variants():
+    import regalloc
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+    import build
+    for name, opts in build.VARIANTS.items():
+        if opts == 'twin' or name in ('zp',):
+            continue
+        builders = {'mult': build.mult_cm.build, 'ntt': build.ntt_cm.build}
+        v = (builders[opts]() if isinstance(opts, str) else zp_cm.build(**opts)).assemble()
+        p, order, _, _ = regalloc.allocate(v, pinned=('J', 'S'), iters=1000, restarts=1)
+        n = lockstep(p, order, 300000)
+        assert n > 300, (name, n)
+        print(f'  {name}: {n} instruction boundaries checked')
+
+
 def beeps_tm(table, beep, order, n, steps):
     out = []
 
@@ -130,3 +145,5 @@ if __name__ == '__main__':
     print('zp lockstep ok')
     test_optimised_matches_cm()
     print('optimised beeps ok')
+    test_lockstep_all_variants()
+    print('all variants lockstep ok')

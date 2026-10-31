@@ -16,6 +16,8 @@ ROOT = os.path.join(HERE, '..')
 sys.path[:0] = [os.path.join(ROOT, 'ref')]
 import zp_ref as R      # noqa: E402
 import np_intermediate as NI  # noqa: E402
+import sigma2_ref as Q2        # noqa: E402
+import mult_ref as MR          # noqa: E402
 
 SIM = os.path.join(ROOT, 'sim', 'tmsim')
 CMSIM = os.path.join(ROOT, 'sim', 'cmsim')
@@ -54,7 +56,7 @@ def tm_beeps(name, steps, nbeeps):
     return res, out.stderr.strip()
 
 
-def check(name, truth, steps, nbeeps, exact, level='tm', cands=None):
+def check(name, truth, steps, nbeeps, exact, level='tm', cands=None, ref=None):
     if level == 'tm':
         got, info = tm_beeps(name, steps, nbeeps + 1)
         gotjs = [(J, S) for _, J, S in got]
@@ -62,9 +64,12 @@ def check(name, truth, steps, nbeeps, exact, level='tm', cands=None):
         gotjs, info = cm_beeps(name, steps, nbeeps + 1)
         got = [(0,)] if gotjs else []
         name = name + '[cm]'
-    want = [(J, S) for _, J, S in R.zp_beeps(
-        truth=truth, candidates=cands, max_instances=200000,
-        max_beeps=nbeeps if exact else max(1, len(gotjs)))]
+    mb = nbeeps if exact else max(1, len(gotjs))
+    if ref is not None:
+        want = [(J, S) for _, J, S in ref(max_beeps=mb)]
+    else:
+        want = [(J, S) for _, J, S in R.zp_beeps(
+            truth=truth, candidates=cands, max_instances=200000, max_beeps=mb)]
     ok = gotjs == want if exact else (gotjs == want[:len(gotjs)] and len(gotjs) > 0)
     print(f'{name:20s} reference beeps={len(want):5d} tm beeps={len(gotjs):5d} '
           f'[{info}] -> {"OK" if ok else "FAIL"}')
@@ -101,6 +106,12 @@ def main():
         ok &= check('zp', None, steps, 10**6, exact=False, level=lvl)
         ok &= check('zfactor', NI.in_factor, steps, 10**6, exact=False, level=lvl)
         ok &= check('zgi', NI.in_gi, steps, 10**6, exact=False, level=lvl)
+        if lvl == 'cm':     # the TM's first beep is beyond the budget; see test_tm.py lockstep
+            ok &= check('zdlog', Q2.in_dlog, steps, 10**6, exact=False, level=lvl)
+        ok &= check('zpp', Q2.in_pp, steps, 10**6, exact=False, level=lvl)
+        ok &= check('zpspace', Q2.in_pspace, steps, 10**6, exact=False, level=lvl)
+        ok &= check('zconp', None, steps, 10**6, exact=False, level=lvl, ref=Q2.conp_beeps)
+        ok &= check('zmul', None, steps, 10**6, exact=False, level=lvl, ref=MR.mult_beeps)
     sys.exit(0 if ok else 1)
 
 

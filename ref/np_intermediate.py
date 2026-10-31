@@ -50,4 +50,6 @@ def in_gi(S):
                for p in permutations(range(m)))
 
 
-TRUTHS = {'factor': in_factor, 'gi': in_gi}
+from sigma2_ref import in_dlog  # noqa: E402
+
+TRUTHS = {'factor': in_factor, 'gi': in_gi, 'dlog': in_dlog}

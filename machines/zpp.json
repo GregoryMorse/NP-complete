@@ -1,0 +1,118 @@
+{
+ "name": "zpp",
+ "counter_instructions": 202,
+ "registers": 19,
+ "virtual_registers": 47,
+ "register_classes": {
+  "S": [
+   "S"
+  ],
+  "w": [
+   "w"
+  ],
+  "P": [
+   "P"
+  ],
+  "K": [
+   "K",
+   "V_mul"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "R1": [
+   "R1"
+  ],
+  "PR": [
+   "PR"
+  ],
+  "PA": [
+   "PA"
+  ],
+  "F": [
+   "F"
+  ],
+  "Lt": [
+   "Lt"
+  ],
+  "J": [
+   "J"
+  ],
+  "O": [
+   "O"
+  ],
+  "A": [
+   "A"
+  ],
+  "R": [
+   "R"
+  ],
+  "N": [
+   "N"
+  ],
+  "C": [
+   "C",
+   "E"
+  ],
+  "Pc": [
+   "Pc",
+   "U_lenJ",
+   "U_lenS",
+   "U_pp",
+   "X",
+   "_t_Bs75",
+   "_t_N68"
+  ],
+  "A2": [
+   "A2",
+   "Bs",
+   "T_inst",
+   "U_enc",
+   "U_left",
+   "U_right",
+   "V_left",
+   "V_pp",
+   "_q_Pc119",
+   "_q_U_lenJ60",
+   "_q_U_lenS8",
+   "_q_X100",
+   "_t_C25",
+   "_t_C37",
+   "_t_J53",
+   "_t_J81",
+   "_t_N14",
+   "_t_N42",
+   "_t_P114",
+   "_t_S32",
+   "_t_S86"
+  ]
+ },
+ "states": 1599,
+ "beep_state": 875,
+ "register_order": [
+  "S",
+  "w",
+  "P",
+  "K",
+  "Tb",
+  "TR",
+  "R1",
+  "PR",
+  "PA",
+  "F",
+  "Lt",
+  "J",
+  "O",
+  "A",
+  "R",
+  "N",
+  "C",
+  "Pc",
+  "A2"
+ ],
+ "sha256": "52beba3e7d5cffe472e58d1f89f3d64601d373c5d3b234447b4d325a486fd2f1",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

@@ -9,6 +9,12 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | **Z_P** | **1371** | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
 | Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
 | Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |
+| Z_PP (quasihalts iff P = PP) | 1599 | `machines/zpp.txt` |
+| Z_PSPACE (quasihalts iff P = PSPACE) | 1646 | `machines/zpspace.txt` |
+| Z_coNP (quasihalts iff NP = coNP) | 1738 | `machines/zconp.txt` |
+| Z_DLOG (quasihalts iff discrete log mod primes is in P) | 2958 | `machines/zdlog.txt` |
+| Z_MUL (quasihalts iff multitape TMs multiply in linear time) | 3623 | `machines/zmul.txt` |
+| Z_NTT (quasihalts iff the number-theoretic transform has linear-size linear circuits) | 6106 | `machines/zntt.txt` |
 | twin-prime beeper (quasihalts iff finitely many twin primes) | 265 | `machines/twinprime.txt` |
 
 The state counts are from compiled, ungolfed-by-hand machines and are expected to drop.

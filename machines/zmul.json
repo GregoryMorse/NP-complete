@@ -1,0 +1,170 @@
+{
+ "name": "zmul",
+ "counter_instructions": 460,
+ "registers": 26,
+ "virtual_registers": 78,
+ "register_classes": {
+  "LD": [
+   "LD",
+   "Par",
+   "Pk2",
+   "Pw2",
+   "U_lenJ"
+  ],
+  "LS": [
+   "LS",
+   "Y",
+   "_t_E85"
+  ],
+  "Kc": [
+   "Kc"
+  ],
+  "S": [
+   "S"
+  ],
+  "J": [
+   "J"
+  ],
+  "Pcb": [
+   "Pcb",
+   "w"
+  ],
+  "Sym": [
+   "Sym"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "Lb": [
+   "Lb"
+  ],
+  "Db": [
+   "Db"
+  ],
+  "bit": [
+   "bit"
+  ],
+  "V1": [
+   "V1"
+  ],
+  "Wb": [
+   "Wb"
+  ],
+  "mt_rf_lookup": [
+   "mt_rf_lookup"
+  ],
+  "O": [
+   "O"
+  ],
+  "Want": [
+   "Want"
+  ],
+  "N": [
+   "N"
+  ],
+  "Pk": [
+   "Pk"
+  ],
+  "Rr": [
+   "Rr"
+  ],
+  "Act": [
+   "Act"
+  ],
+  "EV": [
+   "EV",
+   "Pb",
+   "Pc2",
+   "Vb",
+   "_t_Kt344",
+   "_t_N192"
+  ],
+  "Kt": [
+   "Kt",
+   "N1",
+   "Pw"
+  ],
+  "U_enc": [
+   "U_enc",
+   "_t_S212",
+   "mt_rf_pushn"
+  ],
+  "E": [
+   "E",
+   "U",
+   "U_len",
+   "V",
+   "_q_Pc113",
+   "_t_J104",
+   "_t_N14",
+   "_t_Pk274"
+  ],
+  "Pc": [
+   "Pc",
+   "Pv2",
+   "_q_U36",
+   "_q_U_len8",
+   "_q_X219",
+   "_t_J67",
+   "_t_O261",
+   "_t_Pw42",
+   "_t_S1",
+   "_t_S28",
+   "_t_U53",
+   "_t_Y60",
+   "mt_dt",
+   "mt_hT"
+  ],
+  "IDX": [
+   "IDX",
+   "Kn",
+   "LD2",
+   "Ll",
+   "Nh",
+   "Sym2",
+   "V2",
+   "X",
+   "_q_U_lenJ74",
+   "_t_Kt126",
+   "_t_Kt197",
+   "_t_Kt233",
+   "_t_Kt285",
+   "_t_N80",
+   "_t_V244",
+   "mt_mt",
+   "mt_rf_popn"
+  ]
+ },
+ "states": 3623,
+ "beep_state": 3353,
+ "register_order": [
+  "LD",
+  "LS",
+  "Kc",
+  "S",
+  "J",
+  "Pcb",
+  "Sym",
+  "Tb",
+  "Lb",
+  "Db",
+  "bit",
+  "V1",
+  "Wb",
+  "mt_rf_lookup",
+  "O",
+  "Want",
+  "N",
+  "Pk",
+  "Rr",
+  "Act",
+  "EV",
+  "Kt",
+  "U_enc",
+  "E",
+  "Pc",
+  "IDX"
+ ],
+ "sha256": "c11e36a82ee49cf9e5b81c93f470228ec02b1a1e3b8d75fde222ef1f1e580086",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

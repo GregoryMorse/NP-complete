@@ -179,6 +179,46 @@ are not quasihalting statements: a BBB machine captures Σ₂ only. They would n
 machine whose *beep-free stretches* encode a further quantifier, i.e. the next level of
 the busy-beaver hierarchy.
 
+### 2.2 More complexity-class questions
+
+Each is Σ₂ and is built on the same Z_P skeleton (`compiler/zp_cm.py`). The language
+definitions are in `ref/sigma2_ref.py`, and each machine is checked against it.
+
+| machine | statement | complete language / candidate check |
+|---|---|---|
+| `zpp` | P = PP | MAJ-L: more than half of the 2^n length-n certificates make program s accept within n = \|s\| steps. PP-complete by the Lemma 3 argument: M_x reads only the first q(\|x\|) certificate bits, so the accepting fraction is preserved exactly. |
+| `zpspace` | P = PSPACE | L_PS: program s, on the empty input, never moves more than \|s\| cells from its start and accepts within 2^{4\|s\|+4} steps. That bounds the number of configurations, so a run that has not halted by then never halts. PSPACE-complete by padding. |
+| `zconp` | NP = coNP | The candidate J is a *verifier* for co-L. J is correct on s iff [s ∉ L] = [some Y < 2^T makes J accept within T = (\|s\|+2)^{\|J\|} steps], where Y is written on the tape to the left of the head. coL ∈ NP ⟺ NP = coNP. |
+| `zdlog` | discrete log ∈ P | DLOG: s = p‖g‖h‖k, four m-bit parts. s ∈ DLOG iff p is prime and g^x ≡ h (mod p) for some x ≤ k. |
+
+### 2.3 Algorithmic-optimality questions (∃ constant ∀ size)
+
+**MUL-LIN** (`zmul`, `ref/mult_ref.py`, `compiler/mult_cm.py`): *integer multiplication in
+linear time on multitape Turing machines.* The guest is a k-tape, 2-symbol machine, with
+k read from the first code entry. The machine checks: ∃J ∀s with |s| = 2m, the run of J on
+s within |J|·(|s|+1) steps halts with output x·y, where x and y are the two halves of s.
+Padding makes |J| exceed any constant, so the statement is equivalent to "multitape TMs
+multiply in time O(n)". It is open: the best known bound is O(n log n) (Harvey–van der
+Hoeven). It is model-specific: on pointer machines, multiplication is known to take linear time
+(Schönhage).
+
+**NTT-LIN** (`zntt`, `ref/ntt_ref.py`, `compiler/ntt_cm.py`): *the number-theoretic
+transform has linear-size linear circuits*: ∃c ∀n, DFT_n over F_p, with p the least
+prime ≡ 1 (mod n), has a fan-in-2 linear circuit with c·n gates. The inner search is
+finite, so this is Σ₂. **Caveat:** this is the finite-field analogue. The complex-number
+question "the DFT needs Θ(n log n) arithmetic operations" is also Σ₂, because the inner
+"∃ complex constants" is decidable (decidability of algebraically closed fields). But
+compiling that decision procedure (Gröbner bases or effective Nullstellensatz) into a
+machine is a separate project. No superlinear lower bound for general linear circuits is
+known for any explicit matrix family, so NTT-LIN is genuinely open.
+
+**What is tested.** The MUL-LIN interpreter is compared with the reference on hundreds
+of halting runs of random small multitape codes, including k ≥ 2 (`tests/test_mult.py`).
+The NTT circuit search agrees with brute force on every (n, s) small enough to finish
+(`tests/test_ntt.py`). The full NTT machine's first refutation (c = 1 at n = 3) needs a
+search over ~4·10⁸ circuits, so its beep behaviour beyond the search itself is not
+simulated.
+
 ---
 
 ## 3. Construction: three refinement layers

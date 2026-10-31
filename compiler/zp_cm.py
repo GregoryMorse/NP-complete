@@ -6,6 +6,12 @@ Variants used by the test-suite:
   truth='odd'       P-language swap: s in L'  iff  s ends in '1'
   truth='factor'    FACTOR (quasihalts iff integer factoring is in P)
   truth='gi'        DIGRAPH-ISO (quasihalts iff graph isomorphism is in P)
+  truth='dlog'      DLOG mod primes (quasihalts iff discrete log is in P)
+  truth='pp'        MAJ-L, PP-complete (quasihalts iff P = PP)
+  truth='pspace'    L_PS, PSPACE-complete (quasihalts iff P = PSPACE)
+  conp=True         with truth='L': candidates are verifiers for co-L, the
+                    certificate written left of the head (quasihalts iff
+                    NP = coNP)
   candidates=[...]  controlled candidate enumeration (list of J values);
                     after the list is exhausted the machine idles silently.
 
@@ -16,8 +22,10 @@ from cm import CM
 import truth_cm
 
 
-def build(truth='L', candidates=None):
+def build(truth='L', candidates=None, conp=False):
+    assert not conp or truth == 'L'
     b = CM()
+    verifier = truth in ('L', 'pp', 'pspace')
 
     # ---------------------------------------------------------- outer loop
     if candidates is None:
@@ -33,6 +41,9 @@ def build(truth='L', candidates=None):
     b.move('T_inst', ['S'])
     if truth != 'L':
         b.clear('K')
+    if truth == 'pspace':
+        b.clear('WL')
+        b.clear('WR')
     L, D = b.fresh('lenS'), b.fresh('lenSd')
     b.label(L)
     b.pop('U_lenS', D)
@@ -55,8 +66,78 @@ def build(truth='L', candidates=None):
         b.label('ver_acc')
         b.inc('TR')
         b.clear('K')
+        b.jmp('certdone')
+        b.label('ver_rej')
+        b.jmp('cert')
         b.label('certdone')
         b.clear('C')
+    elif truth == 'pp':
+        # certificates C = 2^N .. 2^(N+1)-1 (all of length N); TR = [#acc > #rej]
+        b.inc('C')
+        b.copy('N', 'U_pp')
+        L, D = b.fresh('p2'), b.fresh('p2d')
+        b.label(L)
+        b.dec('U_pp', z=D)
+        b.move('C', ['V_pp', 'V_pp'])
+        b.move('V_pp', ['C'])
+        b.jmp(L)
+        b.label(D)
+        b.copy('C', 'K')
+        b.dec('C')
+        b.label('cert')
+        b.dec('K', z='certdone')
+        b.inc('C')
+        b.clear('P')
+        b.clear('Tb')
+        b.copy('S', 'P')
+        b.copy('C', 'X')
+        b.copy('N', 'Tb')
+        b.inc('F')
+        b.jmp('run')
+        b.label('ver_acc')
+        b.inc('PA')
+        b.jmp('cert')
+        b.label('ver_rej')
+        b.inc('PR')
+        b.jmp('cert')
+        b.label('certdone')
+        b.clear('C')
+        L, R0, NO = b.fresh('cmp'), b.fresh('pr0'), b.fresh('notr')
+        b.label(L)
+        b.dec('PR', z=R0)
+        b.dec('PA', z=NO)
+        b.jmp(L)
+        b.label(R0)
+        b.dec('PA', z=NO)
+        b.inc('TR')
+        b.label(NO)
+        b.clear('PA')
+        b.clear('PR')
+    elif truth == 'pspace':
+        # run program S on the empty input, window |s| cells each side of the
+        # start cell, clock 2^(4N+4)
+        b.clear('P')
+        b.clear('Tb')
+        b.copy('S', 'P')
+        b.inc('X')
+        b.inc('Tb')
+        b.copy('N', 'U_ps')
+        b.inc('U_ps')
+        L, D = b.fresh('ps'), b.fresh('psd')
+        b.label(L)
+        b.dec('U_ps', z=D)
+        for _ in range(4):
+            b.move('Tb', ['V_ps', 'V_ps'])
+            b.move('V_ps', ['Tb'])
+        b.jmp(L)
+        b.label(D)
+        b.copy('N', 'WL')
+        b.copy('N', 'WR')
+        b.inc('F')
+        b.jmp('run')
+        b.label('ver_acc')
+        b.inc('TR')
+        b.label('ver_rej')
     elif truth == 'nonempty':
         b.copy('S', 'U_ne')
         b.dec('U_ne')
@@ -98,17 +179,60 @@ def build(truth='L', candidates=None):
     b.label('powd')
     b.clear('Bs')
     b.copy('J', 'P')
-    b.copy('S', 'X')
-    b.jmp('run')                            # F = 0: decider call site
+    if truth == 'pspace':                   # no window for the candidate
+        b.clear('WL')
+        b.clear('WR')
+        b.copy('Tb', 'WL')
+        b.copy('Tb', 'WR')
+    if not conp:
+        b.copy('S', 'X')
+        b.jmp('run')                        # F = 0: decider call site
+    else:
+        # J is a verifier for co-L: s not in L iff J accepts some
+        # certificate Y < 2^T (written left of the head) within T steps.
+        b.move('Tb', ['Tsv'])
+        b.inc('Yrem')
+        b.copy('Tsv', 'U_y')
+        L, D = b.fresh('y2'), b.fresh('y2d')
+        b.label(L)
+        b.dec('U_y', z=D)
+        b.move('Yrem', ['V_y', 'V_y'])
+        b.move('V_y', ['Yrem'])
+        b.jmp(L)
+        b.label(D)
+        b.label('yloop')
+        b.dec('Yrem', z='y_none')
+        b.clear('Tb')
+        b.copy('Tsv', 'Tb')
+        b.copy('S', 'X')
+        b.copy('Y', 'Lt0')
+        b.jmp('run')
 
-    b.label('dec_acc')
-    b.dec('TR', z='bad')
-    b.jmp('ok')
-    b.label('dec_rej')
-    b.dec('TR', z='ok')
-    b.jmp('bad')
-    b.label('dec_timeout')
-    b.clear('TR')
+    if not conp:
+        b.label('dec_acc')
+        b.dec('TR', z='bad')
+        b.jmp('ok')
+        b.label('dec_rej')
+        b.dec('TR', z='ok')
+        b.jmp('bad')
+        b.label('dec_timeout')
+        b.clear('TR')
+    else:
+        b.label('dec_acc')                  # J claims s not in L
+        b.clear('Yrem')
+        b.clear('Y')
+        b.clear('Tsv')
+        b.dec('TR', z='ok')
+        b.jmp('bad')
+        b.label('dec_rej')
+        b.label('dec_timeout')
+        b.inc('Y')
+        b.jmp('yloop')
+        b.label('y_none')                   # J claims s in L
+        b.clear('Y')
+        b.clear('Tsv')
+        b.dec('TR', z='bad')
+        b.jmp('ok')
     b.label('bad')
     b.beep()
     if candidates is None:
@@ -131,6 +255,8 @@ def build(truth='L', candidates=None):
     b.label('run')
     for r in ('R', 'R1', 'Lt', 'O', 'A'):
         b.clear(r)
+    if conp:
+        b.move('Lt0', ['Lt'])
     b.label('enc')                          # R := enc(X)
     b.pop('X', 'step', B='w')
     b.move('R', ['U_enc', 'U_enc'])
@@ -185,6 +311,9 @@ def build(truth='L', candidates=None):
 
     b.label('right')                        # Lt = 2 Lt + w ; R = R1
     b.dec('A', z='halt')
+    if truth == 'pspace':
+        b.dec('WR', z='o_rej')
+        b.inc('WL')
     b.move('A', ['O'])
     b.move('Lt', ['U_right', 'U_right'])
     b.move('w', ['U_right'])
@@ -194,6 +323,9 @@ def build(truth='L', candidates=None):
 
     b.label('left')                         # R = 2(2 R1 + w) + Lt mod 2
     b.dec('A', z='halt')
+    if truth == 'pspace':
+        b.dec('WL', z='o_rej')
+        b.inc('WR')
     b.move('A', ['O'])
     L, E0 = b.fresh('hL'), b.fresh('l0')
     b.label(L)
@@ -215,15 +347,15 @@ def build(truth='L', candidates=None):
     b.dec('w', z='o_rej')
     b.label('o_acc')
     b.dec('F', z='dec_acc')
-    b.jmp('ver_acc' if truth == 'L' else 'never')
+    b.jmp('ver_acc' if verifier else 'never')
     b.label('o_rej')
     b.dec('F', z='dec_rej')
-    b.jmp('cert' if truth == 'L' else 'never')
+    b.jmp('ver_rej' if verifier else 'never')
     b.label('o_timeout')
     b.dec('F', z='dec_timeout')
-    b.jmp('cert' if truth == 'L' else 'never')
+    b.jmp('ver_rej' if verifier else 'never')
 
-    if truth != 'L':
+    if not verifier:
         b.label('never')                    # unreachable (F is always 0)
         b.jmp('never_')
         b.label('never_')

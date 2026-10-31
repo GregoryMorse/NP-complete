@@ -1,0 +1,245 @@
+{
+ "name": "zntt",
+ "counter_instructions": 658,
+ "registers": 34,
+ "virtual_registers": 129,
+ "register_classes": {
+  "_t_GS319": [
+   "_t_GS319",
+   "_t_nt_B516",
+   "_t_nt_cb435",
+   "_t_nt_du430",
+   "_t_nt_m165",
+   "_t_nt_p587",
+   "_t_nt_row613",
+   "_t_nt_zk558",
+   "_t_nt_zt539",
+   "nt_dt"
+  ],
+  "nt_Z": [
+   "nt_Z",
+   "nt_du",
+   "nt_gQ"
+  ],
+  "_t_nt_B302": [
+   "_t_nt_B302",
+   "_t_nt_Y280",
+   "nt_Pt",
+   "nt_t"
+  ],
+  "nt_B": [
+   "nt_B"
+  ],
+  "nt_TOT": [
+   "nt_TOT"
+  ],
+  "nt_Fd": [
+   "nt_Fd"
+  ],
+  "_t_NN122": [
+   "_t_NN122",
+   "nt_row"
+  ],
+  "GS": [
+   "GS"
+  ],
+  "nt_NV": [
+   "nt_NV"
+  ],
+  "nt_ca": [
+   "nt_ca"
+  ],
+  "J": [
+   "J"
+  ],
+  "nt_G": [
+   "nt_G"
+  ],
+  "nt_Vu": [
+   "nt_Vu"
+  ],
+  "nt_F": [
+   "nt_F"
+  ],
+  "nt_vIdx": [
+   "nt_vIdx"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "nt_tcnt": [
+   "nt_tcnt"
+  ],
+  "nt_w": [
+   "nt_w"
+  ],
+  "nt_kc": [
+   "nt_kc"
+  ],
+  "nt_cb": [
+   "nt_cb"
+  ],
+  "nt_jc": [
+   "nt_jc"
+  ],
+  "nt_jj": [
+   "nt_jj"
+  ],
+  "S": [
+   "S"
+  ],
+  "nt_Vv": [
+   "nt_Vv",
+   "nt_rf_getvec"
+  ],
+  "nt_cnt": [
+   "nt_cnt"
+  ],
+  "_t_nt_Y69": [
+   "_t_nt_Y69",
+   "nt_zk"
+  ],
+  "nt_m": [
+   "nt_m"
+  ],
+  "NN": [
+   "NN"
+  ],
+  "_t_nt_D43": [
+   "_t_nt_D43",
+   "_t_nt_Y295",
+   "nt_BJ",
+   "nt_g"
+  ],
+  "_t_nt_BJ501": [
+   "_t_nt_BJ501",
+   "_t_nt_Y173",
+   "_t_nt_Y188",
+   "_t_nt_Y203",
+   "_t_nt_Y580",
+   "_t_nt_m180",
+   "_t_nt_p210",
+   "_t_nt_p287",
+   "_t_nt_p38",
+   "_t_nt_p414",
+   "_t_nt_p483",
+   "_t_nt_p97",
+   "nt_Dt",
+   "nt_s1"
+  ],
+  "nt_p": [
+   "nt_p"
+  ],
+  "_t_J6": [
+   "_t_J6",
+   "_t_nt_Y131",
+   "_t_nt_Y158",
+   "_t_nt_Y476",
+   "_t_nt_Y509",
+   "_t_nt_Y81",
+   "_t_nt_ca423",
+   "_t_nt_dv442",
+   "_t_nt_g88",
+   "_t_nt_m345",
+   "_t_nt_p138",
+   "_t_nt_p195",
+   "_t_nt_p28",
+   "_t_nt_p359",
+   "_t_nt_p373",
+   "_t_nt_p400",
+   "_t_nt_p453",
+   "_t_nt_p643",
+   "nt_A1",
+   "nt_D",
+   "nt_Pj",
+   "nt_Y2",
+   "nt_dg",
+   "nt_gY",
+   "nt_zt"
+  ],
+  "_t_NN109": [
+   "_t_NN109",
+   "_t_NN20",
+   "_t_S1",
+   "_t_S13",
+   "_t_nt_BJ273",
+   "_t_nt_F309",
+   "_t_nt_G494",
+   "_t_nt_Pj266",
+   "_t_nt_Pt468",
+   "_t_nt_Pt546",
+   "_t_nt_dg461",
+   "_t_nt_m331",
+   "_t_nt_p567",
+   "_t_nt_w634",
+   "_t_nt_zk627",
+   "_t_nt_zt551",
+   "nt_IDX",
+   "nt_Y",
+   "nt_dv"
+  ],
+  "_t_GS149": [
+   "_t_GS149",
+   "_t_GS600",
+   "_t_NN144",
+   "_t_NN259",
+   "_t_NN314",
+   "_t_NN388",
+   "_t_NN51",
+   "_t_NN524",
+   "_t_NN532",
+   "_t_NN595",
+   "_t_nt_B233",
+   "_t_nt_B247",
+   "_t_nt_NV222",
+   "_t_nt_g64",
+   "_t_nt_jj608",
+   "nt_A2",
+   "nt_Ar",
+   "nt_Q",
+   "nt_VEC",
+   "nt_gR",
+   "nt_mt"
+  ]
+ },
+ "states": 6106,
+ "beep_state": 6004,
+ "register_order": [
+  "_t_GS319",
+  "nt_Z",
+  "_t_nt_B302",
+  "nt_B",
+  "nt_TOT",
+  "nt_Fd",
+  "_t_NN122",
+  "GS",
+  "nt_NV",
+  "nt_ca",
+  "J",
+  "nt_G",
+  "nt_Vu",
+  "nt_F",
+  "nt_vIdx",
+  "TR",
+  "nt_tcnt",
+  "nt_w",
+  "nt_kc",
+  "nt_cb",
+  "nt_jc",
+  "nt_jj",
+  "S",
+  "nt_Vv",
+  "nt_cnt",
+  "_t_nt_Y69",
+  "nt_m",
+  "NN",
+  "_t_nt_D43",
+  "_t_nt_BJ501",
+  "nt_p",
+  "_t_J6",
+  "_t_NN109",
+  "_t_GS149"
+ ],
+ "sha256": "99ba613c5ff5cd18524564c4a3bff6948eb920c8cfd3ba45793138fe38290fd0",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

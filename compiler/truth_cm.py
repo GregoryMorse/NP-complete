@@ -324,7 +324,118 @@ def emit_gi(b):
         b.clear(x)
 
 
-EMIT = {'factor': emit_factor, 'gi': emit_gi}
+
+def emit_dlog(b):
+    k = _K(b, 'dl')
+    r = k.r
+    REJ, ACC = k.lab('rej'), k.lab('acc')
+    Nq, Par, U, V, Pw, bit = map(r, ('Nq', 'Par', 'U', 'V', 'Pw', 'bit'))
+    m, p, g, h, kk, Y, Z, Q, Rm, D, Dt = map(r, ('m', 'p', 'g', 'h', 'k', 'Y', 'Z', 'Q', 'Rm',
+                                                 'D', 'Dt'))
+    # m = N / 4, N divisible by 4, m >= 1
+    k.copy('N', Nq)
+    for _ in range(2):
+        k.halve(Nq, B=Par)
+        OK = k.lab('p4')
+        b.dec(Par, z=OK)
+        b.jmp(REJ)
+        b.label(OK)
+    POS = k.lab('pos')
+    k.zero_test(Nq, nz=POS, z=REJ)
+    b.label(POS)
+    b.move(Nq, [m])
+    k.copy('S', U)
+
+    def take():                         # V := next m bits of U (LSB first); Pw := 2^m
+        cnt = r('cnt')
+        k.copy(m, cnt)
+        b.inc(Pw)
+        L, D_, NB = k.lab('tk'), k.lab('tkd'), k.lab('tnb')
+        b.label(L)
+        b.dec(cnt, z=D_)
+        b.pop(U, REJ, B=bit)            # never empty: 4m bits
+        b.dec(bit, z=NB)
+        k.copy(Pw, V)
+        b.label(NB)
+        b.move(Pw, [r('Pw2'), r('Pw2')])
+        b.move(r('Pw2'), [Pw])
+        b.jmp(L)
+        b.label(D_)
+    call_take = k.subroutine('take', 3, take)
+    for site, dst in enumerate((kk, h, g)):
+        call_take(site)
+        b.move(V, [dst])
+        b.clear(Pw)
+    # U = 2^m + p
+    b.inc(Pw)
+    k.copy(m, r('cnt'))
+    L, D_ = k.lab('pw'), k.lab('pwd')
+    b.label(L)
+    b.dec(r('cnt'), z=D_)
+    b.move(Pw, [r('Pw2'), r('Pw2')])
+    b.move(r('Pw2'), [Pw])
+    b.jmp(L)
+    b.label(D_)
+    SUB, SD = k.lab('sub'), k.lab('sd')
+    b.label(SUB)
+    b.dec(Pw, z=SD)
+    b.dec(U)
+    b.jmp(SUB)
+    b.label(SD)
+    b.move(U, [p])
+    # p prime: p >= 2 and no d in [2, p-1] divides p
+    Ar = r('Ar')
+    k.copy(p, Ar)
+    b.dec(Ar, z=REJ)
+    b.dec(Ar, z=REJ)                    # Ar = p - 2 = number of trial divisors
+    b.inc(D)
+    b.inc(D)
+    TRI, MODL, M1, INNER, NOTDIV, PRIME = (k.lab(x) for x in ('tri', 'modl', 'm1', 'in', 'nd', 'pr'))
+    b.label(TRI)
+    b.dec(Ar, z=PRIME)
+    k.copy(p, Y)
+    b.label(MODL)
+    b.dec(Y, nz=M1, z=REJ)              # d divides p: composite
+    b.label(M1)
+    b.inc(Y)
+    k.copy(D, Dt)
+    b.label(INNER)
+    b.dec(Dt, z=MODL)
+    b.dec(Y, z=NOTDIV)
+    b.jmp(INNER)
+    b.label(NOTDIV)
+    b.clear(Dt)
+    b.inc(D)
+    b.jmp(TRI)
+    b.label(PRIME)
+    b.clear(D)
+    # h := h mod p ; y := 1 ; for x = 0..k: if y == h accept ; y := y g mod p
+    k.divmod(h, p, Q, Rm)
+    b.clear(Q)
+    b.move(Rm, [h])
+    b.inc(Y)
+    b.inc(kk)
+    XL, NE = k.lab('xl'), k.lab('ne')
+    b.label(XL)
+    b.dec(kk, z=REJ)
+    A1, A2 = r('A1'), r('A2')
+    k.copy(Y, A1)
+    k.copy(h, A2)
+    k.eq(A1, A2, yes=ACC, no=NE)
+    b.label(NE)
+    k.mul_into(Y, g, Z)
+    b.clear(Y)
+    k.divmod(Z, p, Q, Y)
+    b.clear(Q)
+    b.jmp(XL)
+    b.label(ACC)
+    b.inc('TR')
+    b.label(REJ)
+    for x in (Nq, Par, U, V, Pw, bit, m, p, g, h, kk, Y, Z, Q, Rm, D, Dt, Ar, r('cnt')):
+        b.clear(x)
+
+
+EMIT = {'factor': emit_factor, 'gi': emit_gi, 'dlog': emit_dlog}
 
 
 def harness(name):
