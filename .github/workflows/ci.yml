@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  machines:
+    name: Build machines and run the test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Rebuild machines and require them to match the commit
+        run: |
+          python3 build.py
+          git diff --stat --exit-code machines/
+      - name: Reproducibility (two hash seeds)
+        run: bash tests/check_reproducible.sh
+      - name: Counter machine vs reference
+        run: python3 tests/test_cm.py
+      - name: Register coalescing soundness
+        run: python3 tests/test_regalloc.py
+      - name: TM vs counter machine (lockstep)
+        run: python3 tests/test_tm.py
+      - name: Compiled TMs vs reference (C simulators)
+        run: python3 tests/diff_tm_ref.py
+
+  lean:
+    name: Lean (core only, no Mathlib)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Source rules and sorry census
+        run: python3 formal/scripts/check_sources.py
+      - name: Generated table matches machines/zp.tbl
+        run: |
+          python3 formal/gen_table.py
+          git diff --exit-code formal/ZP/Table.lean
+      - uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9
+        with:
+          lake-package-directory: formal
+          build: true
+          use-mathlib-cache: false
+
+  comparator:
+    name: Palomar Comparator (expected to fail until the bridge is proved)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9
+        with:
+          lake-package-directory: formal
+          build: false
+          use-mathlib-cache: false
+      - name: Install bubblewrap for the Comparator sandbox
+        run: |
+          sudo apt-get update -qq >/dev/null
+          sudo apt-get install -y -qq bubblewrap >/dev/null
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: lake comparator
+        run: ./formal/scripts/verify-comparator.sh
