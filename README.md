@@ -7,6 +7,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | machine | states | file |
 |---|---|---|
 | **Z_P** | **1371** | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
+| Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
+| Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |
 | twin-prime beeper (quasihalts iff finitely many twin primes) | 265 | `machines/twinprime.txt` |
 
 The state counts are from compiled, ungolfed-by-hand machines and are expected to drop.
@@ -20,8 +22,9 @@ P vs NP. That claim has not yet been checked against the bbchallenge Discord his
 
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
 (`docs/spec.md` §2, *Caution*). The equivalence has a paper proof (`docs/spec.md`). The
-compiler is validated by tests at every layer. **No machine-checked proof exists yet**
-(`formal/`).
+compiler is validated by tests at every layer. The Lean development (`formal/`, Palomar layout, core Lean only) states
+`Quasihalts zpMachine ↔ Sentence` for the literal table. It proves the abstract layer and
+leaves the table-simulation bridge open (one `sorry`). See `formal/README.md`.
 
 ## How it works (one paragraph)
 L is a self-padded NP-complete language. An instance s *is* a guest program; s ∈ L iff
@@ -51,7 +54,9 @@ python3 build.py                 # writes machines/*.txt|.tbl|.json|.cm (determi
 python3 tests/test_cm.py         # counter program vs reference
 python3 tests/test_regalloc.py   # coalescing soundness (lockstep, phys = sum of class)
 python3 tests/test_tm.py         # TM vs counter machine at every instruction boundary
+python3 tests/test_truth.py      # FACTOR / DIGRAPH-ISO brute force vs reference
 python3 tests/diff_tm_ref.py     # compiled TMs (C simulator) vs reference; needs gcc
+cd formal && lake build          # Lean (CI does this on every push)
 ```
 
 ## Machine format
@@ -67,9 +72,12 @@ See `docs/spec.md` §5. In brief:
 - **Controlled candidate lists:** exactly the predicted beeps, then silence.
 - **P-language swaps:** beep-for-beep agreement.
 - **Twin-prime beeper:** beeps exactly on the twin pairs.
+- **Z_FACTOR, Z_GI:** the brute-force deciders agree with the reference on every instance
+  up to the tested size. Both machines agree beep-for-beep with the reference prefix.
+  The theorem for general A is in `docs/spec.md` §2.1.
 
 ## Layout
-`docs/` spec and history · `formal/` Tier-1 proof plan + Lean skeleton (unchecked) ·
+`docs/` spec and history · `formal/` Lean project (Palomar layout) ·
 `machines/` build outputs · `tests/` · `ref/` · `compiler/` · `sim/`
 
 ## Credits

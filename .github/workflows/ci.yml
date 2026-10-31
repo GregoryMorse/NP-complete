@@ -32,6 +32,8 @@ jobs:
         run: python3 tests/test_cm.py
       - name: Register coalescing soundness
         run: python3 tests/test_regalloc.py
+      - name: FACTOR / DIGRAPH-ISO brute force vs reference
+        run: python3 tests/test_truth.py
       - name: TM vs counter machine (lockstep)
         run: python3 tests/test_tm.py
       - name: Compiled TMs vs reference (C simulators)
@@ -85,4 +87,9 @@ jobs:
           sudo apt-get install -y -qq bubblewrap >/dev/null
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: lake comparator
-        run: ./formal/scripts/verify-comparator.sh
+        run: |
+          set -o pipefail
+          ./formal/scripts/verify-comparator.sh 2>&1 | tee comparator.log || {
+            tail -c 2500 comparator.log | python3 -c 'import sys; print("::error::" + sys.stdin.read().replace("%", "%25").replace("\n", "%0A"))'
+            exit 1
+          }

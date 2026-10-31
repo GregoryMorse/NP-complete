@@ -1,33 +1,59 @@
-# Formal verification plan (Tier 1)
+# Formal verification (Lean 4, Palomar layout)
 
-**Status:** plan + unchecked skeleton. `ZP.lean` has not been compiled: the build
-environment for this commit could not install a Lean toolchain. Treat every statement
-in it as a draft.
+This directory is a self-contained Lake project. It uses **core Lean only, no
+Mathlib**: a clean CI build takes about a minute instead of the usual Mathlib
+cache download and build. The layout follows the
+[Palomar](https://palomar-registry.org/) template:
 
-Goal (brief §8, Tier 1): a kernel-checked proof that
+| file | role |
+|---|---|
+| `Challenge.lean` | the advertised statement (one deliberate `sorry`) |
+| `Solution.lean` | the same declaration, proved from the development |
+| `ZP/Defs.lean` | **trusted surface**: TMs, quasihalting, guest semantics, the Σ₂ sentence |
+| `ZP/Table.lean` | the literal table, generated from `machines/zp.tbl` by `gen_table.py` |
+| `ZP/Abstract.lean` | L4: the abstract program quasihalts ⟺ `Sentence` (**proved**) |
+| `ZP/Bridge.lean` | L0–L3: the table simulates the abstract program (**open, one `sorry`**) |
+| `ZP/Checks.lean` | kernel-evaluated (`decide`) agreement with `ref/zp_ref.py` on small cases |
+| `comparator.json`, `formalization.yaml`, `LICENSE` | Palomar submission metadata |
 
-> the literal table `machines/zp.txt` quasihalts (designated beep state, blank tape)
-> ⟺ the abstract program of `docs/spec.md` §1.5 beeps finitely often ⟺ S.
+The advertised theorem:
 
-Tier 2 (S ⟺ P = NP) stays on paper (`docs/spec.md` §2). It needs the
-polynomial-time equivalence of offset machines and standard TMs.
+```lean
+theorem ZP.zp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpMachine ↔ ZP.Sentence
+```
 
-## Proof chain (modelled on the 215-state ZF project's layering)
+`Sentence ↔ P = NP` is **not** formalized. It is the paper proof in `docs/spec.md` §2,
+and formalizing it needs a polynomial-time theory of TMs (Cook–Levin scale).
 
-| Layer | Statement | Evidence today | Planned proof technique |
-|---|---|---|---|
-| L0 table | `machines/zp.txt` parses to the `TM` value `zp` | SHA-256 in `machines/zp.json` | generated Lean literal + `decide` |
-| L1 template bridge | every counter instruction t is implemented by its TM template: from a well-formed tape encoding registers ρ, with the head on E in `ent t`, the TM reaches `ent t'` with a tape encoding ρ′, where (t′, ρ′) is the CM successor (or several successors for native moves) | lockstep test (`tests/test_tm.py`) at every boundary | one symbolic lemma per template *shape* (INC-near, INC-home, DEC-last, DEC-twopass, DEC-carry, MOVE-adj), parameterized by block distances, plus a generated certificate listing each instruction's template |
-| L1′ inlining + minimization | the shipped table is bisimilar to the uninlined template machine, with beep visits preserved one-for-one | `tests/test_tm.py` (same beeps) | a generated partition certificate checked by `decide`; the beep state is a singleton class |
-| L2 coalescing | the physical CM simulates the virtual CM with phys = Σ class | `tests/test_regalloc.py` | the must-zero analysis result is emitted as a certificate (the Z sets); the kernel checks it is an inductive invariant, then the simulation |
-| L3 CM ⟺ abstract | the virtual CM program refines the abstract program: same beeps, every abstract check terminates (**progress (a)**) | differential tests (`tests/diff_tm_ref.py`) | loop-by-loop ranking functions plus the invariant "popped register ≥ 1" (`docs/spec.md` §4) |
-| L4 abstract ⟺ S | finitely many beeps ⟺ ∃J ∀s correct | paper proof (`docs/spec.md` Theorem) | direct |
+## Status
+* CI (`.github/workflows/ci.yml`, job *Lean*) builds everything and prints a census of the
+  open `sorry`s. It also checks that `ZP/Table.lean` matches the current `machines/zp.tbl`.
+* The *Comparator* job runs `lake comparator` as Palomar does. It is marked
+  `continue-on-error` and is **expected to fail** while `ZP/Bridge.lean` has its
+  `sorry`, because `sorryAx` is not a permitted axiom. Once it passes, the repository
+  can be submitted at <https://submit.palomar-registry.org/> with config path
+  `formal/comparator.json`.
 
-Quasihalting must be preserved, not just halting. Each layer therefore proves a
+## Local use
+```bash
+cd formal && lake build                 # needs elan; toolchain from lean-toolchain
+./scripts/verify-comparator.sh          # needs bwrap
+python3 gen_table.py                    # after python3 build.py changed machines/zp.tbl
+```
+
+## The open bridge (plan)
+Quasihalting must be preserved, not just halting, so every layer proves a
 *beep-exact* simulation: every macro step terminates and emits exactly the beeps of the
-step it simulates. That is progress obligations (a)–(c).
+step it simulates (progress obligations (a)–(c) of `docs/spec.md`).
 
-## Sizes to expect
-The table has ~1.4k states, so L0/L1′ certificates are large but mechanical. L1 is the
-real work, about one lemma per template shape (six shapes). L3 is a few hundred lines of
-loop invariants.
+| Layer | Statement | Evidence today | Planned proof |
+|---|---|---|---|
+| L0 table | `ZP/Table.lean` is `machines/zp.txt` | CI regenerates and diffs it | done by construction |
+| L1 templates | each counter instruction is implemented by its TM template, from a well-formed register tape with the head on E | lockstep test `tests/test_tm.py` | one symbolic lemma per template shape (INC, DEC-last, DEC-twopass, DEC-carry, MOVE-adj, navigation), plus a generated certificate mapping every state to (instruction, template, phase), checked by `decide` |
+| L1′ inlining + minimization | the shipped table is bisimilar to the template machine, beep visits one-for-one | `tests/test_tm.py` | generated partition certificate checked by `decide`; the beep class is a singleton |
+| L2 coalescing | the physical counter program simulates the virtual one with phys = Σ class | `tests/test_regalloc.py` | the must-zero sets are emitted as a certificate; the kernel checks it is an inductive invariant |
+| L3 counter program ⟺ abstract | same beeps; every loop terminates | `tests/diff_tm_ref.py` | loop-by-loop ranking functions |
+| L4 abstract ⟺ `Sentence` | | **proved** (`ZP/Abstract.lean`) | |
+
+Certificates must be checked by `decide` or `rfl` in the kernel. `native_decide` adds
+the axiom `Lean.ofReduceBool`, which Palomar does not permit.

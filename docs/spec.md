@@ -146,6 +146,39 @@ every candidate is refuted after finitely many instances, so beeps never stop. �
 **Caution.** Knowing BBB(n) for n ≥ |Z_P| does not by itself decide P vs NP (brief §1).
 It reduces the question to a Π₁ statement about a derived machine.
 
+### 2.1 The same template for other languages (FACTOR, GRAPH ISOMORPHISM)
+
+The proof of Lemma A uses only two facts about L: membership is decidable (the
+brute-force truth computation terminates), and Lemma 1/2 relate guest codes to
+polynomial-time TMs. Hence for **any decidable** A ⊆ {0,1}*, the machine Z_A that
+replaces the truth computation by a terminating decider for A satisfies
+
+> **Z_A quasihalts ⟺ ∃J ∀s run(J, rep(s), T(J, s)) = [s ∈ A] ⟺ A ∈ P.**
+
+(⇐ of the second ⟺ is Lemma 1(a) plus Lemma 2. ⇒ is Lemma 1(b).) The first ⟺ is
+the Theorem's argument verbatim, and it does not use NP-completeness.
+
+Two instances are built (`ref/np_intermediate.py`, `compiler/truth_cm.py`):
+
+| machine | A | Z_A quasihalts iff |
+|---|---|---|
+| `zfactor` | FACTOR: s = a‖k with \|a\| = \|k\| = m. s ∈ A iff a has a divisor d with 2 ≤ d ≤ k and d < a | integer factoring is in polynomial time (FACTOR ∈ P ⟺ FP-factoring, by binary search on k) |
+| `zgi` | DIGRAPH-ISO: s = G‖H, two m×m adjacency matrices (\|s\| = 2m²). s ∈ A iff G ≅ H as directed graphs with loops | GI ∈ P (digraph isomorphism is GI-complete) |
+
+Both encodings are polynomial-time equivalent (many-one, both ways) to the standard
+ones. Malformed strings are simply non-members, which is a polynomial-time check.
+Brute force is trial division, and enumeration of all maps [m] → [m] with an
+injectivity check.
+
+**Which other questions fit?** Exactly the Σ₂ ones, i.e. "∃ algorithm ∀ inputs". Some examples:
+P = PSPACE (A = TQBF), P = PP (A = MAJSAT), NP = coNP (∃ verifier J ∀ formulas: J's bounded
+certificate search agrees with unsatisfiability), and discrete logarithm ∈ P all have the
+same shape. Statements of the form "for every ε > 0 there is an algorithm" are Π₃. Examples
+are NP ⊆ SUBEXP, i.e. SAT ∈ TIME(2^{n^ε}) for all ε, ω = 2, and the negation of ETH. They
+are not quasihalting statements: a BBB machine captures Σ₂ only. They would need a
+machine whose *beep-free stretches* encode a further quantifier, i.e. the next level of
+the busy-beaver hierarchy.
+
 ---
 
 ## 3. Construction: three refinement layers

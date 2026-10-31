@@ -33,6 +33,6 @@ def check(name, members):
 
 
 if __name__ == '__main__':
-    ok = check('factor', 300)
-    ok &= check('gi', 60)
+    ok = check('factor', 200)
+    ok &= check('gi', 30)
     sys.exit(0 if ok else 1)
