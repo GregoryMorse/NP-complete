@@ -23,6 +23,7 @@ example : run 0b1011111 1 7 = .timeout := by decide
 example : inL 1 = false := by decide
 example : clock 7 5 = 16 := by decide
 -- the table has the advertised size and beep state
+set_option maxRecDepth 100000 in
 example : zpMachine.table.length = 1371 := by decide
 example : zpMachine.beep = 704 := by decide
 

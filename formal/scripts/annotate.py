@@ -9,7 +9,7 @@ pat = re.compile(r'^(?:error|warning): (\S+?\.lean):(\d+):(\d+): (.*?)(?=^(?:err
 n = 0
 for m in pat.finditer(text):
     path, line, col, msg = m.groups()
-    if 'declaration uses \'sorry\'' in msg:
+    if 'declaration uses' in msg and 'sorry' in msg:
         continue
     msg = msg.strip().replace('%', '%25').replace('\r', '').replace('\n', '%0A')
     print(f'::error file=formal/{path},line={line},col={col}::{msg[:3000]}')
