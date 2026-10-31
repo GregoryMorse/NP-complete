@@ -4,6 +4,8 @@ Variants used by the test-suite:
   truth='L'         the real NP-complete language (default)
   truth='nonempty'  P-language swap: s in L'  iff  s != eps
   truth='odd'       P-language swap: s in L'  iff  s ends in '1'
+  truth='factor'    FACTOR (quasihalts iff integer factoring is in P)
+  truth='gi'        DIGRAPH-ISO (quasihalts iff graph isomorphism is in P)
   candidates=[...]  controlled candidate enumeration (list of J values);
                     after the list is exhausted the machine idles silently.
 
@@ -11,6 +13,7 @@ Register usage (all registers are 0 at the labels 'inst' and 'cand' except
 J, S): see docs/spec.md §5.
 """
 from cm import CM
+import truth_cm
 
 
 def build(truth='L', candidates=None):
@@ -66,6 +69,8 @@ def build(truth='L', candidates=None):
         b.pop('U_odd', 'tr_done', B='TR')
         b.clear('U_odd')
         b.label('tr_done')
+    elif truth in truth_cm.EMIT:            # NP-intermediate candidates
+        truth_cm.EMIT[truth](b)
     else:
         raise ValueError(truth)
 

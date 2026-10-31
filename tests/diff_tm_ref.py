@@ -15,6 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..')
 sys.path[:0] = [os.path.join(ROOT, 'ref')]
 import zp_ref as R      # noqa: E402
+import np_intermediate as NI  # noqa: E402
 
 SIM = os.path.join(ROOT, 'sim', 'tmsim')
 CMSIM = os.path.join(ROOT, 'sim', 'cmsim')
@@ -98,6 +99,8 @@ def main():
         ok &= check('pswap_nonempty', ne, steps, 10**6, exact=False, level=lvl)
         ok &= check('pswap_odd', odd, steps, 10**6, exact=False, level=lvl)
         ok &= check('zp', None, steps, 10**6, exact=False, level=lvl)
+        ok &= check('zfactor', NI.in_factor, steps, 10**6, exact=False, level=lvl)
+        ok &= check('zgi', NI.in_gi, steps, 10**6, exact=False, level=lvl)
     sys.exit(0 if ok else 1)
 
 

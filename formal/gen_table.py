@@ -19,12 +19,15 @@ def lean_table(name, ident):
         for w, d, nxt in (f[0:3], f[3:6]):
             codes.append(0 if nxt < 0 else 1 + w + 2 * d + 4 * nxt)
         rows.append(f'({codes[0]}, {codes[1]})')
-    # chunks keep each list literal small for the elaborator
-    chunks = [rows[i:i + 64] for i in range(0, n, 64)]
-    out = [f'/-- `machines/{name}.txt` ({n} states, beep state {beep}, SHA-256 of the',
-           f'standard text {meta["sha256"]}). Row q is (code on 0, code on 1). -/',
-           f'def {ident}Table : List (Nat × Nat) :=']
-    out.append('\n  ++ '.join('[' + ',\n    '.join(c) + ']' for c in chunks))
+    # one definition per 32-row chunk keeps every literal small for the elaborator
+    chunks = [rows[i:i + 32] for i in range(0, n, 32)]
+    out = []
+    for c, ch in enumerate(chunks):
+        out.append(f'def {ident}Rows{c} : List (Nat × Nat) :=\n  [' + ',\n   '.join(ch) + ']\n')
+    out.append(f'/-- `machines/{name}.txt` ({n} states, beep state {beep}, SHA-256 of the')
+    out.append(f'standard text {meta["sha256"]}). Row q is (code on 0, code on 1). -/')
+    out.append(f'def {ident}Table : List (Nat × Nat) :=')
+    out.append('  ' + ' ++\n  '.join(f'{ident}Rows{c}' for c in range(len(chunks))))
     out.append(f'\n/-- {name} as a machine with its designated beep state. -/')
     out.append(f'def {ident} : TM := ⟨{ident}Table, {beep}⟩\n')
     return '\n'.join(out), n

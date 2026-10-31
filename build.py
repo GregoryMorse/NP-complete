@@ -42,6 +42,8 @@ VARIANTS = {
     'pswap_odd': dict(truth='odd'),
     'ctl_nonempty': dict(truth='nonempty', candidates=CTL_NONEMPTY),
     'ctl_zp': dict(truth='L', candidates=CTL_L),
+    'zfactor': dict(truth='factor'),
+    'zgi': dict(truth='gi'),
     'twinprime': 'twin',
 }
 

@@ -1,0 +1,134 @@
+{
+ "name": "zfactor",
+ "counter_instructions": 240,
+ "registers": 21,
+ "virtual_registers": 57,
+ "register_classes": {
+  "R": [
+   "R"
+  ],
+  "w": [
+   "w"
+  ],
+  "fa_Dt": [
+   "fa_Dt",
+   "fa_Par"
+  ],
+  "N": [
+   "N"
+  ],
+  "fa_Ar": [
+   "fa_Ar"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "P": [
+   "P"
+  ],
+  "fa_Kr": [
+   "fa_Kr"
+  ],
+  "fa_K": [
+   "fa_K"
+  ],
+  "fa_bit": [
+   "fa_bit"
+  ],
+  "R1": [
+   "R1"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "J": [
+   "J"
+  ],
+  "Lt": [
+   "Lt"
+  ],
+  "O": [
+   "O"
+  ],
+  "A": [
+   "A"
+  ],
+  "S": [
+   "S"
+  ],
+  "E": [
+   "E",
+   "T_inst",
+   "fa_U"
+  ],
+  "V_mul": [
+   "V_mul",
+   "_q_fa_U38",
+   "_t_P150",
+   "_t_fa_Pw44",
+   "fa_D",
+   "fa_Pw2"
+  ],
+  "K": [
+   "K",
+   "U_lenJ",
+   "X",
+   "_q_Pc155",
+   "_q_U_lenS8",
+   "_t_Bs111",
+   "_t_N104",
+   "fa_Nh",
+   "fa_Y"
+  ],
+  "A2": [
+   "A2",
+   "Bs",
+   "F",
+   "Pc",
+   "U_enc",
+   "U_left",
+   "U_lenS",
+   "U_right",
+   "V_left",
+   "_q_U_lenJ96",
+   "_q_X136",
+   "_t_J117",
+   "_t_J89",
+   "_t_N17",
+   "_t_S122",
+   "_t_S30",
+   "_t_fa_D72",
+   "_t_fa_U57",
+   "_t_fa_U67",
+   "fa_Pw",
+   "fa_hT"
+  ]
+ },
+ "states": 1909,
+ "beep_state": 1220,
+ "register_order": [
+  "R",
+  "w",
+  "fa_Dt",
+  "N",
+  "fa_Ar",
+  "TR",
+  "P",
+  "fa_Kr",
+  "fa_K",
+  "fa_bit",
+  "R1",
+  "Tb",
+  "J",
+  "Lt",
+  "O",
+  "A",
+  "S",
+  "E",
+  "V_mul",
+  "K",
+  "A2"
+ ],
+ "sha256": "1834f8999b0be038a223f1530c43fe3a7e4af18dda3634408bfa16d75c45f25e",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

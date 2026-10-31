@@ -1,0 +1,197 @@
+{
+ "name": "zgi",
+ "counter_instructions": 410,
+ "registers": 29,
+ "virtual_registers": 96,
+ "register_classes": {
+  "_t_gi_m80": [
+   "_t_gi_m80",
+   "gi_I",
+   "gi_Pv"
+  ],
+  "_t_gi_m166": [
+   "_t_gi_m166",
+   "gi_Mm",
+   "gi_dt"
+  ],
+  "w": [
+   "w"
+  ],
+  "A": [
+   "A"
+  ],
+  "O": [
+   "O"
+  ],
+  "Lt": [
+   "Lt"
+  ],
+  "J": [
+   "J"
+  ],
+  "gi_dY": [
+   "gi_dY"
+  ],
+  "P": [
+   "P"
+  ],
+  "gi_BV": [
+   "gi_BV"
+  ],
+  "gi_G": [
+   "gi_G"
+  ],
+  "gi_rf_digit": [
+   "gi_rf_digit"
+  ],
+  "gi_rf_bit": [
+   "gi_rf_bit"
+  ],
+  "gi_Frem": [
+   "gi_Frem"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "gi_F": [
+   "gi_F"
+  ],
+  "gi_M2": [
+   "gi_M2"
+  ],
+  "R1": [
+   "R1"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "N": [
+   "N"
+  ],
+  "gi_FJ": [
+   "gi_FJ"
+  ],
+  "gi_FI": [
+   "gi_FI"
+  ],
+  "R": [
+   "R"
+  ],
+  "S": [
+   "S"
+  ],
+  "E": [
+   "E",
+   "T_inst",
+   "gi_J",
+   "gi_Pt"
+  ],
+  "_t_N96": [
+   "_t_N96",
+   "_t_gi_J185",
+   "_t_gi_m130",
+   "_t_gi_m31",
+   "_t_gi_m87",
+   "gi_A1",
+   "gi_BI",
+   "gi_dR"
+  ],
+  "Bs": [
+   "Bs",
+   "K",
+   "Pc",
+   "_q_X336",
+   "_t_J289",
+   "gi_m"
+  ],
+  "U_right": [
+   "U_right",
+   "V_left",
+   "V_mul",
+   "X",
+   "_q_U_lenJ296",
+   "_q_U_lenS8",
+   "_t_gi_F20",
+   "_t_gi_FI251",
+   "_t_gi_FJ216",
+   "_t_gi_I144",
+   "_t_gi_I178",
+   "_t_gi_I232",
+   "_t_gi_J200",
+   "_t_gi_J244",
+   "_t_gi_Pv123",
+   "_t_gi_m102",
+   "_t_gi_m109",
+   "_t_gi_m149",
+   "_t_gi_m239",
+   "_t_gi_m258",
+   "gi_T2",
+   "gi_bY",
+   "gi_dQ"
+  ],
+  "A2": [
+   "A2",
+   "F",
+   "U_enc",
+   "U_left",
+   "U_lenJ",
+   "U_lenS",
+   "_q_Pc355",
+   "_t_Bs311",
+   "_t_J317",
+   "_t_N304",
+   "_t_P350",
+   "_t_S322",
+   "_t_S57",
+   "_t_gi_FI211",
+   "_t_gi_FJ263",
+   "_t_gi_I195",
+   "_t_gi_J161",
+   "_t_gi_M2227",
+   "_t_gi_m114",
+   "_t_gi_m45",
+   "gi_A2",
+   "gi_DI",
+   "gi_DV",
+   "gi_Nc",
+   "gi_T2b",
+   "gi_hT",
+   "gi_mt"
+  ]
+ },
+ "states": 3476,
+ "beep_state": 2641,
+ "register_order": [
+  "_t_gi_m80",
+  "_t_gi_m166",
+  "w",
+  "A",
+  "O",
+  "Lt",
+  "J",
+  "gi_dY",
+  "P",
+  "gi_BV",
+  "gi_G",
+  "gi_rf_digit",
+  "gi_rf_bit",
+  "gi_Frem",
+  "TR",
+  "gi_F",
+  "gi_M2",
+  "R1",
+  "Tb",
+  "N",
+  "gi_FJ",
+  "gi_FI",
+  "R",
+  "S",
+  "E",
+  "_t_N96",
+  "Bs",
+  "U_right",
+  "A2"
+ ],
+ "sha256": "8306fe00a88697e61d7531536e73f785fc9e2513212a9bea8f77e407dffd686b",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}
