@@ -69,21 +69,25 @@ def build():
         t('Y' + y, M, y, 'L', 'RGQ1')
     t('RGQ1', BITS, '.', 'L', 'RGQ1')
     t('RGQ1', B, '.', 'L', 'RTW')
-    # rotations: move one entry  w d 1^k 0  from Q's right end to its left end
-    for pre, first, phases in (('', 'TW', 'DO'), ('R', 'RTW', 'DO')):
+    # rotations: move one entry  w d 1^k 0  from Q's right end to its left end.
+    # A recording rotation (entered at RTW) leaves a token M in place of w, d
+    # and each 1; the return sweep sees the vacated cell and keeps the mode.
+    for first, wr in (('TW', B), ('RTW', M)):
         t(first, 'BM', '.', 'L', first)
         for b in BITS:
-            t(first, b, B, 'L', pre + 'C' + b + 'D')
-        for X in phases:
-            for b in BITS:
-                c = pre + 'C' + b + X
-                t(c, BITS, '.', 'L', c)
-                t(c, B, b, 'R', pre + 'RET' + X)
-            t(pre + 'RET' + X, BITS, '.', 'R', pre + 'RET' + X)
-            t(pre + 'RET' + X, 'BM', '.', 'L', pre + 'T' + X)
+            t(first, b, wr, 'L', 'C' + b + 'D')
+    for X in 'DO':
         for b in BITS:
-            t(pre + 'TD', b, B, 'L', pre + 'C' + b + 'O')
-        t(pre + 'TO', '1', M if pre else B, 'L', pre + 'C1O')
+            c = 'C' + b + X
+            t(c, BITS, '.', 'L', c)
+            t(c, B, b, 'R', 'RET' + X)
+        t('RET' + X, BITS, '.', 'R', 'RET' + X)
+        t('RET' + X, B, '.', 'L', 'T' + X)
+        t('RET' + X, M, '.', 'L', 'RT' + X)
+    for pre, wr in (('', B), ('R', M)):
+        for b in BITS:
+            t(pre + 'TD', b, wr, 'L', 'C' + b + 'O')
+        t(pre + 'TO', '1', wr, 'L', 'C1O')
         t(pre + 'TO', '0', B, 'L', 'C0E')
     t('C0E', BITS, '.', 'L', 'C0E')
     t('C0E', B, '0', 'R', 'NAV')
@@ -229,21 +233,20 @@ def outer(m):
     for b in BITS:
         t('QC', b, B, 'L', 'QL' + b)
         t('QL' + b, NB, '.', 'L', 'QL' + b)
-        t('QL' + b, B, '.', 'L', 'QK' + b)      # gap of two blanks
-        t('QK' + b, B, '.', 'L', 'QM' + b)
+        t('QL' + b, B, '.', 'L', 'QM' + b)
         t('QM' + b, BITS, '.', 'L', 'QM' + b)
         t('QM' + b, B, b, 'R', 'QR' + b)
         t('QR' + b, BITS, '.', 'R', 'QR' + b)
-        t('QR' + b, B, '.', 'R', 'QT' + b)
-        t('QT' + b, B, '.', 'R', 'QS' + b)
+        t('QR' + b, B, '.', 'R', 'QS' + b)
         t('QS' + b, NB, '.', 'R', 'QS' + b)
         t('QS' + b, B, b, 'R', 'QC')
     t('QC', M, '.', 'L', 'QE')
     t('QE', NB, '.', 'L', 'QE')
-    t('QE', B, '.', 'L', 'QEK')
-    t('QEK', B, '.', 'L', 'QE2')
+    t('QE', B, '.', 'L', 'QE2')
     t('QE2', BITS, '.', 'L', 'QE2')
-    t('QE2', B, '0', 'R', 'NAV')
+    t('QE2', B, '0', 'R', 'QE3')
+    t('QE3', BITS, '.', 'R', 'QE3')             # one initial rotation
+    t('QE3', B, '.', 'L', 'TW')
     # ---------------- start ----------------
     t('I0', B, M, 'R', 'I1')
     t('I1', B, M, 'R', 'GRB')

@@ -6,7 +6,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 
 | machine | states | file |
 |---|---|---|
-| **Z_P** | **1371** | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
+| **Z_P v2 (native design)** | **394** | `machines/zp_native.txt` (`docs/native.md`) |
+| Z_P v1 (compiled from a counter machine; Lean-formalized statement) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
 | Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
 | Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |
 | Z_PP (quasihalts iff P = PP) | 1599 | `machines/zpp.txt` |
@@ -17,7 +18,9 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_NTT (quasihalts iff the number-theoretic transform has linear-size linear circuits) | 6106 | `machines/zntt.txt` |
 | twin-prime beeper (quasihalts iff finitely many twin primes) | 265 | `machines/twinprime.txt` |
 
-The state counts are from compiled, ungolfed-by-hand machines and are expected to drop.
+Z_P v2 is designed directly as a tape machine (`native/`, spec `docs/native.md`) and is
+tested beep-for-beep against its Python reference `ref/zp2_ref.py`. The other rows are
+compiled from counter machines and are expected to drop once ported to the native design.
 History is in `docs/history.md`.
 
 **What is new and what is not.** That P = NP is a Σ₂ sentence, and that Σ₂ sentences can be

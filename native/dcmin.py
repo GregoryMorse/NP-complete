@@ -9,8 +9,9 @@ machines behave identically (same beeps, same tape).
 """
 
 
-def merge_all(table, beep, start=0, rounds=3):
+def merge_all(table, beep, start=0, rounds=3, order=None):
     n = len(table)
+    nsym = len(table[0])
     par = list(range(n))
     trans = [list(r) for r in table]
 
@@ -32,7 +33,7 @@ def merge_all(table, beep, start=0, rounds=3):
                 break
             ok = True
             new = []
-            for s in (0, 1):
+            for s in range(nsym):
                 tx, ty = trans[x][s], trans[y][s]
                 if tx is None:
                     new.append(ty)
@@ -64,6 +65,8 @@ def merge_all(table, beep, start=0, rounds=3):
     for _ in range(rounds):
         changed = False
         roots = [i for i in range(n) if find(i) == i]
+        if order is not None:
+            roots = order(roots)
         for i, a in enumerate(roots):
             if find(a) != a:
                 continue
@@ -80,3 +83,21 @@ def merge_all(table, beep, start=0, rounds=3):
     for r in roots:
         out.append([None if tr is None else (tr[0], tr[1], idx[find(tr[2])]) for tr in trans[r]])
     return out, idx[find(beep)]
+
+
+def merge_logical(m, **kw):
+    """Apply merge_all to a logical machine (symbols B M 0 1)."""
+    from logic import LTM, SYMS
+    qs = m.states()
+    ix = {q: i for i, q in enumerate(qs)}
+    table = [[None if (q, a) not in m.d else
+              (m.d[(q, a)][0], m.d[(q, a)][1], ix[m.d[(q, a)][2]]) for a in SYMS] for q in qs]
+    out, b = merge_all(table, ix[m.beep], **kw)
+    names = ['S%d' % i for i in range(len(out))]
+    m2 = LTM(names[0])
+    for i, row in enumerate(out):
+        for a, tr in zip(SYMS, row):
+            if tr is not None:
+                m2.t(names[i], a, tr[0], tr[1], names[tr[2]])
+    m2.beep = names[b]
+    return m2

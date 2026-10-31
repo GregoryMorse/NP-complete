@@ -102,7 +102,45 @@ def build_variant(name, opts, iters=15000):
     return meta
 
 
+NATIVE_SEED = 86    # merge order chosen by native/final.py (smallest of 100 seeds)
+
+
+def build_native(name='zp_native'):
+    """Z_P v2: the hand-designed machine of native/ (see docs/native.md)."""
+    sys.path.insert(0, os.path.join(ROOT, 'native'))
+    import zp2
+    import compile2
+    import search
+    import final
+    m = zp2.build()
+    n, table, beep = search.full(m, final.ENC, compile2.default_sides(m), seed=NATIVE_SEED)
+    std = tm.to_standard(table)
+    meta = {
+        'name': name,
+        'logical_states': len(m.states()),
+        'states': len(table),
+        'beep_state': beep,
+        'pair_encoding': {k: ''.join(map(str, v)) for k, v in final.ENC.items()},
+        'reference': 'ref/zp2_ref.py',
+        'sha256': hashlib.sha256(std.encode()).hexdigest(),
+        'format': "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0",
+    }
+    with open(os.path.join(ROOT, 'machines', name + '.txt'), 'w') as f:
+        f.write(std + '\n')
+    with open(os.path.join(ROOT, 'machines', name + '.tbl'), 'w') as f:
+        f.write(f'{len(table)} {beep}\n')
+        for st in table:
+            f.write(' '.join('-1 0 -1' if tr is None else
+                             f"{tr[0]} {1 if tr[1] == 'R' else 0} {tr[2]}" for tr in st) + '\n')
+    with open(os.path.join(ROOT, 'machines', name + '.json'), 'w') as f:
+        json.dump(meta, f, indent=1)
+    return meta
+
+
 def main():
+    m = build_native()
+    print(f"{m['name']:16s} states={m['states']:5d} logical={m['logical_states']} "
+          f"beep={m['beep_state']} sha256={m['sha256'][:16]}")
     for name, opts in VARIANTS.items():
         m = build_variant(name, opts)
         print(f"{name:16s} states={m['states']:5d} cm={m['counter_instructions']} "

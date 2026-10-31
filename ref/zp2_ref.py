@@ -3,7 +3,8 @@
 Guest model (chosen so a 2-symbol host can interpret it with few states):
 
 * A code P is any bit string.  The interpreter works on the cyclic string
-  R = P + '0' (the appended 0 guarantees R contains a 0).
+  R = P + '0' (the appended 0 guarantees R contains a 0), rotated once
+  before the first step.
 * An *entry* starting at R[0] is parsed cyclically as  w d 1^k 0 ; rot(R)
   rotates R past that entry and returns (rotated R, k).
 * Guest tape: one-way infinite, cells B/0/1, input x on cells 0.., head h = 0.
@@ -12,7 +13,7 @@ Guest model (chosen so a 2-symbol host can interpret it with few states):
   if the step budget is used up the run ends with NAC (time-out); otherwise
   peek w = R[0], d = R[1], t = R[2] (missing positions read 0).  t = 0: halt,
   ACC iff w = 1.  Else write w, move right iff d = 1, rotate one entry (its
-  one-count is k >= 1) and then k - 1 more entries.
+  one-count is k >= 1) and then k + 1 more entries.
 * run(P, x, T) is ACC or NAC (a time-out counts as NAC).
 * L = { s : some c in {0,1}^(|s|+1) has run(s, c, |s|+1) = ACC }.
 * Candidate J is correct on s iff (run(J, s, T) = ACC) == (s in L) with
@@ -41,7 +42,7 @@ def rot(R):
 
 
 def run(P, x, T):
-    R = P + '0'
+    R = rot(P + '0')[0]
     tape = {i: c for i, c in enumerate(x)}
     h = 0
     for _ in range(T + 1):
@@ -59,7 +60,7 @@ def run(P, x, T):
         tape[h] = w
         h = h + 1 if d == '1' else max(h - 1, 0)
         R, k = rot(R)
-        for _ in range(k - 1):
+        for _ in range(k + 1):
             R = rot(R)[0]
     raise AssertionError
 
