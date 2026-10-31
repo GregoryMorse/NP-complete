@@ -1,34 +1,98 @@
 {
  "name": "pswap_nonempty",
- "counter_instructions": 204,
- "registers": 23,
- "states": 2514,
- "beep_state": 878,
+ "counter_instructions": 165,
+ "registers": 15,
+ "virtual_registers": 39,
+ "register_classes": {
+  "O": [
+   "O"
+  ],
+  "A": [
+   "A"
+  ],
+  "K": [
+   "K",
+   "N"
+  ],
+  "Lt": [
+   "Lt"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "E": [
+   "E"
+  ],
+  "R1": [
+   "R1"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "P": [
+   "P",
+   "V_mul"
+  ],
+  "J": [
+   "J"
+  ],
+  "w": [
+   "w"
+  ],
+  "R": [
+   "R"
+  ],
+  "S": [
+   "S"
+  ],
+  "Bs": [
+   "Bs",
+   "T_inst",
+   "U_lenJ",
+   "X",
+   "_q_Pc86",
+   "_q_U_lenS8",
+   "_t_P81",
+   "_t_S14"
+  ],
+  "A2": [
+   "A2",
+   "F",
+   "Pc",
+   "U_enc",
+   "U_left",
+   "U_lenS",
+   "U_ne",
+   "U_right",
+   "V_left",
+   "_q_U_lenJ27",
+   "_q_X67",
+   "_t_Bs42",
+   "_t_J20",
+   "_t_J48",
+   "_t_N35",
+   "_t_S53"
+  ]
+ },
+ "states": 1160,
+ "beep_state": 528,
  "register_order": [
-  "E",
+  "O",
+  "A",
+  "K",
+  "Lt",
   "TR",
-  "B",
-  "V",
-  "F",
-  "X",
-  "N",
+  "E",
   "R1",
-  "Bs",
+  "Tb",
   "P",
   "J",
-  "d",
-  "Tb",
-  "k",
-  "q",
-  "cnt",
-  "Lt",
   "w",
-  "S",
   "R",
-  "Pc",
-  "U",
-  "T"
+  "S",
+  "Bs",
+  "A2"
  ],
- "sha256": "f926bfe40cc29ea9ab6ab0350833fc339c4834fd9560dbb14bee5d756008ddc3",
+ "sha256": "9b8b52dfc1140f0b7416ef397b0274c45875ef02ee815a104acd0d6a7978c0fa",
  "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
 }

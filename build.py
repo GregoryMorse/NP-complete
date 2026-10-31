@@ -9,6 +9,7 @@ Output per variant:
                         each state 'w0M0n0,w1M1n1' (n = state number, 0 = start)
   machines/<name>.tbl   the same, simulator input format (sim/tmsim.c)
   machines/<name>.json  state count, beep state, register order, SHA-256
+  machines/<name>.asm   the (register-coalesced) counter program it was compiled from
 """
 import hashlib
 import json
@@ -22,16 +23,18 @@ sys.path[:0] = [os.path.join(ROOT, 'compiler'), os.path.join(ROOT, 'ref')]
 import tm          # noqa: E402
 import zp_cm       # noqa: E402
 import zp_ref      # noqa: E402
+import twin_cm     # noqa: E402
+import regalloc    # noqa: E402
 
 A = zp_ref.assemble
 # controlled candidate lists (brief §5.3): known-wrong candidates with known
 # first counterexamples, then (for the P-language) one known-correct one.
 REJECT_ALL = 1                                   # empty code
 ACCEPT_ALL = A([(1, 1, 0)] * 2)
-RUN_RIGHT = A([(0, 1, 1)] * 2)                   # never halts -> TIMEOUT
+RUN_LEFT = A([(0, 0, 1)])                       # on blank: loops left -> TIMEOUT
 FIRST_CELL = A([(0, 0, 0), (1, 0, 0)])           # accept iff first cell is 1
-CTL_NONEMPTY = [REJECT_ALL, ACCEPT_ALL, RUN_RIGHT, FIRST_CELL]
-CTL_L = [ACCEPT_ALL, RUN_RIGHT, REJECT_ALL, FIRST_CELL]
+CTL_NONEMPTY = [REJECT_ALL, ACCEPT_ALL, RUN_LEFT, FIRST_CELL]
+CTL_L = [ACCEPT_ALL, RUN_LEFT, REJECT_ALL, FIRST_CELL]
 
 VARIANTS = {
     'zp': dict(truth='L'),
@@ -39,12 +42,14 @@ VARIANTS = {
     'pswap_odd': dict(truth='odd'),
     'ctl_nonempty': dict(truth='nonempty', candidates=CTL_NONEMPTY),
     'ctl_zp': dict(truth='L', candidates=CTL_L),
+    'twinprime': 'twin',
 }
 
 
-def build_variant(name, opts, iters=40000):
-    prog = zp_cm.build(**opts).assemble()
-    order, _ = tm.optimize_order(prog, iters=iters)
+def build_variant(name, opts, iters=15000):
+    vprog = (twin_cm.build() if opts == 'twin' else zp_cm.build(**opts)).assemble()
+    pinned = ('M',) if opts == 'twin' else ('J', 'S')
+    prog, order, _, classes = regalloc.allocate(vprog, pinned=pinned, iters=iters)
     table, info = tm.compile_cm(prog, order)
     table, beep = tm.minimize(table, info['beep'])
     std = tm.to_standard(table)
@@ -52,6 +57,8 @@ def build_variant(name, opts, iters=40000):
         'name': name,
         'counter_instructions': len(prog),
         'registers': len(order),
+        'virtual_registers': len(vprog.regs),
+        'register_classes': {next(r for r in order if r in c): sorted(c) for c in classes},
         'states': len(table),
         'beep_state': beep,
         'register_order': order,
@@ -61,7 +68,8 @@ def build_variant(name, opts, iters=40000):
     os.makedirs(os.path.join(ROOT, 'machines'), exist_ok=True)
     idx = {r: i for i, r in enumerate(prog.regs)}
     with open(os.path.join(ROOT, 'machines', name + '.cm'), 'w') as f:
-        f.write(f"{len(prog)} {len(prog.regs)} {prog.entry} {idx['J']} {idx['S']}\n")
+        j, sr = (idx['M'], idx['M']) if opts == 'twin' else (idx['J'], idx['S'])
+        f.write(f"{len(prog)} {len(prog.regs)} {prog.entry} {j} {sr}\n")
         for ins in prog.code:
             if ins[0] == 'INC':
                 f.write(f'0 {idx[ins[1]]} {ins[2]}\n')
@@ -69,6 +77,8 @@ def build_variant(name, opts, iters=40000):
                 f.write(f'1 {idx[ins[1]]} {ins[2]} {ins[3]}\n')
             else:
                 f.write(f'2 {ins[1]}\n')
+    with open(os.path.join(ROOT, 'machines', name + '.asm'), 'w') as f:
+        f.write(prog.listing())
     with open(os.path.join(ROOT, 'machines', name + '.txt'), 'w') as f:
         f.write(std + '\n')
     with open(os.path.join(ROOT, 'machines', name + '.tbl'), 'w') as f:

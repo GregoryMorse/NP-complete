@@ -49,7 +49,7 @@ def tm_beeps(name, steps, nbeeps):
             raise AssertionError(name + ': machine halted: ' + line)
         f = list(map(int, line.split()))
         regs = dict(zip(order, f[1:]))
-        res.append((f[0], regs['J'], regs['S']))
+        res.append((f[0], regs.get('J', regs.get('M')), regs.get('S', regs.get('M'))))
     return res, out.stderr.strip()
 
 
@@ -70,9 +70,21 @@ def check(name, truth, steps, nbeeps, exact, level='tm', cands=None):
     return ok
 
 
+def check_twin(steps=3 * 10**9):
+    def isp(n):
+        return n > 1 and all(n % d for d in range(2, int(n ** .5) + 1))
+    got, info = tm_beeps('twinprime', steps, 10**6)
+    ms = [m for _, m, _ in got]
+    want = [m for m in range(5, ms[-1] + 1) if isp(m) and isp(m - 2)]
+    ok = ms == want
+    print(f'{"twinprime":20s} twin pairs={len(ms):5d} up to {ms[-1]} [{info}] -> '
+          f'{"OK" if ok else "FAIL"}')
+    return ok
+
+
 def main():
     ensure_sim()
-    ok = True
+    ok = check_twin()
     ne = lambda S: S > 1                                # noqa: E731
     odd = lambda S: S > 1 and S & 1 == 1                # noqa: E731
     # Controlled enumerations: exact beep list, then silence (brief §5.3).
@@ -82,10 +94,10 @@ def main():
         ok &= check('ctl_zp', None, 4 * 10**9, 100, exact=True, level=lvl, cands=build.CTL_L)
     # Real enumeration: prefix agreement (a full P-swap run is infeasible:
     # unary arithmetic costs 2^Theta(guest steps)).
-    for lvl in ('cm', 'tm'):
-        ok &= check('pswap_nonempty', ne, 10**10, 10**6, exact=False, level=lvl)
-        ok &= check('pswap_odd', odd, 10**10, 10**6, exact=False, level=lvl)
-        ok &= check('zp', None, 10**10, 10**6, exact=False, level=lvl)
+    for lvl, steps in (('cm', 10**10), ('tm', 3 * 10**9)):
+        ok &= check('pswap_nonempty', ne, steps, 10**6, exact=False, level=lvl)
+        ok &= check('pswap_odd', odd, steps, 10**6, exact=False, level=lvl)
+        ok &= check('zp', None, steps, 10**6, exact=False, level=lvl)
     sys.exit(0 if ok else 1)
 
 

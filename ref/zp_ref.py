@@ -11,11 +11,12 @@ Conventions (summary; spec.md is authoritative)
 * Program decoding (total).  The code s is read *right to left*: popping the
   least significant bit of rep(s).  Reading past the end (rep == 1) is a
   decoding failure, which makes the guest REJECT.
-  The code is a list of entries; entry number 2q+a is the transition for
-  (state q, scanned symbol a).  An entry is   w d 1^k 0
-  (w = symbol to write, d = 1 for right / 0 for left, k in unary).
-  k = 0 means HALT, with output ACCEPT iff w = 1.  k >= 1 means go to state
-  k-1.  Start state 0.
+  The code is a list of entries, each a unary number  1^e 0.  The machine
+  state is an *offset* o (start o = 0); scanning symbol a it uses entry
+  number o + a.  Entry value e = 4k + 2d + w:  w = symbol to write,
+  d = 1 for right / 0 for left, k = 0 means HALT with output ACCEPT iff
+  w = 1, k >= 1 means the new offset is k - 1.  (A TM with states
+  0..m-1 is coded by putting state i at offset 2i.)
 * Guest: 1-tape 2-symbol TM, blank 0, two-way infinite tape.
 * Input (self-delimiting): c = b1..bm is written as 1 b1 1 b2 ... 1 bm
   starting at the head cell, rest blank.
@@ -61,26 +62,22 @@ class _Fail(Exception):
 
 
 def lookup(P, idx):
-    """Parse entries 0..idx of code P; return (w, d, k) of entry idx or None."""
+    """Return (w, d, k) of entry number idx of code P, or None if the code
+    ends first."""
     pc = P
-
-    def pop():
-        nonlocal pc
+    e = 0
+    while True:
         if pc == 1:
-            raise _Fail
+            return None
         b = pc & 1
         pc >>= 1
-        return b
-    try:
-        for _ in range(idx + 1):
-            w = pop()
-            d = pop()
-            k = 0
-            while pop():
-                k += 1
-    except _Fail:
-        return None
-    return w, d, k
+        if b:
+            if idx == 0:
+                e += 1
+        elif idx == 0:
+            return e & 1, (e >> 1) & 1, e >> 2
+        else:
+            idx -= 1
 
 
 def run(P, X, t, trace=None):
@@ -91,7 +88,7 @@ def run(P, X, t, trace=None):
     for _ in range(t):
         a = R & 1
         R1 = R >> 1
-        e = lookup(P, 2 * q + a)
+        e = lookup(P, q + a)
         if e is None:
             return REJ
         w, d, k = e
@@ -154,14 +151,30 @@ def _naturals(k):
 
 # ---------------------------------------------------------------- helpers
 def assemble(entries):
-    """Build rep(code) from a list of (w, d, k) entries, in reading order."""
+    """Build rep(code) from a list of (w, d, k) entries, in reading order.
+    Entry 2i+a is the transition of state i on symbol a when next-states
+    are written as k = 2*state + 1 (use tm_code() for that)."""
     bits = []                       # reading order (LSB first)
     for w, d, k in entries:
-        bits += [w, d] + [1] * k + [0]
+        bits += [1] * (4 * k + 2 * d + w) + [0]
     N = 1
     for b in reversed(bits):        # first-read bit must be the LSB
         N = 2 * N + b
     return N
+
+
+def tm_code(delta):
+    """delta: list over states i of (tr_on_0, tr_on_1); tr = ('H', out) or
+    (w, d, next_state).  Returns rep(code) with state i at offset 2i."""
+    ents = []
+    for tr0, tr1 in delta:
+        for tr in (tr0, tr1):
+            if tr[0] == 'H':
+                ents.append((tr[1], 0, 0))
+            else:
+                w, d, nxt = tr
+                ents.append((w, d, 2 * nxt + 1))
+    return assemble(ents)
 
 
 if __name__ == '__main__':

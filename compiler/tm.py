@@ -27,6 +27,17 @@ class AtE:
         return f'AtE({self.t})'
 
 
+class FromLeft:
+    """Transition 'write w (a 1) on E-1 and step right into ent[t]'.  If
+    ent[t] just steps left into a left-skipping state s0, step left into s0
+    directly instead (same tape, ent[t] bypassed)."""
+    __slots__ = ('t', 'w')
+
+    def __init__(self, t, w):
+        assert w == 1
+        self.t, self.w = t, w
+
+
 class Builder:
     def __init__(self):
         self.st = []            # list of [trans0, trans1]; trans=(w,m,next)|AtE|None
@@ -42,7 +53,24 @@ class Builder:
         self.st[s][sym] = tr
 
 
-def compile_cm(prog, order=None, inline=True, dec_mode='best'):
+def move_loops(prog):
+    """Instructions t with  t: DEC X nz->t+1 z->E ; t+1: INC Y -> t
+    (a full transfer X -> Y).  Returns {t: (X, Y, E)}."""
+    out = {}
+    for t, ins in enumerate(prog.code[:-1]):
+        nx = prog.code[t + 1]
+        if (ins[0] == 'DEC' and ins[2] == t + 1 and nx[0] == 'INC'
+                and nx[2] == t and nx[1] != ins[1]):
+            out[t] = (ins[1], nx[1], ins[3])
+    return out
+
+
+def _nav_cost(m, p, use_home=True):
+    return min(m + 1, p + 5) if use_home else m + 1
+
+
+def compile_cm(prog, order=None, inline=True, dec_mode='best', use_home=True,
+               native_moves=True):
     """Return (table, info).  table[s] = [(w,m,n) or None, ...] with state 0
     the start state; info['beep'] = index of the beep state."""
     regs = list(order) if order else list(prog.regs)
@@ -53,6 +81,9 @@ def compile_cm(prog, order=None, inline=True, dec_mode='best'):
     n = len(prog.code)
     ent = [B.new(f'ent{t}') for t in range(n)]
     beep_state = None
+
+    def from_left(t):
+        return FromLeft(t, 1) if inline else (1, R, ent[t])
 
     def goto_at_E(t):
         """continuation when the head is on E having read 0."""
@@ -101,6 +132,31 @@ def compile_cm(prog, order=None, inline=True, dec_mode='best'):
                 B.set(s, 0, (0, L, None))
             prev = s
 
+    def nav_home(t, r, op):
+        """From ent[t] (on E): scan left to the left end, then right to
+        sep_r (r = block index from the left); execute op there."""
+        h2, h3, p0 = B.new(f'hm{t}.2'), B.new(f'hm{t}.3'), B.new(f'hm{t}.p')
+        B.set(ent[t], 0, (0, L, h2))
+        B.set(h2, 1, (1, L, h2))
+        B.set(h2, 0, (0, L, h3))
+        B.set(h3, 1, (1, L, h2))
+        B.set(h3, 0, (0, R, p0))
+        prev = p0
+        for i in range(r + 1):
+            s = B.new(f'hm{t}.s{i}')
+            B.set(prev, 0, (0, R, s))
+            B.set(s, 1, (1, R, s))
+            if i == r:
+                B.set(s, 0, op)
+            prev = s
+
+    def nav(t, r, op):
+        m = k - 1 - pos[r]
+        if use_home and pos[r] + 5 < m + 1:
+            nav_home(t, pos[r], op)
+        else:
+            nav_left(t, m, op)
+
     def shift_right_from_here(t_next, name):
         """Returns state C0: we have just written 1 over a 0 (carry 0) and
         moved right; shift the tail right by one and finish on E."""
@@ -114,24 +170,24 @@ def compile_cm(prog, order=None, inline=True, dec_mode='best'):
     def emit_inc(t, r, nxt):
         m = k - 1 - pos[r]
         if m == 0:
-            B.set(ent[t], 0, (1, R, ent[nxt]))
+            B.set(ent[t], 0, from_left(nxt))
             return
         c0 = shift_right_from_here(nxt, f'inc{t}')
-        nav_left(t, m, (1, R, c0))
+        nav(t, r, (1, R, c0))
 
     def emit_dec_last(t, nz, z):
         x, y, q = B.new(f'dl{t}x'), B.new(f'dl{t}y'), B.new(f'dl{t}q')
         B.set(ent[t], 0, (0, L, x))
         B.set(x, 1, (0, L, y))
-        B.set(y, 1, (1, R, ent[nz]))
+        B.set(y, 1, from_left(nz))
         B.set(y, 0, (0, R, q))
-        B.set(q, 0, (1, R, ent[z]))
+        B.set(q, 0, from_left(z))
 
     def emit_dec_twopass(t, r, nz, z):
         m = k - 1 - pos[r]
         t1, t2, d1 = B.new(f'd{t}t1'), B.new(f'd{t}t2'), B.new(f'd{t}d1')
         y, z0, zz, w, u = (B.new(f'd{t}{c}') for c in ('y', 'z0', 'z', 'w', 'u'))
-        nav_left(t, m, (0, L, t1))
+        nav(t, r, (0, L, t1))
         B.set(t1, 1, (1, L, t2))
         B.set(t2, 0, (0, R, zscan(z)))
         B.set(t2, 1, (1, R, d1))
@@ -163,8 +219,29 @@ def compile_cm(prog, order=None, inline=True, dec_mode='best'):
         c0 = shift_right_from_here(z, f'dc{t}')
         B.set(ua, 0, (1, R, c0))
 
+    def emit_move_adj(t, X, Y, nxt):
+        """Native full transfer between adjacent blocks."""
+        a, bq, cq = B.new(f'mv{t}a'), B.new(f'mv{t}b'), B.new(f'mv{t}c')
+        if pos[Y] == pos[X] + 1:            # Y right of X
+            nav(t, X, (1, L, a))
+            B.set(a, 1, (1, L, a))
+            B.set(a, 0, (0, R, bq))
+            B.set(bq, 1, (1, R, cq))
+            B.set(cq, 1, (0, R, zscan(nxt)))
+        else:                               # Y left of X
+            nav(t, Y, (1, R, a))
+            B.set(a, 1, (1, R, a))
+            B.set(a, 0, (0, L, bq))
+            B.set(bq, 1, (1, L, cq))
+            B.set(cq, 1, (0, R, zscan(nxt)))
+
+    mloops = move_loops(prog) if native_moves else {}
     for t, ins in enumerate(prog.code):
         op = ins[0]
+        if t in mloops and abs(pos[mloops[t][0]] - pos[mloops[t][1]]) == 1:
+            X, Y, E_ = mloops[t]
+            emit_move_adj(t, X, Y, E_)
+            continue
         if op == 'INC':
             emit_inc(t, ins[1], ins[2])
         elif op == 'DEC':
@@ -172,7 +249,8 @@ def compile_cm(prog, order=None, inline=True, dec_mode='best'):
             m = k - 1 - pos[r]
             if m == 0 and dec_mode == 'best':
                 emit_dec_last(t, nz, z)
-            elif dec_mode == 'carry' or (dec_mode == 'best' and 2 * m + 8 < m + 11):
+            elif dec_mode == 'carry' or (dec_mode == 'best' and
+                                         2 * m + 8 < _nav_cost(m, pos[r], use_home) + 10):
                 emit_dec_carry(t, r, nz, z)
             else:
                 emit_dec_twopass(t, r, nz, z)
@@ -180,7 +258,7 @@ def compile_cm(prog, order=None, inline=True, dec_mode='best'):
             assert beep_state is None, 'one BEEP instruction only'
             beep_state = B.new('BEEP')
             B.set(ent[t], 0, (0, L, beep_state))
-            B.set(beep_state, 1, (1, R, ent[ins[1]]))
+            B.set(beep_state, 1, from_left(ins[1]))
         else:
             raise ValueError(op)
 
@@ -207,8 +285,21 @@ def compile_cm(prog, order=None, inline=True, dec_mode='best'):
         return tr
     for s in range(len(B.st)):
         for a in (0, 1):
-            if B.st[s][a] is not None:
+            if B.st[s][a] is not None and not isinstance(B.st[s][a], FromLeft):
                 B.st[s][a] = res(B.st[s][a])
+
+    def res_fl(tr, depth=0):
+        if not isinstance(tr, FromLeft):
+            return tr
+        assert depth < 50
+        e0 = res_fl(B.st[ent[tr.t]][0], depth + 1)
+        if e0[0] == 0 and e0[1] == L and B.st[e0[2]][1] == (1, L, e0[2]):
+            return (tr.w, L, e0[2])
+        return (tr.w, R, ent[tr.t])
+    for s in range(len(B.st)):
+        for a in (0, 1):
+            if B.st[s][a] is not None:
+                B.st[s][a] = res_fl(B.st[s][a])
 
     table, names, beep = _finish(B.st, B.names, start, beep_state)
     return table, {'beep': beep, 'names': names, 'order': regs, 'ent': None}
@@ -266,44 +357,60 @@ def minimize(table, beep, start=0):
     return out, (idx[cls[beep]] if beep is not None else None)
 
 
-def cost_estimate(prog, order):
+def cost_estimate(prog, order, use_home=True):
     """Static state count estimate for a register order (before sharing)."""
     k = len(order)
     pos = {r: i for i, r in enumerate(order)}
     c = 2 * k
-    for ins in prog.code:
+    ml = move_loops(prog)
+    skip = set()
+    for t, (X, Y, _) in ml.items():
+        if abs(pos[X] - pos[Y]) == 1:
+            c += _nav_cost(k - 1 - min(pos[X], pos[Y]), min(pos[X], pos[Y]), use_home) + 4
+            skip.add(t)
+    for t, ins in enumerate(prog.code):
+        if t in skip:
+            continue
         if ins[0] == 'INC':
             m = k - 1 - pos[ins[1]]
-            c += 1 if m == 0 else m + 3
+            c += 1 if m == 0 else _nav_cost(m, pos[ins[1]], use_home) + 2
         elif ins[0] == 'DEC':
             m = k - 1 - pos[ins[1]]
-            c += 4 if m == 0 else min(2 * m + 8, m + 11)
+            c += 4 if m == 0 else min(2 * m + 8, _nav_cost(m, pos[ins[1]], use_home) + 10)
         else:
             c += 2
     return c
 
 
-def optimize_order(prog, iters=20000, seed=1):
+def optimize_order(prog, iters=20000, seed=1, restarts=4):
+    """Simulated annealing over register orders (swap / move moves)."""
+    import math
     import random
     rnd = random.Random(seed)
-    # initial: by frequency, hottest last
     freq = defaultdict(int)
     for ins in prog.code:
         if ins[0] in ('INC', 'DEC'):
             freq[ins[1]] += 1
-    order = sorted(prog.regs, key=lambda r: freq[r])
-    best = cost_estimate(prog, order)
-    for _ in range(iters):
-        i, j = rnd.randrange(len(order)), rnd.randrange(len(order))
-        if i == j:
-            continue
-        order[i], order[j] = order[j], order[i]
-        c = cost_estimate(prog, order)
-        if c <= best:
-            best = c
-        else:
-            order[i], order[j] = order[j], order[i]
-    return order, best
+    best_o, best_c = None, None
+    for rs in range(restarts):
+        order = sorted(prog.regs, key=lambda r: freq[r])
+        if rs:
+            rnd.shuffle(order)
+        cur = cost_estimate(prog, order)
+        for it in range(iters):
+            temp = 20.0 * (1 - it / iters) + 0.05
+            o2 = order[:]
+            i, j = rnd.randrange(len(o2)), rnd.randrange(len(o2))
+            if rnd.random() < 0.5:
+                o2[i], o2[j] = o2[j], o2[i]
+            else:
+                o2.insert(j, o2.pop(i))
+            c = cost_estimate(prog, o2)
+            if c <= cur or rnd.random() < math.exp((cur - c) / temp):
+                order, cur = o2, c
+                if best_c is None or cur < best_c:
+                    best_o, best_c = order[:], cur
+    return best_o, best_c
 
 
 # ------------------------------------------------------------ formats

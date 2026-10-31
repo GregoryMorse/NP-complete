@@ -24,27 +24,35 @@ def lockstep(prog, order, tm_steps, dec_mode='best'):
     regs = {r: 0 for r in prog.regs}
     pc = prog.entry
     checked = 0
+    first_pending = False
     tape = {}
     s, h = 0, 0
     for _ in range(tm_steps):
         if s in ent_of:
-            assert ent_of[s] == pc, (ent_of[s], pc)
+            # advance the counter machine to the boundary the TM reached
+            # (native templates may cover several instructions)
+            for _ in range(10**6):
+                if pc == ent_of[s] and not first_pending:
+                    break
+                first_pending = False
+                ins = prog.code[pc]
+                if ins[0] == 'INC':
+                    regs[ins[1]] += 1
+                    pc = ins[2]
+                elif ins[0] == 'DEC':
+                    if regs[ins[1]]:
+                        regs[ins[1]] -= 1
+                        pc = ins[2]
+                    else:
+                        pc = ins[3]
+                else:
+                    pc = ins[1]
+            assert pc == ent_of[s], (ent_of[s], pc)
             assert tape.get(h, 0) == 0
             got = tm.decode_regs(tape, h, order)
             assert got == regs, (pc, got, regs)
             checked += 1
-            ins = prog.code[pc]               # advance the counter machine
-            if ins[0] == 'INC':
-                regs[ins[1]] += 1
-                pc = ins[2]
-            elif ins[0] == 'DEC':
-                if regs[ins[1]]:
-                    regs[ins[1]] -= 1
-                    pc = ins[2]
-                else:
-                    pc = ins[3]
-            else:
-                pc = ins[1]
+            first_pending = True
         tr = table[s][tape.get(h, 0)]
         assert tr is not None, ('undefined transition', s, names[s])
         tape[h] = tr[0]
@@ -62,6 +70,9 @@ def random_cm(nregs=4, n=40, seed=0):
         b.label(f'l{i}')
         if i == n // 2:
             b.beep()
+        elif rnd.random() < 0.15:
+            x, y = rnd.sample(regs, 2)
+            b.move(x, [y])
         elif rnd.random() < 0.5:
             b.inc(rnd.choice(regs))
         else:
@@ -80,9 +91,10 @@ def test_lockstep_random():
 
 
 def test_lockstep_zp():
-    p = zp_cm.build().assemble()
-    order, _ = tm.optimize_order(p, iters=3000)
-    assert lockstep(p, order, 300000) > 1000
+    import regalloc
+    p, order, _, _ = regalloc.allocate(zp_cm.build().assemble(), pinned=('J', 'S'),
+                                       iters=3000, restarts=1)
+    assert lockstep(p, order, 400000) > 1000
 
 
 def beeps_tm(table, beep, order, n, steps):

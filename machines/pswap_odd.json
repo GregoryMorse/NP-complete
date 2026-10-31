@@ -1,34 +1,99 @@
 {
  "name": "pswap_odd",
- "counter_instructions": 209,
- "registers": 23,
- "states": 2525,
- "beep_state": 889,
+ "counter_instructions": 170,
+ "registers": 15,
+ "virtual_registers": 40,
+ "register_classes": {
+  "w": [
+   "w"
+  ],
+  "S": [
+   "S"
+  ],
+  "E": [
+   "E",
+   "T_inst"
+  ],
+  "Lt": [
+   "Lt"
+  ],
+  "R1": [
+   "R1"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "N": [
+   "N"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "P": [
+   "P",
+   "V_mul"
+  ],
+  "J": [
+   "J"
+  ],
+  "A": [
+   "A"
+  ],
+  "O": [
+   "O"
+  ],
+  "R": [
+   "R"
+  ],
+  "K": [
+   "K",
+   "U_odd",
+   "X",
+   "_q_Pc92",
+   "_q_U_lenJ33",
+   "_q_U_lenS8",
+   "_t_Bs48",
+   "_t_J26",
+   "_t_N41",
+   "_t_P87"
+  ],
+  "A2": [
+   "A2",
+   "Bs",
+   "F",
+   "Pc",
+   "U_enc",
+   "U_left",
+   "U_lenJ",
+   "U_lenS",
+   "U_right",
+   "V_left",
+   "_q_U_odd19",
+   "_q_X73",
+   "_t_J54",
+   "_t_S14",
+   "_t_S59"
+  ]
+ },
+ "states": 1163,
+ "beep_state": 558,
  "register_order": [
-  "E",
-  "TR",
-  "B",
-  "V",
-  "F",
-  "X",
-  "N",
-  "R1",
-  "Bs",
-  "P",
-  "J",
-  "d",
-  "Tb",
-  "k",
-  "q",
-  "cnt",
-  "Lt",
   "w",
   "S",
+  "E",
+  "Lt",
+  "R1",
+  "TR",
+  "N",
+  "Tb",
+  "P",
+  "J",
+  "A",
+  "O",
   "R",
-  "Pc",
-  "U",
-  "T"
+  "K",
+  "A2"
  ],
- "sha256": "fcbdce7473089c1386abb984d7cbd72b8439772e4ad2e7d1eb10acefc85cfa78",
+ "sha256": "24c72db071c93b4620b48e3f093842ddc7d5ce79ab7ab45544d3cf111fb3a7c1",
  "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
 }

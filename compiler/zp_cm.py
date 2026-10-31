@@ -25,21 +25,25 @@ def build(truth='L', candidates=None):
     b.inc('S')                              # S = 1
     b.label('inst')
 
-    # N = |s|
-    b.copy('S', 'U')
+    # N = |s|   (and K = S, the certificate countdown)
+    b.move('S', ['U_lenS', 'K', 'T_inst'])
+    b.move('T_inst', ['S'])
+    if truth != 'L':
+        b.clear('K')
     L, D = b.fresh('lenS'), b.fresh('lenSd')
     b.label(L)
-    b.pop('U', D)
+    b.pop('U_lenS', D)
     b.inc('N')
     b.jmp(L)
     b.label(D)
 
     # ------------------------------------------------- truth -> TR in {0,1}
     if truth == 'L':
-        b.copy('S', 'K')                    # countdown over C = 1..S
         b.label('cert')
         b.dec('K', z='certdone')
         b.inc('C')
+        b.clear('P')
+        b.clear('Tb')
         b.copy('S', 'P')
         b.copy('C', 'X')
         b.copy('N', 'Tb')
@@ -51,39 +55,39 @@ def build(truth='L', candidates=None):
         b.label('certdone')
         b.clear('C')
     elif truth == 'nonempty':
-        b.copy('S', 'U')
-        b.dec('U')
-        b.dec('U', z='tr_done')
+        b.copy('S', 'U_ne')
+        b.dec('U_ne')
+        b.dec('U_ne', z='tr_done')
         b.inc('TR')
-        b.clear('U')
+        b.clear('U_ne')
         b.label('tr_done')
     elif truth == 'odd':                    # S odd and S > 1
-        b.copy('S', 'U')
-        b.pop('U', 'tr_done', B='TR')
-        b.clear('U')
+        b.copy('S', 'U_odd')
+        b.pop('U_odd', 'tr_done', B='TR')
+        b.clear('U_odd')
         b.label('tr_done')
     else:
         raise ValueError(truth)
 
     # ----------------------------------------------- decider: run(J, S, T)
-    # E = |code(J)|
-    b.copy('J', 'U')
+    b.copy('J', 'U_lenJ')                        # E = |code(J)|
     L, D = b.fresh('lenJ'), b.fresh('lenJd')
     b.label(L)
-    b.pop('U', D)
+    b.pop('U_lenJ', D)
     b.inc('E')
     b.jmp(L)
     b.label(D)
-    # Bs = N + 2 ; Tb = Bs ** E
-    b.copy('N', 'Bs')
+    b.clear('P')
+    b.clear('Tb')
+    b.copy('N', 'Bs')                       # Bs = N + 2 ; Tb = Bs ** E
     b.inc('Bs')
     b.inc('Bs')
     b.inc('Tb')
     b.label('pow')
     b.dec('E', z='powd')
-    b.move('Tb', ['V'])
+    b.move('Tb', ['V_mul'])
     b.label('mul')
-    b.dec('V', z='pow')
+    b.dec('V_mul', z='pow')
     b.copy('Bs', 'Tb')
     b.jmp('mul')
     b.label('powd')
@@ -117,91 +121,100 @@ def build(truth='L', candidates=None):
     b.jmp('inst')
 
     # ------------------------------------------------- run(P, X, Tb) ; F
-    # workspace R R1 Lt q cnt Pc w d k B is zero on entry, U V T zero.
+    # Guest tape: R = head cell + right part, Lt = left part (LSB nearest).
+    # O = current offset (state).  P, Tb, X are inputs; X is consumed.
     b.label('run')
-    # R := enc(X)
-    b.label('enc')
-    b.pop('X', 'step', B='B')
-    b.move('R', ['U', 'U'])
-    b.move('B', ['U'])
-    b.move('U', ['R', 'R'])
+    for r in ('R', 'R1', 'Lt', 'O', 'A'):
+        b.clear(r)
+    b.label('enc')                          # R := enc(X)
+    b.pop('X', 'step', B='w')
+    b.move('R', ['U_enc', 'U_enc'])
+    b.move('w', ['U_enc'])
+    b.move('U_enc', ['R', 'R'])
     b.inc('R')
     b.jmp('enc')
 
     b.label('step')
     b.dec('Tb', z='o_timeout')
-    # a = R mod 2 ; R1 = R // 2 ; cnt = 2q + a
-    L, A0, A1 = b.fresh('hR'), b.fresh('a0'), b.fresh('a1')
+    L, A0 = b.fresh('hR'), b.fresh('a0')    # R1 = R // 2 ; O += R mod 2
     b.label(L)
     b.dec('R', z=A0)
-    b.dec('R', z=A1)
+    b.dec('R', z='a1')
     b.inc('R1')
     b.jmp(L)
-    b.label(A1)
-    b.inc('cnt')
+    b.label('a1')
+    b.inc('O')
     b.label(A0)
-    b.move('q', ['cnt', 'cnt', 'T'])
-    b.move('T', ['q'])
     b.copy('P', 'Pc')
-    # parse entries 0..cnt
+    # scan entries: skip O entries, accumulate the next one in A
     b.label('parse')
-    b.pop('Pc', 'o_fail', B='w')
-    b.pop('Pc', 'o_fail', B='d')
-    b.label('un')
-    b.pop('Pc', 'o_fail', B='B')
-    b.dec('B', z='und')
-    b.inc('k')
-    b.jmp('un')
-    b.label('und')
-    b.dec('cnt', z='use')
-    b.clear('w')
-    b.clear('d')
-    b.clear('k')
+    b.pop('Pc', 'o_rej', B='w')
+    b.dec('w', z='bit0')
+    b.dec('O', z='bit1t')
+    b.inc('O')
+    b.jmp('parse')
+    b.label('bit1t')
+    b.inc('A')
+    b.jmp('parse')
+    b.label('bit0')
+    b.dec('O', z='decode')
     b.jmp('parse')
 
-    b.label('use')
+    b.label('decode')                       # A = 4k + 2d + w
     b.clear('Pc')
-    b.dec('k', z='halt')
-    b.clear('q')
-    b.move('k', ['q'])
-    b.dec('d', z='left')
-    # move right: Lt = 2 Lt + w ; R = R1
-    b.move('Lt', ['U', 'U'])
-    b.move('w', ['U'])
-    b.move('U', ['Lt'])
+    L, D0 = b.fresh('hA'), b.fresh('w0')
+    b.label(L)
+    b.dec('A', z=D0)
+    b.dec('A', z='w1')
+    b.inc('A2')
+    b.jmp(L)
+    b.label('w1')
+    b.inc('w')
+    b.label(D0)
+    L = b.fresh('hA2')
+    b.label(L)
+    b.dec('A2', z='left')
+    b.dec('A2', z='right')
+    b.inc('A')
+    b.jmp(L)
+
+    b.label('right')                        # Lt = 2 Lt + w ; R = R1
+    b.dec('A', z='halt')
+    b.move('A', ['O'])
+    b.move('Lt', ['U_right', 'U_right'])
+    b.move('w', ['U_right'])
+    b.move('U_right', ['Lt'])
     b.move('R1', ['R'])
     b.jmp('step')
-    b.label('left')
-    # R = 2 (2 R1 + w) + (Lt mod 2) ; Lt = Lt // 2
-    L, E0, E1 = b.fresh('hL'), b.fresh('l0'), b.fresh('l1')
+
+    b.label('left')                         # R = 2(2 R1 + w) + Lt mod 2
+    b.dec('A', z='halt')
+    b.move('A', ['O'])
+    L, E0 = b.fresh('hL'), b.fresh('l0')
     b.label(L)
     b.dec('Lt', z=E0)
-    b.dec('Lt', z=E1)
-    b.inc('V')
+    b.dec('Lt', z='l1')
+    b.inc('V_left')
     b.jmp(L)
-    b.label(E1)
+    b.label('l1')
     b.inc('R')
     b.label(E0)
-    b.move('V', ['Lt'])
-    b.move('R1', ['U', 'U'])
-    b.move('w', ['U'])
-    b.move('U', ['R', 'R'])
+    b.move('V_left', ['Lt'])
+    b.move('R1', ['U_left', 'U_left'])
+    b.move('w', ['U_left'])
+    b.move('U_left', ['R', 'R'])
     b.jmp('step')
 
     # ----------------------------------------------------------- outcomes
-    b.label('halt')                         # k was 0; output w
+    b.label('halt')                         # output w
     b.dec('w', z='o_rej')
     b.label('o_acc')
-    _cleanup(b)
     b.dec('F', z='dec_acc')
     b.jmp('ver_acc' if truth == 'L' else 'never')
-    b.label('o_fail')
     b.label('o_rej')
-    _cleanup(b)
     b.dec('F', z='dec_rej')
     b.jmp('cert' if truth == 'L' else 'never')
     b.label('o_timeout')
-    _cleanup(b)
     b.dec('F', z='dec_timeout')
     b.jmp('cert' if truth == 'L' else 'never')
 
@@ -216,7 +229,7 @@ def build(truth='L', candidates=None):
 
 
 def _cleanup(b):
-    for r in ('w', 'd', 'k', 'Pc', 'cnt', 'R1', 'R', 'Lt', 'q', 'Tb', 'P'):
+    for r in ('w', 'd', 'A', 'Pc', 'cnt', 'R1', 'R', 'Lt', 'q', 'Tb', 'P'):
         b.clear(r)
 
 
@@ -227,18 +240,21 @@ def _load_candidate(b, candidates):
 def _candidate_table(b, cands):
     """J := cands[CI] (CI preserved); idle silently past the end."""
     b.label('load')
-    b.copy('CI', 'V')
+    b.copy('CI', 'V_ld')
     for i, J in enumerate(cands):
         nxt = b.fresh('ld')
-        b.dec('V', z=nxt)
+        b.dec('V_ld', z=nxt)
         b.jmp(nxt + 'skip')
         b.label(nxt)
-        for _ in range(J):
-            b.inc('J')
+        for bit in bin(J)[2:]:              # J = 2 J + bit, MSB first
+            b.move('J', ['V_ld', 'V_ld'])
+            b.move('V_ld', ['J'])
+            if bit == '1':
+                b.inc('J')
         b.clear('S')
         b.clear('N')
         b.jmp('cand')
         b.label(nxt + 'skip')
-    b.clear('V')
+    b.clear('V_ld')
     b.label('idle')
-    b.dec('V', nz='idle', z='idle')
+    b.dec('V_ld', nz='idle', z='idle')

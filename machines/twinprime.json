@@ -1,0 +1,48 @@
+{
+ "name": "twinprime",
+ "counter_instructions": 39,
+ "registers": 8,
+ "virtual_registers": 10,
+ "register_classes": {
+  "P2": [
+   "P2"
+  ],
+  "P1": [
+   "P1"
+  ],
+  "_t_D11": [
+   "_t_D11"
+  ],
+  "X": [
+   "X"
+  ],
+  "Y": [
+   "Y",
+   "_t_M6"
+  ],
+  "M": [
+   "M"
+  ],
+  "Q": [
+   "Q"
+  ],
+  "D": [
+   "D",
+   "_t_M1"
+  ]
+ },
+ "states": 265,
+ "beep_state": 215,
+ "register_order": [
+  "P2",
+  "P1",
+  "_t_D11",
+  "X",
+  "Y",
+  "M",
+  "Q",
+  "D"
+ ],
+ "sha256": "251f7adf94fa1f693b75ff016dd78d8400dd5cd6a5a442e17cf368cb97feb99e",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

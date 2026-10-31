@@ -52,13 +52,15 @@ class CM:
         self.jmp(L)
         self.label(E)
 
-    def copy(self, src, dst, tmp='T'):
+    def copy(self, src, dst, tmp=None):
+        tmp = tmp or self.fresh('t_' + src)
         self.move(src, [dst, tmp])
         self.move(tmp, [src])
 
-    def pop(self, X, empty, B=None, T='T'):
+    def pop(self, X, empty, B=None, T=None):
         """X >= 1 is a rep.  If X == 1: X := 0, goto empty.  Otherwise
         B += X mod 2 (if B given) and X := X // 2."""
+        T = T or self.fresh('q_' + X)
         L, OD, EV = self.fresh('pop'), self.fresh('od'), self.fresh('ev')
         self.label(L)
         self.dec(X, z=EV)
@@ -139,6 +141,23 @@ class Program:
 
     def __len__(self):
         return len(self.code)
+
+    def listing(self):
+        """Human-readable assembly, with source labels."""
+        names = {}
+        for k, v in sorted(self.labels.items(), key=lambda kv: kv[1]):
+            names.setdefault(v, k)
+        out = [f'; entry {self.entry}']
+        for t, ins in enumerate(self.code):
+            lab = f'{names[t]}:' if t in names else ''
+            if ins[0] == 'INC':
+                txt = f'INC {ins[1]:8s} -> {ins[2]}'
+            elif ins[0] == 'DEC':
+                txt = f'DEC {ins[1]:8s} nz-> {ins[2]}  z-> {ins[3]}'
+            else:
+                txt = f'BEEP         -> {ins[1]}'
+            out.append(f'{t:4d} {lab:14s} {txt}')
+        return '\n'.join(out) + '\n'
 
     def stats(self):
         from collections import Counter

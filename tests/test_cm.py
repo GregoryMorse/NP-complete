@@ -51,7 +51,7 @@ def test_pswap_nonempty_full_enumeration():
 
 def test_controlled():
     # known-wrong candidates followed by a known-correct one for 'odd'
-    wrong = [1, R.assemble([(1, 1, 0)] * 3), R.assemble([(0, 1, 0), (0, 1, 0)])]
+    wrong = [1, R.assemble([(1, 1, 0)] * 3)]   # looping candidates: see diff_tm_ref.py
     good = R.assemble([(0, 0, 0), (1, 0, 0)])  # accept iff first cell is 1
     cands = wrong + [good]
     want = ref_beeps('nonempty', cands, 100)

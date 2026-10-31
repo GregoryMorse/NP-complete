@@ -1,36 +1,106 @@
 {
  "name": "zp",
- "counter_instructions": 220,
- "registers": 25,
- "states": 2821,
- "beep_state": 1164,
+ "counter_instructions": 177,
+ "registers": 17,
+ "virtual_registers": 41,
+ "register_classes": {
+  "A": [
+   "A"
+  ],
+  "O": [
+   "O"
+  ],
+  "P": [
+   "P",
+   "V_mul"
+  ],
+  "Tb": [
+   "Tb"
+  ],
+  "F": [
+   "F"
+  ],
+  "TR": [
+   "TR"
+  ],
+  "K": [
+   "K"
+  ],
+  "R1": [
+   "R1"
+  ],
+  "C": [
+   "C",
+   "E"
+  ],
+  "Lt": [
+   "Lt"
+  ],
+  "J": [
+   "J"
+  ],
+  "N": [
+   "N"
+  ],
+  "w": [
+   "w"
+  ],
+  "S": [
+   "S"
+  ],
+  "R": [
+   "R",
+   "_q_Pc98",
+   "_t_P93"
+  ],
+  "Bs": [
+   "Bs",
+   "T_inst",
+   "X",
+   "_q_U_lenJ39",
+   "_q_U_lenS7",
+   "_t_J32"
+  ],
+  "A2": [
+   "A2",
+   "Pc",
+   "U_enc",
+   "U_left",
+   "U_lenJ",
+   "U_lenS",
+   "U_right",
+   "V_left",
+   "_q_X79",
+   "_t_Bs54",
+   "_t_C20",
+   "_t_J60",
+   "_t_N25",
+   "_t_N47",
+   "_t_S15",
+   "_t_S65"
+  ]
+ },
+ "states": 1371,
+ "beep_state": 704,
  "register_order": [
-  "E",
-  "K",
-  "C",
+  "A",
+  "O",
+  "P",
+  "Tb",
   "F",
   "TR",
-  "B",
-  "V",
-  "d",
-  "Bs",
-  "J",
+  "K",
   "R1",
-  "X",
-  "cnt",
-  "k",
-  "N",
-  "P",
-  "q",
+  "C",
   "Lt",
-  "Tb",
+  "J",
+  "N",
   "w",
   "S",
   "R",
-  "Pc",
-  "U",
-  "T"
+  "Bs",
+  "A2"
  ],
- "sha256": "b93c0fdf19d873f34478db1effea660ab7ea73106dcd3b5d2038c75ca4dec038",
+ "sha256": "5ae59f84a78af645547fde7a815608b179ff4452122b28fd84753b4e49a69f3f",
  "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
 }
