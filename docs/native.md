@@ -1,14 +1,14 @@
 # Z_P v2: the natively designed machine
 
-`machines/zp_native.txt` (394 states) is built from `native/zp2.py`. That file is a
-139-state machine over four logical symbols, `B M 0 1`. `native/compile2.py` turns it into
+`machines/zp_native.txt` (388 states) is built from `native/zp2.py`. That file is a
+135-state machine over four logical symbols, `B M 0 1`. `native/compile2.py` turns it into
 a 2-symbol machine. The reference semantics live in `ref/zp2_ref.py`; this note explains
 them and the tape layout.
 
 ## Guest model
 
-A code `P` is any bit string. The interpreter works on the cyclic string `R = P + '0'`,
-which it rotates once before the first step. An *entry* at the front of `R` is parsed
+A code `P` is any bit string. The interpreter works on the cyclic string
+`R = reverse(P) + '0'`, which it rotates once before the first step. An *entry* at the front of `R` is parsed
 cyclically as `w d 1^k 0`. One guest step works like this:
 
 1. Read the head cell `a` (blank, 0 or 1).
@@ -20,6 +20,8 @@ cyclically as `w d 1^k 0`. One guest step works like this:
    - write `w`;
    - move right if `d = 1`, else left (the head stays put at cell 0);
    - rotate past the entry, then past `k + 1` more entries.
+
+The instance `s = ''` and the candidate `J = ''` are examined like any other.
 
 The guest tape is one-way infinite, and the guest never writes a blank. A three-symbol
 Turing machine state becomes three consecutive entries. A jump is a cyclic entry

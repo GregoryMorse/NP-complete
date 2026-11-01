@@ -225,28 +225,26 @@ def outer(m):
         t('GL' + b, B, b, 'R', 'GR' + b)
         t('GR' + b, NB, '.', 'R', 'GR' + b)
         t('GR' + b, B, b, 'R', 'GC')
-    t('GC', M, '.', 'L', 'QN2')
+    # end of the guest source: push a separator M (it becomes the gap), then
+    # copy the code field right to left into Q
+    t('GC', M, B, 'L', 'GLM')
+    t('GLM', NB, '.', 'L', 'GLM')
+    t('GLM', B, M, 'R', 'GRM')
+    t('GRM', NB, '.', 'R', 'GRM')
+    t('GRM', B, M, 'L', 'QN2')
     t('QN2', BITS, '.', 'L', 'QN2')
-    t('QN2', M, '.', 'L', 'QN3')
-    t('QN3', BITS, '.', 'L', 'QN3')
-    t('QN3', M, '.', 'R', 'QC')
+    t('QN2', M, '.', 'L', 'QC')
     for b in BITS:
         t('QC', b, B, 'L', 'QL' + b)
         t('QL' + b, NB, '.', 'L', 'QL' + b)
-        t('QL' + b, B, '.', 'L', 'QM' + b)
-        t('QM' + b, BITS, '.', 'L', 'QM' + b)
-        t('QM' + b, B, b, 'R', 'QR' + b)
-        t('QR' + b, BITS, '.', 'R', 'QR' + b)
-        t('QR' + b, B, '.', 'R', 'QS' + b)
-        t('QS' + b, NB, '.', 'R', 'QS' + b)
-        t('QS' + b, B, b, 'R', 'QC')
+        t('QL' + b, B, b, 'R', 'QR' + b)
+        t('QR' + b, NB, '.', 'R', 'QR' + b)
+        t('QR' + b, B, b, 'L', 'QC')
     t('QC', M, '.', 'L', 'QE')
     t('QE', NB, '.', 'L', 'QE')
-    t('QE', B, '.', 'L', 'QE2')
-    t('QE2', BITS, '.', 'L', 'QE2')
-    t('QE2', B, '0', 'R', 'QE3')
-    t('QE3', BITS, '.', 'R', 'QE3')             # one initial rotation
-    t('QE3', B, '.', 'L', 'TW')
+    t('QE', B, '0', 'R', 'QE3')                 # sentinel
+    t('QE3', BITS, '.', 'R', 'QE3')
+    t('QE3', M, B, 'L', 'TW')                   # separator -> gap; one rotation
     # ---------------- start ----------------
     t('I0', B, M, 'R', 'I1')
     t('I1', B, M, 'R', 'GRB')

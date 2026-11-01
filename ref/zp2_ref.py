@@ -3,7 +3,7 @@
 Guest model (chosen so a 2-symbol host can interpret it with few states):
 
 * A code P is any bit string.  The interpreter works on the cyclic string
-  R = P + '0' (the appended 0 guarantees R contains a 0), rotated once
+  R = reverse(P) + '0' (the appended 0 guarantees R contains a 0), rotated once
   before the first step.
 * An *entry* starting at R[0] is parsed cyclically as  w d 1^k 0 ; rot(R)
   rotates R past that entry and returns (rotated R, k).
@@ -42,7 +42,7 @@ def rot(R):
 
 
 def run(P, x, T):
-    R = rot(P + '0')[0]
+    R = rot(P[::-1] + '0')[0]
     tape = {i: c for i, c in enumerate(x)}
     h = 0
     for _ in range(T + 1):
@@ -99,5 +99,5 @@ def zp_beeps(truth=None, max_beeps=None, max_instances=None):
 
 
 def code(entries_list):
-    """Code whose cyclic string P+'0' is the given (w, d, k) entries."""
-    return ''.join(f'{w}{d}' + '1' * k + '0' for w, d, k in entries_list)[:-1]
+    """Code whose cyclic string reverse(P)+'0' is the given (w, d, k) entries."""
+    return ''.join(f'{w}{d}' + '1' * k + '0' for w, d, k in entries_list)[:-1][::-1]

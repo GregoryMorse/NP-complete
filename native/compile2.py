@@ -113,7 +113,17 @@ def compile_sides(m, enc, side):
             e = side[q]
             for a in (0, 1):            # first cell read
                 syms = [dec[(a, b) if e == 0 else (b, a)] for b in (0, 1)]
-                if any((q, s) in m.d for s in syms):
+                trs = [m.d.get((q, s)) for s in syms]
+                if all(tr is not None for tr in trs):
+                    (w0, d0, n0), (w1, d1, n1) = trs
+                    if (w0, d0, n0) == (syms[0], d1, n1) and w1 == syms[1]:
+                        T = (2 if d0 == 'R' else -2) + side[n0]
+                        c1 = e
+                        s = 1 if T > c1 else -1
+                        if s != (1 - e) - c1:          # exit away from the other cell
+                            row[a] = (a, mv(s), goto(T - c1 - s, n0))
+                            continue
+                if any(tr is not None for tr in trs):
                     row[a] = (a, 'R' if e == 0 else 'L', st(('P2', q, a)))
         elif kind == 'P2':
             _, q, a = key
