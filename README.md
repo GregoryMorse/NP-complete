@@ -10,7 +10,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_P v1 (compiled from a counter machine; Lean-formalized statement) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
 | Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
 | Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |
-| Z_PP (quasihalts iff P = PP) | 1599 | `machines/zpp.txt` |
+| **Z_PP native (quasihalts iff P = PP)** | **305** | `machines/zpp_native.txt` (`native/zpp.py`, ref `ref/zpp_ref.py`) |
+| Z_PP (counter-machine compile) | 1599 | `machines/zpp.txt` |
 | Z_PSPACE (quasihalts iff P = PSPACE) | 1646 | `machines/zpspace.txt` |
 | Z_coNP (quasihalts iff NP = coNP) | 1738 | `machines/zconp.txt` |
 | Z_DLOG (quasihalts iff discrete log mod primes is in P) | 2958 | `machines/zdlog.txt` |

@@ -40,7 +40,7 @@ def compat(t, beep):
     return comp
 
 
-def minimize(t, beep, start=0, bound=None, verbose=True, solver='cadical153', budget=None, hint=None):
+def minimize(t, beep, start=0, bound=None, verbose=True, solver='cadical153', budget=None, hint=None, ret_map=False):
     n = len(t)
     ns = len(t[0])
     comp = compat(t, beep)
@@ -131,4 +131,26 @@ def minimize(t, beep, start=0, bound=None, verbose=True, solver='cadical153', bu
                 o = out[idx[find(p)]]
                 assert o[s] is None or o[s] == v
                 o[s] = v
+    if ret_map:
+        return out, idx[find(beep)], [idx[find(p)] for p in range(n)]
     return out, idx[find(beep)]
+
+
+def apply_map(t, beep, cls, start=0):
+    """Rebuild the merged table from a stored class map, checking that every
+    merged class is consistent (the merge is valid by construction)."""
+    k = max(cls) + 1
+    ns = len(t[0])
+    assert cls[start] == 0
+    out = [[None] * ns for _ in range(k)]
+    for p in range(len(t)):
+        if cls[p] == cls[beep]:
+            assert p == beep, 'beep state merged'
+        for s in range(ns):
+            tr = t[p][s]
+            if tr:
+                v = (tr[0], tr[1], cls[tr[2]])
+                o = out[cls[p]]
+                assert o[s] is None or o[s] == v, 'inconsistent class'
+                o[s] = v
+    return out, cls[beep]

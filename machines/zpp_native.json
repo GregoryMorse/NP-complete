@@ -1,0 +1,16 @@
+{
+ "name": "zpp_native",
+ "logical_states": 138,
+ "states": 305,
+ "beep_state": 12,
+ "merge": "greedy seed 3",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zpp_ref.py",
+ "sha256": "8ff52eda2ec396a0e7c7e5ea2fdd01d1ef50c1999848702a44aeffe7ef2fa83d",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

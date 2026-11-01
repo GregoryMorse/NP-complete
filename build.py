@@ -102,26 +102,47 @@ def build_variant(name, opts, iters=15000):
     return meta
 
 
-NATIVE_SEED = 219   # merge order chosen by native/par.py (smallest of 400 seeds)
+# native machines: (module in native/, merge seed, reference module)
+NATIVE = {
+    'zp_native': ('zp2', 219, 'ref/zp2_ref.py'),
+    'zpp_native': ('zpp', 3, 'ref/zpp_ref.py'),
+}
 
 
 def build_native(name='zp_native'):
-    """Z_P v2: the hand-designed machine of native/ (see docs/native.md)."""
+    """Natively designed machines of native/ (see docs/native.md).
+
+    The 4-symbol logical machine is compiled to 2 symbols, Moore-minimised and
+    merged on don't-cares.  If native/exact_<name>.json holds a class map found
+    by the SAT merger (native/runexact.py), it is replayed and checked;
+    otherwise the greedy merge with the recorded seed is used."""
     sys.path.insert(0, os.path.join(ROOT, 'native'))
-    import zp2
+    import importlib
     import compile2
     import search
     import final
-    m = zp2.build()
-    n, table, beep = search.full(m, final.ENC, final.sides(m), seed=NATIVE_SEED)
+    import exact
+    modname, seed, ref = NATIVE[name]
+    m = importlib.import_module(modname).build()
+    sd = final.sides(m)
+    mp = os.path.join(ROOT, 'native', f'exact_{name}.json')
+    if os.path.exists(mp):
+        t, b, _ = compile2.compile_sides(m, final.ENC, sd)
+        mt, mb = tm.minimize(t, b)
+        table, beep = exact.apply_map(mt, mb, json.load(open(mp)))
+        how = 'exact'
+    else:
+        _, table, beep = search.full(m, final.ENC, sd, seed=seed)
+        how = f'greedy seed {seed}'
     std = tm.to_standard(table)
     meta = {
         'name': name,
         'logical_states': len(m.states()),
         'states': len(table),
         'beep_state': beep,
+        'merge': how,
         'pair_encoding': {k: ''.join(map(str, v)) for k, v in final.ENC.items()},
-        'reference': 'ref/zp2_ref.py',
+        'reference': ref,
         'sha256': hashlib.sha256(std.encode()).hexdigest(),
         'format': "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0",
     }
@@ -138,9 +159,12 @@ def build_native(name='zp_native'):
 
 
 def main():
-    m = build_native()
-    print(f"{m['name']:16s} states={m['states']:5d} logical={m['logical_states']} "
-          f"beep={m['beep_state']} sha256={m['sha256'][:16]}")
+    for name in NATIVE:
+        m = build_native(name)
+        print(f"{m['name']:16s} states={m['states']:5d} logical={m['logical_states']} "
+              f"beep={m['beep_state']} {m['merge']} sha256={m['sha256'][:16]}")
+    if '--native' in sys.argv:
+        return
     for name, opts in VARIANTS.items():
         m = build_variant(name, opts)
         print(f"{name:16s} states={m['states']:5d} cm={m['counter_instructions']} "

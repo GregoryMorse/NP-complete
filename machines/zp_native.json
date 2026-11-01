@@ -3,6 +3,7 @@
  "logical_states": 129,
  "states": 286,
  "beep_state": 8,
+ "merge": "greedy seed 219",
  "pair_encoding": {
   "B": "00",
   "M": "01",

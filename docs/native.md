@@ -85,6 +85,20 @@ behaves identically.
 The design invariant is that the logical machine never meets an undefined transition.
 The tests exercise this, but it is not proved.
 
+### P = PP (`native/zpp.py`, 305 states)
+
+The P = PP machine has the same guest model, clock and enumeration. Its language is
+
+    L_PP = { s : at least half of the c in {0,1}^(|s|+1) have run(s, c, |s|+1) = ACC }.
+
+This is a self-padded majority language; the "at least half" threshold is
+PP-complete just as "more than half" is. Reference: `ref/zpp_ref.py`.
+
+The machine adds an accept counter `A = 1^(|s|+1)` after `C`:
+`… C M_3 A M_4 fuel`. Every accepting certificate decrements `A`. The leading bit
+of `A` turns 0 exactly at the 2^|s|-th accept, so the threshold check needs no
+comparison. If `C` underflows first, the truth is 0.
+
 ### Compiler
 
 `native/compile2.py` stores each logical cell as a pair of cells. Each logical state
