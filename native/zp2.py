@@ -51,16 +51,17 @@ def build():
     t('PK2', B, '.', 'L', 'PK2')
     for w in BITS:
         t('PK2', w, '.', 'L', 'PKD' + w)
-        t('PKD' + w, B, '.', 'R', 'GHH' + w)
+        if w == '0':                        # |R| = 1 means R = '0'
+            t('PKD' + w, B, '.', 'R', 'GHH' + w)
         for d in BITS:
             t('PKD' + w, d, '.', 'L', 'PKT' + w + d)
             t('PKT' + w + d, '1', '.', 'R', 'GH' + w + d)
-            t('PKT' + w + d, '0B', '.', 'R', 'GHH' + w)
+            t('PKT' + w + d, '0B' if d == '0' else '0', '.', 'R', 'GHH' + w)  # |R| = 2 means d = 0
             t('GH' + w + d, '01B', '.', 'R', 'GH' + w + d)
         t('GH' + w + '1', M, w, 'L', 'PUTH')
         t('GH' + w + '0', M, '.', 'L', 'WC' + w)
-        t('WC' + w, ALL, w, 'R', 'A')
-    t('PUTH', ALL, M, 'L', 'RGQ1')
+        t('WC' + w, B, w, 'R', 'A')          # c_h is blank after the countdown
+    t('PUTH', B, M, 'L', 'RGQ1')
     t('A', M, '.', 'R', 'BB')
     t('BB', M, '.', 'L', 'BB2')
     t('BB2', M, '.', 'L', 'RGQ1')
@@ -73,7 +74,7 @@ def build():
     # A recording rotation (entered at RTW) leaves a token M in place of w, d
     # and each 1; the return sweep sees the vacated cell and keeps the mode.
     for first, wr in (('TW', B), ('RTW', M)):
-        t(first, 'BM', '.', 'L', first)
+        t(first, 'BM' if first == 'TW' else B, '.', 'L', first)   # no tokens before a record
         for b in BITS:
             t(first, b, wr, 'L', 'C' + b + 'D')
     for X in 'DO':
@@ -97,7 +98,7 @@ def build():
     for w in BITS:
         t('GHH' + w, '01B', '.', 'R', 'GHH' + w)
         t('GHH' + w, M, '.', 'L', 'WRO' + w)
-        t('WRO' + w, ALL, w, 'L', 'EL2')
+        t('WRO' + w, B, w, 'L', 'EL2')
     t('EL2', BITS, B, 'L', 'EL2')
     t('EL2', B, '.', 'L', 'EL3')
     t('EL3', B, '.', 'L', 'EL3')
@@ -125,23 +126,22 @@ def outer(m):
         t('DP3' + o, M, '.', 'R', 'DP4' + o)       # C flag: decider run
     t('DP31', BITS, M, 'R', 'VA2')              # verifier accepted: truth 1
     t('DP30', BITS, '.', 'R', 'VN1')            # verifier rejected: C -= 1
-    t('VA2', ALL, '1', 'R', 'VA3')
+    t('VA2', NB, '1', 'R', 'VA3')
     t('VA3', NB, B, 'R', 'VA3')
     t('VA3', B, '.', 'L', 'VA4')
     t('VA4', B, '.', 'L', 'VA4')
-    t('VA4', NB, '.', 'R', 'FB')
+    t('VA4', '1M', '.', 'R', 'FB')
     t('FB', B, M, 'R', 'GRB')                   # M_3, then the fuel
     t('VN1', BITS, '.', 'R', 'VN1')
     t('VN1', M, '.', 'L', 'VN2')
     t('VN2', '0', '1', 'L', 'VN2')
     t('VN2', '1', '0', 'R', 'VFE')
     t('VN2', M, '.', 'R', 'VU2')                # underflow: truth 0
-    t('VU2', BITS, M, 'R', 'VA3')
+    t('VU2', '1', M, 'R', 'VA3')                # C is all 1s after the borrow
     t('VFE', NB, '.', 'R', 'VFE')
     t('VFE', B, '.', 'L', 'FE')
     t('FE', BITS, B, 'L', 'FE')
     t('FE', M, B, 'L', 'FE2')
-    t('FE2', BITS, B, 'L', 'FE')
     t('FE2', M, '.', 'R', 'GRB')
     # decider run: compare with the truth flag
     t('DP41', '1', '.', 'L', 'EAs')

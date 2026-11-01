@@ -9,7 +9,7 @@ machines behave identically (same beeps, same tape).
 """
 
 
-def merge_all(table, beep, start=0, rounds=3, order=None):
+def merge_all(table, beep, start=0, rounds=3, order=None, allowed=None):
     n = len(table)
     nsym = len(table[0])
     par = list(range(n))
@@ -72,6 +72,8 @@ def merge_all(table, beep, start=0, rounds=3, order=None):
                 continue
             for b in roots[i + 1:]:
                 if find(b) != b or find(a) != a:
+                    continue
+                if allowed is not None and not allowed(a, b):
                     continue
                 if try_merge(a, b):
                     changed = True

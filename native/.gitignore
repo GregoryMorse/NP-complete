@@ -1,3 +1,4 @@
 psim
 _tmp.tbl
 __pycache__/
+*.log

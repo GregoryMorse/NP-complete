@@ -1,6 +1,6 @@
 # Z_P v2: the natively designed machine
 
-`machines/zp_native.txt` (388 states) is built from `native/zp2.py`. That file is a
+`machines/zp_native.txt` (298 states) is built from `native/zp2.py`. That file is a
 135-state machine over four logical symbols, `B M 0 1`. `native/compile2.py` turns it into
 a 2-symbol machine. The reference semantics live in `ref/zp2_ref.py`; this note explains
 them and the tape layout.
@@ -84,6 +84,29 @@ behaves identically.
 
 The design invariant is that the logical machine never meets an undefined transition.
 The tests exercise this, but it is not proved.
+
+### Compiler
+
+`native/compile2.py` stores each logical cell as a pair of cells. Each logical state
+enters its pair from a fixed side, chosen per state. Three things keep the 2-symbol
+machine small:
+
+- **Pair skip.** A state acts on the first cell read alone when the second cell cannot
+  change the outcome.
+- **Known symbol.** If only one logical symbol with the first-read cell value can occur,
+  the second cell is never read.
+- **Known cells.** Helper states that walk over (or rewrite) a cell whose value is
+  already known define only that one symbol. The other symbol is a don't-care, which
+  the merger exploits.
+
+Encoding design invariants as don't-cares also helps. For example:
+
+- after the ι countdown, `c_h` is blank;
+- `|R| = 1` implies `R = '0'`, and `|R| = 2` implies `d = 0`;
+- no tokens exist before a recording rotation;
+- a verifier run has one fuel block.
+
+Each such invariant is commented in `zp2.py`.
 
 ### Not yet done
 

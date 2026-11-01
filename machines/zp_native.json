@@ -1,7 +1,7 @@
 {
  "name": "zp_native",
  "logical_states": 135,
- "states": 388,
+ "states": 298,
  "beep_state": 9,
  "pair_encoding": {
   "B": "00",
@@ -10,6 +10,6 @@
   "1": "11"
  },
  "reference": "ref/zp2_ref.py",
- "sha256": "661dc370697d4cc242b65457d17af7fbafb4ea28be2c0b848e7a48b6d46723d8",
+ "sha256": "535237ec52b44ccd2d0faa0b3fbb540753f8964844a20e988040445585a1923a",
  "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
 }

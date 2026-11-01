@@ -80,6 +80,10 @@ def best(m):
     return res
 
 
+KNOWN = True
+KNOWNCELL = True
+
+
 def compile_sides(m, enc, side):
     """Side-aware compile: logical state q is entered at cell side[q] of its
     pair (0 = left cell, read rightwards; 1 = right cell, read leftwards)."""
@@ -96,8 +100,10 @@ def compile_sides(m, enc, side):
     def mv(s):
         return 'R' if s > 0 else 'L'
 
-    def goto(delta, n):          # state that is |delta| cells away from n's entry
-        return st(('P', n)) if delta == 0 else st(('G', delta, n))
+    def goto(delta, n, known=None):   # state |delta| cells away from n's entry
+        if delta == 0:
+            return st(('P', n))
+        return st(('G', delta, n, known if KNOWNCELL else None))
 
     qs = m.states()
     for q in qs:
@@ -123,6 +129,21 @@ def compile_sides(m, enc, side):
                         if s != (1 - e) - c1:          # exit away from the other cell
                             row[a] = (a, mv(s), goto(T - c1 - s, n0))
                             continue
+                if KNOWN and sum(tr is not None for tr in trs) == 1:
+                    j = 0 if trs[0] is not None else 1
+                    w, d, n = trs[j]
+                    wv = enc[w]
+                    c1 = e
+                    o = 1 - c1
+                    T = (2 if d == 'R' else -2) + side[n]
+                    if wv[o] == j:
+                        s = 1 if T > c1 else -1
+                        row[a] = (wv[c1], mv(s), goto(T - c1 - s, n, j if c1 + s == o else None))
+                    else:
+                        s2 = 1 if T > o else -1
+                        kb = wv[c1] if o + s2 == c1 else None
+                        row[a] = (wv[c1], mv(o - c1), st(('W', wv[o], s2, T - o - s2, n, j, kb)))
+                    continue
                 if any(tr is not None for tr in trs):
                     row[a] = (a, 'R' if e == 0 else 'L', st(('P2', q, a)))
         elif kind == 'P2':
@@ -139,18 +160,20 @@ def compile_sides(m, enc, side):
                 T = (2 if d == 'R' else -2) + side[n]
                 if wv[1 - c] == a:      # other cell unchanged
                     s = 1 if T > c else -1
-                    row[b] = (wv[c], mv(s), goto(T - c - s, n))
+                    kn = a if c + s == 1 - c else None
+                    row[b] = (wv[c], mv(s), goto(T - c - s, n, kn))
                 else:
                     o = 1 - c
                     s2 = 1 if T > o else -1
-                    row[b] = (wv[c], mv(o - c), st(('W', wv[o], s2, T - o - s2, n)))
+                    kb = wv[c] if (KNOWNCELL and o + s2 == c) else None
+                    row[b] = (wv[c], mv(o - c), st(('W', wv[o], s2, T - o - s2, n, a if KNOWNCELL else None, kb)))
         elif kind == 'G':
-            _, delta, n = key
+            _, delta, n, kn = key
             s = 1 if delta > 0 else -1
-            row = [(z, mv(s), goto(delta - s, n)) for z in (0, 1)]
+            row = [(z, mv(s), goto(delta - s, n)) if kn in (None, z) else None for z in (0, 1)]
         elif kind == 'W':
-            _, v, s2, delta, n = key
-            row = [(v, mv(s2), goto(delta, n))] * 2
+            _, v, s2, delta, n, kn, kb = key
+            row = [(v, mv(s2), goto(delta, n, kb)) if kn in (None, z) else None for z in (0, 1)]
         table[names[key]] = row
     return table, names[('P', m.beep)], names
 
