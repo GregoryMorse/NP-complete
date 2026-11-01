@@ -6,13 +6,13 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 
 | machine | states | file |
 |---|---|---|
-| **Z_P v2 (native design)** | **285** | `machines/zp_native.txt` (`docs/native.md`) |
+| **Z_P v2 (native design)** | **278** | `machines/zp_native.txt` (`docs/native.md`) |
 | Z_P v1 (compiled from a counter machine; Lean-formalized statement) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
 | Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
 | Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |
-| **Z_PP native (quasihalts iff P = PP)** | **301** | `machines/zpp_native.txt` (`native/zpp.py`, ref `ref/zpp_ref.py`) |
+| **Z_PP native (quasihalts iff P = PP)** | **295** | `machines/zpp_native.txt` (`native/zpp.py`, ref `ref/zpp_ref.py`) |
 | Z_PP (counter-machine compile) | 1599 | `machines/zpp.txt` |
-| **Z_PSPACE native (quasihalts iff P = PSPACE)** | **296** | `machines/zps_native.txt` (`native/zps.py`, ref `ref/zps_ref.py`) |
+| **Z_PSPACE native (quasihalts iff P = PSPACE)** | **291** | `machines/zps_native.txt` (`native/zps.py`, ref `ref/zps_ref.py`) |
 | Z_PSPACE (counter-machine compile) | 1646 | `machines/zpspace.txt` |
 | Z_coNP (quasihalts iff NP = coNP) | 1738 | `machines/zconp.txt` |
 | Z_DLOG (quasihalts iff discrete log mod primes is in P) | 2958 | `machines/zdlog.txt` |

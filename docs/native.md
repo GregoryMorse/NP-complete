@@ -1,6 +1,6 @@
 # Z_P v2: the natively designed machine
 
-`machines/zp_native.txt` (285 states) is built from `native/zp2.py`. That file is a
+`machines/zp_native.txt` (278 states) is built from `native/zp2.py`. That file is a
 129-state machine over four logical symbols, `B M 0 1`. `native/compile2.py` turns it into
 a 2-symbol machine. The reference semantics live in `ref/zp2_ref.py`; this note explains
 them and the tape layout.
@@ -82,10 +82,16 @@ only if the merged machine agrees with the original on every defined transition.
 any run of the original that never meets an undefined transition, the merged machine
 behaves identically.
 
+The greedy merge is followed by an exact one. `native/exact.py` encodes the
+minimum compatible-state partition as SAT (pysat, CaDiCaL), seeded with the greedy result
+as a phase hint, with bound one below it. `native/runexact.py` stores the class map; `build.py`
+replays a stored map from `native/exact_<name>.json` and checks it transition by
+transition. P = NP drops from 285 (greedy) to 278, P = PP from 301 to 295, P = PSPACE from 296 to 291.
+
 The design invariant is that the logical machine never meets an undefined transition.
 The tests exercise this, but it is not proved.
 
-### P = PP (`native/zpp.py`, 301 states)
+### P = PP (`native/zpp.py`, 295 states)
 
 The P = PP machine has the same guest model, clock and enumeration. Its language is
 
@@ -99,7 +105,7 @@ The machine adds an accept counter `A = 1^(|s|+1)` after `C`:
 of `A` turns 0 exactly at the 2^|s|-th accept, so the threshold check needs no
 comparison. If `C` underflows first, the truth is 0.
 
-### P = PSPACE (`native/zps.py`, 296 states)
+### P = PSPACE (`native/zps.py`, 291 states)
 
 The language is a quantifier game over the certificate bits:
 

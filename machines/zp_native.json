@@ -1,9 +1,9 @@
 {
  "name": "zp_native",
  "logical_states": 129,
- "states": 285,
- "beep_state": 7,
- "merge": "greedy seed 104",
+ "states": 278,
+ "beep_state": 10,
+ "merge": "exact",
  "pair_encoding": {
   "B": "00",
   "M": "01",
@@ -11,6 +11,6 @@
   "1": "11"
  },
  "reference": "ref/zp2_ref.py",
- "sha256": "380fc157b32ea30264e6302aa5cda162479596c2e0ee7eb39cedb05090ad1c2e",
+ "sha256": "19e467a329e02c289b01182fbba29aeef7f6a95e5d44641be64ea28fba0b7572",
  "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
 }

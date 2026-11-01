@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 sim/tmsim
 sim/cmsim
+native/exact_best*.pkl
+native/exact_map_*.json
+native/sides_new.json
+native/*.log
