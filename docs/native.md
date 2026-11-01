@@ -1,6 +1,6 @@
 # Z_P v2: the natively designed machine
 
-`machines/zp_native.txt` (286 states) is built from `native/zp2.py`. That file is a
+`machines/zp_native.txt` (285 states) is built from `native/zp2.py`. That file is a
 129-state machine over four logical symbols, `B M 0 1`. `native/compile2.py` turns it into
 a 2-symbol machine. The reference semantics live in `ref/zp2_ref.py`; this note explains
 them and the tape layout.
@@ -85,7 +85,7 @@ behaves identically.
 The design invariant is that the logical machine never meets an undefined transition.
 The tests exercise this, but it is not proved.
 
-### P = PP (`native/zpp.py`, 305 states)
+### P = PP (`native/zpp.py`, 301 states)
 
 The P = PP machine has the same guest model, clock and enumeration. Its language is
 
@@ -98,6 +98,32 @@ The machine adds an accept counter `A = 1^(|s|+1)` after `C`:
 `… C M_3 A M_4 fuel`. Every accepting certificate decrements `A`. The leading bit
 of `A` turns 0 exactly at the 2^|s|-th accept, so the threshold check needs no
 comparison. If `C` underflows first, the truth is 0.
+
+### P = PSPACE (`native/zps.py`, 296 states)
+
+The language is a quantifier game over the certificate bits:
+
+    G(s) = Q_0 c_0 … Q_n c_n : run(s, c, n+1) = ACC
+
+- `Q_n` is ∃ and the quantifiers alternate going left.
+- This is QBF with a linear-time matrix; it is PSPACE-complete by padding. Dummy
+  certificate bits fix the quantifier pattern, and unread bits do not change the
+  value.
+- Reference: `ref/zps_ref.py`.
+
+`C` walks the game tree depth-first, taking `c_i = 1` as each node's first child, with
+short-circuiting. That is why no value stack is needed. After a run with result r,
+the machine walks left from C's last bit:
+
+| bit | meaning | action |
+|---|---|---|
+| `0` | the node's second child is done | set the bit to 1 and go up |
+| `1`, r dominant (1 for ∃, 0 for ∀) | short-circuit | go up |
+| `1`, r not dominant | — | write 0 and run the second child |
+| reaching `M_2` | root reached | the root's value is r |
+
+This walk replaces the NP machine's decrement; the walk states differ only in r and
+the parity.
 
 ### Compiler
 
@@ -112,6 +138,8 @@ machine small:
 - **Known cells.** Helper states that walk over (or rewrite) a cell whose value is
   already known define only that one symbol. The other symbol is a don't-care, which
   the merger exploits.
+- **Write skip.** If both symbols with the first-read cell value have the same
+  transition, the state writes the pair without reading the second cell.
 
 Encoding design invariants as don't-cares also helps. For example:
 

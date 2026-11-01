@@ -104,8 +104,9 @@ def build_variant(name, opts, iters=15000):
 
 # native machines: (module in native/, merge seed, reference module)
 NATIVE = {
-    'zp_native': ('zp2', 219, 'ref/zp2_ref.py'),
+    'zp_native': ('zp2', 104, 'ref/zp2_ref.py'),
     'zpp_native': ('zpp', 3, 'ref/zpp_ref.py'),
+    'zps_native': ('zps', 10, 'ref/zps_ref.py'),
 }
 
 

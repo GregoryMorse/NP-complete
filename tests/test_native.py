@@ -3,6 +3,7 @@ machines must beep exactly at the refutations predicted by the references.
 
   zp_native   P = NP   ref/zp2_ref.py
   zpp_native  P = PP   ref/zpp_ref.py
+  zps_native  P = PSPACE  ref/zps_ref.py
 """
 import os
 import subprocess
@@ -12,6 +13,7 @@ ROOT = os.path.join(HERE, '..')
 sys.path[:0] = [os.path.join(ROOT, 'native'), os.path.join(ROOT, 'ref')]
 import zp2_ref      # noqa: E402
 import zpp_ref      # noqa: E402
+import zps_ref      # noqa: E402
 import logic        # noqa: E402
 import test_logic   # noqa: E402
 import check2       # noqa: E402
@@ -19,10 +21,12 @@ import final        # noqa: E402
 import inst         # noqa: E402
 import zp2          # noqa: E402
 import zpp          # noqa: E402
+import zps          # noqa: E402
 
 MACHINES = {
     'zp_native': (zp2, zp2_ref.zp_beeps, None),
     'zpp_native': (zpp, zpp_ref.zp_beeps, zpp_ref.in_LPP),
+    'zps_native': (zps, zps_ref.zp_beeps, zps_ref.in_LPS),
 }
 
 
@@ -64,6 +68,14 @@ def test_pp_instances():
         assert inst.instance(m, J, s) == zp2_ref.correct(J, s, zpp_ref.in_LPP), (J, s)
 
 
+def test_ps_instances():
+    # s where 'some certificate accepts' and the quantifier game differ
+    m = zps.build()
+    for J in ('', '1'):
+        for s in ('00110', '10001', '1011010'):
+            assert inst.instance(m, J, s) == zp2_ref.correct(J, s, zps_ref.in_LPS), (J, s)
+
+
 def test_compiled(n=None):
     n = n or int(os.environ.get('NATIVE_BEEPS', '40'))
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'psim'),
@@ -79,5 +91,7 @@ if __name__ == '__main__':
     print('logical ok')
     test_pp_instances()
     print('pp instances ok')
+    test_ps_instances()
+    print('ps instances ok')
     test_compiled()
     print('compiled ok')

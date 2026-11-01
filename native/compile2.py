@@ -82,6 +82,7 @@ def best(m):
 
 KNOWN = True
 KNOWNCELL = True
+WRITESKIP = True
 
 
 def compile_sides(m, enc, side):
@@ -129,6 +130,16 @@ def compile_sides(m, enc, side):
                         if s != (1 - e) - c1:          # exit away from the other cell
                             row[a] = (a, mv(s), goto(T - c1 - s, n0))
                             continue
+                if WRITESKIP and all(tr is not None for tr in trs) and trs[0] == trs[1]:
+                    w, d, n = trs[0]           # same write for both: no need to read
+                    wv = enc[w]
+                    c1 = e
+                    o = 1 - c1
+                    T = (2 if d == 'R' else -2) + side[n]
+                    s2 = 1 if T > o else -1
+                    kb = wv[c1] if o + s2 == c1 else None
+                    row[a] = (wv[c1], mv(o - c1), st(('W', wv[o], s2, T - o - s2, n, None, kb)))
+                    continue
                 if KNOWN and sum(tr is not None for tr in trs) == 1:
                     j = 0 if trs[0] is not None else 1
                     w, d, n = trs[j]

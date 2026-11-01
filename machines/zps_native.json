@@ -1,0 +1,16 @@
+{
+ "name": "zps_native",
+ "logical_states": 134,
+ "states": 296,
+ "beep_state": 9,
+ "merge": "greedy seed 10",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zps_ref.py",
+ "sha256": "bdfe79395823049eb208205f8a99438a4f2e4db053ca88a3dd3c513c968ea406",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}
