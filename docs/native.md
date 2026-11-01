@@ -204,7 +204,7 @@ and `g^e mod p = h` for some `0 ≤ e ≤ k`.
   marked, and `P` resets when full. `Y` is then rebuilt at the left edge from
   `P`'s marked cells.
 
-### Graph isomorphism in P (`native/zgi.py`, 422 states)
+### Graph isomorphism in P (`native/zgi.py`, 415 states)
 
 Built on the FACTOR glue and result path. The instance is unary: the run lengths of
 `s`, read last to first, are `m`, then the edge list `X` up to the first empty run,

@@ -10,7 +10,7 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_P v1 (compiled from a counter machine) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
 | **Z_FACTOR native (quasihalts iff integer factoring is in P)** | **324** | `machines/zfactor_native.txt` (`native/zfac.py`, ref `ref/zfac_ref.py`) |
 | Z_FACTOR (counter-machine compile) | 1909 | `machines/zfactor.txt` |
-| **Z_GI native (quasihalts iff graph isomorphism is in P)** | **422** | `machines/zgi_native.txt` (`native/zgi.py`, ref `ref/zgi_ref.py`) |
+| **Z_GI native (quasihalts iff graph isomorphism is in P)** | **415** | `machines/zgi_native.txt` (`native/zgi.py`, ref `ref/zgi_ref.py`) |
 | Z_GI (counter-machine compile) | 3476 | `machines/zgi.txt` |
 | **Z_PP native (quasihalts iff P = PP)** | **295** | `machines/zpp_native.txt` (`native/zpp.py`, ref `ref/zpp_ref.py`) |
 | Z_PP (counter-machine compile) | 1599 | `machines/zpp.txt` |
