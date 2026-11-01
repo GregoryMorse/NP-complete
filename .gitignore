@@ -6,3 +6,4 @@ native/exact_best*.pkl
 native/exact_map_*.json
 native/sides_new.json
 native/*.log
+native/lsim
