@@ -7,9 +7,6 @@ made of compatible pairs only, closed under successors.  We minimise the
 number of classes with a MaxSAT / iterative cardinality search.
 """
 import itertools
-from pysat.formula import IDPool
-from pysat.card import CardEnc, EncType
-from pysat.solvers import Solver
 
 
 def compat(t, beep):
@@ -41,6 +38,9 @@ def compat(t, beep):
 
 
 def minimize(t, beep, start=0, bound=None, verbose=True, solver='cadical153', budget=None, hint=None, ret_map=False):
+    from pysat.formula import IDPool       # only needed to search, not to apply a map
+    from pysat.card import CardEnc, EncType
+    from pysat.solvers import Solver
     n = len(t)
     ns = len(t[0])
     comp = compat(t, beep)
