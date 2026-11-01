@@ -94,11 +94,11 @@ def build():
     t('C0E', B, '0', 'R', 'NAV')
     # halt: outcome w goes into c_h, then the left side is erased
     t('EXH', NB, '.', 'L', 'EXH')
-    t('EXH', B, '0', 'L', 'EL2')
+    t('EXH', B, '.', 'R', 'GHH0')               # c_h reached: outcome 0 into H
     for w in BITS:
         t('GHH' + w, '01B', '.', 'R', 'GHH' + w)
-        t('GHH' + w, M, '.', 'L', 'WRO' + w)
-        t('WRO' + w, B, w, 'L', 'EL2')
+        t('GHH' + w, M, w, 'L', 'EL1')          # outcome replaces H
+    t('EL1', B, '.', 'L', 'EL2')                # skip c_h (blank)
     t('EL2', BITS, B, 'L', 'EL2')
     t('EL2', B, '.', 'L', 'EL3')
     t('EL3', B, '.', 'L', 'EL3')
@@ -107,8 +107,7 @@ def build():
     t('EL4', B, '.', 'R', 'ER1')
     t('ER1', B, '.', 'R', 'ER1')
     for o in BITS:
-        t('ER1', o, B, 'R', 'ERH' + o)
-        t('ERH' + o, M, B, 'R', 'ER2' + o)
+        t('ER1', o, B, 'R', 'ER2' + o)
         t('ER2' + o, BITS, B, 'R', 'ER2' + o)
         t('ER2' + o, M, '.', 'R', 'DP1' + o)
     outer(m)
@@ -148,13 +147,14 @@ def outer(m):
     t('DP41', M, '.', 'L', 'BEEP')
     t('DP40', '1', '.', 'L', 'BEEP')
     t('DP40', M, '.', 'L', 'EAs')
-    t('BEEP', M, B, 'R', 'EAj')
+    t('BEEP', M, '0', 'R', 'EAs')               # mark the flag cell: J++ path
     m.beep = 'BEEP'
-    for x, nxt in (('s', 'SINC'), ('j', 'JE3')):
-        t('EA' + x, NB, B, 'R', 'EA' + x)
-        t('EA' + x, B, '.', 'L', 'EB' + x)
-        t('EB' + x, B, '.', 'L', 'EB' + x)
-        t('EB' + x, M, B, 'L', nxt)
+    t('EAs', NB, B, 'R', 'EAs')
+    t('EAs', B, '.', 'L', 'EBs')
+    t('EBs', B, '.', 'L', 'EBs')
+    t('EBs', M, B, 'L', 'SINC')                 # M_2: s++
+    t('EBs', '0', B, 'L', 'EBj')                # marked flag: erase M_2, then s
+    t('EBj', M, B, 'L', 'JE3')
     t('JE3', BITS, B, 'L', 'JE3')
     t('JE3', M, '.', 'L', 'JINC')
     # s++ / J++ (shortlex), then a new instance
@@ -183,7 +183,7 @@ def outer(m):
         t('CL' + b, NB, '.', 'L', 'CL' + b)
         t('CL' + b, B, b, 'R', 'COPY')
     t('COPY', M, '.', 'R', 'CX')
-    t('CX', NB, '.', 'R', 'CX')
+    t('CX', 'M1', '.', 'R', 'CX')          # right of s: C and fresh blocks are all 1s
     t('CX', B, '1', 'L', 'BD1')
     # which BLK was that?  C build / verifier fuel / decider fuel
     t('BD1', NB, '.', 'L', 'BD1')
@@ -192,8 +192,8 @@ def outer(m):
         t(a, BITS, '.', 'R', a)
         t(a, M, '.', 'R', b)
     t('BD5', M, '.', 'L', 'DW1')
-    t('BD5', BITS, '.', 'R', 'BD6')
-    t('BD6', BITS, '.', 'R', 'BD6')
+    t('BD5', '1', '.', 'R', 'BD6')
+    t('BD6', '1', '.', 'R', 'BD6')
     t('BD6', B, M, 'R', 'GRB')                  # C built: M_3 + verifier fuel
     t('BD6', M, '.', 'L', 'VG1')                # verifier fuel built
     # decider fuel: one block per position of a walker M moving through J

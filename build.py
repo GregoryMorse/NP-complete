@@ -102,7 +102,7 @@ def build_variant(name, opts, iters=15000):
     return meta
 
 
-NATIVE_SEED = 0     # merge order chosen by native/par.py (smallest of 200 seeds)
+NATIVE_SEED = 219   # merge order chosen by native/par.py (smallest of 400 seeds)
 
 
 def build_native(name='zp_native'):

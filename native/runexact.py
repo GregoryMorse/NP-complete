@@ -14,4 +14,4 @@ except TypeError:
     print('no improvement'); sys.exit()
 print(len(out), time.time() - t0, flush=True)
 ok, got, want = check2.check(out, ob, final.ENC, 40); print(ok)
-pickle.dump((out, ob), open('exact_best.pkl', 'wb'))
+pickle.dump((out, ob), open('exact_best_%d.pkl' % seed, 'wb'))
