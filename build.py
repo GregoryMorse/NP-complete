@@ -107,6 +107,7 @@ NATIVE = {
     'zp_native': ('zp2', 104, 'ref/zp2_ref.py'),
     'zpp_native': ('zpp', 3, 'ref/zpp_ref.py'),
     'zps_native': ('zps', 10, 'ref/zps_ref.py'),
+    'zconp_native': ('zconp', 4, 'ref/zconp_ref.py'),
 }
 
 
@@ -125,7 +126,7 @@ def build_native(name='zp_native'):
     import exact
     modname, seed, ref = NATIVE[name]
     m = importlib.import_module(modname).build()
-    sd = final.sides(m)
+    sd = final.sides(m, modname)
     mp = os.path.join(ROOT, 'native', f'exact_{name}.json')
     if os.path.exists(mp):
         t, b, _ = compile2.compile_sides(m, final.ENC, sd)

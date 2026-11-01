@@ -14,7 +14,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_PP (counter-machine compile) | 1599 | `machines/zpp.txt` |
 | **Z_PSPACE native (quasihalts iff P = PSPACE)** | **291** | `machines/zps_native.txt` (`native/zps.py`, ref `ref/zps_ref.py`) |
 | Z_PSPACE (counter-machine compile) | 1646 | `machines/zpspace.txt` |
-| Z_coNP (quasihalts iff NP = coNP) | 1738 | `machines/zconp.txt` |
+| **Z_coNP native (quasihalts iff NP = coNP)** | **317** | `machines/zconp_native.txt` (`native/zconp.py`, ref `ref/zconp_ref.py`) |
+| Z_coNP (counter-machine compile) | 1738 | `machines/zconp.txt` |
 | Z_DLOG (quasihalts iff discrete log mod primes is in P) | 2958 | `machines/zdlog.txt` |
 | Z_MUL (quasihalts iff multitape TMs multiply in linear time) | 3623 | `machines/zmul.txt` |
 | Z_NTT (quasihalts iff the number-theoretic transform has linear-size linear circuits) | 6106 | `machines/zntt.txt` |

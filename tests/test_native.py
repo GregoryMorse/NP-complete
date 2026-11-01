@@ -4,6 +4,7 @@ machines must beep exactly at the refutations predicted by the references.
   zp_native   P = NP   ref/zp2_ref.py
   zpp_native  P = PP   ref/zpp_ref.py
   zps_native  P = PSPACE  ref/zps_ref.py
+  zconp_native  NP = coNP  ref/zconp_ref.py
 """
 import os
 import subprocess
@@ -14,6 +15,7 @@ sys.path[:0] = [os.path.join(ROOT, 'native'), os.path.join(ROOT, 'ref')]
 import zp2_ref      # noqa: E402
 import zpp_ref      # noqa: E402
 import zps_ref      # noqa: E402
+import zconp_ref    # noqa: E402
 import logic        # noqa: E402
 import test_logic   # noqa: E402
 import check2       # noqa: E402
@@ -22,12 +24,17 @@ import inst         # noqa: E402
 import zp2          # noqa: E402
 import zpp          # noqa: E402
 import zps          # noqa: E402
+import zconp        # noqa: E402
+import cinst        # noqa: E402
 
 MACHINES = {
     'zp_native': (zp2, zp2_ref.zp_beeps, None),
     'zpp_native': (zpp, zpp_ref.zp_beeps, zpp_ref.in_LPP),
     'zps_native': (zps, zps_ref.zp_beeps, zps_ref.in_LPS),
+    'zconp_native': (zconp, zconp_ref.zp_beeps, None),
 }
+# beyond 13 beeps the NP = coNP reference needs exponentially many runs
+MAXB = {'zconp_native': 13}
 
 
 def want(beeps, n):
@@ -57,8 +64,9 @@ def load_tbl(path):
 
 def test_logical(n=12):
     for name, (mod, beeps, _) in MACHINES.items():
-        got = logical_beeps(mod, n)
-        assert got == want(beeps, n), (name, got)
+        k = min(n, MAXB.get(name, n))
+        got = logical_beeps(mod, k)
+        assert got == want(beeps, k), (name, got)
 
 
 def test_pp_instances():
@@ -76,14 +84,23 @@ def test_ps_instances():
             assert inst.instance(m, J, s) == zp2_ref.correct(J, s, zps_ref.in_LPS), (J, s)
 
 
+def test_conp_instances():
+    # pairs whose depth-first certificate search takes several runs
+    m = zconp.build()
+    for J, s in (('010101', '1110'), ('01', '1101'), ('0011011', '1110'), ('110001', '1110'),
+                 ('100', '110'), ('1', '110'), ('', '1110'), ('0010', '0'), ('0010', '01')):
+        assert cinst.instance(m, J, s) == zconp_ref.correct(J, s), (J, s)
+
+
 def test_compiled(n=None):
     n = n or int(os.environ.get('NATIVE_BEEPS', '40'))
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'psim'),
                            os.path.join(ROOT, 'native', 'psim.c')])
     for name, (_, beeps, _) in MACHINES.items():
+        k = min(n, MAXB.get(name, n))
         table, beep = load_tbl(os.path.join(ROOT, 'machines', name + '.tbl'))
-        got = check2.beeps(table, beep, final.ENC, n)
-        assert got == want(beeps, n), (name, got[-3:], len(got))
+        got = check2.beeps(table, beep, final.ENC, k)
+        assert got == want(beeps, k), (name, got[-3:], len(got))
 
 
 if __name__ == '__main__':
@@ -93,5 +110,7 @@ if __name__ == '__main__':
     print('pp instances ok')
     test_ps_instances()
     print('ps instances ok')
+    test_conp_instances()
+    print('conp instances ok')
     test_compiled()
     print('compiled ok')

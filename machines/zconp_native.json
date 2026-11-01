@@ -1,0 +1,16 @@
+{
+ "name": "zconp_native",
+ "logical_states": 138,
+ "states": 317,
+ "beep_state": 7,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zconp_ref.py",
+ "sha256": "904ed5a9605e61712679b0b498c1a06858785d3047e29d21495379103ab9aee3",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

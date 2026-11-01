@@ -131,6 +131,35 @@ the machine walks left from C's last bit:
 This walk replaces the NP machine's decrement; the walk states differ only in r and
 the parity.
 
+### NP = coNP (`native/zconp.py`, 317 states)
+
+Same interpreter and clock. Nondeterminism enters at fresh cells. When the head
+moves right onto a never-visited cell, it consumes a choice: 1 writes `1`, 0 leaves
+the cell blank. The start cell is not a choice.
+
+- `run_nd(P, x, T)` accepts iff some choice sequence makes `core(P)` accept `x`
+  within `T` steps. `core(P)` is `P` with trailing 1s removed.
+- `L = { s : run_nd(s, '', |s|+1) }`. L is NP-complete and monotone: s ∈ L implies
+  s1 ∈ L.
+- `J` is correct on `s` iff `run_nd(J, s, T)` ⟺ s ∉ L. The machine beeps at the
+  first wrong `s`.
+- A prover can only extend the instance with 1s. Monotonicity makes the
+  verifier "read up to the first blank, then check a certificate" sound. So a
+  correct `J` exists iff NP = coNP.
+
+The choice string `D` sits after the fuel, behind one blank, with a pointer `M`.
+A fresh cell fetches the bit after the pointer. At the end of `D` the choice
+defaults to 1 and `D` grows. A rejecting run backtracks `D` depth first: strip
+trailing 0s, turn the last 1 into 0, and shift the pointer back to the front. The
+fuel is then erased and rebuilt; it has the same length, so `D` stays put. An
+emptied `D` ends the phase with result 0.
+
+The slot between `M_2` and `M_3` is empty in the verifier phase. In the decider
+phase it holds the truth bit.
+
+Beyond 13 beeps the reference itself needs exponentially many runs. The tests
+therefore add instance checks that exercise multi-run searches.
+
 ### Compiler
 
 `native/compile2.py` stores each logical cell as a pair of cells. Each logical state

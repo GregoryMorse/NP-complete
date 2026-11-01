@@ -11,12 +11,13 @@ ENC = {'B': (0, 0), 'M': (0, 1), '0': (1, 0), '1': (1, 1)}
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-def sides(m):
+def sides(m, name=None):
     sd = compile2.default_sides(m)
-    p = os.path.join(HERE, 'sides.json')
-    if os.path.exists(p):
-        saved = json.load(open(p))
-        sd.update({q: v for q, v in saved.items() if q in sd})
+    for f in ['sides.json'] + ([f'sides_{name}.json'] if name else []):
+        p = os.path.join(HERE, f)
+        if os.path.exists(p):
+            saved = json.load(open(p))
+            sd.update({q: v for q, v in saved.items() if q in sd})
     return sd
 
 

@@ -2,9 +2,11 @@
 starting from final.sides()."""
 import json, random, sys
 from multiprocessing import Pool
-import zp2, search, final
+import importlib, search, final
 
-M = zp2.build()
+MOD = sys.argv[4] if len(sys.argv) > 4 else 'zp2'
+OUT = 'sides.json' if MOD == 'zp2' else f'sides_{MOD}.json'
+M = importlib.import_module(MOD).build()
 
 def one(args):
     sd, k = args
@@ -16,7 +18,7 @@ def obj(pool, sd, seeds):
 if __name__ == '__main__':
     seeds = list(range(int(sys.argv[1]) if len(sys.argv) > 1 else 12))
     passes = int(sys.argv[2]) if len(sys.argv) > 2 else 2
-    sd = final.sides(M)
+    sd = final.sides(M, MOD)
     rnd = random.Random(int(sys.argv[3]) if len(sys.argv) > 3 else 0)
     with Pool(4) as pool:
         best = obj(pool, sd, seeds); print('start', best, flush=True)
@@ -29,9 +31,9 @@ if __name__ == '__main__':
                 if c <= best:
                     if c < best:
                         print(c, q, flush=True)
-                        json.dump(sd, open('sides.json', 'w'))
+                        json.dump(sd, open(OUT, 'w'))
                     best = c
                 else:
                     sd[q] ^= 1
-    json.dump(sd, open('sides.json', 'w'))
+    json.dump(sd, open(OUT, 'w'))
     print('final', best)
