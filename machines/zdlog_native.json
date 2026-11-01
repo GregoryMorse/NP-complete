@@ -1,0 +1,16 @@
+{
+ "name": "zdlog_native",
+ "logical_states": 182,
+ "states": 400,
+ "beep_state": 4,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zdl_ref.py",
+ "sha256": "7a71e23466feefa5dc360a5fbd9ffcd33ec2d696a92b67c9021d282072845d28",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

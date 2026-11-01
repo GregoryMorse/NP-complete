@@ -5,6 +5,8 @@ machines must beep exactly at the refutations predicted by the references.
   zpp_native  P = PP   ref/zpp_ref.py
   zps_native  P = PSPACE  ref/zps_ref.py
   zconp_native  NP = coNP  ref/zconp_ref.py
+  zfactor_native  factoring in P  ref/zfac_ref.py
+  zdlog_native  discrete log mod primes in P  ref/zdl_ref.py
 """
 import os
 import subprocess
@@ -16,6 +18,8 @@ import zp2_ref      # noqa: E402
 import zpp_ref      # noqa: E402
 import zps_ref      # noqa: E402
 import zconp_ref    # noqa: E402
+import zfac_ref     # noqa: E402
+import zdl_ref      # noqa: E402
 import logic        # noqa: E402
 import test_logic   # noqa: E402
 import check2       # noqa: E402
@@ -25,6 +29,8 @@ import zp2          # noqa: E402
 import zpp          # noqa: E402
 import zps          # noqa: E402
 import zconp        # noqa: E402
+import zfac         # noqa: E402
+import zdl          # noqa: E402
 import cinst        # noqa: E402
 
 MACHINES = {
@@ -32,9 +38,15 @@ MACHINES = {
     'zpp_native': (zpp, zpp_ref.zp_beeps, zpp_ref.in_LPP),
     'zps_native': (zps, zps_ref.zp_beeps, zps_ref.in_LPS),
     'zconp_native': (zconp, zconp_ref.zp_beeps, None),
+    'zfactor_native': (zfac, zfac_ref.zp_beeps, None),
+    'zdlog_native': (zdl, zdl_ref.zp_beeps, None),
 }
 # beyond 13 beeps the NP = coNP reference needs exponentially many runs
 MAXB = {'zconp_native': 13}
+# the truth-routine machines examine ~60 instances per candidate: keep CI short
+MAXB.update({'zfactor_native': 8, 'zdlog_native': 8})
+# the logical machines of the native truth routines are slow to simulate in Python
+LOGICAL_MAXB = {'zfactor_native': 4, 'zdlog_native': 4}
 
 
 def want(beeps, n):
@@ -64,7 +76,7 @@ def load_tbl(path):
 
 def test_logical(n=12):
     for name, (mod, beeps, _) in MACHINES.items():
-        k = min(n, MAXB.get(name, n))
+        k = min(n, MAXB.get(name, n), LOGICAL_MAXB.get(name, n))
         got = logical_beeps(mod, k)
         assert got == want(beeps, k), (name, got)
 
@@ -92,6 +104,27 @@ def test_conp_instances():
         assert cinst.instance(m, J, s) == zconp_ref.correct(J, s), (J, s)
 
 
+def enc_numbers(*xs):
+    """Instance string for the numbers xs (zfac_ref encoding)."""
+    return '0'.join(''.join('1' + b for b in (bin(x)[2:] if x else '')) for x in xs)
+
+
+def test_factor_instances():
+    # (k, a): divisor found / none up to k / prime a / a = 0
+    m = zfac.build()
+    for k, a in ((5, 35), (4, 35), (6, 13), (12, 13), (3, 0), (1, 6), (9, 9)):
+        s = enc_numbers(k, a)
+        assert inst.instance_ni(m, '', s) == zfac_ref.correct('', s), (k, a)
+
+
+def test_dlog_instances():
+    # (k, h, g, p): log found / beyond k / composite p / h >= p
+    m = zdl.build()
+    for q in ((6, 3, 3, 7), (4, 3, 3, 7), (5, 1, 2, 9), (3, 9, 2, 7), (2, 0, 0, 5), (10, 4, 2, 11)):
+        s = enc_numbers(*q)
+        assert inst.instance_ni(m, '', s) == zdl_ref.correct('', s), q
+
+
 def test_compiled(n=None):
     n = n or int(os.environ.get('NATIVE_BEEPS', '40'))
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'psim'),
@@ -112,5 +145,8 @@ if __name__ == '__main__':
     print('ps instances ok')
     test_conp_instances()
     print('conp instances ok')
+    test_factor_instances()
+    test_dlog_instances()
+    print('factor/dlog instances ok')
     test_compiled()
     print('compiled ok')

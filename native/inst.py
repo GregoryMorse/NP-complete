@@ -18,6 +18,22 @@ def instance(m, J, s, maxsteps=50_000_000):
         if q == m.beep: return False
     return 'steps'
 
+def instance_ni(m, J, s, maxsteps=500_000_000):
+    """Same for the native truth-routine machines (zfac, zdl), which start a
+    new instance in state NI from tape 'M J M s'."""
+    tape = {i: c for i, c in enumerate('M' + J + 'M' + s)}
+    h, q = len(J) + 1, 'NI'
+    for _ in range(maxsteps):
+        tr = m.d.get((q, tape.get(h, 'B')))
+        if tr is None:
+            return ('undef', q, tape.get(h, 'B'))
+        tape[h], mv, q = tr
+        h += 1 if mv == 'R' else -1
+        if q == 'SINC': return True
+        if q == m.beep: return False
+    return 'steps'
+
+
 def check(m, truth, trials=60, seed=0, maxJ=7, maxs=3, only=None):
     rnd = random.Random(seed); bad = []
     for _ in range(trials):

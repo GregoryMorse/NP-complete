@@ -108,6 +108,8 @@ NATIVE = {
     'zpp_native': ('zpp', 3, 'ref/zpp_ref.py'),
     'zps_native': ('zps', 10, 'ref/zps_ref.py'),
     'zconp_native': ('zconp', 4, 'ref/zconp_ref.py'),
+    'zfactor_native': ('zfac', 9, 'ref/zfac_ref.py'),
+    'zdlog_native': ('zdl', 2, 'ref/zdl_ref.py'),
 }
 
 

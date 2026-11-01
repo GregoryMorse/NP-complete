@@ -8,7 +8,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 |---|---|---|
 | **Z_P v2 (native design; Lean-formalized statement)** | **278** | `machines/zp_native.txt` (`docs/native.md`) |
 | Z_P v1 (compiled from a counter machine) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
-| Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
+| **Z_FACTOR native (quasihalts iff integer factoring is in P)** | **324** | `machines/zfactor_native.txt` (`native/zfac.py`, ref `ref/zfac_ref.py`) |
+| Z_FACTOR (counter-machine compile) | 1909 | `machines/zfactor.txt` |
 | Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |
 | **Z_PP native (quasihalts iff P = PP)** | **295** | `machines/zpp_native.txt` (`native/zpp.py`, ref `ref/zpp_ref.py`) |
 | Z_PP (counter-machine compile) | 1599 | `machines/zpp.txt` |
@@ -16,7 +17,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_PSPACE (counter-machine compile) | 1646 | `machines/zpspace.txt` |
 | **Z_coNP native (quasihalts iff NP = coNP)** | **317** | `machines/zconp_native.txt` (`native/zconp.py`, ref `ref/zconp_ref.py`) |
 | Z_coNP (counter-machine compile) | 1738 | `machines/zconp.txt` |
-| Z_DLOG (quasihalts iff discrete log mod primes is in P) | 2958 | `machines/zdlog.txt` |
+| **Z_DLOG native (quasihalts iff discrete log mod primes is in P)** | **400** | `machines/zdlog_native.txt` (`native/zdl.py`, ref `ref/zdl_ref.py`) |
+| Z_DLOG (counter-machine compile) | 2958 | `machines/zdlog.txt` |
 | Z_MUL (quasihalts iff multitape TMs multiply in linear time) | 3623 | `machines/zmul.txt` |
 | Z_NTT (quasihalts iff the number-theoretic transform has linear-size linear circuits) | 6106 | `machines/zntt.txt` |
 | twin-prime beeper (quasihalts iff finitely many twin primes) | 265 | `machines/twinprime.txt` |

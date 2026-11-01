@@ -160,6 +160,50 @@ phase it holds the truth bit.
 Beyond 13 beeps the reference itself needs exponentially many runs. The tests
 therefore add instance checks that exercise multi-run searches.
 
+### Factoring in P (`native/zfac.py`, 324 states)
+
+Same interpreter, clock, enumeration and decider phase as Z_P v2. The verifier
+phase (certificate counter and verifier runs) is replaced by a native brute-force
+truth routine.
+
+- **Instance.** `s` is parsed left to right into numbers: a pair `1b` appends the
+  binary digit `b` to the current number, a `0` starts the next one. `k` is the first
+  number and `a` the second. `s ∈ L_F` iff some `d` with `2 ≤ d ≤ k` divides `a`
+  (fewer than two numbers: `s ∉ L_F`). `(a, min(k, a−1))` asks whether `a` has a
+  nontrivial factor up to `k`; binary search on `k` factors, so `L_F ∈ P` iff
+  factoring is in P.
+- **Copy.** A new instance writes `M_2` and `H` and walks to `M_g`. The
+  interpreter's own copy loop (`GC`) then copies `s` to the left of `H`. At the end
+  of the source, an empty slot after `M_2` routes to the truth routine instead of
+  the `Q` setup.
+- **Unary conversion (Horner).** The copy is consumed from its right end, which is
+  `s[0]`, and `H` becomes the first blank of a gap. Targets grow leftwards beyond a
+  separator `M`. For a digit, the added bit is appended already marked; every
+  unmarked `1` is then marked and a marked cell appended; finally all cells are
+  unmarked. That gives `T := 2T + b` in 11 states.
+- **Divisibility.** For `d = |K|` down to 2, the routine tests `d | |A|`. It marks
+  one cell of `A`, then one of `K`, and resets `K` as soon as it is full. `A` is used
+  up exactly when `K` is all 1s. A failed test turns `K`'s last cell into `M`.
+- **Result.** The result `o` is written into the first gap cell and the left side is
+  erased. The interpreter's own post-run dispatch (`ER1`/`ER2o`) then reads `o`. It
+  writes the truth flag `M [1]` after `M_2`, then `M_3` and the decider fuel.
+
+### Discrete log mod primes in P (`native/zdl.py`, 400 states)
+
+Built on the FACTOR machine: same glue, conversion and result path. The last four
+numbers are `(k, h, g, p)`; with three numbers, `k = 0`. `s ∈ L_D` iff `p` is prime
+and `g^e mod p = h` for some `0 ≤ e ≤ k`.
+
+- **Primality.** `D` is a copy of `P` at the left edge. For `d = p−1` down to 2,
+  `D` shrinks at its left edge and `d | p` is tested by marking one cell of `P`,
+  then one of `D`, with an eager reset. When `D` is down to one cell, `p` is prime,
+  and that cell is `y = 1`: the layout is `Y M P M G M H M K`.
+- **Loop.** `Y` is compared with `H` by marking both. If they are equal, `s ∈ L_D`.
+  Otherwise one cell of `K` is marked (none left: `s ∉ L_D`) and `Y := Y·G mod P` is
+  computed. For every cell of `G` and every cell of `Y`, the next cell of `P` is
+  marked, and `P` resets when full. `Y` is then rebuilt at the left edge from
+  `P`'s marked cells.
+
 ### Compiler
 
 `native/compile2.py` stores each logical cell as a pair of cells. Each logical state
@@ -187,6 +231,7 @@ Each such invariant is commented in `zp2.py`.
 
 ### Not yet done
 
-- **Lean.** The Lean formalization in `formal/` covers v1, not v2.
+- **Lean.** The Lean statement in `formal/` is about v2 (278 states); the macro
+  simulation `ZP.zp_macroSim` is still open.
 - **Paper proof.** The NP-hardness of the v2 language L has only the padding sketch
   above.

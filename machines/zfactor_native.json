@@ -1,0 +1,16 @@
+{
+ "name": "zfactor_native",
+ "logical_states": 143,
+ "states": 324,
+ "beep_state": 5,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zfac_ref.py",
+ "sha256": "c7424078a7da5c6789e726a8be88e01bda4146d912253f5a2023226bfe3d3cff",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}
