@@ -10,8 +10,8 @@ Everything the main theorem mentions is defined in this file, in core Lean only:
 * `TM`, `TM.conf`, `Quasihalts`: one-tape two-symbol Turing machines with a
   designated beep state, run from the blank tape (Aaronson's beeping busy beaver
   convention: a machine *quasihalts* if it is in the beep state only finitely often).
-* `run`, `inL`, `clock`, `Sentence`: the guest "offset machine" semantics and the
-  Σ₂ sentence S of `docs/spec.md` (§1). These mirror `ref/zp_ref.py` line for line.
+* `run`, `inL`, `clock`, `Sentence`: the guest semantics of the native machine and
+  the Σ₂ sentence of `docs/native.md`. These mirror `ref/zp2_ref.py` line for line.
 
 All recursions are structural on an explicit fuel argument, so every function is
 total and can be evaluated by the kernel.
@@ -57,66 +57,83 @@ def TM.conf (M : TM) : Nat → Option Conf
 def Quasihalts (M : TM) : Prop :=
   ∃ N, ∀ k, N ≤ k → ∀ c, M.conf k = some c → c.q ≠ M.beep
 
-/-! ## Guest offset machines (docs/spec.md §1, ref/zp_ref.py) -/
+/-! ## Guest programs (docs/native.md, ref/zp2_ref.py)
 
-/-- `|s|` for `N = rep(s) = int('1' ++ s, 2)`. -/
-def len (N : Nat) : Nat := Nat.log2 N
+Bit strings are `List Bool` (`true` = 1). A code `P` is run on the cyclic string
+`R = reverse P ++ [0]`. The entry at the front of `R` is parsed cyclically as
+`w d 1^k 0`. -/
 
-/-- Right stack for input `X = rep(c)`: `c = b₁…bₘ` is written `1 b₁ 1 b₂ … 1 bₘ`
-from the head cell (least significant bit = head cell). -/
-def encAux : Nat → Nat → Nat → Nat
-  | 0, _, R => R
-  | fuel + 1, X, R => if X ≤ 1 then R else encAux fuel (X / 2) (2 * (2 * R + X % 2) + 1)
+/-- Cyclic bit `i` of `R`. -/
+def cyc (R : List Bool) (i : Nat) : Bool := R.getD (i % R.length) false
 
-def encodeInput (X : Nat) : Nat := encAux X X 0
+/-- Length of the run of 1s in `R` starting at cyclic position `i`, capped at `f`. -/
+def onesFrom (R : List Bool) : Nat → Nat → Nat
+  | 0, _ => 0
+  | f + 1, i => if cyc R i then onesFrom R f (i + 1) + 1 else 0
 
-/-- Entry number `idx` of the code `P`, read from the least significant bit:
-entries are unary `1^e 0`; the result is `(w, d, k)` with `e = 4k + 2d + w`, or
-`none` if the code ends first. -/
-def lookupAux : Nat → Nat → Nat → Nat → Option (Nat × Nat × Nat)
-  | 0, _, _, _ => none
-  | fuel + 1, pc, idx, e =>
-    if pc ≤ 1 then none
-    else if pc % 2 = 1 then lookupAux fuel (pc / 2) idx (if idx = 0 then e + 1 else e)
-    else if idx = 0 then some (e % 2, (e / 2) % 2, e / 4)
-    else lookupAux fuel (pc / 2) (idx - 1) e
+/-- The one-count `k` of the entry `w d 1^k 0` at the front of `R`. -/
+def entryOnes (R : List Bool) : Nat := onesFrom R R.length 2
 
-def lookup (P idx : Nat) : Option (Nat × Nat × Nat) := lookupAux P P idx 0
+/-- `R` rotated past the entry at its front. -/
+def rot (R : List Bool) : List Bool :=
+  R.drop ((entryOnes R + 3) % R.length) ++ R.take ((entryOnes R + 3) % R.length)
 
-inductive Out | acc | rej | timeout
-  deriving DecidableEq, Repr
+/-- `n` rotations. -/
+def rotN : Nat → List Bool → List Bool
+  | 0, R => R
+  | n + 1, R => rotN n (rot R)
 
-/-- `t` guest steps. `R`: head cell and the cells to its right, `Lt`: the cells to its
-left (nearest = least significant bit), `q`: offset. -/
-def runAux (P : Nat) : Nat → Nat → Nat → Nat → Out
-  | 0, _, _, _ => .timeout
-  | t + 1, R, Lt, q =>
-    match lookup P (q + R % 2) with
-    | none => .rej
-    | some (w, d, k) =>
-      if k = 0 then (if w = 1 then .acc else .rej)
-      else if d = 1 then runAux P t (R / 2) (2 * Lt + w) (k - 1)
-      else runAux P t (2 * (2 * (R / 2) + w) + Lt % 2) (Lt / 2) (k - 1)
+/-- ι(blank, 0, 1) = 0, 1, 2. -/
+def iota : Option Bool → Nat
+  | none => 0
+  | some false => 1
+  | some true => 2
 
-/-- Guest program `P` on input `X` for at most `t` steps. -/
-def run (P X t : Nat) : Out := runAux P t (encodeInput X) 0 0
+/-- At most `T` guest steps; `true` = accept. Guest tape cells are `none` (blank)
+or a bit; the head `h` is a natural number and a left move at cell 0 stays. -/
+def runAux : Nat → List Bool → (Nat → Option Bool) → Nat → Bool
+  | 0, _, _, _ => false
+  | T + 1, R0, tape, h =>
+    let R := rotN (iota (tape h)) R0
+    if R.getD 2 false then
+      runAux T (rotN (entryOnes R + 1) (rot R))
+        (fun i => if i = h then some (R.getD 0 false) else tape i)
+        (if R.getD 1 false then h + 1 else h - 1)
+    else R.getD 0 false
 
-/-- `S ∈ L`: some certificate `1 ≤ C ≤ S` makes program `S` accept within `|S|` steps. -/
-def inL (S : Nat) : Bool :=
-  (List.range S).any fun c => run S (c + 1) (len S) == .acc
+/-- Guest program `P` on input `x` for at most `T` steps (a time-out rejects). -/
+def run (P x : List Bool) (T : Nat) : Bool :=
+  runAux T (rot (P.reverse ++ [false])) (fun i => x[i]?) 0
 
-def verdict (S : Nat) : Out := if inL S then .acc else .rej
+/-- All bit strings of length `n`. -/
+def strings : Nat → List (List Bool)
+  | 0 => [[]]
+  | n + 1 => (strings n).flatMap fun c => [false :: c, true :: c]
 
-/-- Clock for candidate `J` on instance `S`: `(|s| + 2) ^ |code(J)|`. -/
-def clock (J S : Nat) : Nat := (len S + 2) ^ len J
+/-- `s ∈ L`: some certificate of length `|s|+1` makes program `s` accept within
+`|s|+1` steps. -/
+def inL (s : List Bool) : Bool :=
+  (strings (s.length + 1)).any fun c => run s c (s.length + 1)
 
-/-- Candidate `J` answers instance `S` correctly within its clock. -/
-def Correct (J S : Nat) : Prop := run J S (clock J S) = verdict S
+/-- Clock for candidate `J` on instance `s`: `(|s|+2)^(|J|+2) - 1`. -/
+def clock (J s : List Bool) : Nat := (s.length + 2) ^ (J.length + 2) - 1
+
+def strAux : Nat → Nat → List Bool → List Bool
+  | 0, _, acc => acc
+  | f + 1, N, acc => if N ≤ 1 then acc else strAux f (N / 2) ((N % 2 == 1) :: acc)
+
+/-- The `N`-th bit string in shortlex order (`N ≥ 1`; `str 1 = []`): the binary
+digits of `N` after its leading 1. Shortlex successor is `N + 1`. -/
+def str (N : Nat) : List Bool := strAux N N []
+
+/-- Candidate number `J` answers instance number `S` correctly within its clock. -/
+def Correct (J S : Nat) : Prop :=
+  run (str J) (str S) (clock (str J) (str S)) = inL (str S)
 
 instance (J S : Nat) : Decidable (Correct J S) :=
-  inferInstanceAs (Decidable (run J S (clock J S) = verdict S))
+  inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = inL (str S)))
 
-/-- The Σ₂ sentence S of docs/spec.md. On paper (docs/spec.md §2) S ⟺ P = NP. -/
+/-- The Σ₂ sentence of docs/native.md. On paper it is equivalent to P = NP. -/
 def Sentence : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → Correct J S
 
 end ZP

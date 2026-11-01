@@ -55,7 +55,7 @@ jobs:
           persist-credentials: false
       - name: Source rules and sorry census
         run: python3 formal/scripts/check_sources.py
-      - name: Generated table matches machines/zp.tbl
+      - name: Generated table matches machines/zp_native.tbl
         run: |
           python3 formal/gen_table.py
           git diff --exit-code formal/ZP/Table.lean

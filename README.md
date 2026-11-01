@@ -6,8 +6,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 
 | machine | states | file |
 |---|---|---|
-| **Z_P v2 (native design)** | **278** | `machines/zp_native.txt` (`docs/native.md`) |
-| Z_P v1 (compiled from a counter machine; Lean-formalized statement) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
+| **Z_P v2 (native design; Lean-formalized statement)** | **278** | `machines/zp_native.txt` (`docs/native.md`) |
+| Z_P v1 (compiled from a counter machine) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
 | Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
 | Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |
 | **Z_PP native (quasihalts iff P = PP)** | **295** | `machines/zpp_native.txt` (`native/zpp.py`, ref `ref/zpp_ref.py`) |
@@ -35,8 +35,9 @@ P vs NP. That claim has not yet been checked against the bbchallenge Discord his
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
 (`docs/spec.md` §2, *Caution*). The equivalence has a paper proof (`docs/spec.md`). The
 compiler is validated by tests at every layer. The Lean development (`formal/`, Palomar layout, core Lean only) states
-`Quasihalts zpMachine ↔ Sentence` for the literal table. It proves the abstract layer and
-leaves the table-simulation bridge open (one `sorry`). See `formal/README.md`.
+`Quasihalts zpMachine ↔ Sentence` for the literal 278-state table. It proves the abstract
+layer and the reduction of the bridge to a beep-exact macro simulation, and leaves that
+simulation open (one `sorry`). See `formal/README.md`.
 
 ## How it works (one paragraph)
 L is a self-padded NP-complete language. An instance s *is* a guest program; s ∈ L iff
