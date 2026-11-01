@@ -1,7 +1,7 @@
 # Z_P v2: the natively designed machine
 
-`machines/zp_native.txt` (298 states) is built from `native/zp2.py`. That file is a
-135-state machine over four logical symbols, `B M 0 1`. `native/compile2.py` turns it into
+`machines/zp_native.txt` (294 states) is built from `native/zp2.py`. That file is a
+133-state machine over four logical symbols, `B M 0 1`. `native/compile2.py` turns it into
 a 2-symbol machine. The reference semantics live in `ref/zp2_ref.py`; this note explains
 them and the tape layout.
 

@@ -6,7 +6,7 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 
 | machine | states | file |
 |---|---|---|
-| **Z_P v2 (native design)** | **298** | `machines/zp_native.txt` (`docs/native.md`) |
+| **Z_P v2 (native design)** | **294** | `machines/zp_native.txt` (`docs/native.md`) |
 | Z_P v1 (compiled from a counter machine; Lean-formalized statement) | 1371 | `machines/zp.txt` (SHA-256 in `machines/zp.json`) |
 | Z_FACTOR (quasihalts iff integer factoring is in P) | 1909 | `machines/zfactor.txt` |
 | Z_GI (quasihalts iff graph isomorphism is in P) | 3476 | `machines/zgi.txt` |

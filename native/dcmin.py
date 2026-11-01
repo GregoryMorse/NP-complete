@@ -9,7 +9,7 @@ machines behave identically (same beeps, same tape).
 """
 
 
-def merge_all(table, beep, start=0, rounds=3, order=None, allowed=None):
+def merge_all(table, beep, start=0, rounds=3, order=None, allowed=None, ret_map=False):
     n = len(table)
     nsym = len(table[0])
     par = list(range(n))
@@ -84,6 +84,8 @@ def merge_all(table, beep, start=0, rounds=3, order=None, allowed=None):
     out = []
     for r in roots:
         out.append([None if tr is None else (tr[0], tr[1], idx[find(tr[2])]) for tr in trans[r]])
+    if ret_map:
+        return out, idx[find(beep)], [idx[find(i)] for i in range(n)]
     return out, idx[find(beep)]
 
 

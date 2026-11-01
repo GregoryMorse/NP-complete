@@ -138,11 +138,11 @@ def outer(m):
     t('VN2', '1', '0', 'R', 'VFE')
     t('VN2', M, '.', 'R', 'VU2')                # underflow: truth 0
     t('VU2', '1', M, 'R', 'VA3')                # C is all 1s after the borrow
-    t('VFE', NB, '.', 'R', 'VFE')
-    t('VFE', B, '.', 'L', 'FE')
-    t('FE', BITS, B, 'L', 'FE')
-    t('FE', M, B, 'L', 'FE2')
-    t('FE2', M, '.', 'R', 'GRB')
+    t('VFE', '1', '.', 'R', 'VFE')              # rest of C is 1s after the borrow
+    t('VFE', M, '.', 'R', 'VF2')
+    t('VF2', '0', '1', 'R', 'VF2')              # refill the verifier fuel block
+    t('VF2', 'M1', '.', 'R', 'VF2')
+    t('VF2', B, '.', 'L', 'VG1')
     # decider run: compare with the truth flag
     t('DP41', '1', '.', 'L', 'EAs')
     t('DP41', M, '.', 'L', 'BEEP')
@@ -246,5 +246,4 @@ def outer(m):
     t('QE3', BITS, '.', 'R', 'QE3')
     t('QE3', M, B, 'L', 'TW')                   # separator -> gap; one rotation
     # ---------------- start ----------------
-    t('I0', B, M, 'R', 'I1')
-    t('I1', B, M, 'R', 'GRB')
+    t('I0', B, M, 'R', 'JOV2')                 # M_g; JOV2 writes M_1, GRB writes M_2

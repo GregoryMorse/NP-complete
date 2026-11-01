@@ -40,7 +40,7 @@ def compat(t, beep):
     return comp
 
 
-def minimize(t, beep, start=0, bound=None, verbose=True, solver='cadical153', budget=None):
+def minimize(t, beep, start=0, bound=None, verbose=True, solver='cadical153', budget=None, hint=None):
     n = len(t)
     ns = len(t[0])
     comp = compat(t, beep)
@@ -87,7 +87,20 @@ def minimize(t, beep, start=0, bound=None, verbose=True, solver='cadical153', bu
     while True:
         card = CardEnc.atmost(lits=lead, bound=hi, vpool=pool, encoding=EncType.seqcounter)
         S2 = Solver(name=solver, bootstrap_with=cl + card.clauses)
-        r = S2.solve()
+        if hint is not None:
+            ph = []
+            for (p, q) in comp:
+                v = pool.id(('m', p, q))
+                ph.append(v if hint[p] == hint[q] else -v)
+            for p in range(n):
+                first = min(i for i in range(n) if hint[i] == hint[p])
+                ph.append(lead[p] if first == p else -lead[p])
+            S2.set_phases(ph)
+        if budget:
+            S2.conf_budget(budget)
+            r = S2.solve_limited()
+        else:
+            r = S2.solve()
         if not r:
             break
         model = set(v for v in S2.get_model() if v > 0)

@@ -102,7 +102,7 @@ def build_variant(name, opts, iters=15000):
     return meta
 
 
-NATIVE_SEED = 36    # merge order chosen by native/final.py (smallest of 100 seeds)
+NATIVE_SEED = 0     # merge order chosen by native/par.py (smallest of 200 seeds)
 
 
 def build_native(name='zp_native'):
@@ -113,7 +113,7 @@ def build_native(name='zp_native'):
     import search
     import final
     m = zp2.build()
-    n, table, beep = search.full(m, final.ENC, compile2.default_sides(m), seed=NATIVE_SEED)
+    n, table, beep = search.full(m, final.ENC, final.sides(m), seed=NATIVE_SEED)
     std = tm.to_standard(table)
     meta = {
         'name': name,
