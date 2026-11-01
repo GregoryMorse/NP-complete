@@ -204,6 +204,29 @@ and `g^e mod p = h` for some `0 ≤ e ≤ k`.
   marked, and `P` resets when full. `Y` is then rebuilt at the left edge from
   `P`'s marked cells.
 
+### Graph isomorphism in P (`native/zgi.py`, 422 states)
+
+Built on the FACTOR glue and result path. The instance is unary: the run lengths of
+`s`, read last to first, are `m`, then the edge list `X` up to the first empty run,
+then the flattened `m`-column adjacency matrix `H` up to the next one (an entry is an
+edge iff it is ≥ 2). `s ∈ L_GI` iff some injective `w: {1..t} → {1..m}` maps the edges
+of `X` one-to-one onto the edges of `H` (see `ref/zgi_ref.py` for why this is
+equivalent to GI). There is no conversion: the reversed copy of `s` only has its 0s
+turned into separators.
+
+- **Search.** `w` is a stack at the left edge, each entry followed by its own `M`.
+  Push a copy of `m`. While the top equals another entry (cells of both marked in
+  turn), decrement it. An emptied top is popped, and popping checks the stack below
+  it, so every injective `w` (the empty one too) is checked exactly once.
+- **Check.** For an edge `(x, y)`, `a = w_x` is found by marking one cell of `x` per
+  skipped entry of `w`. The row part then skips `m·(a−1)` entries of `H`: once per
+  cell of `m`, one entry per cell of `a` but its last. An entry is skipped by marking
+  its first cell. The column part skips `b − 1` more. Whether a row part is under way
+  is read off `m`'s marks. The entry reached must be an undeleted edge, and is
+  deleted by marking its second cell (the scan that unmarks the skipped entries finds
+  it). Finally every edge of `H` must be deleted. A failure unmarks everything and
+  decrements the top.
+
 ### Compiler
 
 `native/compile2.py` stores each logical cell as a pair of cells. Each logical state

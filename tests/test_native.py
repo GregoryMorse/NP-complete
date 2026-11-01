@@ -7,6 +7,7 @@ machines must beep exactly at the refutations predicted by the references.
   zconp_native  NP = coNP  ref/zconp_ref.py
   zfactor_native  factoring in P  ref/zfac_ref.py
   zdlog_native  discrete log mod primes in P  ref/zdl_ref.py
+  zgi_native  graph isomorphism in P  ref/zgi_ref.py
 """
 import os
 import subprocess
@@ -20,6 +21,7 @@ import zps_ref      # noqa: E402
 import zconp_ref    # noqa: E402
 import zfac_ref     # noqa: E402
 import zdl_ref      # noqa: E402
+import zgi_ref      # noqa: E402
 import logic        # noqa: E402
 import test_logic   # noqa: E402
 import check2       # noqa: E402
@@ -31,6 +33,7 @@ import zps          # noqa: E402
 import zconp        # noqa: E402
 import zfac         # noqa: E402
 import zdl          # noqa: E402
+import zgi          # noqa: E402
 import cinst        # noqa: E402
 
 MACHINES = {
@@ -40,11 +43,12 @@ MACHINES = {
     'zconp_native': (zconp, zconp_ref.zp_beeps, None),
     'zfactor_native': (zfac, zfac_ref.zp_beeps, None),
     'zdlog_native': (zdl, zdl_ref.zp_beeps, None),
+    'zgi_native': (zgi, zgi_ref.zp_beeps, None),
 }
 # beyond 13 beeps the NP = coNP reference needs exponentially many runs
 MAXB = {'zconp_native': 13}
 # the truth-routine machines examine ~60 instances per candidate: keep CI short
-MAXB.update({'zfactor_native': 8, 'zdlog_native': 8})
+MAXB.update({'zfactor_native': 8, 'zdlog_native': 8, 'zgi_native': 12})
 # the logical machines of the native truth routines are slow to simulate in Python
 LOGICAL_MAXB = {'zfactor_native': 4, 'zdlog_native': 4}
 
@@ -123,6 +127,27 @@ def test_dlog_instances():
     for q in ((6, 3, 3, 7), (4, 3, 3, 7), (5, 1, 2, 9), (3, 9, 2, 7), (2, 0, 0, 5), (10, 4, 2, 11)):
         s = enc_numbers(*q)
         assert inst.instance_ni(m, '', s) == zdl_ref.correct('', s), q
+
+
+def enc_graphs(m, X, H):
+    """Instance string for (m, X, H) (zgi_ref encoding)."""
+    return '0'.join('1' * v for v in reversed([m] + list(X) + [0] + list(H)))
+
+
+def test_gi_instances():
+    # path / out-star / one edge / extra edge / loop / repeated edge / odd X / 2-cycle
+    m = zgi.build()
+    for q in ((3, (1, 2, 2, 3), (1, 1, 1, 2, 1, 1, 1, 2, 1)),
+              (3, (1, 2, 2, 3), (1, 2, 2, 1, 1, 1, 1, 1, 1)),
+              (3, (1, 2), (1, 1, 1, 1, 1, 1, 1, 2, 1)),
+              (3, (1, 2), (1, 2, 1, 1, 1, 1, 1, 2, 1)),
+              (2, (1, 1), (1, 1, 1, 3)),
+              (2, (1, 2, 1, 2), (1, 2, 2, 1)),
+              (2, (1, 2, 1), (1, 2, 1, 1)),
+              (3, (1, 1, 2, 3, 3, 2), (1, 2, 1, 1, 1, 1, 1, 1, 2)),
+              (3, (1, 2, 2, 1), (1, 1, 1, 1, 1, 2, 1, 2, 1))):
+        s = enc_graphs(*q)
+        assert inst.instance_ni(m, '', s) == zgi_ref.correct('', s), q
 
 
 def test_compiled(n=None):

@@ -1,0 +1,16 @@
+{
+ "name": "zgi_native",
+ "logical_states": 190,
+ "states": 422,
+ "beep_state": 4,
+ "merge": "greedy seed 9",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zgi_ref.py",
+ "sha256": "dd4e9ac8a53735fa3c943215c354b55980c13fd6e47ea5ce95268f22e512f1ee",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}
