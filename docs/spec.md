@@ -201,6 +201,8 @@ Padding makes |J| exceed any constant, so the statement is equivalent to "multit
 multiply in time O(n)". It is open: the best known bound is O(n log n) (Harvey–van der
 Hoeven). It is model-specific: on pointer machines, multiplication is known to take linear time
 (Schönhage).
+The native machine `machines/zmul_native.txt` (408 states, `docs/native.md`) checks an
+equivalent statement over a stack-queue guest model.
 
 **NTT-LIN** (`zntt`, `ref/ntt_ref.py`, `compiler/ntt_cm.py`): *the number-theoretic
 transform has linear-size linear circuits*: ∃c ∀n, DFT_n over F_p, with p the least

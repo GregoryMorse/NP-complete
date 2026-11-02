@@ -8,6 +8,7 @@ machines must beep exactly at the refutations predicted by the references.
   zfactor_native  factoring in P  ref/zfac_ref.py
   zdlog_native  discrete log mod primes in P  ref/zdl_ref.py
   zgi_native  graph isomorphism in P  ref/zgi_ref.py
+  zmul_native  linear-time multiplication  ref/zmul_ref.py
 """
 import os
 import subprocess
@@ -22,6 +23,7 @@ import zconp_ref    # noqa: E402
 import zfac_ref     # noqa: E402
 import zdl_ref      # noqa: E402
 import zgi_ref      # noqa: E402
+import zmul_ref     # noqa: E402
 import logic        # noqa: E402
 import test_logic   # noqa: E402
 import check2       # noqa: E402
@@ -34,6 +36,7 @@ import zconp        # noqa: E402
 import zfac         # noqa: E402
 import zdl          # noqa: E402
 import zgi          # noqa: E402
+import zmul         # noqa: E402
 import cinst        # noqa: E402
 
 MACHINES = {
@@ -44,13 +47,14 @@ MACHINES = {
     'zfactor_native': (zfac, zfac_ref.zp_beeps, None),
     'zdlog_native': (zdl, zdl_ref.zp_beeps, None),
     'zgi_native': (zgi, zgi_ref.zp_beeps, None),
+    'zmul_native': (zmul, zmul_ref.zp_beeps, None),
 }
 # beyond 13 beeps the NP = coNP reference needs exponentially many runs
 MAXB = {'zconp_native': 13}
 # the truth-routine machines examine ~60 instances per candidate: keep CI short
-MAXB.update({'zfactor_native': 8, 'zdlog_native': 8, 'zgi_native': 12})
+MAXB.update({'zfactor_native': 8, 'zdlog_native': 8, 'zgi_native': 12, 'zmul_native': 12})
 # the logical machines of the native truth routines are slow to simulate in Python
-LOGICAL_MAXB = {'zfactor_native': 4, 'zdlog_native': 4}
+LOGICAL_MAXB = {'zfactor_native': 4, 'zdlog_native': 4, 'zmul_native': 6}
 
 
 def want(beeps, n):
@@ -150,6 +154,32 @@ def test_gi_instances():
         assert inst.instance_ni(m, '', s) == zgi_ref.correct('', s), q
 
 
+def tm_code(states):
+    """zmul guest code for a machine given as states[q] = 3 actions (read blank, 0,
+    1): ('W', w, d, q2) or ('H',) (proper halt).  State q starts at entry 5q + 1."""
+    N = 5 * len(states) + 1
+    ents = [('0', '0', 1)] * N
+    for q, acts in enumerate(states):
+        P = 5 * q + 1
+        for i, a in enumerate(acts):
+            ents[P + i] = ('1', '0', 0) if a[0] == 'H' else (a[1], a[2], (5 * (a[3] - q) - i - 2) % N)
+    return ''.join(f'{w}{d}' + '1' * k + '0' for w, d, k in ents)[:-1][::-1]
+
+
+def test_mul_instances():
+    m = zmul.build()
+    cases = [  # random codes with switches that move cells
+        ('100001011', '01100'), ('100001011', '110001'), ('010110100', '1011'),
+        ('100100001', '0101'), ('01010011', '110110'), ('11001011', '110010')]
+    writer = tm_code([[('W', b, '1', q + 1)] * 3 for q, b in enumerate('1111')] + [[('H',)] * 3])
+    for s in (enc_numbers(1, 3), enc_numbers(3, 1), enc_numbers(3), enc_numbers(2, 1), enc_numbers(3, 1, 5)):
+        cases.append((writer, s))   # writes 3 = '1111'
+    want = [zmul_ref.correct(J, s) for J, s in cases]
+    assert True in want and False in want
+    for (J, s), w in zip(cases, want):
+        assert inst.instance_ni(m, J, s) == w, (J, s)
+
+
 def test_compiled(n=None):
     n = n or int(os.environ.get('NATIVE_BEEPS', '40'))
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'psim'),
@@ -172,6 +202,7 @@ if __name__ == '__main__':
     print('conp instances ok')
     test_factor_instances()
     test_dlog_instances()
+    test_mul_instances()
     print('factor/dlog instances ok')
     test_compiled()
     print('compiled ok')

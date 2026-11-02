@@ -111,6 +111,7 @@ NATIVE = {
     'zfactor_native': ('zfac', 9, 'ref/zfac_ref.py'),
     'zdlog_native': ('zdl', 2, 'ref/zdl_ref.py'),
     'zgi_native': ('zgi', 9, 'ref/zgi_ref.py'),
+    'zmul_native': ('zmul', 6, 'ref/zmul_ref.py'),
 }
 
 

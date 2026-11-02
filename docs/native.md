@@ -227,6 +227,50 @@ turned into separators.
   it). Finally every edge of `H` must be deleted. A failure unmarks everything and
   decrements the top.
 
+### Linear-time multiplication (`native/zmul.py`, 408 states)
+
+The guest is Z_P v2 plus a queue of `|J|` stacks; the clock is
+`T = (|s|+2)·2^|J| − 1`, one fuel block `M 1^(|s|+1)` and `|J|` short blocks `M 1`.
+Entries with `t = 0` change meaning:
+
+- `w 1 0` is a **switch**. The head cell is erased. The cells `h+1, h+2, …` up to the
+  first blank are appended to the back of the queue as a stack. The stack at the front
+  is taken out and written *reversed* from cell `h` on. Then the step rotates past the
+  entry and one more (`k = 0`).
+- `1 0 0` is a proper **halt**, with output `out` = cells `0 … h−1`. `0 0 0` and the
+  time-out are failures.
+
+`J` is correct on `s` iff the run halts properly within `T` and, with `U = out 0 s`
+parsed by the FACTOR rule (pairs `1b` are binary digits, `0` starts the next number),
+`N[0] = N[1]·N[2]` (missing numbers are 0). So a correct `J` writes `x·y` in front of
+the head, where `x, y` are the first two numbers of `s`. Every run is a decider run, and
+the outcome 0 beeps. The machine therefore quasihalts iff some `J` is correct on every
+`s`. That holds iff multitape Turing machines multiply in linear time:
+
+- A `k`-tape machine is simulated with `O(1)` guest steps per step, with `T`'s constant
+  set by padding `J`. Each stack carries tags at both ends, so after a switch the head
+  shows which stack came in and which end is up. A stack is reversed each time it comes
+  in, so within two passes of the queue (`O(|J|)` switches) the wanted stack comes in
+  the wanted way up. A spare cell at the head absorbs the erasure.
+- Conversely, the model is a tape plus a constant number of stacks, each used at both
+  ends (deques). A deque costs amortized `O(1)` on two stacks.
+
+Layout: `M_g J M_1 s M_2 fuel B storage`. The storage holds the queue front first,
+each stack as `M c_1 c_2 …`. The walker appends one empty stack per step back
+through `J`.
+
+- **Switch.** The head cell becomes a marker `M`. The cells left of it are taken from
+  the far end (next to the gap) one at a time and inserted at the front of the storage
+  by a shift chain. When the marker comes up it is erased and a terminator `M` is
+  inserted. The storage front then shows `M`, so the back stack is popped from its end
+  into the blank cells left of `H`, which reverses it.
+- **Check.** `1 0 0` keeps `H` as `M`. After the left side is erased, `ER1` finds it,
+  makes it the separator `0`, blanks `M_2` (the copy loop then ends at a blank) and
+  copies `s` reversed to its left. The FACTOR conversion turns `out 0 s`, read from
+  `M_g` leftwards, into unary numbers `… y M x M z`. Then `z = x·y` is checked by
+  marking: each cell of `y` marks all of `x`, and each cell of `x` marks one cell of
+  `z`. `M_2` is restored on the way to the dispatch.
+
 ### Compiler
 
 `native/compile2.py` stores each logical cell as a pair of cells. Each logical state
