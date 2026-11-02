@@ -3,14 +3,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'ref'))
 import logic, zp2, zp2_ref
 
 
-def decode(tape):
+def decode(tape, fields=(1, 2)):
     lo = min(i for i, c in tape.items() if c != 'B')
     s = ''
     i = lo
     while tape.get(i, 'B') != 'B':
         s += tape[i]; i += 1
     f = s.split('M')
-    return f[1], f[2]
+    return tuple(f[i] for i in fields)
 
 
 def beeps(n, steps=10**8):

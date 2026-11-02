@@ -220,6 +220,8 @@ The NTT circuit search agrees with brute force on every (n, s) small enough to f
 (`tests/test_ntt.py`). The full NTT machine's first refutation (c = 1 at n = 3) needs a
 search over ~4·10⁸ circuits, so its beep behaviour beyond the search itself is not
 simulated.
+The native machine `machines/zntt_native.txt` (`docs/native.md`) checks an equivalent
+chain-circuit statement; its first refutation (c = 1 at n = 2) is simulated.
 
 ---
 

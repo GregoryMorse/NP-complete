@@ -271,6 +271,43 @@ through `J`.
   marking: each cell of `y` marks all of `x`, and each cell of `x` marks one cell of
   `z`. `M_2` is restored on the way to the dispatch.
 
+### Linear-size NTT circuits (`native/zntt.py`, 564 states)
+
+The machine checks a *chain circuit* version of NTT-LIN (`ref/zntt_ref.py`): there is
+a `c` such that for every `n`, with `p` the least prime `≡ 1 (mod n)` and `N = c·n`,
+some chain circuit of `N` records over `F_p` computes `DFT_n`. Record `j` holds a
+pointer `u_j` (or none), a coefficient `b_j` and a root `z_j`, and computes
+
+    node_j = [j < n] x_j + node_{j-1} + b_j · node_{u_j}.
+
+The last `n` records are the outputs. Output `k` must have row `(z_k^t)_{t<n}` with
+`z_k^n = 1`, and the power sums `Σ_k z_k^t` must vanish for `1 ≤ t < n`. Since
+`p > n`, Newton's identities then force `{z_k}` to be exactly the `n`-th roots of unity,
+so the rows of `DFT_n` appear in some order. A fan-in-2 gate `a x + b y` takes three
+records (zero, `+ a x`, `+ b y`), so the two statements differ only in the constant.
+
+- **Rulers.** `P` grows by `n` until a divisor test finds it prime. `D = 2, 3, …`
+  marks once per cell of `P` and resets when full. A reset writes a marker, so
+  "full at the end, no marker" means `d = p`. `W = c·n + 1` is built from the C and
+  Nn rulers.
+- **Records.** For each cell of `C` (a round), one record per cell of `Nn` is
+  appended: header `F G O P`, four copies of `P` (acc, E, z, b) and one of `W` (u).
+  Each new round clears `O` in the records already built.
+- **Evaluation.** One pass per input `t` uses push evaluation in column order. A
+  pointer is decremented once at the start of the pass and once per earlier column.
+  It is *captured* (exactly two unmarked 1s) in its own column. Then each unit of
+  `acc_j` adds 1 to record `j+1` and `b_r` to every capturing record.
+- **Outputs.** At an output, `acc = E` is checked destructively. Then
+  `E := z·acc`, and the register `S` (the marked cells of `P`) gets `z·acc` as well.
+  After pass `t < n−1`, `S` must be 0. After the last pass, every `E` must be 1.
+- **Search.** An odometer runs over `(z, b, u)` of all records. A success moves to
+  `n + 1`. Exhaustion beeps and moves to `c + 1`, `n = 1`.
+
+The first refutation is `c = 1` at `n = 2`. `c = 2` passes `n = 2` and then searches
+`n = 3`, which does not finish in simulation. So the tests check the first beep and
+evaluate hand-built `DFT_2`/`DFT_3` circuits and their perturbations against the
+reference.
+
 ### Compiler
 
 `native/compile2.py` stores each logical cell as a pair of cells. Each logical state

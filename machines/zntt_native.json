@@ -1,0 +1,16 @@
+{
+ "name": "zntt_native",
+ "logical_states": 294,
+ "states": 564,
+ "beep_state": 12,
+ "merge": "greedy seed 7",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zntt_ref.py",
+ "sha256": "9927376dfeb822c53f8c6929234baa377907048c27e6007d69dd703fd3040134",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

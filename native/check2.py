@@ -15,7 +15,7 @@ def write_tbl(path, table, beep):
                              f"{tr[0]} {1 if tr[1] == 'R' else 0} {tr[2]}" for tr in s) + '\n')
 
 
-def decode(lo, bits, enc):
+def decode(lo, bits, enc, fields=(1, 2)):
     dec = {v: k for k, v in enc.items()}
     if lo % 2:
         lo -= 1
@@ -24,10 +24,10 @@ def decode(lo, bits, enc):
         bits += '0'
     syms = ''.join(dec[(int(bits[i]), int(bits[i + 1]))] for i in range(0, len(bits), 2))
     f = syms.strip('B').split('M')
-    return f[1], f[2]
+    return tuple(f[i] for i in fields)
 
 
-def beeps(table, beep, enc, n, steps=10**11):
+def beeps(table, beep, enc, n, steps=10**11, fields=(1, 2)):
     path = os.path.join(HERE, '_tmp.tbl')
     write_tbl(path, table, beep)
     out = subprocess.run([os.path.join(HERE, 'psim'), path, str(steps), str(n)],
@@ -36,7 +36,7 @@ def beeps(table, beep, enc, n, steps=10**11):
     for line in out:
         p = line.split()
         if len(p) == 3 and p[0].isdigit():
-            got.append(decode(int(p[1]), p[2], enc))
+            got.append(decode(int(p[1]), p[2], enc, fields))
         elif p:
             got.append(tuple(p))
     return got

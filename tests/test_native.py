@@ -9,6 +9,7 @@ machines must beep exactly at the refutations predicted by the references.
   zdlog_native  discrete log mod primes in P  ref/zdl_ref.py
   zgi_native  graph isomorphism in P  ref/zgi_ref.py
   zmul_native  linear-time multiplication  ref/zmul_ref.py
+  zntt_native  linear-size NTT circuits  ref/zntt_ref.py
 """
 import os
 import subprocess
@@ -24,6 +25,7 @@ import zfac_ref     # noqa: E402
 import zdl_ref      # noqa: E402
 import zgi_ref      # noqa: E402
 import zmul_ref     # noqa: E402
+import zntt_ref     # noqa: E402
 import logic        # noqa: E402
 import test_logic   # noqa: E402
 import check2       # noqa: E402
@@ -37,6 +39,7 @@ import zfac         # noqa: E402
 import zdl          # noqa: E402
 import zgi          # noqa: E402
 import zmul         # noqa: E402
+import zntt         # noqa: E402
 import cinst        # noqa: E402
 
 MACHINES = {
@@ -48,12 +51,19 @@ MACHINES = {
     'zdlog_native': (zdl, zdl_ref.zp_beeps, None),
     'zgi_native': (zgi, zgi_ref.zp_beeps, None),
     'zmul_native': (zmul, zmul_ref.zp_beeps, None),
+    'zntt_native': (zntt, lambda max_beeps: ((b, '1' * c, '1' * n) for b, c, n in
+                                            zntt_ref.zp_beeps(max_beeps)), None),
 }
+# the NTT machine beeps with (C, Nn) in tape fields 3 and 4
+FIELDS = {'zntt_native': (3, 4)}
+# the second NTT refutation (c = 2) is far out of reach
+MAXB_NTT = {'zntt_native': 1}
 # beyond 13 beeps the NP = coNP reference needs exponentially many runs
 MAXB = {'zconp_native': 13}
 # the truth-routine machines examine ~60 instances per candidate: keep CI short
 MAXB.update({'zfactor_native': 8, 'zdlog_native': 8, 'zgi_native': 12, 'zmul_native': 12})
 # the logical machines of the native truth routines are slow to simulate in Python
+MAXB.update(MAXB_NTT)
 LOGICAL_MAXB = {'zfactor_native': 4, 'zdlog_native': 4, 'zmul_native': 6}
 
 
@@ -61,11 +71,11 @@ def want(beeps, n):
     return [(J, s) for _, J, s in beeps(max_beeps=n)]
 
 
-def logical_beeps(mod, n, steps=10**8):
+def logical_beeps(mod, n, steps=10**8, fields=(1, 2)):
     out = []
 
     def cb(tape, h):
-        out.append(test_logic.decode(tape))
+        out.append(test_logic.decode(tape, fields))
         return len(out) < n
     logic.run(mod.build(), steps, cb)
     return out
@@ -85,7 +95,7 @@ def load_tbl(path):
 def test_logical(n=12):
     for name, (mod, beeps, _) in MACHINES.items():
         k = min(n, MAXB.get(name, n), LOGICAL_MAXB.get(name, n))
-        got = logical_beeps(mod, k)
+        got = logical_beeps(mod, k, fields=FIELDS.get(name, (1, 2)))
         assert got == want(beeps, k), (name, got)
 
 
@@ -180,6 +190,47 @@ def test_mul_instances():
         assert inst.instance_ni(m, J, s) == w, (J, s)
 
 
+def ntt_tape(c, n, recs):
+    """zntt tape before the evaluation of recs = [(u, b, z)] (u None: none)."""
+    p = zntt_ref.prime(n)
+    W = c * n + 1
+
+    def fld(v, w):
+        return '1' * v + '0' * (w - v)
+    s = '1' * W + 'M' + '1' * p + 'M1111M' + '1' * c + 'M' + '1' * n
+    for j, (u, b, z) in enumerate(recs):
+        s += 'MM00' + ('1' if j >= c * n - n else '0') + '0M' + fld(1, p) + 'M' + fld(1, p)
+        s += 'M' + fld(z + 1, p) + 'M' + fld(b + 1, p) + 'M' + fld(1 if u is None else u + 3, W)
+    return s
+
+
+def ntt_instance(m, c, n, recs, steps=10**9):
+    s = ntt_tape(c, n, recs)
+    tape, h, q = dict(enumerate(s)), len(s) - 1, 'WI0'
+    for _ in range(steps):
+        tape[h], mv, q = m.d[(q, tape.get(h, 'B'))]
+        h += 1 if mv == 'R' else -1
+        if q in ('ODL', 'SU0'):
+            return q == 'SU0'
+    raise RuntimeError('step limit')
+
+
+def test_ntt_instances():
+    # DFT_2 with c = 2; DFT_3 with c = 5 (rows 1, 2, 4 mod 7); wrong or repeated roots
+    m = zntt.build()
+    d2 = [(None, 0, 0), (0, 2, 0), (0, 1, 1), (1, 1, 2)]
+    d3 = [(None, 0, 0), (0, 6, 0), (1, 6, 0), (2, 6, 0), (1, 1, 0), (2, 3, 0), (5, 6, 0), (1, 2, 0),
+          (2, 5, 0), (8, 6, 0), (0, 1, 0), (1, 1, 0), (2, 1, 1), (5, 1, 2), (8, 1, 4)]
+    cases = [(2, 2, d2), (5, 3, d3), (2, 2, d2[:3] + [(1, 1, 1)]), (2, 2, d2[:3] + [(0, 1, 2)])]
+    for j, z in ((12, 2), (14, 2), (13, 4)):
+        cases.append((5, 3, d3[:j] + [d3[j][:2] + (z,)] + d3[j + 1:]))
+    cases.append((5, 3, d3[:5] + [(2, 4, 0)] + d3[6:]))
+    want = [zntt_ref.evaluate(n, zntt_ref.prime(n), r) for c, n, r in cases]
+    assert want[:2] == [True, True] and not any(want[2:])
+    for (c, n, r), w in zip(cases, want):
+        assert ntt_instance(m, c, n, r) == w, (c, n, r)
+
+
 def test_compiled(n=None):
     n = n or int(os.environ.get('NATIVE_BEEPS', '40'))
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'psim'),
@@ -187,7 +238,7 @@ def test_compiled(n=None):
     for name, (_, beeps, _) in MACHINES.items():
         k = min(n, MAXB.get(name, n))
         table, beep = load_tbl(os.path.join(ROOT, 'machines', name + '.tbl'))
-        got = check2.beeps(table, beep, final.ENC, k)
+        got = check2.beeps(table, beep, final.ENC, k, fields=FIELDS.get(name, (1, 2)))
         assert got == want(beeps, k), (name, got[-3:], len(got))
 
 
@@ -203,6 +254,7 @@ if __name__ == '__main__':
     test_factor_instances()
     test_dlog_instances()
     test_mul_instances()
+    test_ntt_instances()
     print('factor/dlog instances ok')
     test_compiled()
     print('compiled ok')
