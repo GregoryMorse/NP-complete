@@ -22,7 +22,7 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_DLOG (counter-machine compile) | 2958 | `machines/zdlog.txt` |
 | **Z_MUL native (quasihalts iff multitape TMs multiply in linear time)** | **408** | `machines/zmul_native.txt` (`native/zmul.py`, ref `ref/zmul_ref.py`) |
 | Z_MUL (counter-machine compile) | 3623 | `machines/zmul.txt` |
-| **Z_NTT native (quasihalts iff the number-theoretic transform has linear-size linear circuits)** | **564** | `machines/zntt_native.txt` (`native/zntt.py`, ref `ref/zntt_ref.py`) |
+| **Z_NTT native (quasihalts iff the number-theoretic transform has linear-size linear circuits)** | **550** | `machines/zntt_native.txt` (`native/zntt.py`, ref `ref/zntt_ref.py`) |
 | Z_NTT (counter-machine compile) | 6106 | `machines/zntt.txt` |
 | twin-prime beeper (quasihalts iff finitely many twin primes) | 265 | `machines/twinprime.txt` |
 

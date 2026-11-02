@@ -271,7 +271,7 @@ through `J`.
   marking: each cell of `y` marks all of `x`, and each cell of `x` marks one cell of
   `z`. `M_2` is restored on the way to the dispatch.
 
-### Linear-size NTT circuits (`native/zntt.py`, 564 states)
+### Linear-size NTT circuits (`native/zntt.py`, 550 states)
 
 The machine checks a *chain circuit* version of NTT-LIN (`ref/zntt_ref.py`): there is
 a `c` such that for every `n`, with `p` the least prime `≡ 1 (mod n)` and `N = c·n`,
