@@ -20,6 +20,9 @@ cache download and build. The layout follows the
 | `ZP/Pair.lean` | N3: one pair of the outer loop, `pair_main` (**proved**, segments checked by `decide +kernel`) |
 | `ZP/Logical.lean` | N3: the logical machine simulates the abstract program, from `pair_step` (**proved**) |
 | `ZP/Compile.lean` | N1+N2: the table simulates the logical machine (**proved**, gadgets checked by `decide +kernel`) |
+| `ZP/Complexity.lean` | one-tape TMs (`Mach`, `exec`), `InP`, `InNP`, `PeqNP`; P ⊆ NP (**proved**) |
+| `ZP/GuestTM.lean`, `ZP/GuestCompile.lean` | a guest code is a TM and every TM is a guest code of any padded length, step for step (**proved**) |
+| `ZP/PNP.lean` | `Sentence` ↔ some guest decides L within its clock; L ∈ P → `Sentence`; P = NP ∧ L ∈ NP → `Sentence` (**proved**) |
 | `ZP/Checks.lean` | kernel-evaluated (`decide`) agreement with `ref/zp2_ref.py` on small cases |
 | `comparator.json`, `formalization.yaml`, `LICENSE` | Palomar submission metadata |
 
@@ -32,8 +35,11 @@ theorem ZP.zp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpMachine ↔ ZP.Senten
 The machine is Z_P v2, the 278-state native design (`docs/native.md`); until
 2026-11 the development targeted the 1371-state v1 table.
 
-`Sentence ↔ P = NP` is **not** formalized. It is the paper proof (`docs/native.md`, `docs/spec.md` §2),
-and formalizing it needs a polynomial-time theory of TMs (Cook–Levin scale).
+`Sentence ↔ P = NP` is **partly** formalized (`ZP/PNP.lean`). Still open in Lean:
+* L ∈ NP: a universal guest interpreter built as a `Mach`, with a polynomial time bound;
+* `Sentence → P = NP`: a clocked simulation of the guest decider (so that it halts),
+  and L NP-hard under reductions computed by machines. The paper (`docs/native.md`)
+  only sketches the NP-hardness of the v2 language L (by padding).
 
 ## Status
 * CI (`.github/workflows/ci.yml`, job *Lean*) builds everything and prints a census of the
