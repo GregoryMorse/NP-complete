@@ -318,7 +318,7 @@ theorem zconf_add (M : LTM) (k n : Nat) {z z' : ZC} (hk : M.zconf k = some z)
           show (M.zconf k).bind M.zstep = some z1
           rw [hk]
           exact hs
-        obtain ⟨h1, h2⟩ := ih hk1 hz2
+        obtain ⟨h1, h2⟩ := ih (k := k + 1) (z := z1) hk1 hz2
         refine ⟨?_, ?_⟩
         · rw [show k + (n + 1) = k + 1 + n by omega]
           exact h1
