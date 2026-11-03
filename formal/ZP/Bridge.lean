@@ -17,8 +17,9 @@ The bridge is split in two.
   (the moment the machine starts examining the pair `absState n`), such that the
   machine visits its beep state somewhere in `[time n, time (n+1))` iff
   `absState n` is a refutation.
-* `zp_macroSim` (**open**, the only `sorry`): the native table has such a
-  simulation. The plan is in `formal/README.md`.
+* `ZP/Compile.lean` builds such a simulation for the table from one for the
+  4-symbol logical machine (**proved**); `ZP/Logical.lean` holds the one open
+  lemma, a simulation by the logical machine.
 -/
 
 namespace ZP
@@ -69,13 +70,5 @@ theorem quasihalts_iff_of_macroSim {M : TM} (S : MacroSim M) :
     refine ⟨S.time N, fun k hk c hc hq => ?_⟩
     obtain ⟨n, hn, h1, h2⟩ := time_interval S.time S.mono N k hk
     exact (S.beeps n).1 ⟨k, h1, h2, c, hc, hq⟩ (hN n hn)
-
-/-- OPEN: the native table (`machines/zp_native.txt`) simulates the abstract program
-beep for beep. -/
-theorem zp_macroSim : Nonempty (MacroSim zpMachine) := by
-  sorry
-
-theorem zp_quasihalts_iff_abstract : Quasihalts zpMachine ↔ AbstractQuasihalts :=
-  zp_macroSim.elim quasihalts_iff_of_macroSim
 
 end ZP

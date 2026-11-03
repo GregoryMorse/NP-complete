@@ -59,6 +59,10 @@ jobs:
         run: |
           python3 formal/gen_table.py
           git diff --exit-code formal/ZP/Table.lean
+      - name: Generated logical machine and certificate match native/zp2.py
+        run: |
+          python3 formal/gen_logic.py
+          git diff --exit-code formal/ZP/Logic.lean
       - uses: leanprover/lean-action@38fbc41a8c28c4cbaec22d7f7de508ec2e7c0dd9
         with:
           lake-package-directory: formal
