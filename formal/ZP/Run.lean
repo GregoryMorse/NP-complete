@@ -167,7 +167,7 @@ theorem cdStep (R : List Bool) (hR : InvR R) (g : Nat) (Lw V : List Nat) (c : Na
   rw [rst_hd, rnav_hd] at hr
   obtain ⟨p, b, X, rfl, hb, hX'⟩ := mb V hV hVb
   have hB := segB R'.reverse Lw X H.length g p (cdn c) b (cdn_cases c) hb (bits_of_eq hrot) hL hX'
-  refine ⟨H.length + g + 1, by omega, hA.trans (hr.trans (hB.of_eq (hdR_eq rfl (by simp)) (hd_eq ?_ rfl)))⟩
+  refine ⟨H.length + g + 1, by omega, hA.trans (hr.trans (hB.of_eq (hdR_eq rfl (by simp only [List.append_assoc])) (hd_eq ?_ rfl)))⟩
   rw [hrot]
   simp [List.replicate_succ, rep_rep]
 
@@ -198,7 +198,7 @@ theorem tokens (Lw : List Nat) (ch p b : Nat) (X : List Nat) (hL : Bits Lw) (hch
   | 0, R, R', a, y, hR => by
     have h := segE2 R'.reverse Lw X a y p ch b hch hb (bits_of_eq hR) hL hX
     refine ⟨a + y + 1 + 1, by omega, h.of_eq rfl (hd_eq ?_ rfl)⟩
-    show _ = (bitsOf R).reverse ++ _
+    simp only [rotN]
     rw [hR]
     simp [List.replicate_succ, rep_rep, rep_cons_comm]
   | t + 1, R, R', a, y, hR => by
@@ -209,8 +209,8 @@ theorem tokens (Lw : List Nat) (ch p b : Nat) (X : List Nat) (hL : Bits Lw) (hch
     have h1 := segE1b R'.reverse (Lw ++ ch :: 1 :: (List.replicate p 1 ++ b :: X)) a y t (bits_of_eq hR) hXr
     have hX'' : Sym4 (0 :: (List.replicate a 0 ++ 1 :: (List.replicate t 1 ++ [0]) ++ List.replicate y 0 ++
         0 :: (Lw ++ ch :: 1 :: (List.replicate p 1 ++ b :: X)))) :=
-      Sym4.cons (by simp [ALL]) (((zeros4 a).app (Sym4.cons (by simp [ALL]) ((ones4 t).app
-        (Sym4.cons (by simp [ALL]) Sym4.nil)))).app ((zeros4 y).app (Sym4.cons (by simp [ALL]) hXr)))
+      Sym4.cons (by simp [ALL]) ((((zeros4 a).app (Sym4.cons (by simp [ALL]) ((ones4 t).app
+        (Sym4.cons (by simp [ALL]) Sym4.nil)))).app (zeros4 y)).app (Sym4.cons (by simp [ALL]) hXr))
     obtain ⟨R2, H2, hrot, -, -, hr⟩ := rotate rotNormal R (false_of_eq hR) _ hX''
     rw [rst_hd, rnav_hd] at hr
     obtain ⟨g', hg', ih⟩ := tokens Lw ch p b X hL hch hb hX t (rot R) R2 (H2.length + a + 1) (y + 1) hrot
