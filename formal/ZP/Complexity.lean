@@ -85,10 +85,8 @@ theorem exec_mono (M : Mach) : ∀ (T : Nat) (q : Nat) (tape : Nat → Option Bo
     obtain ⟨T', rfl⟩ : ∃ T'', T' = T'' + 1 := ⟨T' - 1, by omega⟩
     unfold exec at e ⊢
     split at e
-    · next b' hb => rw [hb]; exact e
-    · next w r q' hb =>
-      rw [hb]
-      exact exec_mono M T q' _ _ b e T' (by omega)
+    · exact e
+    · exact exec_mono M T _ _ _ b e T' (by omega)
 
 theorem pairTape_nil (x : List Bool) : pairTape x [] = inTape x := by
   funext i
