@@ -17,3 +17,5 @@ public import ZP.Pair
 public import ZP.Logical
 public import ZP.Compile
 public import ZP.Checks
+public import ZP.Complexity
+public import ZP.GuestTM
