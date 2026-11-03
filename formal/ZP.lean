@@ -11,6 +11,7 @@ public import ZP.SymExec
 public import ZP.Outer
 public import ZP.Rot
 public import ZP.Fuel
+public import ZP.Interp
 public import ZP.Logical
 public import ZP.Compile
 public import ZP.Checks
