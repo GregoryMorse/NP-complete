@@ -17,7 +17,7 @@ Guest model (chosen so a 2-symbol host can interpret it with few states):
 * run(P, x, T) is ACC or NAC (a time-out counts as NAC).
 * L = { s : some c in {0,1}^(|s|+1) has run(s, c, |s|+1) = ACC }.
 * Candidate J is correct on s iff (run(J, s, T) = ACC) == (s in L) with
-  T = (|s|+2)^(|J|+2) - 1.  J and s range over strings in shortlex order.
+  T = (|s|+2)^(|J|+1) - 1.  J and s range over strings in shortlex order.
 """
 from itertools import product
 
@@ -71,7 +71,7 @@ def in_L(s):
 
 
 def clock(J, s):
-    return (len(s) + 2) ** (len(J) + 2) - 1
+    return (len(s) + 2) ** (len(J) + 1) - 1
 
 
 def correct(J, s, truth=None):

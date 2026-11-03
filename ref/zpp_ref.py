@@ -6,7 +6,7 @@ Same guest model, clock and enumeration as zp2_ref; only the language changes:
 
 L_PP is PP-complete (self-padded majority acceptance; the threshold 'at least
 half' is equivalent to 'more than half' for PP).  Hence the machine quasihalts
-iff some candidate J decides L_PP within (|s|+2)^(|J|+2) - 1 steps on every s,
+iff some candidate J decides L_PP within (|s|+2)^(|J|+1) - 1 steps on every s,
 iff P = PP.
 """
 from itertools import product

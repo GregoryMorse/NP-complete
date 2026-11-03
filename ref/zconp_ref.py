@@ -12,7 +12,7 @@ Same guest step as zp2_ref, with nondeterminism added at fresh cells:
   L = { s : run_nd(s, '', |s|+1) = ACC }      (NP-complete, monotone: s in L => s1 in L)
 
 Candidate J (a nondeterministic verifier for the complement) is correct on s
-iff run_nd(J, s, T) = ACC  <=>  s not in L,  T = (|s|+2)^(|J|+2) - 1.
+iff run_nd(J, s, T) = ACC  <=>  s not in L,  T = (|s|+2)^(|J|+1) - 1.
 The machine beeps at the first s where J is wrong, then moves to J+1.
 
 Why this captures NP = coNP: the prover can only extend the instance by 1s

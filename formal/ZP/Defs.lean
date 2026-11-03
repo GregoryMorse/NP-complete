@@ -115,8 +115,8 @@ def strings : Nat → List (List Bool)
 def inL (s : List Bool) : Bool :=
   (strings (s.length + 1)).any fun c => run s c (s.length + 1)
 
-/-- Clock for candidate `J` on instance `s`: `(|s|+2)^(|J|+2) - 1`. -/
-def clock (J s : List Bool) : Nat := (s.length + 2) ^ (J.length + 2) - 1
+/-- Clock for candidate `J` on instance `s`: `(|s|+2)^(|J|+1) - 1`. -/
+def clock (J s : List Bool) : Nat := (s.length + 2) ^ (J.length + 1) - 1
 
 def strAux : Nat → Nat → List Bool → List Bool
   | 0, _, acc => acc

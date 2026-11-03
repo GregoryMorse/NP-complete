@@ -72,7 +72,7 @@ gadget length per logical state and symbol).
 |---|---|---|
 | N0 table | `ZP/Table.lean` is `machines/zp_native.txt` | CI regenerates and diffs it |
 | N1+N2 compile | the table simulates the 129-state logical machine `native/zp2.py` gadget by gadget | **proved** (`ZP/Compile.lean`) |
-| N3 logical machine | from the layout `M_g J M_1 s M_2 C M_3 M B_R … M B_1` of pair `(J, s)` the logical machine reaches the layout of `absStep (J, s)`, beeping once iff `J` is wrong on `s`, and never meets an undefined transition | **open**: `ZP/Logical.lean` derives the whole simulation from `pair_step` (from `lay J S` the machine reaches `lay` of `absStep (J, S)`, visiting the beep state iff `J` is wrong on `S`); evidence: `tests/test_native.py`, `ref/zp2_ref.py`. Plan: segment lemmas — one guest step = the rotation walk; fuel odometer = clock `(|s|+2)^(|J|+2)-1`; certificate countdown = `inL`; outer loop = `absStep` |
+| N3 logical machine | from the layout `M_g J M_1 s M_2 C M_3 M B_R … M B_1` of pair `(J, s)` the logical machine reaches the layout of `absStep (J, s)`, beeping once iff `J` is wrong on `s`, and never meets an undefined transition | **open**: `ZP/Logical.lean` derives the whole simulation from `pair_step` (from `lay J S` the machine reaches `lay` of `absStep (J, S)`, visiting the beep state iff `J` is wrong on `S`); evidence: `tests/test_native.py`, `ref/zp2_ref.py`. Plan: segment lemmas — one guest step = the rotation walk; fuel odometer = clock `(|s|+2)^(|J|+1)-1`; certificate countdown = `inL`; outer loop = `absStep` |
 | N4 abstract ⟺ `Sentence` | | **proved** (`ZP/Abstract.lean`) |
 
 Certificates must be checked by `decide` or `rfl` in the kernel. `native_decide` adds

@@ -32,7 +32,7 @@ distance, so codes can be padded with unused entries without changing what they 
 - `L = { s : some c in {0,1}^(|s|+1) has run(s, c, |s|+1) = ACC }`.
   - L is in NP, and it is NP-hard by the usual padding argument.
 - Candidate `J` is correct on `s` iff `(run(J, s, T) = ACC) == (s in L)`, where
-  `T = (|s|+2)^(|J|+2) − 1`.
+  `T = (|s|+2)^(|J|+1) − 1`.
 - Z_P v2 enumerates `J` in shortlex order. For each `J` it enumerates `s` in shortlex
   order and beeps at the first `s` where `J` is wrong.
 - Therefore it quasihalts iff some `J` is correct on every `s`, iff L ∈ P, iff P = NP.

@@ -237,6 +237,27 @@ def test_ntt_instances():
         assert ntt_instance(m, c, n, r) == w, (c, n, r)
 
 
+def test_decider_clock():
+    """The decider fuel of zp2 lasts exactly zp2_ref.clock(J, s) guest steps: a guest
+    that never halts makes exactly that many successful fuel decrements."""
+    m = zp2.build()
+    for J, s in [('111', ''), ('1111', ''), ('111', '0'), ('111', '01')]:
+        w = ['M'] + list(J) + ['M'] + list(s)
+        tape = dict(enumerate(w))
+        h, q, prev, dec = len(w), 'GRB', None, 0
+        while q not in ('DP40', 'DP41'):
+            if q in ('DP10', 'DP11') and prev not in ('DP10', 'DP11'):
+                dec = 0                     # a verifier run ended
+            if q == 'FBACK' and prev != 'FBACK':
+                dec += 1
+            if q == 'EXH' and prev != 'EXH':
+                last = dec
+            prev = q
+            tape[h], mv, q = m.d[(q, tape.get(h, 'B'))]
+            h += 1 if mv == 'R' else -1
+        assert last == zp2_ref.clock(J, s), (J, s, last, zp2_ref.clock(J, s))
+
+
 def test_compiled(n=None):
     n = n or int(os.environ.get('NATIVE_BEEPS', '40'))
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'psim'),
@@ -251,6 +272,8 @@ def test_compiled(n=None):
 if __name__ == '__main__':
     test_logical()
     print('logical ok')
+    test_decider_clock()
+    print('decider clock ok')
     test_pp_instances()
     print('pp instances ok')
     test_ps_instances()

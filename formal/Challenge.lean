@@ -14,7 +14,7 @@ public section
 
 The claim: run from the blank tape, the machine is in its beep state only finitely
 often iff some candidate guest program `J` decides the language `L` correctly on
-every instance within the clock `(|s|+2)^(|J|+2) - 1`.
+every instance within the clock `(|s|+2)^(|J|+1) - 1`.
 
 The further equivalence `ZP.Sentence ↔ P = NP` is proved on paper
 (`docs/native.md`, `docs/spec.md` §2) and is **not** part of this statement.
