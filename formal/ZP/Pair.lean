@@ -338,4 +338,186 @@ theorem jinc1 (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a �
     (ls' := [.sym 1, .blk 0 .id]) (rs' := [.sym 2, .blk 1 .id, .sym 1])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+
+/-! ## Small facts -/
+
+theorem Bits.rev {u : List Nat} (h : Bits u) : Bits u.reverse := fun a ha => h a (List.mem_reverse.mp ha)
+
+theorem bits_all {b : Nat} (h : b ∈ bits) : b ∈ ALL := by
+  rcases mem_bits h with rfl | rfl <;> simp [ALL]
+
+theorem o13_noB {T : List Nat} (h : ∀ a ∈ T, a ∈ O13) : NoB T := fun a ha => by
+  have := h a ha
+  simp [O13] at this
+  simp [NB]
+  omega
+
+theorem t3_noB {T : List Nat} (h : ∀ a ∈ T, a ∈ T3) : NoB T := fun a ha => by
+  have := h a ha
+  simp [T3] at this
+  simp [NB]
+  omega
+
+theorem z2_noB {T : List Nat} (h : ∀ a ∈ T, a ∈ Z2) : NoB T := fun a ha => by
+  have := h a ha
+  simp [Z2] at this
+  simp [NB]
+  omega
+
+theorem rep_t3 (k : Nat) : ∀ a ∈ List.replicate k 3, a ∈ T3 := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [T3]
+
+theorem rep_z2 (k : Nat) : ∀ a ∈ List.replicate k 2, a ∈ Z2 := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [Z2]
+
+theorem one_nb : (1 : Nat) ∈ NB := by simp [NB]
+
+theorem rep_snoc_eq (n a : Nat) : List.replicate n a ++ [a] = a :: List.replicate n a := by
+  have := rep_cons_comm a [] n
+  simpa using this
+
+theorem bitsOf_nil : bitsOf [] = [] := rfl
+
+theorem bitsOf_reverse (l : List Bool) : bitsOf l.reverse = (bitsOf l).reverse := by
+  simp [bitsOf]
+
+theorem bitsOf_len (l : List Bool) : (bitsOf l).length = l.length := by
+  simp [bitsOf]
+
+theorem blkW_full (n : Nat) : blkW n (n + 1) = 1 :: List.replicate (n + 1) 3 := by
+  simp [blkW]
+
+theorem FWr_full_o13 (n : Nat) : ∀ i, ∀ a ∈ FWr n (List.replicate i (n + 1)), a ∈ O13
+  | 0 => fun _ h => by cases h
+  | i + 1 => by
+    intro a ha
+    have e : FWr n (List.replicate (i + 1) (n + 1)) = FWr n (List.replicate i (n + 1)) ++ blkW n (n + 1) := rfl
+    rw [e] at ha
+    rcases List.mem_append.mp ha with h | h
+    · exact FWr_full_o13 n i a h
+    · rw [blkW_full] at h
+      rcases List.mem_cons.mp h with rfl | h
+      · simp [O13]
+      · rw [List.eq_of_mem_replicate h]; simp [O13]
+
+/-! ## Loops of the outer machine -/
+
+theorem copyLoop (P T : List Nat) (hP : NoB P) (hT : ∀ a ∈ T, a ∈ O13) :
+    ∀ v u, Bits u → Bits v →
+      zpLogic.Reach (hdR Q.COPY (P ++ u) (v ++ 1 :: (T ++ 1 :: List.replicate u.length 3)))
+        (hdR Q.COPY (P ++ (u ++ v)) (1 :: (T ++ 1 :: List.replicate (u ++ v).length 3)))
+  | [], u, _, _ => by
+    rw [List.append_nil, List.nil_append]
+    exact LTM.Reach.refl _ _
+  | b :: v, u, hu, hv => by
+    have h1 := copyBody P u v T b hP hu hv.tail hT hv.head
+    have h2 := copyLoop P T hP hT v (u ++ [b]) (hu.snoc hv.head) hv.tail
+    exact h1.trans (h2.of_eq (by simp [List.replicate_succ']) (by simp only [List.append_assoc, List.singleton_append]))
+
+/-- `BLK` up to the end of the `COPY` loop. -/
+theorem blkCopy (Jl Jr s T : List Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s)
+    (hT : ∀ a ∈ T, a ∈ O13) :
+    zpLogic.Reach (hdR Q.GRB (Jl ++ 1 :: (Jr ++ 1 :: (s ++ 1 :: T))) [])
+      (hdR Q.COPY (Jl ++ 1 :: (Jr ++ 1 :: s)) (1 :: (T ++ 1 :: List.replicate s.length 3))) := by
+  have hP : NoB (Jl ++ 1 :: (Jr ++ [1])) := hJl.noB.app (NoB.cons one_nb (hJr.noB.app (NoB.cons one_nb NoB.nil)))
+  exact (blkStart Jl Jr s T hJl hJr hs hT).trans
+    ((copyLoop _ T hP hT s [] Bits.nil hs).of_eq (by simp) (by simp))
+
+theorem gcLoop (V P Rest : List Nat) (hV : NoB V) (hP : Bits P) (hR : Sym4 Rest) :
+    ∀ v u, Bits u → Bits v →
+      zpLogic.Reach (hdR Q.GC (u.reverse ++ 1 :: (V ++ (P ++ 1 :: u))) (v ++ 1 :: Rest))
+        (hdR Q.GC ((u ++ v).reverse ++ 1 :: (V ++ (P ++ 1 :: (u ++ v)))) (1 :: Rest))
+  | [], u, _, _ => by
+    rw [List.append_nil, List.nil_append]
+    exact LTM.Reach.refl _ _
+  | b :: v, u, hu, hv => by
+    have h1 := gcBody u.reverse V P u v Rest b hu.rev hV hP hu hv.tail hR hv.head
+    have h2 := gcLoop V P Rest hV hP hR v (u ++ [b]) (hu.snoc hv.head) hv.tail
+    exact h1.trans (h2.of_eq (by simp) (by simp only [List.append_assoc, List.singleton_append]))
+
+theorem qcLoop (Xr V X Rest : List Nat) (hXr : Bits Xr) (hV : NoB V) (hX : Bits X) (hR : Sym4 Rest) :
+    ∀ vr Qc, Bits vr → Bits Qc →
+      zpLogic.Reach (hd Q.QC (Qc ++ 1 :: (Xr ++ 1 :: (V ++ vr.reverse))) (Qc ++ 1 :: (X ++ 1 :: Rest)))
+        (hd Q.QC (vr.reverse ++ (Qc ++ 1 :: (Xr ++ 1 :: V))) (vr.reverse ++ (Qc ++ 1 :: (X ++ 1 :: Rest))))
+  | [], Qc, _, _ => by
+    simp only [List.reverse_nil, List.append_nil, List.nil_append]
+    exact LTM.Reach.refl _ _
+  | b :: vr, Qc, hv, hQ => by
+    have h1 := qcBody Qc Xr V vr.reverse X Rest b hQ hXr hV hv.tail.rev hX hR hv.head
+    have h2 := qcLoop Xr V X Rest hXr hV hX hR vr (b :: Qc) hv.tail (Bits.cons hv.head hQ)
+    exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
+
+theorem wbLoop : ∀ (jr Y : List Nat), Bits jr → Sym4 Y →
+    zpLogic.Reach (hd Q.WB1 (jr.reverse ++ [1]) Y) (hd Q.WB1 [1] (jr.reverse ++ Y))
+  | [], Y, _, _ => LTM.Reach.refl _ _
+  | b :: jr, Y, hj, hY => by
+    have h1 := wbBody jr.reverse Y b hj.tail.rev hY hj.head
+    have h2 := wbLoop jr (b :: Y) hj.tail (Sym4.cons (bits_all hj.head) hY)
+    exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
+
+/-- The decider fuel: one block per position of the walker. -/
+theorem decFuel (s t : List Nat) (n : Nat) (hn : s.length = n) (hs : Bits s) (ht : ∀ a ∈ t, a ∈ T3) :
+    ∀ Jr Jl i, Bits Jl → Bits Jr →
+      zpLogic.Reach
+        (hdR Q.GRB (Jl ++ 1 :: (Jr ++ 1 :: (s ++ 1 :: 1 :: (t ++ 1 :: FWr n (List.replicate i (n + 1))))))) [])
+        (hdR Q.GC (1 :: 1 :: (Jl ++ Jr ++ [1]))
+          (s ++ 1 :: 1 :: (t ++ 1 :: FWr n (List.replicate (i + Jr.length + 1) (n + 1))))) := by
+  intro Jr
+  induction Jr with
+  | nil =>
+    intro Jl i hJl _
+    have hBl := FWr_full_o13 n i
+    have hT : ∀ a ∈ 1 :: (t ++ 1 :: FWr n (List.replicate i (n + 1))), a ∈ O13 := by
+      intro a ha
+      rcases List.mem_cons.mp ha with rfl | ha
+      · simp [O13]
+      rcases List.mem_append.mp ha with h | h
+      · have := ht a h; simp [T3] at this; subst this; simp [O13]
+      rcases List.mem_cons.mp h with rfl | h
+      · simp [O13]
+      · exact hBl a h
+    have eF : FWr n (List.replicate (i + ([] : List Nat).length + 1) (n + 1)) =
+        FWr n (List.replicate i (n + 1)) ++ (1 :: (List.replicate s.length 3 ++ [3])) := by
+      show FWr n (List.replicate i (n + 1)) ++ blkW n (n + 1) = _
+      rw [blkW_full, hn, rep_snoc_eq, List.replicate_succ]
+    have hA := blkCopy Jl [] s _ hJl Bits.nil hs hT
+    have hL := blkDecLast Jl s t (FWr n (List.replicate i (n + 1))) hJl hs ht hBl
+    have hY : NoB (1 :: (s ++ 1 :: 1 :: (t ++ 1 :: (FWr n (List.replicate i (n + 1)) ++
+        1 :: (List.replicate s.length 3 ++ [3]))))) :=
+      NoB.cons one_nb (hs.noB.app (NoB.cons one_nb (NoB.cons one_nb ((t3_noB ht).app (NoB.cons one_nb
+        ((o13_noB hBl).app (NoB.cons one_nb ((t3_noB (rep_t3 _)).app (NoB.cons (by simp [NB]) NoB.nil)))))))))
+    have hW := wbLoop Jl.reverse _ hJl.rev hY.sym4
+    have hE := wbEnd Jl (s ++ 1 :: 1 :: (t ++ 1 :: (FWr n (List.replicate i (n + 1)) ++
+        1 :: (List.replicate s.length 3 ++ [3])))) hJl (by
+          have := hY.sym4
+          intro a ha; exact this a (List.mem_cons_of_mem _ ha))
+    refine (hA.trans ((hL.of_eq (by simp) rfl).trans ((hW.of_eq (by simp) (by simp)).trans hE))).of_eq rfl ?_
+    rw [eF]
+    simp
+  | cons b Jr' ih =>
+    intro Jl i hJl hJr
+    have hBl := FWr_full_o13 n i
+    have hT : ∀ a ∈ 1 :: (t ++ 1 :: FWr n (List.replicate i (n + 1))), a ∈ O13 := by
+      intro a ha
+      rcases List.mem_cons.mp ha with rfl | ha
+      · simp [O13]
+      rcases List.mem_append.mp ha with h | h
+      · have := ht a h; simp [T3] at this; subst this; simp [O13]
+      rcases List.mem_cons.mp h with rfl | h
+      · simp [O13]
+      · exact hBl a h
+    have eF : FWr n (List.replicate (i + 1) (n + 1)) =
+        FWr n (List.replicate i (n + 1)) ++ (1 :: (List.replicate s.length 3 ++ [3])) := by
+      show FWr n (List.replicate i (n + 1)) ++ blkW n (n + 1) = _
+      rw [blkW_full, hn, rep_snoc_eq, List.replicate_succ]
+    have hA := blkCopy Jl (b :: Jr') s _ hJl hJr hs hT
+    have hS := blkDecStep Jl Jr' s t (FWr n (List.replicate i (n + 1))) b hJl hJr.tail hs ht hBl hJr.head
+    have h2 := ih (Jl ++ [b]) (i + 1) (hJl.snoc hJr.head) hJr.tail
+    have e : i + 1 + Jr'.length + 1 = i + (b :: Jr').length + 1 := by
+      simp only [List.length_cons]; omega
+    rw [e] at h2
+    refine hA.trans ((hS.of_eq (by simp) rfl).trans (h2.of_eq ?_ (by simp)))
+    rw [eF]
+    simp
+
 end ZP
