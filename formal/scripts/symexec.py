@@ -256,3 +256,29 @@ def why(sets, c, n=10**6):
     """Run until stuck and show where."""
     k, c2 = run(sets, c, limit=n)
     return k, show(c2)
+
+
+def comp(g, f):
+    return f if g == 'id' else g
+
+
+def mapF(g, it):
+    if it[0] == 's':
+        return ('s', app(g, it[1]))
+    return ('b', it[1], comp(g, it[2]))
+
+
+def inst(sigma):
+    def f(it):
+        if it[0] == 's':
+            return [it]
+        its = sigma[it[1]] if it[1] < len(sigma) else []
+        return [mapF(it[2], x) for x in its]
+    return f
+
+
+def ops(c, os):
+    """SC.ops: os = [(is_cons, var, sym)], applied innermost-last like the Lean."""
+    for o in reversed(os):
+        c = subst(c, cons(o[1], o[2]) if o[0] else snoc(o[1], o[2]))
+    return c
