@@ -85,8 +85,8 @@ theorem TM.step_eq (M : TM) (c : Conf) :
     obtain ⟨c0, c1⟩ := p
     dsimp only
     by_cases hc : (if c.tape c.head = true then c1 else c0) = 0
-    · rw [if_pos hc, if_pos hc] <;> rfl
-    · rw [if_neg hc, if_neg hc] <;> rfl
+    · rw [ite_eq_left hc, ite_eq_left hc] <;> rfl
+    · rw [ite_eq_right hc, ite_eq_right hc] <;> rfl
 
 /-! ## Window runs -/
 
@@ -122,12 +122,12 @@ def winTape (base : Int) (T0 : Int → Bool) (w : Int → Bool) (j : Int) : Bool
 theorem winTape_in {base j : Int} {T0 w : Int → Bool} (h1 : base ≤ j) (h2 : j < base + 6) :
     winTape base T0 w j = w (j - base) := by
   unfold winTape
-  rw [if_pos ⟨h1, h2⟩]
+  rw [ite_eq_left ⟨h1, h2⟩]
 
 theorem winTape_out {base j : Int} {T0 w : Int → Bool} (h : ¬ (base ≤ j ∧ j < base + 6)) :
     winTape base T0 w j = T0 j := by
   unfold winTape
-  rw [if_neg h]
+  rw [ite_eq_right h]
 
 /-- A host configuration agrees with a window configuration placed at `base`. -/
 structure WRel (base : Int) (T0 : Int → Bool) (c : Conf) (s : WC) : Prop where
@@ -160,26 +160,26 @@ theorem wStep_sound {M : TM} {base : Int} {T0 : Int → Bool} {c : Conf} {s s' :
     else none) = some s' := hs
     by_cases hin : 0 ≤ (if r = 1 then s.pos + 1 else s.pos - 1) ∧
         (if r = 1 then s.pos + 1 else s.pos - 1) < 6
-    · rw [if_pos hin] at h'
+    · rw [ite_eq_left hin] at h'
       cases h'
       refine ⟨_, rfl, rfl, ?_, hin.1, hin.2, ?_⟩
       · show (if r = 1 then c.head + 1 else c.head - 1) =
           base + (if r = 1 then s.pos + 1 else s.pos - 1)
         by_cases hr : r = 1
-        · rw [if_pos hr, if_pos hr]; omega
-        · rw [if_neg hr, if_neg hr]; omega
+        · rw [ite_eq_left hr, ite_eq_left hr]; omega
+        · rw [ite_eq_right hr, ite_eq_right hr]; omega
       · intro j
         show (if j = c.head then decide (w = 1) else c.tape j) =
           winTape base T0 (fun o => if o = s.pos then decide (w = 1) else s.win o) j
         by_cases hj : j = c.head
-        · rw [if_pos hj, winTape_in (by omega) (by omega),
-            if_pos (show j - base = s.pos by omega)]
-        · rw [if_neg hj, ht j]
+        · rw [ite_eq_left hj, winTape_in (by omega) (by omega),
+            ite_eq_left (show j - base = s.pos by omega)]
+        · rw [ite_eq_right hj, ht j]
           by_cases hw : base ≤ j ∧ j < base + 6
           · rw [winTape_in hw.1 hw.2, winTape_in hw.1 hw.2,
-              if_neg (show j - base ≠ s.pos by omega)]
+              ite_eq_right (show j - base ≠ s.pos by omega)]
           · rw [winTape_out hw, winTape_out hw]
-    · rw [if_neg hin] at h'
+    · rw [ite_eq_right hin] at h'
       cases h'
 
 theorem wRun_sound (M : TM) (base : Int) (T0 : Int → Bool) :
@@ -213,15 +213,15 @@ theorem wRun_sound (M : TM) (base : Int) (T0 : Int → Bool) :
         show (M.step c).bind (M.exec 0) = some c1
         rw [hc1] <;> rfl
       by_cases hk : k = 0
-      · rw [if_pos hk] at hs2
+      · rw [ite_eq_left hk] at hs2
         cases hs2
         subst hk
         exact ⟨⟨c1, e1, h1⟩, fun j h1' h2' => absurd h2' (by omega)⟩
-      · rw [if_neg hk] at hs2
+      · rw [ite_eq_right hk] at hs2
         by_cases hb : s1.st = M.beep
-        · rw [if_pos hb] at hs2
+        · rw [ite_eq_left hb] at hs2
           cases hs2
-        · rw [if_neg hb] at hs2
+        · rw [ite_eq_right hb] at hs2
           obtain ⟨⟨c', hc', h'⟩, hmid⟩ := ih c1 s1 s' h1 hs2
           refine ⟨⟨c', ?_, h'⟩, ?_⟩
           · show (M.step c).bind (M.exec k) = some c'
@@ -308,7 +308,7 @@ theorem checkOne_spec {q s : Nat} {a b e f : Bool} (h : checkOne q s a b e f = t
       t.pos = (if (cCode q s - 1) / 4 % 2 = 1 then 4 else 0) + cSide ((cCode q s - 1) / 8) ∧
       ∀ o, 0 ≤ o → o < 6 → t.win o = mkWin a b ((cCode q s - 1) % 4) e f o := by
   unfold checkOne at h
-  rw [if_neg hc] at h
+  rw [ite_eq_right hc] at h
   cases hr : wRun zpMachine (cGlen q s) (initWC q s a b e f) with
   | none =>
     rw [hr] at h
@@ -420,9 +420,9 @@ theorem lstep_some {L : LTM} {c c' : LConf} (h : L.step c = some c') :
                 head := if (row.getD (c.tape c.head) 0 - 1) / 4 % 2 = 1 then c.head + 1
                   else c.head - 1 } : LConf)) = some c' := h
     by_cases hc : row.getD (c.tape c.head) 0 = 0
-    · rw [if_pos hc] at h'
+    · rw [ite_eq_left hc] at h'
       cases h'
-    · rw [if_neg hc] at h'
+    · rw [ite_eq_right hc] at h'
       cases h'
       exact ⟨_, ⟨row, rfl, rfl⟩, hc, rfl⟩
 
@@ -514,30 +514,30 @@ theorem gadget {c c' : LConf} {d : Conf} (henc : Enc c d) (hstep : zpLogic.step 
       cSide ((cd - 1) / 8)
     rw [hrel.head, hpos]
     by_cases hr : (cd - 1) / 4 % 2 = 1
-    · rw [if_pos hr, if_pos hr]
+    · rw [ite_eq_left hr, ite_eq_left hr]
       omega
-    · rw [if_neg hr, if_neg hr]
+    · rw [ite_eq_right hr, ite_eq_right hr]
       omega
   · intro i
     show d'.tape (2 * i) = decide (2 ≤ (if i = c.head then (cd - 1) % 4 else c.tape i))
     by_cases hi : i = c.head
-    · rw [if_pos hi, hi]
+    · rw [ite_eq_left hi, hi]
       exact hp0
-    · rw [if_neg hi, hout _ (by omega) (by omega)]
+    · rw [ite_eq_right hi, hout _ (by omega) (by omega)]
       exact henc.hi i
   · intro i
     show d'.tape (2 * i + 1) = decide ((if i = c.head then (cd - 1) % 4 else c.tape i) % 2 = 1)
     by_cases hi : i = c.head
-    · rw [if_pos hi, hi]
+    · rw [ite_eq_left hi, hi]
       exact hp1
-    · rw [if_neg hi, hout _ (by omega) (by omega)]
+    · rw [ite_eq_right hi, hout _ (by omega) (by omega)]
       exact henc.lo i
   · intro i
     show (if i = c.head then (cd - 1) % 4 else c.tape i) < 4
     by_cases hi : i = c.head
-    · rw [if_pos hi]
+    · rw [ite_eq_left hi]
       exact Nat.mod_lt _ (by decide)
-    · rw [if_neg hi]
+    · rw [ite_eq_right hi]
       exact henc.sym i
 
 /-! ## The whole run -/
