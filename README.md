@@ -40,9 +40,9 @@ P vs NP. That claim has not yet been checked against the bbchallenge Discord his
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
 (`docs/spec.md` §2, *Caution*). The equivalence has a paper proof (`docs/spec.md`). The
 compiler is validated by tests at every layer. The Lean development (`formal/`, Palomar layout, core Lean only) states
-`Quasihalts zpMachine ↔ Sentence` for the literal 278-state table. It proves the abstract
-layer and the reduction of the bridge to a beep-exact macro simulation, and leaves that
-simulation open (one `sorry`). See `formal/README.md`.
+`Quasihalts zpMachine ↔ Sentence` for the literal 278-state table. It proves every
+layer: the abstract program, the bridge, the logical machine's simulation of the
+abstract program, and the compilation to the table. No `sorry` is left. See `formal/README.md`.
 
 ## How it works (one paragraph)
 L is a self-padded NP-complete language. An instance s *is* a guest program; s ∈ L iff

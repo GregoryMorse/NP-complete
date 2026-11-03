@@ -8,8 +8,7 @@ public section
 # Proof
 
 Comparator checks that this declaration has exactly the statement in
-`Challenge.lean` and uses only the permitted axioms. It currently depends on the
-open lemma `ZP.pair_step` (`ZP/Logical.lean`).
+`Challenge.lean` and uses only the permitted axioms.
 -/
 
 theorem ZP.zp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpMachine ↔ ZP.Sentence :=
