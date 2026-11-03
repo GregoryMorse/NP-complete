@@ -19,3 +19,4 @@ public import ZP.Compile
 public import ZP.Checks
 public import ZP.Complexity
 public import ZP.GuestTM
+public import ZP.GuestCompile
