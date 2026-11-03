@@ -46,7 +46,7 @@ theorem zstep_R {M : LTM} {q w q' : Nat} {L R : Strm} (h : M.act q (R 0) = some 
     | none => none
     | some (w, r, q') =>
       if r = 1 then some (⟨q', scons w L, stail R⟩ : ZC)
-      else some ⟨q', stail L, scons (L 0) (scons w (stail R))⟩) = _
+      else some (⟨q', stail L, scons (L 0) (scons w (stail R))⟩ : ZC)) = _
   rw [h] <;> rfl
 
 theorem zstep_L {M : LTM} {q w q' : Nat} {L R : Strm} (h : M.act q (R 0) = some (w, 0, q')) :
@@ -55,7 +55,7 @@ theorem zstep_L {M : LTM} {q w q' : Nat} {L R : Strm} (h : M.act q (R 0) = some 
     | none => none
     | some (w, r, q') =>
       if r = 1 then some (⟨q', scons w L, stail R⟩ : ZC)
-      else some ⟨q', stail L, scons (L 0) (scons w (stail R))⟩) = _
+      else some (⟨q', stail L, scons (L 0) (scons w (stail R))⟩ : ZC)) = _
   rw [h] <;> rfl
 
 theorem sapp_rev_cons (a : Nat) (l : List Nat) (s : Strm) :
@@ -78,7 +78,7 @@ theorem sweepR {M : LTM} {q : Nat} {S : List Nat} {f : Nat → Nat} (hq : q ≠ 
     have hs : M.zstep ⟨q, Lt, sapp (a :: w) s⟩ = some ⟨q, scons (f a) Lt, sapp w s⟩ :=
       zstep_R (hact a ha)
     rw [show (a :: w).length = w.length + 1 from rfl, zrun_step hq hs, ih _ s hw']
-    show _ = some ⟨q, sapp (f a :: w.map f).reverse Lt, s⟩
+    show _ = some (⟨q, sapp (f a :: w.map f).reverse Lt, s⟩ : ZC)
     rw [sapp_rev_cons (f a)]
 
 theorem sweepL {M : LTM} {q : Nat} {S : List Nat} {f : Nat → Nat} (hq : q ≠ M.beep)
@@ -102,7 +102,7 @@ theorem sweepL {M : LTM} {q : Nat} {S : List Nat} {f : Nat → Nat} (hq : q ≠ 
         some ⟨q, sapp w Lt, scons y (scons (f x) Rt)⟩ := zstep_L (hact x hx)
     rw [show (y :: w).length + 1 = (w.length + 1) + 1 from rfl, zrun_step hq hs,
       ih y Lt (scons (f x) Rt) hy hw']
-    show _ = some ⟨q, stail Lt, scons (Lt 0) (sapp (f x :: (y :: w).map f).reverse Rt)⟩
+    show _ = some (⟨q, stail Lt, scons (Lt 0) (sapp (f x :: (y :: w).map f).reverse Rt)⟩ : ZC)
     rw [sapp_rev_cons (f x)]
 
 /-! ## List layouts -/
@@ -157,7 +157,7 @@ theorem sweepL_cfg {q : Nat} {S : List Nat} {f : Nat → Nat} (hq : q ≠ zpLogi
   show some (⟨q, sapp l0.reverse blank, scons y (sapp ((x :: w.reverse).map f).reverse (sapp r blank))⟩ : ZC) =
     some ⟨q, sapp l0.reverse blank, scons y (sapp ((w ++ [x]).map f ++ r) blank)⟩
   have e2 : ((x :: w.reverse).map f).reverse = (w ++ [x]).map f := by
-    simp [map_rev, List.map_append, List.reverse_cons]
+    simp [List.map_append, List.reverse_cons]
   rw [sapp_append, e2]
 
 end ZP
