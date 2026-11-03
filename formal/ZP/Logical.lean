@@ -6,6 +6,7 @@ public import ZP.Bridge
 public import ZP.LTM
 public import ZP.Logic
 public import ZP.Zip
+public import ZP.Outer
 
 @[expose] public section
 
@@ -23,15 +24,6 @@ machine reaches `lay` of `absStep (J, S)`, and visits the beep state on the way 
 -/
 
 namespace ZP
-
-/-- Bits as logical symbols: `'0' = 2`, `'1' = 3`. -/
-def bitsOf (w : List Bool) : List Nat := w.map fun b => if b then 3 else 2
-
-/-- `M_g J M_1 s`. -/
-def layWord (J S : Nat) : List Nat := 1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))
-
-/-- The configuration at the start of pair `(J, S)`. -/
-def lay (J S : Nat) : ZC := ⟨Q.GRB, sapp (layWord J S).reverse blank, blank⟩
 
 /-- A run of `n` steps from `z` to `z'`. It visits the beep state iff `b`, and then once. -/
 def Seg (z : ZC) (n : Nat) (z' : ZC) (b : Prop) : Prop :=

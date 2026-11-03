@@ -26,7 +26,7 @@ example : inL (str 1) = false := by decide
 example : inL (str 3) = true := by decide
 example : inL (str 4) = false := by decide
 example : inL (str 5) = true := by decide
-example : clock (str 2) (str 3) = 26 := by decide
+example : clock (str 2) (str 3) = 8 := by decide
 -- the first beeps of ref/zp2_ref.zp_beeps: ('', '1'), ('0', '1'), ('1', '')
 example : Correct 1 1 ∧ Correct 1 2 ∧ ¬ Correct 1 3 := by decide
 example : Correct 2 1 ∧ Correct 2 2 ∧ ¬ Correct 2 3 := by decide

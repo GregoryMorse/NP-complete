@@ -8,6 +8,7 @@ public import ZP.LTM
 public import ZP.Logic
 public import ZP.Zip
 public import ZP.SymExec
+public import ZP.Outer
 public import ZP.Logical
 public import ZP.Compile
 public import ZP.Checks

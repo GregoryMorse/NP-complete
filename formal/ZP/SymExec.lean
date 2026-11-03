@@ -182,17 +182,32 @@ def sweepFn (M : LTM) (q dir : Nat) (S : List Nat) (f : Fn) : Option Fn :=
     | some (w, _, _) => if sweepOK M q dir S f (.const w) then some (.const w) else none
     | none => none
 
+/-- `1^n 1 = 1 1^n`: a constant block and the same symbol after it commute. -/
+def swapB (i : Nat) (f : Fn) : List Item → Option (List Item)
+  | .sym a :: rest => if f = .const a then some (.sym a :: .blk i f :: rest) else none
+  | _ => none
+
+def blockR (M : LTM) (sets : Env) (q : Nat) (l : List Item) (i : Nat) (f : Fn)
+    (rest : List Item) : Option SC :=
+  match sweepFn M q 1 (sets.getD i []) f with
+  | some f' => some ⟨q, .blk i f' :: l, rest, false⟩
+  | none => (swapB i f rest).map fun r' => ⟨q, l, r', false⟩
+
+def blockL (M : LTM) (sets : Env) (q : Nat) (r : List Item) (i : Nat) (f : Fn)
+    (rest : List Item) : Option SC :=
+  match sweepFn M q 0 (sets.getD i []) f with
+  | some f' => some ⟨q, rest, .blk i f' :: r, true⟩
+  | none => (swapB i f rest).map fun l' => ⟨q, l', r, true⟩
+
 def mstepR (M : LTM) (sets : Env) (q : Nat) (l r : List Item) : Option SC :=
   match view r with
   | .cell a rest => stepR M q a l rest
-  | .block i f rest =>
-    (sweepFn M q 1 (sets.getD i []) f).map fun f' => ⟨q, .blk i f' :: l, rest, false⟩
+  | .block i f rest => blockR M sets q l i f rest
 
 def mstepL (M : LTM) (sets : Env) (q : Nat) (l r : List Item) : Option SC :=
   match view l with
   | .cell a rest => stepL M q a rest r
-  | .block i f rest =>
-    (sweepFn M q 0 (sets.getD i []) f).map fun f' => ⟨q, rest, .blk i f' :: r, true⟩
+  | .block i f rest => blockL M sets q r i f rest
 
 /-- One executor step; `none` in the beep state and wherever the executor is stuck. -/
 def mstep (M : LTM) (sets : Env) (c : SC) : Option SC :=
@@ -385,6 +400,57 @@ theorem sweepL_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {q i : Nat
   rw [e1, e2]
   exact sweepL_strm hq _ _ _ hact
 
+theorem const_comm (c : Nat) :
+    ∀ w : List Nat, w.map (Fn.const c).app ++ [c] = c :: w.map (Fn.const c).app
+  | [] => rfl
+  | _ :: w => by
+    show c :: (w.map (Fn.const c).app ++ [c]) = c :: c :: w.map (Fn.const c).app
+    rw [const_comm c w]
+
+theorem const_rev (c : Nat) : ∀ w : List Nat, (w.map (Fn.const c).app).reverse = w.map (Fn.const c).app
+  | [] => rfl
+  | _ :: w => by
+    show (c :: w.map (Fn.const c).app).reverse = c :: w.map (Fn.const c).app
+    rw [List.reverse_cons, const_rev c w, const_comm]
+
+theorem swapB_dR {env : Env} {i : Nat} {f : Fn} {rest r' : List Item}
+    (h : swapB i f rest = some r') : dR env (.blk i f :: rest) = dR env r' := by
+  match rest, h with
+  | .sym a :: rest, h =>
+    have h' : (if f = .const a then some (.sym a :: .blk i f :: rest) else none) = some r' := h
+    by_cases hf : f = .const a
+    · subst hf
+      rw [ite_eq_left rfl] at h'
+      cases h'
+      have e := const_comm a (env.getD i [])
+      show (env.getD i []).map (Fn.const a).app ++ ([a] ++ dR env rest) =
+        a :: ((env.getD i []).map (Fn.const a).app ++ dR env rest)
+      rw [← e, List.append_assoc]
+      rfl
+    · rw [ite_eq_right hf] at h'
+      cases h'
+  | .blk _ _ :: _, h => cases h
+  | [], h => cases h
+
+theorem swapB_dL {env : Env} {i : Nat} {f : Fn} {rest l' : List Item}
+    (h : swapB i f rest = some l') : dL env (.blk i f :: rest) = dL env l' := by
+  match rest, h with
+  | .sym a :: rest, h =>
+    have h' : (if f = .const a then some (.sym a :: .blk i f :: rest) else none) = some l' := h
+    by_cases hf : f = .const a
+    · subst hf
+      rw [ite_eq_left rfl] at h'
+      cases h'
+      have e := const_comm a (env.getD i [])
+      show ((env.getD i []).map (Fn.const a).app).reverse ++ ([a].reverse ++ dL env rest) =
+        a :: (((env.getD i []).map (Fn.const a).app).reverse ++ dL env rest)
+      rw [const_rev, ← e, List.append_assoc]
+      rfl
+    · rw [ite_eq_right hf] at h'
+      cases h'
+  | .blk _ _ :: _, h => cases h
+  | [], h => cases h
+
 theorem mstepR_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {q : Nat}
     {l r : List Item} {c' : SC} (hq : q ≠ M.beep) (h : mstepR M sets q l r = some c') :
     M.Reach (SC.den env ⟨q, l, r, false⟩) (c'.den env) := by
@@ -398,19 +464,31 @@ theorem mstepR_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {q : Nat}
     exact stepR_sound hq h2
   | block i f rest =>
     rw [hw] at h
-    have h2 : (sweepFn M q 1 (sets.getD i []) f).map
-        (fun f' => (⟨q, .blk i f' :: l, rest, false⟩ : SC)) = some c' := h
+    have h2 : blockR M sets q l i f rest = some c' := h
+    unfold blockR at h2
+    obtain rfl := view_block hw
     cases hs : sweepFn M q 1 (sets.getD i []) f with
-    | none =>
-      rw [hs] at h2
-      have h3 : (none : Option SC) = some c' := h2
-      cases h3
     | some f' =>
       rw [hs] at h2
       have h3 : some (⟨q, .blk i f' :: l, rest, false⟩ : SC) = some c' := h2
       cases h3
-      obtain rfl := view_block hw
       exact sweepR_sound hv hq (sweepFn_spec hs)
+    | none =>
+      rw [hs] at h2
+      have h3 : (swapB i f rest).map (fun r' => (⟨q, l, r', false⟩ : SC)) = some c' := h2
+      cases hb : swapB i f rest with
+      | none =>
+        rw [hb] at h3
+        have h4 : (none : Option SC) = some c' := h3
+        cases h4
+      | some r' =>
+        rw [hb] at h3
+        have h4 : some (⟨q, l, r', false⟩ : SC) = some c' := h3
+        cases h4
+        show M.Reach ⟨q, sapp (dL env l) blank, sapp (dR env (.blk i f :: rest)) blank⟩
+          ⟨q, sapp (dL env l) blank, sapp (dR env r') blank⟩
+        rw [swapB_dR hb]
+        exact LTM.Reach.refl M _
 
 theorem mstepL_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {q : Nat}
     {l r : List Item} {c' : SC} (hq : q ≠ M.beep) (h : mstepL M sets q l r = some c') :
@@ -426,19 +504,32 @@ theorem mstepL_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {q : Nat}
     exact stepL_sound hq h2
   | block i f rest =>
     rw [hw] at h
-    have h2 : (sweepFn M q 0 (sets.getD i []) f).map
-        (fun f' => (⟨q, rest, .blk i f' :: r, true⟩ : SC)) = some c' := h
+    have h2 : blockL M sets q r i f rest = some c' := h
+    unfold blockL at h2
+    obtain rfl := view_block hw
     cases hs : sweepFn M q 0 (sets.getD i []) f with
-    | none =>
-      rw [hs] at h2
-      have h3 : (none : Option SC) = some c' := h2
-      cases h3
     | some f' =>
       rw [hs] at h2
       have h3 : some (⟨q, rest, .blk i f' :: r, true⟩ : SC) = some c' := h2
       cases h3
-      obtain rfl := view_block hw
       exact sweepL_sound hv hq (sweepFn_spec hs)
+    | none =>
+      rw [hs] at h2
+      have h3 : (swapB i f rest).map (fun l' => (⟨q, l', r, true⟩ : SC)) = some c' := h2
+      cases hb : swapB i f rest with
+      | none =>
+        rw [hb] at h3
+        have h4 : (none : Option SC) = some c' := h3
+        cases h4
+      | some l' =>
+        rw [hb] at h3
+        have h4 : some (⟨q, l', r, true⟩ : SC) = some c' := h3
+        cases h4
+        show M.Reach ⟨q, stail (sapp (dL env (.blk i f :: rest)) blank),
+            scons (sapp (dL env (.blk i f :: rest)) blank 0) (sapp (dR env r) blank)⟩
+          ⟨q, stail (sapp (dL env l') blank), scons (sapp (dL env l') blank 0) (sapp (dR env r) blank)⟩
+        rw [swapB_dL hb]
+        exact LTM.Reach.refl M _
 
 theorem mstep_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {c c' : SC}
     (h : mstep M sets c = some c') : M.Reach (c.den env) (c'.den env) := by
@@ -652,19 +743,471 @@ theorem body_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {i i' : Nat}
 
 /-- Moving a word from one variable to another, one symbol per iteration. -/
 theorem LTM.Reach.fold {M : LTM} {S : List Nat} (F : List Nat → List Nat → ZC)
-    (h : ∀ u b v, b ∈ S → M.Reach (F u (b :: v)) (F (u ++ [b]) v)) :
-    ∀ v u, (∀ x ∈ v, x ∈ S) → M.Reach (F u v) (F (u ++ v) []) := by
+    (h : ∀ u b v, b ∈ S → (∀ x ∈ u, x ∈ S) → (∀ x ∈ v, x ∈ S) →
+      M.Reach (F u (b :: v)) (F (u ++ [b]) v)) :
+    ∀ v u, (∀ x ∈ u, x ∈ S) → (∀ x ∈ v, x ∈ S) → M.Reach (F u v) (F (u ++ v) []) := by
   intro v
   induction v with
   | nil =>
-    intro u _
+    intro u _ _
     rw [List.append_nil]
     exact LTM.Reach.refl M _
   | cons b v ih =>
-    intro u hv
-    refine (h u b v (hv b (by simp))).trans ?_
-    have := ih (u ++ [b]) (fun x hx => hv x (by simp [hx]))
+    intro u hu hv
+    have hb : b ∈ S := hv b (by simp)
+    have hv' : ∀ x ∈ v, x ∈ S := fun x hx => hv x (by simp [hx])
+    refine (h u b v hb hu hv').trans ?_
+    have hu' : ∀ x ∈ u ++ [b], x ∈ S := by
+      intro x hx
+      rcases List.mem_append.mp hx with hx | hx
+      · exact hu x hx
+      · rw [List.mem_singleton.mp hx]
+        exact hb
+    have := ih (u ++ [b]) hu' hv'
     rw [List.append_assoc] at this
     exact this
+
+/-! ## Single steps, also from the beep state -/
+
+/-- Runs of at least one step. -/
+def LTM.Reach1 (M : LTM) (c c' : ZC) : Prop := ∃ n, M.zrun (n + 1) c = some c'
+
+theorem LTM.Reach1.reach {M : LTM} {c c' : ZC} (h : M.Reach1 c c') : M.Reach c c' :=
+  let ⟨n, hn⟩ := h
+  ⟨n + 1, hn⟩
+
+theorem LTM.Reach1.trans {M : LTM} {a b c : ZC} (h1 : M.Reach1 a b) (h2 : M.Reach b c) :
+    M.Reach1 a c := by
+  obtain ⟨n, hn⟩ := h1
+  obtain ⟨m, hm⟩ := h2
+  refine ⟨n + m, ?_⟩
+  rw [show n + m + 1 = (n + 1) + m by omega, LTM.zrun_add, hn]
+  exact hm
+
+theorem stepR_zstep {M : LTM} {env : Env} {q a : Nat} {l rest : List Item} {c' : SC}
+    (h : stepR M q a l rest = some c') :
+    M.zstep ⟨q, sapp (dL env l) blank, scons a (sapp (dR env rest) blank)⟩ = some (c'.den env) := by
+  unfold stepR at h
+  cases ha : M.act q a with
+  | none =>
+    rw [ha] at h
+    have h' : (none : Option SC) = some c' := h
+    cases h'
+  | some x =>
+    obtain ⟨w, d, q'⟩ := x
+    rw [ha] at h
+    have h' : (if d = 1 then some (⟨q', .sym w :: l, rest, false⟩ : SC)
+        else some (⟨q', l, .sym w :: rest, true⟩ : SC)) = some c' := h
+    by_cases hd : d = 1
+    · subst hd
+      rw [ite_eq_left rfl] at h'
+      cases h'
+      exact LTM.zstep_R ha
+    · rw [ite_eq_right hd] at h'
+      cases h'
+      exact LTM.zstep_L ha hd
+
+theorem stepL_zstep {M : LTM} {env : Env} {q a : Nat} {rest r : List Item} {c' : SC}
+    (h : stepL M q a rest r = some c') :
+    M.zstep ⟨q, sapp (dL env rest) blank, scons a (sapp (dR env r) blank)⟩ = some (c'.den env) := by
+  unfold stepL at h
+  cases ha : M.act q a with
+  | none =>
+    rw [ha] at h
+    have h' : (none : Option SC) = some c' := h
+    cases h'
+  | some x =>
+    obtain ⟨w, d, q'⟩ := x
+    rw [ha] at h
+    have h' : (if d = 1 then some (⟨q', .sym w :: rest, r, false⟩ : SC)
+        else some (⟨q', rest, .sym w :: r, true⟩ : SC)) = some c' := h
+    by_cases hd : d = 1
+    · subst hd
+      rw [ite_eq_left rfl] at h'
+      cases h'
+      exact LTM.zstep_R ha
+    · rw [ite_eq_right hd] at h'
+      cases h'
+      exact LTM.zstep_L ha hd
+
+def cstepR (M : LTM) (q : Nat) (l r : List Item) : Option SC :=
+  match view r with
+  | .cell a rest => stepR M q a l rest
+  | .block _ _ _ => none
+
+def cstepL (M : LTM) (q : Nat) (l r : List Item) : Option SC :=
+  match view l with
+  | .cell a rest => stepL M q a rest r
+  | .block _ _ _ => none
+
+/-- One concrete step (the head is on a concrete cell); taken also from the beep state. -/
+def cstep (M : LTM) (c : SC) : Option SC :=
+  bif c.dirL then cstepL M c.q c.l c.r else cstepR M c.q c.l c.r
+
+theorem cstep_zstep {M : LTM} {env : Env} {c c' : SC} (h : cstep M c = some c') :
+    M.zstep (c.den env) = some (c'.den env) := by
+  obtain ⟨q, l, r, dl⟩ := c
+  cases dl with
+  | false =>
+    have h0 : cstepR M q l r = some c' := h
+    unfold cstepR at h0
+    cases hw : view r with
+    | cell a rest =>
+      rw [hw] at h0
+      have h2 : stepR M q a l rest = some c' := h0
+      show M.zstep ⟨q, sapp (dL env l) blank, sapp (dR env r) blank⟩ = _
+      rw [view_cellR hw]
+      exact stepR_zstep h2
+    | block i f rest =>
+      rw [hw] at h0
+      have h3 : (none : Option SC) = some c' := h0
+      cases h3
+  | true =>
+    have h0 : cstepL M q l r = some c' := h
+    unfold cstepL at h0
+    cases hw : view l with
+    | cell a rest =>
+      rw [hw] at h0
+      have h2 : stepL M q a rest r = some c' := h0
+      show M.zstep ⟨q, stail (sapp (dL env l) blank),
+        scons (sapp (dL env l) blank 0) (sapp (dR env r) blank)⟩ = _
+      rw [view_cellL hw]
+      exact stepL_zstep h2
+    | block i f rest =>
+      rw [hw] at h0
+      have h3 : (none : Option SC) = some c' := h0
+      cases h3
+
+/-! ## Renaming variables and dropping empty ones -/
+
+/-- Concatenation of the words `env[k]`, `k ∈ ks`. -/
+def cat (env : Env) : List Nat → List Nat
+  | [] => []
+  | [k] => env.getD k []
+  | k :: ks => env.getD k [] ++ cat env ks
+
+theorem cat_cons (env : Env) (k : Nat) (ks : List Nat) :
+    cat env (k :: ks) = env.getD k [] ++ cat env ks := by
+  cases ks with
+  | nil => exact (List.append_nil _).symm
+  | cons k2 ks2 => rfl
+
+/-- Variable `i` becomes the concatenation of the variables `ρ[i]`. -/
+def Item.ren (ρ : List (List Nat)) : Item → List Item
+  | .sym a => [.sym a]
+  | .blk i f => (ρ.getD i []).map fun k => .blk k f
+
+theorem dR_blks (env : Env) (f : Fn) :
+    ∀ ks : List Nat, dR env (ks.map fun k => Item.blk k f) = (cat env ks).map f.app
+  | [] => rfl
+  | k :: ks => by
+    rw [List.map_cons]
+    show (env.getD k []).map f.app ++ dR env (ks.map fun k => Item.blk k f) = _
+    rw [dR_blks env f ks, cat_cons, List.map_append]
+
+theorem getD_map_cat (env : Env) :
+    ∀ (ρ : List (List Nat)) (i : Nat), (ρ.map (cat env)).getD i [] = cat env (ρ.getD i [])
+  | [], i => by cases i <;> rfl
+  | _ :: _, 0 => rfl
+  | _ :: ρ, i + 1 => getD_map_cat env ρ i
+
+theorem item_ren (env : Env) (ρ : List (List Nat)) (it : Item) :
+    it.den (ρ.map (cat env)) = dR env (it.ren ρ) := by
+  cases it with
+  | sym a => rfl
+  | blk i f =>
+    show ((ρ.map (cat env)).getD i []).map f.app = dR env ((ρ.getD i []).map fun k => Item.blk k f)
+    rw [getD_map_cat, dR_blks]
+
+theorem den_ren (env : Env) (ρ : List (List Nat)) (c : SC) :
+    c.den (ρ.map (cat env)) = (c.subst (Item.ren ρ)).den env :=
+  den_subst (item_ren env ρ) c
+
+def memB : List Nat → Nat → Bool
+  | [], _ => false
+  | k :: E, i => decide (i = k) || memB E i
+
+/-- The variables in `E` are empty. -/
+def AllEmpty (env : Env) : List Nat → Prop
+  | [] => True
+  | i :: E => env.getD i [] = [] ∧ AllEmpty env E
+
+theorem AllEmpty.get {env : Env} : ∀ (E : List Nat) (i : Nat), AllEmpty env E →
+    memB E i = true → env.getD i [] = []
+  | [], _, _, h => by cases h
+  | k :: E, i, ⟨h1, h2⟩, h => by
+    by_cases hik : i = k
+    · subst hik
+      exact h1
+    · have h0 : (decide (i = k) || memB E i) = true := h
+      rw [decide_eq_false hik, Bool.false_or] at h0
+      exact AllEmpty.get E i h2 h0
+
+def dropE (E : List Nat) : List Item → List Item
+  | [] => []
+  | .sym a :: r => .sym a :: dropE E r
+  | .blk i f :: r => if memB E i then dropE E r else .blk i f :: dropE E r
+
+theorem dR_dropE {env : Env} {E : List Nat} (hE : AllEmpty env E) :
+    ∀ r, dR env (dropE E r) = dR env r
+  | [] => rfl
+  | .sym a :: r => by
+    show [a] ++ dR env (dropE E r) = [a] ++ dR env r
+    rw [dR_dropE hE r]
+  | .blk i f :: r => by
+    show dR env (if memB E i then dropE E r else .blk i f :: dropE E r) =
+      (env.getD i []).map f.app ++ dR env r
+    by_cases hm : memB E i = true
+    · rw [ite_eq_left hm, AllEmpty.get E i hE hm, dR_dropE hE r] <;> rfl
+    · rw [ite_eq_right hm]
+      show (env.getD i []).map f.app ++ dR env (dropE E r) = _
+      rw [dR_dropE hE r]
+
+theorem dL_dropE {env : Env} {E : List Nat} (hE : AllEmpty env E) :
+    ∀ l, dL env (dropE E l) = dL env l
+  | [] => rfl
+  | .sym a :: l => by
+    show [a].reverse ++ dL env (dropE E l) = [a].reverse ++ dL env l
+    rw [dL_dropE hE l]
+  | .blk i f :: l => by
+    show dL env (if memB E i then dropE E l else .blk i f :: dropE E l) =
+      ((env.getD i []).map f.app).reverse ++ dL env l
+    by_cases hm : memB E i = true
+    · rw [ite_eq_left hm, AllEmpty.get E i hE hm, dL_dropE hE l] <;> rfl
+    · rw [ite_eq_right hm]
+      show ((env.getD i []).map f.app).reverse ++ dL env (dropE E l) = _
+      rw [dL_dropE hE l]
+
+def trimAux : Item → List Item → List Item
+  | .sym 0, [] => []
+  | .blk _ (.const 0), [] => []
+  | it, r => it :: r
+
+/-- Drop blank cells at the far end. -/
+def trim : List Item → List Item
+  | [] => []
+  | it :: r => trimAux it (trim r)
+
+theorem sapp_zeros (s : Strm) (h : s = blank) : ∀ w : List Nat, sapp (w.map (Fn.const 0).app) s = blank
+  | [] => h
+  | _ :: w => by
+    show scons 0 (sapp (w.map (Fn.const 0).app) s) = blank
+    rw [sapp_zeros s h w, scons_blank]
+
+theorem trimAux_dR (env : Env) (it : Item) (r : List Item) :
+    sapp (dR env (trimAux it r)) blank = sapp (dR env (it :: r)) blank := by
+  match it, r with
+  | .sym 0, [] => exact scons_blank.symm
+  | .blk i (.const 0), [] =>
+    show blank = sapp ((env.getD i []).map (Fn.const 0).app ++ []) blank
+    rw [List.append_nil, sapp_zeros blank rfl]
+  | .sym 0, _ :: _ => rfl
+  | .sym (_ + 1), _ => rfl
+  | .blk _ .id, _ => rfl
+  | .blk _ (.const (_ + 1)), _ => rfl
+  | .blk _ (.const 0), _ :: _ => rfl
+
+theorem trimAux_dL (env : Env) (it : Item) (l : List Item) :
+    sapp (dL env (trimAux it l)) blank = sapp (dL env (it :: l)) blank := by
+  match it, l with
+  | .sym 0, [] => exact scons_blank.symm
+  | .blk i (.const 0), [] =>
+    show blank = sapp (((env.getD i []).map (Fn.const 0).app).reverse ++ []) blank
+    rw [List.append_nil, const_rev, sapp_zeros blank rfl]
+  | .sym 0, _ :: _ => rfl
+  | .sym (_ + 1), _ => rfl
+  | .blk _ .id, _ => rfl
+  | .blk _ (.const (_ + 1)), _ => rfl
+  | .blk _ (.const 0), _ :: _ => rfl
+
+theorem trim_dR (env : Env) : ∀ r, sapp (dR env (trim r)) blank = sapp (dR env r) blank
+  | [] => rfl
+  | it :: r => by
+    show sapp (dR env (trimAux it (trim r))) blank = _
+    rw [trimAux_dR]
+    show sapp (it.den env ++ dR env (trim r)) blank = sapp (it.den env ++ dR env r) blank
+    rw [sapp_append, sapp_append, trim_dR env r]
+
+theorem trim_dL (env : Env) : ∀ l, sapp (dL env (trim l)) blank = sapp (dL env l) blank
+  | [] => rfl
+  | it :: l => by
+    show sapp (dL env (trimAux it (trim l))) blank = _
+    rw [trimAux_dL]
+    show sapp ((it.den env).reverse ++ dL env (trim l)) blank =
+      sapp ((it.den env).reverse ++ dL env l) blank
+    rw [sapp_append, sapp_append, trim_dL env l]
+
+/-- Move a constant block past the equal symbols after it. -/
+def ins : Item → List Item → List Item
+  | .blk i (.const c), .sym a :: rest =>
+    if a = c then .sym a :: ins (.blk i (.const c)) rest else .blk i (.const c) :: .sym a :: rest
+  | it, r => it :: r
+
+/-- In every run of one constant, symbols before blocks. -/
+def canon : List Item → List Item
+  | [] => []
+  | it :: r => ins it (canon r)
+
+theorem ins_dR (env : Env) : ∀ (it : Item) (r : List Item), dR env (ins it r) = dR env (it :: r)
+  | .blk i (.const c), .sym a :: rest => by
+    by_cases h : a = c
+    · subst h
+      show dR env (if a = a then .sym a :: ins (.blk i (.const a)) rest
+        else .blk i (.const a) :: .sym a :: rest) = _
+      rw [ite_eq_left rfl]
+      show [a] ++ dR env (ins (.blk i (.const a)) rest) = _
+      rw [ins_dR env (.blk i (.const a)) rest]
+      show [a] ++ ((env.getD i []).map (Fn.const a).app ++ dR env rest) =
+        (env.getD i []).map (Fn.const a).app ++ ([a] ++ dR env rest)
+      rw [← List.append_assoc ((env.getD i []).map (Fn.const a).app), const_comm]
+      rfl
+    · show dR env (if a = c then .sym a :: ins (.blk i (.const c)) rest
+        else .blk i (.const c) :: .sym a :: rest) = _
+      rw [ite_eq_right h]
+  | .blk _ .id, _ => rfl
+  | .blk _ (.const _), [] => rfl
+  | .blk _ (.const _), .blk _ _ :: _ => rfl
+  | .sym _, _ => rfl
+
+theorem ins_dL (env : Env) : ∀ (it : Item) (l : List Item), dL env (ins it l) = dL env (it :: l)
+  | .blk i (.const c), .sym a :: rest => by
+    by_cases h : a = c
+    · subst h
+      show dL env (if a = a then .sym a :: ins (.blk i (.const a)) rest
+        else .blk i (.const a) :: .sym a :: rest) = _
+      rw [ite_eq_left rfl]
+      show [a].reverse ++ dL env (ins (.blk i (.const a)) rest) = _
+      rw [ins_dL env (.blk i (.const a)) rest]
+      show [a] ++ (((env.getD i []).map (Fn.const a).app).reverse ++ dL env rest) =
+        ((env.getD i []).map (Fn.const a).app).reverse ++ ([a] ++ dL env rest)
+      rw [const_rev, ← List.append_assoc ((env.getD i []).map (Fn.const a).app), const_comm]
+      rfl
+    · show dL env (if a = c then .sym a :: ins (.blk i (.const c)) rest
+        else .blk i (.const c) :: .sym a :: rest) = _
+      rw [ite_eq_right h]
+  | .blk _ .id, _ => rfl
+  | .blk _ (.const _), [] => rfl
+  | .blk _ (.const _), .blk _ _ :: _ => rfl
+  | .sym _, _ => rfl
+
+theorem canon_dR (env : Env) : ∀ r, dR env (canon r) = dR env r
+  | [] => rfl
+  | it :: r => by
+    show dR env (ins it (canon r)) = _
+    rw [ins_dR]
+    show it.den env ++ dR env (canon r) = it.den env ++ dR env r
+    rw [canon_dR env r]
+
+theorem canon_dL (env : Env) : ∀ l, dL env (canon l) = dL env l
+  | [] => rfl
+  | it :: l => by
+    show dL env (ins it (canon l)) = _
+    rw [ins_dL]
+    show (it.den env).reverse ++ dL env (canon l) = (it.den env).reverse ++ dL env l
+    rw [canon_dL env l]
+
+/-- Drop the variables of `E`, order constant runs, drop blanks at both far ends. -/
+def SC.norm (E : List Nat) (c : SC) : SC :=
+  ⟨c.q, trim (canon (dropE E c.l)), trim (canon (dropE E c.r)), c.dirL⟩
+
+theorem den_norm {env : Env} {E : List Nat} (hE : AllEmpty env E) (c : SC) :
+    (c.norm E).den env = c.den env := by
+  obtain ⟨q, l, r, dl⟩ := c
+  cases dl with
+  | false =>
+    show (⟨q, sapp (dL env (trim (canon (dropE E l)))) blank,
+        sapp (dR env (trim (canon (dropE E r)))) blank⟩ : ZC) =
+      ⟨q, sapp (dL env l) blank, sapp (dR env r) blank⟩
+    rw [trim_dL, canon_dL, dL_dropE hE, trim_dR, canon_dR, dR_dropE hE]
+  | true =>
+    show (⟨q, stail (sapp (dL env (trim (canon (dropE E l)))) blank),
+        scons (sapp (dL env (trim (canon (dropE E l)))) blank 0)
+          (sapp (dR env (trim (canon (dropE E r)))) blank)⟩ : ZC) =
+      ⟨q, stail (sapp (dL env l) blank), scons (sapp (dL env l) blank 0) (sapp (dR env r) blank)⟩
+    rw [trim_dL, canon_dL, dL_dropE hE, trim_dR, canon_dR, dR_dropE hE]
+
+/-- `mreach`, comparing configurations with the variables of `E` dropped. -/
+def mreachN (M : LTM) (sets : Env) (E : List Nat) : Nat → SC → SC → Bool
+  | 0, c, t => decide (c.norm E = t.norm E)
+  | k + 1, c, t =>
+    decide (c.norm E = t.norm E) || ((mstep M sets c).map fun c' => mreachN M sets E k c' t).getD false
+
+/-- The same with a first concrete step. -/
+def mreach1N (M : LTM) (sets : Env) (E : List Nat) : Nat → SC → SC → Bool
+  | 0, _, _ => false
+  | k + 1, c, t =>
+    if c.q = M.beep then false else ((cstep M c).map fun c' => mreachN M sets E k c' t).getD false
+
+theorem mreachN_sound {M : LTM} {sets env : Env} {E : List Nat} (hv : Valid sets env)
+    (hE : AllEmpty env E) :
+    ∀ (k : Nat) (c t : SC), mreachN M sets E k c t = true → M.Reach (c.den env) (t.den env) := by
+  intro k
+  induction k with
+  | zero =>
+    intro c t h
+    have e : c.norm E = t.norm E := of_decide_eq_true h
+    rw [← den_norm hE c, e, den_norm hE t]
+    exact LTM.Reach.refl M _
+  | succ k ih =>
+    intro c t h
+    by_cases hct : c.norm E = t.norm E
+    · rw [← den_norm hE c, hct, den_norm hE t]
+      exact LTM.Reach.refl M _
+    · have h0 : (decide (c.norm E = t.norm E) ||
+          ((mstep M sets c).map fun c' => mreachN M sets E k c' t).getD false) = true := h
+      rw [decide_eq_false hct, Bool.false_or] at h0
+      cases hm : mstep M sets c with
+      | none =>
+        rw [hm] at h0
+        have h1 : false = true := h0
+        cases h1
+      | some c' =>
+        rw [hm] at h0
+        exact (mstep_sound hv hm).trans (ih c' t h0)
+
+theorem mreach1N_sound {M : LTM} {sets env : Env} {E : List Nat} (hv : Valid sets env)
+    (hE : AllEmpty env E) :
+    ∀ (k : Nat) (c t : SC), mreach1N M sets E k c t = true → M.Reach1 (c.den env) (t.den env)
+  | 0, _, _, h => by cases h
+  | k + 1, c, t, h => by
+    have h0 : (if c.q = M.beep then false
+        else ((cstep M c).map fun c' => mreachN M sets E k c' t).getD false) = true := h
+    by_cases hq : c.q = M.beep
+    · rw [ite_eq_left hq] at h0
+      cases h0
+    · rw [ite_eq_right hq] at h0
+      cases hm : cstep M c with
+      | none =>
+        rw [hm] at h0
+        have h1 : false = true := h0
+        cases h1
+      | some c' =>
+        rw [hm] at h0
+        obtain ⟨n, hn⟩ := mreachN_sound hv hE k c' t h0
+        exact ⟨n, by rw [LTM.zrun_succ hq (cstep_zstep hm)]; exact hn⟩
+
+/-- A segment check: from `c` (variables `env`, those of `E` empty) to `t` (variables
+`ρ` over `env`). -/
+theorem check {M : LTM} {sets env : Env} {E : List Nat} {ρ : List (List Nat)} {k : Nat}
+    {c t : SC} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreachN M sets E k (c.norm E) (t.subst (Item.ren ρ)) = true) :
+    M.Reach (c.den env) (t.den (ρ.map (cat env))) := by
+  rw [den_ren, ← den_norm hE c]
+  exact mreachN_sound hv hE k _ _ h
+
+theorem check1 {M : LTM} {sets env : Env} {E : List Nat} {ρ : List (List Nat)} {k : Nat}
+    {c t : SC} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreach1N M sets E k (c.norm E) (t.subst (Item.ren ρ)) = true) :
+    M.Reach1 (c.den env) (t.den (ρ.map (cat env))) := by
+  rw [den_ren, ← den_norm hE c]
+  exact mreach1N_sound hv hE k _ _ h
+
+/-- A loop body: from `c` with `env[i] = b :: _` to `c` with `env[i'] = _ ++ [b]`. -/
+theorem body {M : LTM} {sets env : Env} {E : List Nat} (hv : Valid sets env) (hE : AllEmpty env E)
+    {i i' : Nat} (hi : i < env.length) (hi' : i' < env.length) {b k : Nat} {c : SC}
+    (h : mreachN M sets E k (c.subst (Item.cons i b)) (c.subst (Item.snoc i' b)) = true) :
+    M.Reach (c.den (Env.upd env i (b :: ·))) (c.den (Env.upd env i' (· ++ [b]))) := by
+  rw [den_cons hi, den_snoc hi']
+  exact mreachN_sound hv hE _ _ _ h
 
 end ZP

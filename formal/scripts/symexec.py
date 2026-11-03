@@ -62,6 +62,12 @@ def view(lst):
     return ('block', it[1], it[2], lst[1:])
 
 
+def swap(i, f, rest):
+    if rest and rest[0][0] == 's' and f == rest[0][1]:
+        return (rest[0], ('b', i, f)) + tuple(rest[1:])
+    return None
+
+
 def mstep(sets, c):
     q, l, r, dl = c
     if q == BEEP:
@@ -77,7 +83,10 @@ def mstep(sets, c):
             return (q2, (('s', w),) + l, rest, False) if d == 1 else (q2, l, (('s', w),) + rest, True)
         i, f, rest = v[1], v[2], v[3]
         f2 = sweep_fn(q, 1, sets[i] if i < len(sets) else [], f)
-        return None if f2 is None else (q, (('b', i, f2),) + l, rest, False)
+        if f2 is None:
+            sw = swap(i, f, rest)
+            return None if sw is None else (q, l, sw, False)
+        return (q, (('b', i, f2),) + l, rest, False)
     v = view(l)
     if v[0] == 'cell':
         a, rest = v[1], v[2]
@@ -88,7 +97,10 @@ def mstep(sets, c):
         return (q2, (('s', w),) + rest, r, False) if d == 1 else (q2, rest, (('s', w),) + r, True)
     i, f, rest = v[1], v[2], v[3]
     f2 = sweep_fn(q, 0, sets[i] if i < len(sets) else [], f)
-    return None if f2 is None else (q, rest, (('b', i, f2),) + r, True)
+    if f2 is None:
+        sw = swap(i, f, rest)
+        return None if sw is None else (q, sw, r, True)
+    return (q, rest, (('b', i, f2),) + r, True)
 
 
 def run(sets, c, stop=None, limit=100000):
@@ -165,3 +177,82 @@ def sc(q, left, right, dl=False):
     if isinstance(q, str):
         q = Q[q]
     return (q, tuple(reversed(left)), tuple(right), dl)
+
+
+# ---- renaming, dropping empty variables, concrete steps ----
+def ren(rho):
+    def f(it):
+        if it[0] == 's':
+            return [it]
+        ks = rho[it[1]] if it[1] < len(rho) else []
+        return [('b', k, it[2]) for k in ks]
+    return f
+
+
+def trim(lst):
+    lst = list(lst)
+    while lst and (lst[-1] == ('s', 0) or (lst[-1][0] == 'b' and lst[-1][2] == 0)):
+        lst.pop()
+    return tuple(lst)
+
+
+def ins(it, r):
+    if it[0] == 'b' and it[2] != 'id' and r and r[0] == ('s', it[2]):
+        return (r[0],) + ins(it, r[1:])
+    return (it,) + tuple(r)
+
+
+def canon(lst):
+    out = ()
+    for it in reversed(list(lst)):
+        out = ins(it, out)
+    return out
+
+
+def norm(c, E):
+    q, l, r, dl = c
+    keep = lambda it: not (it[0] == 'b' and it[1] in E)
+    return (q, trim(canon(filter(keep, l))), trim(canon(filter(keep, r))), dl)
+
+
+def cstep(c):
+    q, l, r, dl = c
+    v = view(l if dl else r)
+    if v[0] != 'cell':
+        return None
+    a, rest = v[1], v[2]
+    x = act(q, a)
+    if x is None:
+        return None
+    w, d, q2 = x
+    if not dl:
+        return (q2, (('s', w),) + l, rest, False) if d == 1 else (q2, l, (('s', w),) + rest, True)
+    return (q2, (('s', w),) + rest, r, False) if d == 1 else (q2, rest, (('s', w),) + r, True)
+
+
+def reachN(sets, E, c, t, limit=200000, first=False):
+    """Fuel for mreachN (or mreach1N if first) from c to t, or None."""
+    tn = norm(t, E)
+    c = norm(c, E)
+    k = 0
+    if first:
+        if c[0] == BEEP:
+            return None
+        c = cstep(c)
+        k = 1
+        if c is None:
+            return None
+    while k < limit:
+        if norm(c, E) == tn:
+            return k
+        c = mstep(sets, c)
+        if c is None:
+            return None
+        k += 1
+    return None
+
+
+def why(sets, c, n=10**6):
+    """Run until stuck and show where."""
+    k, c2 = run(sets, c, limit=n)
+    return k, show(c2)
