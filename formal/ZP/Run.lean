@@ -269,10 +269,10 @@ theorem set_eq (A : List Bool) (c : Option Bool) (B : List Bool) (hc : c = none 
   · rw [if_neg (Nat.ne_of_lt h), List.getElem?_append_left h, List.getElem?_append_left h]
   · subst h
     simp
-  · rw [if_neg (Nat.ne_of_gt h), List.getElem?_append_right (by omega),
-      List.getElem?_append_right (by omega)]
-    obtain ⟨k, hk⟩ : ∃ k, i - A.length = k + 1 := ⟨i - A.length - 1, by omega⟩
-    rw [hk]
+  · rw [if_neg (Nat.ne_of_gt h)]
+    obtain ⟨k, rfl⟩ : ∃ k, i = A.length + (k + 1) := ⟨i - A.length - 1, by omega⟩
+    have hle : A.length ≤ A.length + (k + 1) := Nat.le_add_right _ _
+    rw [List.getElem?_append_right hle, List.getElem?_append_right hle, Nat.add_sub_cancel_left]
     cases c with
     | none => simp [hc rfl]
     | some x => simp
@@ -325,9 +325,6 @@ theorem bn_cases (b : Bool) : bn b = 0 ∨ bn b = 2 ∨ bn b = 3 := by cases b <
 theorem cellN_some (b : Bool) : cellN (some b) = bn b := by cases b <;> rfl
 
 theorem bitsOf_cons (b : Bool) (l : List Bool) : bitsOf (b :: l) = bn b :: bitsOf l := rfl
-
-theorem bitsOf_snoc (l : List Bool) (b : Bool) : bitsOf (l ++ [b]) = bitsOf l ++ [bn b] := by
-  simp [bitsOf, bn]
 
 theorem bits3 (a b c : Bool) (rest : List Bool) :
     (bitsOf (a :: b :: c :: rest)).reverse = (bitsOf rest).reverse ++ [bn c, bn b, bn a] := by
@@ -427,12 +424,12 @@ theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) 
   · have e := hR1.2.1 rfl
     simp only [List.cons.injEq, and_true] at e
     subst e
-    refine ⟨fun _ => ?_, fun h => absurd h (by decide)⟩
+    refine ⟨fun _ => ?_, fun h => by simp at h⟩
     exact segShort1 z.Lw z.Rw (W ++ 1 :: F) g hLw hRw hW'
   · have e := hR1.2.2 rfl
     simp only [List.getD, List.getElem?_cons_succ, List.getElem?_cons_zero, Option.getD_some] at e
     subst e
-    refine ⟨fun _ => ?_, fun h => absurd h (by decide)⟩
+    refine ⟨fun _ => ?_, fun h => by simp at h⟩
     have h := segShort2 z.Lw z.Rw (W ++ 1 :: F) g (bn r0) (bn_bits r0) hLw hRw hW'
     exact h.of_eq (hd_eq (by cases r0 <;> rfl) rfl) rfl
   · have hrest : Bits (bitsOf rest).reverse := bitsOf_rev rest
@@ -462,9 +459,7 @@ theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) 
             hLw (bn_cases r0) hb hX2
           rw [← eX, hcode] at hp
           refine ⟨g', hg', hm.trans (hp.of_eq rfl ?_)⟩
-          show _ = hd Q.BK2 _ (1 :: (1 :: (W ++ 1 :: F)))
-          rw [cellN_some]
-          rfl
+          cases r0 <;> rfl
         | cons r Rt =>
           have hm := segMv0c (bitsOf rest).reverse (bitsOf Lt.reverse) (bitsOf Rt) (W ++ 1 :: F) g (bn r0)
             (bn r) (bn_bits r0) (bn_bits r) hrest hLw (Bits.ofB _) hW'
@@ -479,11 +474,12 @@ theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) 
           · show _ = hd Q.BK2 ((bitsOf _).reverse ++ _ ++ 0 :: (bitsOf (r0 :: Lt).reverse ++ [cellN (some r)]))
               (1 :: (bitsOf Rt ++ 1 :: (W ++ 1 :: F)))
             rw [cellN_some, List.reverse_cons, bitsOf_snoc]
+            rfl
       | true =>
         have hm := segMv1 (bitsOf rest).reverse (bitsOf Lt.reverse) (bitsOf Rt) (W ++ 1 :: F) g (bn r0)
           (bn_bits r0) hrest hLw (Bits.ofB _) hW'
         have hX2 : Sym4 (bitsOf Rt ++ 1 :: (W ++ 1 :: F)) := ((Bits.ofB Rt).noB.app (NoB.cons h1 hW')).sym4
-        cases Lt using List.reverseRecOn with
+        cases Lt with
         | nil =>
           obtain ⟨g0, rfl⟩ : ∃ g0, g = g0 + 1 := ⟨g - 1, by omega⟩
           obtain ⟨g', hg', hp⟩ := post (r0 :: true :: true :: rest) hf [] 0 0 (bn r0)
@@ -491,14 +487,13 @@ theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) 
           rw [hcode] at hp
           refine ⟨g', hg', (hm.of_eq rfl (hd_eq rfl ?_)).trans (hp.of_eq rfl rfl)⟩
           simp [List.replicate_succ, rep_cons_comm, Zp.Lw, bitsOf]
-        | append_singleton Lt x _ =>
+        | cons x Lt =>
           obtain ⟨g', hg', hp⟩ := post (r0 :: true :: true :: rest) hf (bitsOf Lt.reverse) (bn x) 0 (bn r0)
             (bitsOf Rt ++ 1 :: (W ++ 1 :: F)) g (Bits.ofB _) (bn_cases x) (bn_bits r0) hX2
           rw [hcode] at hp
           refine ⟨g', hg', (hm.of_eq rfl (hd_eq rfl ?_)).trans (hp.of_eq rfl ?_)⟩
           · simp [bitsOf, bn]
-          · show _ = hd Q.BK2 _ (1 :: (bitsOf (r0 :: Rt) ++ 1 :: (W ++ 1 :: F)))
-            simp [Zp.mv, Zp.Lw, cellN_some, bitsOf, bn]
+          · cases x <;> rfl
 
 /-! ## The whole run -/
 
@@ -528,11 +523,11 @@ theorem runI (n : Nat) (W : List Nat) (hW : NoB W) :
           cases h : rotN (iota z.c) R with
           | nil => rw [h] at hR1; exact absurd hR1.1 (by simp)
           | cons r rest => exact ⟨r, rest, rfl⟩
-        rw [e, bits1] at hE
+        rw [e, bits1] at hE hcd
         have hx := segExh (bitsOf rest).reverse z.Lw z.Rw (W ++ 1 :: FWr n (ds.map fun _ => n + 1)) g1 (bn r)
           (bn_bits r) (bitsOf_rev _) (Bits.ofB _) (Bits.ofB _)
           (hW.app (NoB.cons h1 (FWr_noB n _)))
-        exact hcd.trans (hE.trans hx)
+        exact (hcd.trans (hE.trans hx)).of_eq rfl (by simp [RE, runAux, dpOf, bn])
     | succ T =>
       obtain ⟨ds1, hd1, hl1, hv1, hdec⟩ := hD.1 (by omega)
       have hne1 : ds1 ≠ [] := by
