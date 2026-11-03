@@ -852,7 +852,7 @@ theorem vStep (j : List Nat) (hj : Bits j) (Sb cl : List Bool) (hcl : cl.length 
     exact h.trans (hA.of_eq (by rw [← eS]; simp [dpOf, bn]) (by simp [TR, tflag]))
   · rw [ho, hRE] at h
     have hcr : bitsOf cl.reverse = 2 :: List.replicate Sb.length 2 := by
-      rw [hc]; simp [bitsOf, List.replicate_succ]
+      rw [hc]; simp [bitsOf, List.replicate_succ, rep_snoc_eq]
     have hU := vUnder j (bitsOf Sb) (List.replicate Sb.length 2) (FWr Sb.length [d]) hj (Bits.ofB _)
       (rep_z2 _) (FWr_noB _ _)
     exact h.trans (hU.of_eq (by rw [hcr]; simp [dpOf, bn]) (by simp [TR, tflag]))
@@ -998,7 +998,7 @@ theorem valr_full (n : Nat) : ∀ k, valr n (List.replicate k (n + 1)) + 1 = (n 
   | k + 1 => by
     have ih := valr_full n k
     show n + 1 + (n + 2) * valr n (List.replicate k (n + 1)) + 1 = (n + 2) ^ (k + 1)
-    rw [Nat.pow_succ, ← ih, Nat.add_one_mul, Nat.mul_comm (n + 2)]
+    rw [Nat.pow_succ, ← ih, Nat.mul_comm (valr n (List.replicate k (n + 1)) + 1), Nat.mul_add, Nat.mul_one]
     omega
 
 /-- Decider fuel, run of `J` on `s` with the clock, up to the dispatch state. -/
@@ -1097,7 +1097,7 @@ theorem pair_main (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
       · exact (dOk0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
       · exact (dOk1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
     have hinc := sincL (1 :: bitsOf (str J)) (NoB.cons one_nb hj.noB) rS 0
-    obtain ⟨n, hn⟩ := hA.trans (hok.trans (hinc.of_eq (by rw [eS]; rfl) (by rw [lay_hdR, eS1]; simp)))
+    obtain ⟨n, hn⟩ := hA.trans (hok.trans (hinc.of_eq (c4 := lay J (S + 1)) (by rw [eS]; rfl) (by rw [lay_hdR, eS1]; simp)))
     exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
   · have e : absStep (J, S) = (J + 1, 1) := by simp [absStep, hc]
     rw [e]
@@ -1110,7 +1110,7 @@ theorem pair_main (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
         (hdR (dpOf (bn (!inL (str S)))) [1]
           (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (1 :: (tflag (inL (str S)) ++ 1 :: Fu)))))
         (hd Q.BEEP (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [1]))) Y) ∧
-        zpLogic.Reach (hdR Q.EAs (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [2])))) Y)
+        zpLogic.Reach (hdR Q.EAs (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [2]))) Y)
           (hd Q.JINC (1 :: bitsOf (str J)) [1]) := by
       cases inL (str S)
       · exact ⟨1 :: Fu, (dBad1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
@@ -1118,7 +1118,7 @@ theorem pair_main (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
       · exact ⟨3 :: 1 :: Fu, (dBad0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
           dBad0E _ _ Fu hj hs hFu⟩
     obtain ⟨n1, hn1⟩ := hA.trans h1
-    obtain ⟨n2, hn2⟩ := h3.trans ((jincL rJ 0).of_eq (by rw [eJ]; rfl) (by rw [lay_hdR, eJ1, str_one]; rfl))
+    obtain ⟨n2, hn2⟩ := h3.trans ((jincL rJ 0).of_eq (c4 := lay (J + 1) 1) (by rw [eJ]; rfl) (by rw [lay_hdR, eJ1, str_one]; rfl))
     refine ⟨n1 + 1 + 1 + n2, by omega, fun h => absurd hc h,
       fun _ => ⟨n1 + 1, _, _, by omega, hn1, rfl, beepStep _ _ Y, ?_⟩⟩
     rw [show n1 + 1 + 1 + n2 - (n1 + 1) - 1 = n2 by omega]

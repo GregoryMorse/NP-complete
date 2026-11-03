@@ -7,6 +7,7 @@ public import ZP.LTM
 public import ZP.Logic
 public import ZP.Zip
 public import ZP.Outer
+public import ZP.Pair
 
 @[expose] public section
 
@@ -18,9 +19,9 @@ beep for beep and never halts. Between pairs its tape reads `M_g J M_1 s` (symbo
 `B = 0`, `M = 1`, `'0' = 2`, `'1' = 3`), with blanks everywhere else, and the machine
 is in state `GRB` on the blank right of `s` (`lay J S`).
 
-Everything here is proved from one open lemma, `pair_step`: from `lay J S` the
-machine reaches `lay` of `absStep (J, S)`, and visits the beep state on the way iff
-`J` is wrong on `S`, and then exactly once.
+Everything here follows from one lemma, `pair_step` (proved in `ZP/Pair.lean` as
+`pair_main`): from `lay J S` the machine reaches `lay` of `absStep (J, S)`, and visits
+the beep state on the way iff `J` is wrong on `S`, and then exactly once.
 -/
 
 namespace ZP
@@ -31,11 +32,11 @@ def Seg (z : ZC) (n : Nat) (z' : ZC) (b : Prop) : Prop :=
   (b → ∃ a c1 c2, a < n ∧ zpLogic.zrun a z = some c1 ∧ c1.q = zpLogic.beep ∧
       zpLogic.zstep c1 = some c2 ∧ zpLogic.zrun (n - a - 1) c2 = some z')
 
-/-- OPEN: one pair of the outer loop. -/
+/-- One pair of the outer loop. -/
 theorem pair_step (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
     ∃ n, 0 < n ∧
-      Seg (lay J S) n (lay (absStep (J, S)).1 (absStep (J, S)).2) (¬ Correct J S) := by
-  sorry
+      Seg (lay J S) n (lay (absStep (J, S)).1 (absStep (J, S)).2) (¬ Correct J S) :=
+  pair_main J S hJ hS
 
 theorem pair_step' (p : Nat × Nat) : ∃ n, 0 < n ∧ (1 ≤ p.1 → 1 ≤ p.2 →
     Seg (lay p.1 p.2) n (lay (absStep p).1 (absStep p).2) (¬ Correct p.1 p.2)) := by
