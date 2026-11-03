@@ -130,6 +130,10 @@ def SC.den (env : Env) (c : SC) : ZC :=
   | true => ⟨c.q, stail (sapp (dL env c.l) blank),
       scons (sapp (dL env c.l) blank 0) (sapp (dR env c.r) blank)⟩
 
+theorem SC.den_q (env : Env) (c : SC) : (c.den env).q = c.q := by
+  obtain ⟨q, l, r, dl⟩ := c
+  cases dl <;> rfl
+
 /-- Every word `env[i]` uses only symbols of `sets[i]`. -/
 def Valid (sets env : Env) : Prop := ∀ i, ∀ a ∈ env.getD i [], a ∈ sets.getD i []
 
@@ -425,8 +429,7 @@ theorem swapB_dR {env : Env} {i : Nat} {f : Fn} {rest r' : List Item}
       have e := const_comm a (env.getD i [])
       show (env.getD i []).map (Fn.const a).app ++ ([a] ++ dR env rest) =
         a :: ((env.getD i []).map (Fn.const a).app ++ dR env rest)
-      rw [← e, List.append_assoc]
-      rfl
+      rw [← List.append_assoc, e, List.cons_append]
     · rw [ite_eq_right hf] at h'
       cases h'
   | .blk _ _ :: _, h => cases h
@@ -442,10 +445,9 @@ theorem swapB_dL {env : Env} {i : Nat} {f : Fn} {rest l' : List Item}
       rw [ite_eq_left rfl] at h'
       cases h'
       have e := const_comm a (env.getD i [])
-      show ((env.getD i []).map (Fn.const a).app).reverse ++ ([a].reverse ++ dL env rest) =
+      show ((env.getD i []).map (Fn.const a).app).reverse ++ ([a] ++ dL env rest) =
         a :: (((env.getD i []).map (Fn.const a).app).reverse ++ dL env rest)
-      rw [const_rev, ← e, List.append_assoc]
-      rfl
+      rw [const_rev, ← List.append_assoc, e, List.cons_append]
     · rw [ite_eq_right hf] at h'
       cases h'
   | .blk _ _ :: _, h => cases h
@@ -1064,10 +1066,14 @@ theorem ins_dR (env : Env) : ∀ (it : Item) (r : List Item), dR env (ins it r) 
     · show dR env (if a = c then .sym a :: ins (.blk i (.const c)) rest
         else .blk i (.const c) :: .sym a :: rest) = _
       rw [ite_eq_right h]
-  | .blk _ .id, _ => rfl
+  | .blk _ .id, [] => rfl
+  | .blk _ .id, .sym _ :: _ => rfl
+  | .blk _ .id, .blk _ _ :: _ => rfl
   | .blk _ (.const _), [] => rfl
   | .blk _ (.const _), .blk _ _ :: _ => rfl
-  | .sym _, _ => rfl
+  | .sym _, [] => rfl
+  | .sym _, .sym _ :: _ => rfl
+  | .sym _, .blk _ _ :: _ => rfl
 
 theorem ins_dL (env : Env) : ∀ (it : Item) (l : List Item), dL env (ins it l) = dL env (it :: l)
   | .blk i (.const c), .sym a :: rest => by
@@ -1085,10 +1091,14 @@ theorem ins_dL (env : Env) : ∀ (it : Item) (l : List Item), dL env (ins it l) 
     · show dL env (if a = c then .sym a :: ins (.blk i (.const c)) rest
         else .blk i (.const c) :: .sym a :: rest) = _
       rw [ite_eq_right h]
-  | .blk _ .id, _ => rfl
+  | .blk _ .id, [] => rfl
+  | .blk _ .id, .sym _ :: _ => rfl
+  | .blk _ .id, .blk _ _ :: _ => rfl
   | .blk _ (.const _), [] => rfl
   | .blk _ (.const _), .blk _ _ :: _ => rfl
-  | .sym _, _ => rfl
+  | .sym _, [] => rfl
+  | .sym _, .sym _ :: _ => rfl
+  | .sym _, .blk _ _ :: _ => rfl
 
 theorem canon_dR (env : Env) : ∀ r, dR env (canon r) = dR env r
   | [] => rfl
@@ -1184,7 +1194,8 @@ theorem mreach1N_sound {M : LTM} {sets env : Env} {E : List Nat} (hv : Valid set
       | some c' =>
         rw [hm] at h0
         obtain ⟨n, hn⟩ := mreachN_sound hv hE k c' t h0
-        exact ⟨n, by rw [LTM.zrun_succ hq (cstep_zstep hm)]; exact hn⟩
+        have hq' : (c.den env).q ≠ M.beep := by rw [SC.den_q]; exact hq
+        exact ⟨n, by rw [LTM.zrun_succ hq' (cstep_zstep hm)]; exact hn⟩
 
 /-- A segment check: from `c` (variables `env`, those of `E` empty) to `t` (variables
 `ρ` over `env`). -/
