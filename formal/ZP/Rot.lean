@@ -94,7 +94,7 @@ theorem cyc_rotl1 (a : Bool) (T : List Bool) (i : Nat) :
   have hn : (T ++ [a]).length = T.length + 1 := by simp
   rw [hn]
   show (T ++ [a]).getD (i % (T.length + 1)) false = (a :: T).getD ((i + 1) % (T.length + 1)) false
-  have hr := Nat.mod_lt i (Nat.succ_pos T.length)
+  have hr : i % (T.length + 1) < T.length + 1 := Nat.mod_lt i (by omega)
   have hd := Nat.mod_add_div i (T.length + 1)
   by_cases h : i % (T.length + 1) < T.length
   · have e2 : (i + 1) % (T.length + 1) = i % (T.length + 1) + 1 := by
@@ -152,8 +152,7 @@ theorem cyc_zero (m : Nat) (R' : List Bool) :
   have hl : (List.replicate m true ++ false :: R').length = m + 1 + R'.length := by
     simp only [List.length_append, List.length_replicate, List.length_cons]; omega
   rw [hl, Nat.mod_eq_of_lt (show m < m + 1 + R'.length by omega)]
-  have hm : (List.replicate m true).length ≤ m := by simp
-  simp [List.getD, List.getElem?_append_right hm]
+  simp [List.getD]
 
 theorem onesFrom_ones (m : Nat) (R' : List Bool) :
     ∀ f i, i ≤ m → m - i < f → onesFrom (List.replicate m true ++ false :: R') f i = m - i
