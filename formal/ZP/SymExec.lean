@@ -1221,4 +1221,116 @@ theorem body {M : LTM} {sets env : Env} {E : List Nat} (hv : Valid sets env) (hE
   rw [den_cons hi, den_snoc hi']
   exact mreachN_sound hv hE _ _ _ h
 
+/-! ## Instantiating variables by item lists -/
+
+def Fn.comp : Fn → Fn → Fn
+  | .id, f => f
+  | .const c, _ => .const c
+
+theorem Fn.comp_fun (g f : Fn) : (g.comp f).app = g.app ∘ f.app := by
+  funext a
+  cases g <;> rfl
+
+def Item.mapF (g : Fn) : Item → Item
+  | .sym a => .sym (g.app a)
+  | .blk k f => .blk k (g.comp f)
+
+theorem dR_mapF (env : Env) (g : Fn) :
+    ∀ its : List Item, dR env (its.map (Item.mapF g)) = (dR env its).map g.app
+  | [] => rfl
+  | .sym a :: r => by
+    show [g.app a] ++ dR env (r.map (Item.mapF g)) = ([a] ++ dR env r).map g.app
+    rw [dR_mapF env g r] <;> rfl
+  | .blk k f :: r => by
+    show (env.getD k []).map (g.comp f).app ++ dR env (r.map (Item.mapF g)) =
+      ((env.getD k []).map f.app ++ dR env r).map g.app
+    rw [dR_mapF env g r, List.map_append, List.map_map, Fn.comp_fun]
+
+theorem map_id_app : ∀ w : List Nat, w.map Fn.id.app = w
+  | [] => rfl
+  | a :: w => by
+    show a :: w.map Fn.id.app = a :: w
+    rw [map_id_app w]
+
+/-- The word of one item, with `blk k .id` read as `env[k]` itself. -/
+def den1 (env : Env) : Item → List Nat
+  | .sym a => [a]
+  | .blk k .id => env.getD k []
+  | .blk k (.const c) => (env.getD k []).map (Fn.const c).app
+
+/-- The word of a list of items, in a form that reduces well on literals. -/
+def dW (env : Env) : List Item → List Nat
+  | [] => []
+  | [it] => den1 env it
+  | it :: r => den1 env it ++ dW env r
+
+theorem den1_eq (env : Env) (it : Item) : den1 env it = it.den env := by
+  cases it with
+  | sym a => rfl
+  | blk k f =>
+    cases f with
+    | id => exact (map_id_app _).symm
+    | const c => rfl
+
+theorem dW_eq (env : Env) : ∀ its : List Item, dW env its = dR env its
+  | [] => rfl
+  | [it] => by
+    show den1 env it = it.den env ++ []
+    rw [den1_eq, List.append_nil]
+  | it :: it2 :: r => by
+    show den1 env it ++ dW env (it2 :: r) = it.den env ++ dR env (it2 :: r)
+    rw [den1_eq, dW_eq env (it2 :: r)]
+
+theorem getD_map_nil {α β : Type} (g : List α → List β) (hg : g [] = []) :
+    ∀ (σ : List (List α)) (i : Nat), (σ.map g).getD i [] = g (σ.getD i [])
+  | [], i => by cases i <;> exact hg.symm
+  | _ :: _, 0 => rfl
+  | _ :: σ, i + 1 => getD_map_nil g hg σ i
+
+/-- Variable `i` becomes the items `σ[i]`. -/
+def Item.inst (σ : List (List Item)) : Item → List Item
+  | .sym a => [.sym a]
+  | .blk i f => (σ.getD i []).map (Item.mapF f)
+
+theorem item_inst (env : Env) (σ : List (List Item)) (it : Item) :
+    it.den (σ.map (dW env)) = dR env (it.inst σ) := by
+  cases it with
+  | sym a => rfl
+  | blk i f =>
+    show ((σ.map (dW env)).getD i []).map f.app = dR env ((σ.getD i []).map (Item.mapF f))
+    rw [getD_map_nil (dW env) rfl, dW_eq, dR_mapF]
+
+theorem den_inst (env : Env) (σ : List (List Item)) (c : SC) :
+    c.den (σ.map (dW env)) = (c.subst (Item.inst σ)).den env :=
+  den_subst (item_inst env σ) c
+
+theorem den_of_norm {env : Env} {E : List Nat} (hE : AllEmpty env E) {c c' : SC}
+    (h : c.norm E = c'.norm E) : c.den env = c'.den env := by
+  rw [← den_norm hE c, h, den_norm hE c']
+
+/-- A segment check: from `c` (variables `env`, those of `E` empty) to `t` with its
+variables instantiated by `σ`. -/
+theorem checkI {M : LTM} {sets env : Env} {E : List Nat} {σ : List (List Item)} {k : Nat}
+    {c t : SC} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreachN M sets E k (c.norm E) (t.subst (Item.inst σ)) = true) :
+    M.Reach (c.den env) (t.den (σ.map (dW env))) := by
+  rw [den_inst, ← den_norm hE c]
+  exact mreachN_sound hv hE k _ _ h
+
+theorem check1I {M : LTM} {sets env : Env} {E : List Nat} {σ : List (List Item)} {k : Nat}
+    {c t : SC} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreach1N M sets E k (c.norm E) (t.subst (Item.inst σ)) = true) :
+    M.Reach1 (c.den env) (t.den (σ.map (dW env))) := by
+  rw [den_inst, ← den_norm hE c]
+  exact mreach1N_sound hv hE k _ _ h
+
+/-- Using a symbolic lemma `A ⇝ B` at an instance: `c` matches `A` under `σ`, and the
+run continues from `B` under `σ`. -/
+theorem LTM.Reach.inst {M : LTM} {env : Env} {E : List Nat} {σ : List (List Item)}
+    {A B c : SC} (hAB : M.Reach (A.den (σ.map (dW env))) (B.den (σ.map (dW env))))
+    (hE : AllEmpty env E) (h : c.norm E = (A.subst (Item.inst σ)).norm E) :
+    M.Reach (c.den env) ((B.subst (Item.inst σ)).den env) := by
+  rw [den_of_norm hE h, ← den_inst, ← den_inst]
+  exact hAB
+
 end ZP

@@ -38,12 +38,6 @@ theorem mem_bits {b : Nat} (h : b ∈ bits) : b = 2 ∨ b = 3 := by
 
 theorem nil_valid (S : List Nat) : ∀ a ∈ ([] : List Nat), a ∈ S := fun _ h => by cases h
 
-theorem map_id_app : ∀ w : List Nat, w.map Fn.id.app = w
-  | [] => rfl
-  | a :: w => by
-    show a :: w.map Fn.id.app = a :: w
-    rw [map_id_app w]
-
 /-! ## Pair start: `M_g J M_1 s`, state `GRB` on the blank after `s` -/
 
 def L0 : SC := ⟨Q.GRB, [.blk 1 .id, .sym 1, .blk 0 .id, .sym 1], [], false⟩
