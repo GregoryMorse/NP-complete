@@ -295,7 +295,7 @@ theorem zconf_rel (M : LTM) : ∀ k z, M.zconf k = some z → ∃ c, M.conf k = 
 theorem zconf_add (M : LTM) (k n : Nat) {z z' : ZC} (hk : M.zconf k = some z)
     (hn : M.zrun n z = some z') :
     M.zconf (k + n) = some z' ∧ ∀ j, j < n → ∃ y, M.zconf (k + j) = some y ∧ y.q ≠ M.beep := by
-  induction n generalizing z with
+  induction n generalizing k z with
   | zero =>
     have h' : some z = some z' := hn
     cases h'

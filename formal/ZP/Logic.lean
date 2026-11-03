@@ -303,7 +303,7 @@ def zpGlen4 : List (List Nat) :=
 def zpGlen : List (List Nat) :=
   zpGlen0 ++ zpGlen1 ++ zpGlen2 ++ zpGlen3 ++ zpGlen4
 
-/-- State numbers of `zpLogic`, by their names in `native/zp2.py`. -/
+-- State numbers of `zpLogic`, by their names in `native/zp2.py`.
 namespace Q
 def I0 : Nat := 0
 def A : Nat := 1
