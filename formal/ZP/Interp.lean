@@ -90,21 +90,23 @@ theorem segB (Z Lw X : List Nat) (a g p ch b : Nat) (hch : ch = 0 ∨ ch ∈ bit
   have hb' := mem_bits hb
   rcases hch with rfl | hch
   · rcases hb' with rfl | rfl
-    all_goals exact checkFT (env := [Z, List.replicate a 0, List.replicate g 0, Lw, List.replicate p 1, X])
-      (E := []) (k := 16) hv trivial
-      (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0,
-        .blk 3 .id, .sym 0, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0, .blk 3 .id, .sym 0])
-      (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+    all_goals
+      exact checkFT (env := [Z, List.replicate a 0, List.replicate g 0, Lw, List.replicate p 1, X])
+          (E := []) (k := 16) hv trivial
+          (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0,
+            .blk 3 .id, .sym 0, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0, .blk 3 .id, .sym 0])
+          (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
   · rcases mem_bits hch with rfl | rfl <;> rcases hb' with rfl | rfl
-    all_goals exact checkFT (env := [Z, List.replicate a 0, List.replicate g 0, Lw, List.replicate p 1, X])
-      (E := []) (k := 16) hv trivial
-      (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0,
-        .blk 3 .id, .sym ch, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0, .blk 3 .id, .sym ch])
-      (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+    all_goals
+      exact checkFT (env := [Z, List.replicate a 0, List.replicate g 0, Lw, List.replicate p 1, X])
+          (E := []) (k := 16) hv trivial
+          (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0,
+            .blk 3 .id, .sym ch, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .blk 2 (.const 0), .sym 0, .blk 3 .id, .sym ch])
+          (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-! ## `BK2` on a blank: to the last fuel cell -/
 
@@ -128,11 +130,12 @@ theorem segExh (Qw Lw Rw W : List Nat) (g r : Nat) (hr : r ∈ bits) (hQ : Bits 
       (hdR Q.DP10 [1] W) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
   rcases mem_bits hr with rfl | rfl
-  all_goals exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 24) hv trivial
-    (ls := [.blk 0 .id, .sym r, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
-    (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
-    (ls' := [.sym 1]) (rs' := [.blk 4 .id])
-    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+  all_goals
+    exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 24) hv trivial
+        (ls := [.blk 0 .id, .sym r, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+        (ls' := [.sym 1]) (rs' := [.blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-! ## Peek: `FBACK` on the blank `ch` reads `R[0..2]` at `Q`'s right end -/
 
@@ -143,11 +146,12 @@ theorem segHalt (Qw Lw Rw W : List Nat) (g r0 r1 : Nat) (h0 : r0 ∈ bits) (h1 :
       (hdR (dpOf r0) [1] W) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
   rcases mem_bits h0 with rfl | rfl <;> rcases mem_bits h1 with rfl | rfl
-  all_goals exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 40) hv trivial
-    (ls := [.blk 0 .id, .sym 2, .sym r1, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
-    (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
-    (ls' := [.sym 1]) (rs' := [.blk 4 .id])
-    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+  all_goals
+    exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 40) hv trivial
+        (ls := [.blk 0 .id, .sym 2, .sym r1, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+        (ls' := [.sym 1]) (rs' := [.blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
     zpLogic.Reach (hd Q.FBACK ([2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
@@ -165,11 +169,12 @@ theorem segShort2 (Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hL : Bit
       (hdR (dpOf r0) [1] W) := by
   have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
   rcases mem_bits h0 with rfl | rfl
-  all_goals exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 36) hv trivial
-    (ls := [.sym 2, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
-    (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
-    (ls' := [.sym 1]) (rs' := [.blk 4 .id])
-    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+  all_goals
+    exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 36) hv trivial
+        (ls := [.sym 2, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+        (ls' := [.sym 1]) (rs' := [.blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-! ## Write and move, then `RTW` on `Q`'s right end -/
 
@@ -180,12 +185,13 @@ theorem segMv0e (Qw Lw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hQ : Bits 
       (hd Q.RTW (Qw ++ [3, 2, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ r0 :: 1 :: 1 :: W))) := by
   have hv := ivalid hQ (zeros4 g) hL Bits.nil hW NoB.nil
   rcases mem_bits h0 with rfl | rfl
-  all_goals exact checkTT (env := [Qw, List.replicate g 0, Lw, [], W, []]) (E := []) (k := 26) hv trivial
-    (ls := [.blk 0 .id, .sym 3, .sym 2, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
-    (rs := [.sym 1, .sym 1, .blk 4 .id])
-    (ls' := [.blk 0 .id, .sym 3, .sym 2, .sym r0])
-    (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id, .sym r0, .sym 1, .sym 1, .blk 4 .id])
-    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+  all_goals
+    exact checkTT (env := [Qw, List.replicate g 0, Lw, [], W, []]) (E := []) (k := 26) hv trivial
+        (ls := [.blk 0 .id, .sym 3, .sym 2, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .sym 1, .blk 4 .id])
+        (ls' := [.blk 0 .id, .sym 3, .sym 2, .sym r0])
+        (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id, .sym r0, .sym 1, .sym 1, .blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-- Guest left move onto the cell `c`. -/
 theorem segMv0c (Qw Lw Rw W : List Nat) (g r0 c : Nat) (h0 : r0 ∈ bits) (hc : c ∈ bits)
@@ -195,12 +201,13 @@ theorem segMv0c (Qw Lw Rw W : List Nat) (g r0 c : Nat) (h0 : r0 ∈ bits) (hc : 
       (hd Q.RTW (Qw ++ [3, 2, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ r0 :: c :: 1 :: (Rw ++ 1 :: W)))) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
   rcases mem_bits h0 with rfl | rfl <;> rcases mem_bits hc with rfl | rfl
-  all_goals exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 26) hv trivial
-    (ls := [.blk 0 .id, .sym 3, .sym 2, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
-    (rs := [.sym 1, .sym c, .blk 3 .id, .sym 1, .blk 4 .id])
-    (ls' := [.blk 0 .id, .sym 3, .sym 2, .sym r0])
-    (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id, .sym r0, .sym c, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
-    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+  all_goals
+    exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 26) hv trivial
+        (ls := [.blk 0 .id, .sym 3, .sym 2, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .sym c, .blk 3 .id, .sym 1, .blk 4 .id])
+        (ls' := [.blk 0 .id, .sym 3, .sym 2, .sym r0])
+        (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id, .sym r0, .sym c, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-- Guest right move. -/
 theorem segMv1 (Qw Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits)
@@ -210,12 +217,13 @@ theorem segMv1 (Qw Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits)
       (hd Q.RTW (Qw ++ [3, 3, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ 1 :: r0 :: (Rw ++ 1 :: W)))) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
   rcases mem_bits h0 with rfl | rfl
-  all_goals exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 22) hv trivial
-    (ls := [.blk 0 .id, .sym 3, .sym 3, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
-    (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
-    (ls' := [.blk 0 .id, .sym 3, .sym 3, .sym r0])
-    (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 1, .sym r0, .blk 3 .id, .sym 1, .blk 4 .id])
-    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+  all_goals
+    exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 22) hv trivial
+        (ls := [.blk 0 .id, .sym 3, .sym 3, .sym r0, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+        (ls' := [.blk 0 .id, .sym 3, .sym 3, .sym r0])
+        (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 1, .sym r0, .blk 3 .id, .sym 1, .blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-! ## Consuming jump tokens -/
 
@@ -260,22 +268,24 @@ theorem segE2 (Z Lw X : List Nat) (a y p ch b : Nat) (hch : ch = 0 ∨ ch ∈ bi
   have hb' := mem_bits hb
   rcases hch with rfl | hch
   · rcases hb' with rfl | rfl
-    all_goals exact checkFT (env := [Z, List.replicate a 0, List.replicate y 0, Lw, List.replicate p 1, X])
-      (E := []) (k := 22) hv trivial
-      (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 1, .blk 2 (.const 0), .sym 0,
-        .blk 3 .id, .sym 0, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .blk 2 (.const 0), .sym 0, .blk 3 .id,
-        .sym 0])
-      (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+    all_goals
+      exact checkFT (env := [Z, List.replicate a 0, List.replicate y 0, Lw, List.replicate p 1, X])
+          (E := []) (k := 22) hv trivial
+          (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 1, .blk 2 (.const 0), .sym 0,
+            .blk 3 .id, .sym 0, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .blk 2 (.const 0), .sym 0, .blk 3 .id,
+            .sym 0])
+          (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
   · rcases mem_bits hch with rfl | rfl <;> rcases hb' with rfl | rfl
-    all_goals exact checkFT (env := [Z, List.replicate a 0, List.replicate y 0, Lw, List.replicate p 1, X])
-      (E := []) (k := 22) hv trivial
-      (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 1, .blk 2 (.const 0), .sym 0,
-        .blk 3 .id, .sym ch, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .blk 2 (.const 0), .sym 0, .blk 3 .id,
-        .sym ch])
-      (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
-      (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+    all_goals
+      exact checkFT (env := [Z, List.replicate a 0, List.replicate y 0, Lw, List.replicate p 1, X])
+          (E := []) (k := 22) hv trivial
+          (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 1, .blk 2 (.const 0), .sym 0,
+            .blk 3 .id, .sym ch, .sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (ls' := [.sym 2, .blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .blk 2 (.const 0), .sym 0, .blk 3 .id,
+            .sym ch])
+          (rs' := [.sym 1, .blk 4 (.const 1), .sym b, .blk 5 .id])
+          (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 end ZP
