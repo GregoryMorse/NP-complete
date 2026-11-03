@@ -459,7 +459,7 @@ theorem wbLoop : ∀ (jr Y : List Nat), Bits jr → Sym4 Y →
 theorem decFuel (s t : List Nat) (n : Nat) (hn : s.length = n) (hs : Bits s) (ht : ∀ a ∈ t, a ∈ T3) :
     ∀ Jr Jl i, Bits Jl → Bits Jr →
       zpLogic.Reach
-        (hdR Q.GRB (Jl ++ 1 :: (Jr ++ 1 :: (s ++ 1 :: 1 :: (t ++ 1 :: FWr n (List.replicate i (n + 1))))))) [])
+        (hdR Q.GRB (Jl ++ 1 :: (Jr ++ 1 :: (s ++ 1 :: 1 :: (t ++ 1 :: FWr n (List.replicate i (n + 1)))))) [])
         (hdR Q.GC (1 :: 1 :: (Jl ++ Jr ++ [1]))
           (s ++ 1 :: 1 :: (t ++ 1 :: FWr n (List.replicate (i + Jr.length + 1) (n + 1))))) := by
   intro Jr
@@ -519,5 +519,98 @@ theorem decFuel (s t : List Nat) (n : Nat) (hn : s.length = n) (hs : Bits s) (ht
     refine hA.trans ((hS.of_eq (by simp) rfl).trans (h2.of_eq ?_ (by simp)))
     rw [eF]
     simp
+
+
+/-! ## Run setup: copy the source left, the code into `Q`, rotate once -/
+
+theorem setup (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W F : List Nat)
+    (hV : 1 :: W1 = Vq ++ [1]) (hVq : NoB Vq) (hR : Sym4 Rest) (hW : NoB W) (hF : NoB F)
+    (hFb : ∃ a ∈ F, a ∈ bits)
+    (hWF : W1 ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) = W ++ 1 :: F) :
+    ∃ g, 1 ≤ g ∧ zpLogic.Reach (hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1]))) (bitsOf Xb ++ 1 :: Rest))
+      (Bd (rot (Pb.reverse ++ [false])) g ⟨[], Xb.head?, Xb.tail⟩ W F) := by
+  have hVn : NoB (Vq ++ [1]) := hVq.app (NoB.cons one_nb NoB.nil)
+  have hP : Bits (bitsOf Pb) := Bits.ofB Pb
+  have hX : Bits (bitsOf Xb) := Bits.ofB Xb
+  have hXr : Bits (bitsOf Xb).reverse := bitsOf_rev Xb
+  have h1 := gcLoop (Vq ++ [1]) (bitsOf Pb) Rest hVn hP hR (bitsOf Xb) [] Bits.nil hX
+  have h2 := gcEnd (bitsOf Xb).reverse (Vq ++ [1]) (bitsOf Pb) (bitsOf Xb) Rest hXr hVn hP hX hR
+  have h3 := qcLoop (bitsOf Xb).reverse (Vq ++ [1]) (bitsOf Xb) Rest hXr hVn hX hR (bitsOf Pb).reverse []
+    hP.rev Bits.nil
+  have h4 := qcEnd (bitsOf Pb) (bitsOf Xb).reverse Vq (bitsOf Xb) Rest hP hXr hVq hX hR
+  have e0 : hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1]))) (bitsOf Xb ++ 1 :: Rest) =
+      hdR Q.GC (([] : List Nat).reverse ++ 1 :: ((Vq ++ [1]) ++ (bitsOf Pb ++ 1 :: [])))
+        (bitsOf Xb ++ 1 :: Rest) := by
+    rw [hV]; simp
+  have hA := (h1.of_eq e0.symm (by simp)).trans (h2.trans ((h3.of_eq (by simp) (by simp)).trans h4))
+  have hG : Sym4 (0 :: ((bitsOf Xb).reverse ++ 1 :: (Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest))))) :=
+    Sym4.cons (by simp [ALL]) (hXr.sym4.app (Sym4.cons (by simp [ALL]) (hVq.sym4.app (Sym4.cons (by simp [ALL])
+      (hP.sym4.app (Sym4.cons (by simp [ALL]) (hX.sym4.app (Sym4.cons (by simp [ALL]) hR))))))))
+  obtain ⟨R', H, hrot, hH, -, hr⟩ := rotate rotNormal (Pb.reverse ++ [false]) (by simp) _ hG
+  rw [rst_hd, rnav_hd] at hr
+  have hcode : (bitsOf (Pb.reverse ++ [false])).reverse = 2 :: bitsOf Pb := by
+    simp [bitsOf]
+  have hB0 := hA.trans (hr.of_eq (by rw [hcode]) rfl)
+  have eT : Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) = 1 :: (W ++ 1 :: F) := by
+    have e : Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) =
+        (Vq ++ [1]) ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) := by simp
+    rw [e, ← hV, List.cons_append, hWF]
+  have hVt : NoB (1 :: (W ++ 1 :: F)) := NoB.cons one_nb (hW.app (NoB.cons one_nb hF))
+  obtain ⟨p, b, X', eV, hb, hX'⟩ := mb _ hVt (by
+    obtain ⟨a, ha, hab⟩ := hFb
+    exact ⟨a, List.mem_cons_of_mem _ (List.mem_append_right _ (List.mem_cons_of_mem _ ha)), hab⟩)
+  have hRr := bits_of_eq hrot
+  have hrr : (bitsOf (rot (Pb.reverse ++ [false]))).reverse = 2 :: R'.reverse := by rw [hrot]; simp
+  obtain ⟨k, hk⟩ : ∃ k, H.length = k + 1 := ⟨entryOnes (Pb.reverse ++ [false]) + 1, by omega⟩
+  cases Xb with
+  | nil =>
+    have hB := segB R'.reverse [] X' k 0 p 0 b (Or.inl rfl) hb hRr Bits.nil hX'
+    refine ⟨k + 1, by omega, hB0.trans (hB.of_eq ?_ ?_)⟩
+    · rw [eT, eV, hk]
+      simp [List.replicate_succ, rep_cons_comm, bitsOf]
+    · unfold Bd Zp.Lw Zp.Rw
+      rw [hrr, ← eV]
+      simp [cellN, bitsOf, List.replicate_succ, rep_cons_comm]
+  | cons x xt =>
+    have hB := segB R'.reverse (bitsOf xt.reverse) X' (k + 1) 0 p (bn x) b (bn_cases x) hb hRr
+      (Bits.ofB _) hX'
+    refine ⟨k + 1 + 1, by omega, hB0.trans (hB.of_eq ?_ ?_)⟩
+    · rw [eT, eV, hk, bitsOf_cons, bitsOf_reverse]
+      simp
+    · unfold Bd Zp.Lw Zp.Rw
+      rw [hrr, ← eV]
+      simp [cellN_some, bitsOf, List.replicate_succ, rep_cons_comm]
+
+theorem inv0 (Pb : List Bool) : InvR (rot (Pb.reverse ++ [false])) := by
+  apply inv_rot
+  refine ⟨by simp, fun hl => ?_, fun hl => ?_⟩
+  · rcases Pb with _ | ⟨a, Pb⟩
+    · rfl
+    · simp at hl
+  · rcases Pb with _ | ⟨a, _ | ⟨b, Pb⟩⟩
+    · simp at hl
+    · simp
+    · simp at hl
+
+/-- One guest run from the setup position, to the dispatch state. -/
+theorem runFrom (n : Nat) (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W : List Nat) (ds : List Nat)
+    (hV : 1 :: W1 = Vq ++ [1]) (hVq : NoB Vq) (hR : Sym4 Rest) (hW : NoB W)
+    (hds : Dig n ds) (hne : ds ≠ [])
+    (hWF : W1 ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) = W ++ 1 :: FWr n ds) :
+    ∃ ds', Dig n ds' ∧ ds'.length = ds.length ∧
+      zpLogic.Reach (hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1]))) (bitsOf Xb ++ 1 :: Rest))
+        (RE (run Pb Xb (valr n ds)) W (FWr n ds')) := by
+  obtain ⟨g, hg, h1⟩ := setup W1 Vq Pb Xb Rest W (FWr n ds) hV hVq hR hW (FWr_noB n ds)
+    (fw_bit n ds hne) hWF
+  have hz : (⟨[], Xb.head?, Xb.tail⟩ : Zp).WF := by
+    unfold Zp.WF
+    cases Xb with
+    | nil => intro _; rfl
+    | cons x xt => intro h; simp at h
+  obtain ⟨ds', hd', hl', h2⟩ := runI n W hW _ _ g _ ds (inv0 Pb) hg hz hds hne rfl
+  have ht : (⟨[], Xb.head?, Xb.tail⟩ : Zp).tape = fun i => Xb[i]? := by
+    cases Xb <;> rfl
+  rw [ht] at h2
+  exact ⟨ds', hd', hl', h1.trans h2⟩
 
 end ZP
