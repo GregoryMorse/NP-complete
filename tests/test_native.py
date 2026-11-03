@@ -57,7 +57,7 @@ MACHINES = {
 # the NTT machine beeps with (C, Nn) in tape fields 3 and 4
 FIELDS = {'zntt_native': (3, 4)}
 # the second NTT refutation (c = 2) is far out of reach
-MAXB_NTT = {'zntt_native': 1}
+MAXB_NTT = {'zntt_native': 2}
 # beyond 13 beeps the NP = coNP reference needs exponentially many runs
 MAXB = {'zconp_native': 13}
 # the truth-routine machines examine ~60 instances per candidate: keep CI short
@@ -191,16 +191,16 @@ def test_mul_instances():
 
 
 def ntt_tape(c, n, recs):
-    """zntt tape before the evaluation of recs = [(u, b, z)] (u None: none)."""
+    """zntt tape before the evaluation of recs = [(u, b)] (u None: none)."""
     p = zntt_ref.prime(n)
-    W = c * n + 1
+    W = c * n + 2
 
     def fld(v, w):
         return '1' * v + '0' * (w - v)
-    s = '1' * W + 'M' + '1' * p + 'M1111M' + '1' * c + 'M' + '1' * n
-    for j, (u, b, z) in enumerate(recs):
-        s += 'MM00' + ('1' if j >= c * n - n else '0') + '0M' + fld(1, p) + 'M' + fld(1, p)
-        s += 'M' + fld(z + 1, p) + 'M' + fld(b + 1, p) + 'M' + fld(1 if u is None else u + 3, W)
+    s = '1' * W + 'M' + '1' * p + 'M111M' + '1' * c + 'M' + '1' * n
+    for j, (u, b) in enumerate(recs):
+        s += 'MM0' + ('1' if j >= c * n - n else '0') + '0M' + fld(1, p) + 'M' + fld(1, p)
+        s += 'M' + fld(b + 1, p) + 'M' + fld(1 if u is None else u + 3, j + 2)
     return s
 
 
@@ -216,17 +216,23 @@ def ntt_instance(m, c, n, recs, steps=10**9):
 
 
 def test_ntt_instances():
-    # DFT_2 with c = 2; DFT_3 with c = 5 (rows 1, 2, 4 mod 7); wrong or repeated roots
+    # DFT_2 with c = 3; DFT_3 with c = 6 (roots 1, 2, 4 mod 7); wrong or repeated roots
     m = zntt.build()
-    d2 = [(None, 0, 0), (0, 2, 0), (0, 1, 1), (1, 1, 2)]
-    d3 = [(None, 0, 0), (0, 6, 0), (1, 6, 0), (2, 6, 0), (1, 1, 0), (2, 3, 0), (5, 6, 0), (1, 2, 0),
-          (2, 5, 0), (8, 6, 0), (0, 1, 0), (1, 1, 0), (2, 1, 1), (5, 1, 2), (8, 1, 4)]
-    cases = [(2, 2, d2), (5, 3, d3), (2, 2, d2[:3] + [(1, 1, 1)]), (2, 2, d2[:3] + [(0, 1, 2)])]
-    for j, z in ((12, 2), (14, 2), (13, 4)):
-        cases.append((5, 3, d3[:j] + [d3[j][:2] + (z,)] + d3[j + 1:]))
-    cases.append((5, 3, d3[:5] + [(2, 4, 0)] + d3[6:]))
+    d2 = [(None, 0), (0, 1), (1, 1), (0, 2), (2, 1), (3, 2)]
+    d3 = [(None, 0), (0, 6), (1, 6), (2, 0), (2, 6), (0, 1), (1, 1), (2, 1), (7, 6), (1, 4),
+          (2, 5), (10, 6), (1, 4), (2, 3), (13, 6), (7, 1), (10, 2), (13, 4)]
+    cases = [(3, 2, d2), (6, 3, d3), (3, 2, d2[:5] + [(3, 1)]), (3, 2, d2[:5] + [(2, 2)])]
+    for j, b in ((15, 2), (16, 1), (17, 2), (9, 3)):
+        cases.append((6, 3, d3[:j] + [(d3[j][0], b)] + d3[j + 1:]))
     want = [zntt_ref.evaluate(n, zntt_ref.prime(n), r) for c, n, r in cases]
-    assert want[:2] == [True, True] and not any(want[2:])
+    assert want[:2] == [True, True] and not any(want[2:]), want
+    # roots of x^3 = 6 mod 7 in the order 6, 3, 5; DFT_2 with the roots in the order 2, 1
+    e3 = [(None, 0), (0, 6), (1, 6), (2, 0), (2, 6), (0, 6), (1, 1), (2, 6), (7, 6), (1, 6),
+          (2, 5), (10, 6), (1, 6), (2, 6), (13, 6), (7, 6), (10, 3), (13, 5)]
+    e2 = [(None, 0), (0, 2), (1, 2), (0, 2), (1, 1), (4, 2), (1, 2), (6, 2), (4, 2), (6, 1)]
+    cases += [(6, 3, e3), (5, 2, e2)]
+    want += [True, True]
+    assert [zntt_ref.evaluate(n, zntt_ref.prime(n), r) for c, n, r in cases[-2:]] == [True, True]
     for (c, n, r), w in zip(cases, want):
         assert ntt_instance(m, c, n, r) == w, (c, n, r)
 

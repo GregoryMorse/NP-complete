@@ -201,7 +201,7 @@ Padding makes |J| exceed any constant, so the statement is equivalent to "multit
 multiply in time O(n)". It is open: the best known bound is O(n log n) (Harvey–van der
 Hoeven). It is model-specific: on pointer machines, multiplication is known to take linear time
 (Schönhage).
-The native machine `machines/zmul_native.txt` (408 states, `docs/native.md`) checks an
+The native machine `machines/zmul_native.txt` (403 states, `docs/native.md`) checks an
 equivalent statement over a stack-queue guest model.
 
 **NTT-LIN** (`zntt`, `ref/ntt_ref.py`, `compiler/ntt_cm.py`): *the number-theoretic
@@ -221,7 +221,8 @@ The NTT circuit search agrees with brute force on every (n, s) small enough to f
 search over ~4·10⁸ circuits, so its beep behaviour beyond the search itself is not
 simulated.
 The native machine `machines/zntt_native.txt` (`docs/native.md`) checks an equivalent
-chain-circuit statement; its first refutation (c = 1 at n = 2) is simulated.
+chain-circuit statement; its first two refutations (c = 1 and c = 2, both at n = 2) are
+simulated.
 
 ---
 

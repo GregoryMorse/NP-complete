@@ -227,7 +227,7 @@ turned into separators.
   it). Finally every edge of `H` must be deleted. A failure unmarks everything and
   decrements the top.
 
-### Linear-time multiplication (`native/zmul.py`, 408 states)
+### Linear-time multiplication (`native/zmul.py`, 403 states)
 
 The guest is Z_P v2 plus a queue of `|J|` stacks; the clock is
 `T = (|s|+2)·2^|J| − 1`, one fuel block `M 1^(|s|+1)` and `|J|` short blocks `M 1`.
@@ -271,42 +271,54 @@ through `J`.
   marking: each cell of `y` marks all of `x`, and each cell of `x` marks one cell of
   `z`. `M_2` is restored on the way to the dispatch.
 
-### Linear-size NTT circuits (`native/zntt.py`, 550 states)
+### Linear-size NTT circuits (`native/zntt.py`, 469 states)
 
 The machine checks a *chain circuit* version of NTT-LIN (`ref/zntt_ref.py`): there is
 a `c` such that for every `n`, with `p` the least prime `≡ 1 (mod n)` and `N = c·n`,
-some chain circuit of `N` records over `F_p` computes `DFT_n`. Record `j` holds a
-pointer `u_j` (or none), a coefficient `b_j` and a root `z_j`, and computes
+some chain circuit of `N` records over `F_p` computes `DFT_n` up to a diagonal.
+Record `j` holds a pointer `u_j < j` (or none) and a coefficient `b_j`, and computes
 
     node_j = [j < n] x_j + node_{j-1} + b_j · node_{u_j}.
 
-The last `n` records are the outputs. Output `k` must have row `(z_k^t)_{t<n}` with
-`z_k^n = 1`, and the power sums `Σ_k z_k^t` must vanish for `1 ≤ t < n`. Since
-`p > n`, Newton's identities then force `{z_k}` to be exactly the `n`-th roots of unity,
-so the rows of `DFT_n` appear in some order. A fan-in-2 gate `a x + b y` takes three
-records (zero, `+ a x`, `+ b y`), so the two statements differ only in the constant.
+The last `n` records are the outputs, and output `k` uses its own coefficient as its
+root `z_k = b_k`. Output `k` must have row `(z_k^t)_{t<n}`. The power sums
+`s_t = Σ_k z_k^t` must vanish for `0 < t < n`, and `s_n` must not. Since `p > n`,
+Newton's identities make the `z_k` the `n` distinct roots of `x^n = c` for some
+`c ≠ 0`. So the outputs compute `DFT_n · diag(ζ^t)` with `ζ^n = c`, rows in some order.
+A fan-in-2 gate `a x + b y` takes three records (zero, `+ a x`, `+ b y`), an output
+takes two more gates, and the diagonal costs `n` gates. So the two statements
+differ only in the constant.
 
-- **Rulers.** `P` grows by `n` until a divisor test finds it prime. `D = 2, 3, …`
-  marks once per cell of `P` and resets when full. A reset writes a marker, so
-  "full at the end, no marker" means `d = p`. `W = c·n + 1` is built from the C and
-  Nn rulers.
+- **Rulers.** `P` grows by `n` until it is prime. The test copies `P` to `D` and
+  tests `d = p−1, …, 2` by marking `D` once per cell of `P`, resetting it when full.
+  `p` is used up exactly when `D` is full. The pointer ruler `W` starts at two cells
+  and grows by one per record built, so the pointer field of record `j` has `j + 2`
+  cells.
 - **Records.** For each cell of `C` (a round), one record per cell of `Nn` is
-  appended: header `F G O P`, four copies of `P` (acc, E, z, b) and one of `W` (u).
+  appended: header `F O P`, three copies of `P` (acc, E, b) and one of `W` (u).
   Each new round clears `O` in the records already built.
-- **Evaluation.** One pass per input `t` uses push evaluation in column order. A
-  pointer is decremented once at the start of the pass and once per earlier column.
-  It is *captured* (exactly two unmarked 1s) in its own column. Then each unit of
-  `acc_j` adds 1 to record `j+1` and `b_r` to every capturing record.
-- **Outputs.** At an output, `acc = E` is checked destructively. Then
-  `E := z·acc`, and the register `S` (the marked cells of `P`) gets `z·acc` as well.
-  After pass `t < n−1`, `S` must be 0. After the last pass, every `E` must be 1.
-- **Search.** An odometer runs over `(z, b, u)` of all records. A success moves to
-  `n + 1`. Exhaustion beeps and moves to `c + 1`, `n = 1`.
+- **Evaluation.** One pass per input `t`. The pass starts by resetting every `acc`
+  to `[record = t]`, then evaluates by pushing values forward in column order. A
+  pointer is decremented once per earlier column and is *captured* (exactly two
+  unmarked 1s) in its own column. When the cursor enters an output, `acc = E` is
+  checked destructively. Each unit of `acc_j` then adds 1 to record `j+1` and `b_r` to
+  every capturing record `r`; at an output it also adds `z` to `E` and to the register
+  `S` (the marked cells of `P`).
+- **Power sums.** After pass `t < n−1`, `S` must be 0. After the last pass `S` must
+  be nonzero, which is one look at the first cell of `P`.
+- **Search.** An odometer runs over `(b, u)` of all records. A success moves to
+  `n + 1`. Exhaustion beeps and moves to `c + 1`, keeping `n`. This is sound because
+  for `c ≥ 2` a circuit for `(c, n)` gives one for `(c+1, n)`: insert `n`
+  pass-through records after the inputs. The two paths share the code that erases
+  the records. The last cell of `Nn` tells them apart: after a success every cell
+  of `Nn` is marked by the passes, while the odometer clears the marks.
 
-The first refutation is `c = 1` at `n = 2`. `c = 2` passes `n = 2` and then searches
-`n = 3`, which does not finish in simulation. So the tests check the first beep and
-evaluate hand-built `DFT_2`/`DFT_3` circuits and their perturbations against the
-reference.
+The first refutations are `c = 1` and `c = 2`, both at `n = 2`. `c = 3` passes `n = 2`
+and then searches `n = 3`, which does not finish in simulation. So the tests check two
+beeps. They also run hand-built `DFT_2`/`DFT_3` circuits (including roots of `x³ = 6`
+mod 7 and outputs out of order) and perturbations of them against the reference.
+The previous design (564 states before tuning) also had a bug: after a success the
+pass marks on `Nn` were not cleared, so `p` came out wrong for `n ≥ 2`.
 
 ### Compiler
 
