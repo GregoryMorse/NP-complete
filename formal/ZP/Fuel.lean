@@ -89,10 +89,10 @@ theorem dec_pos (n u : Nat) (hu : u ≤ n) (L R : List Nat) (hL : Sym4 L) (hR : 
       (ls := [.blk 0 .id, .sym 1, .blk 1 (.const 3), .sym 3]) (rs := [.blk 3 .id])
       (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 (.const 3), .sym 2, .blk 3 .id])
       (by decide +kernel)
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ, Fn.app])
       (by simp [dR, Item.den, List.getD, map_id_app])
       (by simp [dR, Item.den, List.getD, map_id_app])
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ, Fn.app])
   | succ z =>
     exact checkTT (env := [L, List.replicate u 3, List.replicate z 2, R]) (E := []) (k := 10)
       (fvalid hL (Sym4.rep _ _ (by simp [ALL])) (Sym4.rep _ _ (by simp [ALL])) hR) trivial
@@ -100,10 +100,10 @@ theorem dec_pos (n u : Nat) (hu : u ≤ n) (L R : List Nat) (hL : Sym4 L) (hR : 
       (rs := [.blk 3 .id]) (ls' := [.blk 0 .id])
       (rs' := [.sym 1, .blk 1 (.const 3), .sym 2, .blk 2 (.const 2), .sym 2, .blk 3 .id])
       (by decide +kernel)
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ, Fn.app])
       (by simp [dR, Item.den, List.getD, map_id_app])
       (by simp [dR, Item.den, List.getD, map_id_app])
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ, Fn.app])
 
 /-- A zero digit borrows: it is refilled and `DEC1` moves to the block before it. -/
 theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) (hR1 : R = [] ∨ ∃ R', R = 1 :: R') :
@@ -119,20 +119,20 @@ theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) (hR1 : R =
       (ls := [.blk 0 .id, .sym 1, .blk 2 (.const 2), .sym 2]) (rs := [])
       (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3])
       (by decide +kernel)
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app])
       (by simp [dR])
       (by simp [dR, Item.den, List.getD, map_id_app])
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app])
   · have hR' : Sym4 R' := fun a ha => hR a (List.mem_cons_of_mem _ ha)
     exact checkTT (env := [L, [], List.replicate n 2, R']) (E := []) (k := 12)
       (fvalid hL Sym4.nil (Sym4.rep _ _ (by simp [ALL])) hR') trivial
       (ls := [.blk 0 .id, .sym 1, .blk 2 (.const 2), .sym 2]) (rs := [.sym 1, .blk 3 .id])
       (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 1, .blk 3 .id])
       (by decide +kernel)
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app])
       (by simp [dR, Item.den, List.getD, map_id_app])
       (by simp [dR, Item.den, List.getD, map_id_app])
-      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app])
 
 /-- The borrow meets the double `M`. -/
 theorem exh (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
