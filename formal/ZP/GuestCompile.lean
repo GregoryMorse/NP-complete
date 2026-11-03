@@ -61,7 +61,7 @@ theorem getD_ebits (e : Ent) (Y : List Bool) :
     (ebits e ++ Y).getD 0 false = e.w ∧ (ebits e ++ Y).getD 1 false = e.d ∧
       (ebits e ++ Y).getD 2 false = decide (e.k ≠ 0) := by
   obtain ⟨w, d, k⟩ := e
-  cases k <;> simp [ebits, List.getD]
+  cases k <;> simp [ebits, List.getD, List.replicate_succ]
 
 theorem runAux_entry {T : Nat} {R : List Bool} {tape : Nat → Option Bool} {h : Nat}
     {e : Ent} {Y : List Bool} (hR : rotN (iota (tape h)) R = ebits e ++ Y) :
@@ -78,7 +78,8 @@ theorem runAux_entry {T : Nat} {R : List Bool} {tape : Nat → Option Bool} {h :
   rw [hR, g0, g1, g2, f1, f2]
   by_cases hk : e.k = 0
   · simp [hk]
-  · simp [hk, write, move]
+  · simp [hk]
+    try rfl
 
 /-! ## Lists of entries -/
 
