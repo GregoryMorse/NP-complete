@@ -350,6 +350,6 @@ Each such invariant is commented in `zp2.py`.
 - **Lean.** The Lean statement in `formal/` is about v2 (278 states). The step from
   the 129-state logical machine to the table is proved (`formal/ZP/Compile.lean`);
   the macro simulation of the abstract program by the logical machine,
-  `ZP.zpLogic_macroSim`, is still open.
+  `ZP.zpLogic_macroSim`, is proved from one open per-pair lemma, `ZP.pair_step`.
 - **Paper proof.** The NP-hardness of the v2 language L has only the padding sketch
   above.
