@@ -385,37 +385,6 @@ theorem sweepL_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {q i : Nat
   rw [e1, e2]
   exact sweepL_strm hq _ _ _ hact
 
-theorem view_cellR {env : Env} {l rest : List Item} {a : Nat} (h : view l = .cell a rest) :
-    sapp (dR env l) blank = scons a (sapp (dR env rest) blank) := by
-  match l, h with
-  | [], h =>
-    cases h
-    exact scons_blank.symm
-  | .sym b :: r, h =>
-    cases h
-    rfl
-  | .blk i f :: r, h => cases h
-
-theorem view_cellL {env : Env} {l rest : List Item} {a : Nat} (h : view l = .cell a rest) :
-    sapp (dL env l) blank = scons a (sapp (dL env rest) blank) := by
-  match l, h with
-  | [], h =>
-    cases h
-    exact scons_blank.symm
-  | .sym b :: r, h =>
-    cases h
-    rfl
-  | .blk i f :: r, h => cases h
-
-theorem view_block {l rest : List Item} {i : Nat} {f : Fn} (h : view l = .block i f rest) :
-    l = .blk i f :: rest := by
-  match l, h with
-  | [], h => cases h
-  | .sym b :: r, h => cases h
-  | .blk j g :: r, h =>
-    cases h
-    rfl
-
 theorem mstepR_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {q : Nat}
     {l r : List Item} {c' : SC} (hq : q ≠ M.beep) (h : mstepR M sets q l r = some c') :
     M.Reach (SC.den env ⟨q, l, r, false⟩) (c'.den env) := by
@@ -519,13 +488,13 @@ def Env.upd : Env → Nat → (List Nat → List Nat) → Env
   | w :: env, i + 1, g => w :: Env.upd env i g
 
 theorem Env.upd_getD_self : ∀ (env : Env) (i : Nat) (g : List Nat → List Nat),
-    i < env.length → (env.upd i g).getD i [] = g (env.getD i [])
+    i < env.length → (Env.upd env i g).getD i [] = g (env.getD i [])
   | [], _, _, h => absurd h (Nat.not_lt_zero _)
   | _ :: _, 0, _, _ => rfl
   | _ :: env, i + 1, g, h => Env.upd_getD_self env i g (Nat.lt_of_succ_lt_succ h)
 
 theorem Env.upd_getD_ne : ∀ (env : Env) (i j : Nat) (g : List Nat → List Nat),
-    j ≠ i → (env.upd i g).getD j [] = env.getD j []
+    j ≠ i → (Env.upd env i g).getD j [] = env.getD j []
   | [], _, _, _, _ => rfl
   | _ :: _, 0, 0, _, h => absurd rfl h
   | _ :: _, 0, _ + 1, _, _ => rfl
@@ -533,14 +502,14 @@ theorem Env.upd_getD_ne : ∀ (env : Env) (i j : Nat) (g : List Nat → List Nat
   | _ :: env, i + 1, j + 1, g, h => Env.upd_getD_ne env i j g (fun e => h (by rw [e]))
 
 theorem Env.upd_valid {sets env : Env} (hv : Valid sets env) {i : Nat} {g : List Nat → List Nat}
-    (hg : ∀ a ∈ g (env.getD i []), a ∈ sets.getD i []) : Valid sets (env.upd i g) := by
+    (hg : ∀ a ∈ g (env.getD i []), a ∈ sets.getD i []) : Valid sets (Env.upd env i g) := by
   intro j a ha
   by_cases hj : j = i
   · subst hj
     by_cases hi : j < env.length
     · rw [Env.upd_getD_self env j g hi] at ha
       exact hg a ha
-    · have e : env.upd j g = env := by
+    · have e : Env.upd env j g = env := by
         clear ha hg hv
         induction env generalizing j with
         | nil => rfl
@@ -548,7 +517,7 @@ theorem Env.upd_valid {sets env : Env} (hv : Valid sets env) {i : Nat} {g : List
           cases j with
           | zero => exact absurd (Nat.zero_lt_succ _) hi
           | succ j =>
-            show w :: env.upd j g = w :: env
+            show w :: Env.upd env j g = w :: env
             rw [ih j (fun h => hi (Nat.succ_lt_succ h))]
       rw [e] at ha
       exact hv j a ha
@@ -627,49 +596,49 @@ theorem den_subst {env env' : Env} {s : Item → List Item}
     rw [hL, hR]
 
 theorem item_cons {env : Env} {i : Nat} (hi : i < env.length) (b : Nat) (it : Item) :
-    it.den (env.upd i (b :: ·)) = dR env (it.cons i b) := by
+    it.den (Env.upd env i (b :: ·)) = dR env (it.cons i b) := by
   cases it with
   | sym a => rfl
   | blk j f =>
     by_cases hj : j = i
     · subst hj
-      show ((env.upd j (b :: ·)).getD j []).map f.app =
+      show ((Env.upd env j (b :: ·)).getD j []).map f.app =
         dR env (if j = j then [.sym (f.app b), .blk j f] else [.blk j f])
       rw [ite_eq_left rfl, Env.upd_getD_self env j _ hi]
       show f.app b :: (env.getD j []).map f.app = [f.app b] ++ ((env.getD j []).map f.app ++ [])
       rw [List.append_nil]
       rfl
-    · show ((env.upd i (b :: ·)).getD j []).map f.app =
+    · show ((Env.upd env i (b :: ·)).getD j []).map f.app =
         dR env (if j = i then [.sym (f.app b), .blk j f] else [.blk j f])
       rw [ite_eq_right hj, Env.upd_getD_ne env i j _ hj]
       show _ = (env.getD j []).map f.app ++ []
       rw [List.append_nil]
 
 theorem item_snoc {env : Env} {i : Nat} (hi : i < env.length) (b : Nat) (it : Item) :
-    it.den (env.upd i (· ++ [b])) = dR env (it.snoc i b) := by
+    it.den (Env.upd env i (· ++ [b])) = dR env (it.snoc i b) := by
   cases it with
   | sym a => rfl
   | blk j f =>
     by_cases hj : j = i
     · subst hj
-      show ((env.upd j (· ++ [b])).getD j []).map f.app =
+      show ((Env.upd env j (· ++ [b])).getD j []).map f.app =
         dR env (if j = j then [.blk j f, .sym (f.app b)] else [.blk j f])
       rw [ite_eq_left rfl, Env.upd_getD_self env j _ hi]
       show (env.getD j [] ++ [b]).map f.app = (env.getD j []).map f.app ++ ([f.app b] ++ [])
       rw [List.map_append]
       rfl
-    · show ((env.upd i (· ++ [b])).getD j []).map f.app =
+    · show ((Env.upd env i (· ++ [b])).getD j []).map f.app =
         dR env (if j = i then [.blk j f, .sym (f.app b)] else [.blk j f])
       rw [ite_eq_right hj, Env.upd_getD_ne env i j _ hj]
       show _ = (env.getD j []).map f.app ++ []
       rw [List.append_nil]
 
 theorem den_cons {env : Env} {i : Nat} (hi : i < env.length) (b : Nat) (c : SC) :
-    c.den (env.upd i (b :: ·)) = (c.subst (Item.cons i b)).den env :=
+    c.den (Env.upd env i (b :: ·)) = (c.subst (Item.cons i b)).den env :=
   den_subst (item_cons hi b) c
 
 theorem den_snoc {env : Env} {i : Nat} (hi : i < env.length) (b : Nat) (c : SC) :
-    c.den (env.upd i (· ++ [b])) = (c.subst (Item.snoc i b)).den env :=
+    c.den (Env.upd env i (· ++ [b])) = (c.subst (Item.snoc i b)).den env :=
   den_subst (item_snoc hi b) c
 
 /-- A loop body as one check: from `c` with `env[i] = b :: _` to `c` with
@@ -677,7 +646,7 @@ theorem den_snoc {env : Env} {i : Nat} (hi : i < env.length) (b : Nat) (c : SC) 
 theorem body_sound {M : LTM} {sets env : Env} (hv : Valid sets env) {i i' : Nat}
     (hi : i < env.length) (hi' : i' < env.length) {b k : Nat} {c : SC}
     (h : mreach M sets k (c.subst (Item.cons i b)) (c.subst (Item.snoc i' b)) = true) :
-    M.Reach (c.den (env.upd i (b :: ·))) (c.den (env.upd i' (· ++ [b]))) := by
+    M.Reach (c.den (Env.upd env i (b :: ·))) (c.den (Env.upd env i' (· ++ [b]))) := by
   rw [den_cons hi, den_snoc hi']
   exact mreach_sound hv _ _ _ h
 
