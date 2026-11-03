@@ -109,9 +109,9 @@ theorem dec_pos (n u : Nat) (hu : u ≤ n) (L R : List Nat) (hL : Sym4 L) (hR : 
 theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) (hR1 : R = [] ∨ ∃ R', R = 1 :: R') :
     zpLogic.Reach (hd Q.DEC1 (L ++ blkW n 0) R) (hd Q.DEC1 L (blkW n (n + 1) ++ R)) := by
   have e : blkW n 0 = 1 :: (List.replicate n 2 ++ [2]) := by
-    simp [blkW, rep_cons_comm]
+    simp [blkW, rep_cons_comm, List.replicate_succ]
   have e' : blkW n (n + 1) = 1 :: (List.replicate n 3 ++ [3]) := by
-    simp [blkW, rep_cons_comm]
+    simp [blkW, rep_cons_comm, List.replicate_succ]
   rw [e, e']
   rcases hR1 with rfl | ⟨R', rfl⟩
   · exact checkTT (env := [L, [], List.replicate n 2, []]) (E := []) (k := 12)
