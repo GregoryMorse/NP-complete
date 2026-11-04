@@ -224,7 +224,8 @@ theorem goto {M : Mach} {e : Nat} : ∀ (i s : Nat), 0 < i → Sub M s (gotoRows
       rw [if_pos rfl] at h1
       exact (h1.ri rfl (by simp)).re rfl (by simp) (by simp) (by simp [length_encR])
     · rw [if_neg hi] at h1
-      have h2 := goto i (s + 3) (by omega) hs2 P' _ X (by simp at hP ⊢; omega)
+      have h2 := goto i (s + 3) (by omega) hs2 P' ((encR st ++ [false, true]).reverse ++ L) X
+        (by simp at hP ⊢; omega)
       exact ((h1.trans h2).ri rfl (by simp)).re rfl (by simp) rfl (by first | omega | (simp [length_encR] <;> omega))
 
 /-- Trampoline and walk: the prefix of every operation on region `i`, entering the
@@ -233,7 +234,7 @@ def preRows (s i ent : Nat) : List (Act × Act × Act) :=
   tramp s (if i = 0 then ent else s + 2) ++ gotoRows (s + 2) ent i
 
 theorem length_preRows (s i ent : Nat) : (preRows s i ent).length = 3 * i + 2 := by
-  simp [preRows, tramp, length_gotoRows]; omega
+  simp [preRows, tramp, length_gotoRows]
 
 theorem pre_ok {M : Mach} {s i ent : Nat} (hs : Sub M s (preRows s i ent))
     (S : List (List Bool)) (hi : i < S.length) (X : List Bool) :
