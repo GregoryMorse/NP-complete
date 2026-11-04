@@ -35,3 +35,5 @@ public import ZP.Decide
 public import ZP.Scan
 public import ZP.Body
 public import ZP.Dx
+public import ZP.Tg
+public import ZP.Ents
