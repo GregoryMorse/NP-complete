@@ -71,7 +71,7 @@ theorem iota_U {x gr R gl k clk e bad fw fd ans : List Bool} (h0 : false ∈ R) 
     ExecB IOTA (U x gr R gl k clk e bad fw fd ans)
       (U x gr (rotN (iota gr.head?) R) gl k clk e bad fw fd ans) (2 * rB R.length + 1) := by
   match gr with
-  | [] => exact ExecB.to (ExecB.cs (by exact ExecB.skip)) rfl (by omega)
+  | [] => exact ExecB.to (ExecB.cs (B := 1) (by exact ExecB.skip)) rfl (by unfold rB; omega)
   | false :: g => exact ExecB.to (ExecB.cs (by exact rot_U h0)) rfl (by omega)
   | true :: g =>
     exact ExecB.to (ExecB.cs (by exact (rot_U h0).seq (rot_U (mem_rot h0)))) rfl
