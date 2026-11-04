@@ -183,6 +183,7 @@ theorem r1_ok {S : List (List Bool)} {i t : Nat} (hit : i ≠ t) (hi : i < S.len
         getD_set_ne _ (Ne.symm hit), hT, List.append_nil])
     have hb : ExecB (r1b i t b) S (S.set i (l ++ [b])) (8 * l.length + 4) := by
       refine (e1.seq (e2.seq (e3.seq e4))).to ?_ (by simp only [List.length_reverse]; omega)
+      clear e1 e2 e3 e4 h
       stk_eq
     have hb' : ExecB (sel (b :: l) .skip (r1b i t false) (r1b i t true)) S (S.set i (l ++ [b]))
         (8 * l.length + 4) := by
@@ -210,7 +211,7 @@ theorem mem_r1f {a : Bool} : ∀ {R : List Bool}, a ∈ R → a ∈ r1f R
   | _ :: l, h => by
     cases h with
     | head => simp [r1f]
-    | tail _ h => simp [r1f, h]
+    | tail _ h => simp only [r1f, List.mem_append, List.mem_singleton]; exact Or.inl h
 
 theorem mem_rr {a : Bool} {R : List Bool} (h : a ∈ R) : ∀ m, a ∈ rr m R
   | 0 => h
@@ -220,7 +221,7 @@ theorem mod_succ (m n : Nat) (hn : 0 < n) :
     (m + 1) % n = if m % n + 1 < n then m % n + 1 else 0 := by
   rw [Nat.add_mod]
   by_cases h1 : n = 1
-  · subst h1; simp
+  · subst h1; simp [Nat.mod_one]
   · rw [Nat.mod_eq_of_lt (show 1 < n by omega)]
     split
     · exact Nat.mod_eq_of_lt ‹_›
@@ -260,7 +261,8 @@ theorem head_rr (R : List Bool) (hR : R ≠ []) (m : Nat) : (rr m R).head? = som
     cases R with
     | nil => exact absurd rfl hR
     | cons _ _ => simp
-  rw [rr_eq, List.drop_eq_getElem_cons (Nat.mod_lt m hn)]
+  have ha := Nat.mod_lt m hn
+  rw [rr_eq, List.drop_eq_getElem_cons ha]
   show some R[m % R.length] = some (R.getD (m % R.length) false)
   rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (Nat.mod_lt m hn)]
   all_goals rfl
@@ -293,9 +295,6 @@ theorem onesFrom_le (R : List Bool) : ∀ f i, onesFrom R f i ≤ f
 
 theorem rot_rr (R : List Bool) : rot R = rr (entryOnes R + 3) R := by
   rw [rr_eq]; rfl
-
-theorem length_rot (R : List Bool) : (rot R).length = R.length := by
-  rw [rot_rr, length_rr]
 
 theorem mem_rot {a : Bool} {R : List Bool} (h : a ∈ R) : a ∈ rot R := by
   rw [rot_rr]; exact mem_rr h _
