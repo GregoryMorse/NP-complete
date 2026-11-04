@@ -350,9 +350,8 @@ theorem body_ok (V : Mach) (k m : Nat) (x c0 : List Bool) :
       (S'.getD 0 [] ≠ [] ↔ c0.length ≤ (x.length + 2) ^ k * m ∧
         (zexec V ((x.length + 2) ^ k) 0 [] (lay [x, c0])).getD false = true) := by
   have e1 := bpre_ok k m x c0
-  generalize (x.length + 2) ^ k * m = P at e1 ⊢
-  by_cases hc : c0.length ≤ P
-  · have h0 : c0.length - P = 0 := by omega
+  by_cases hc : c0.length ≤ (x.length + 2) ^ k * m
+  · have h0 : c0.length - (x.length + 2) ^ k * m = 0 := Nat.sub_eq_zero_of_le hc
     rw [h0] at e1
     obtain ⟨S', e2, hS'⟩ := main_ok V k x c0
     have e2' : ExecB (.cs 10 (BMAIN V k) (clr 0) (clr 0))
@@ -361,7 +360,8 @@ theorem body_ok (V : Mach) (k m : Nat) (x c0 : List Bool) :
     refine ⟨S', (e1.seq e2').to rfl (by unfold bodyB; omega), ?_⟩
     rw [hS']
     exact ⟨fun h => ⟨hc, h⟩, fun h => h.2⟩
-  · obtain ⟨d, hd⟩ : ∃ d, c0.length - (x.length + 2) ^ k * m = d + 1 := ⟨_, (by omega : _ = _ - 1 + 1)⟩
+  · obtain ⟨d, hd⟩ : ∃ d, c0.length - (x.length + 2) ^ k * m = d + 1 := 
+      ⟨_, (Nat.sub_add_cancel (Nat.sub_pos_of_lt (Nat.lt_of_not_le hc))).symm⟩
     rw [hd] at e1
     have e2 : ExecB (clr 0) (WS x [] [] [] [] [] [] [] ++ [[], c0, List.replicate (d + 1) true, []])
         (WS [] [] [] [] [] [] [] [] ++ [[], c0, List.replicate (d + 1) true, []])
