@@ -234,14 +234,14 @@ theorem em_genE {N P B p : Nat} (a : Act) (hp : p + 3 ≤ N) (ht : tgA B a) (hB 
     by_cases hc : p + 3 ≤ 3 * q
     · have h := em_eW (w := w) (d := r) (body_pushK (N := N) (P := P) (3 * q - p - 2))
       have h' : Em N P (genE p (.go w r q)) [⟨w, r, 3 * q - p - 2⟩] (3 * q - p - 2 + 1 + 3) := by
-        unfold genE; rw [if_pos hc]; exact h
-      exact h'.cast (by unfold entG; rw [if_pos hc]) (by omega)
+        simp only [genE, hc, ↓reduceIte]; exact h
+      exact h'.cast (by simp only [entG, hc, ↓reduceIte]) (by omega)
     · have h := em_eW (w := w) (d := r) (body_NNpop (N := N) (P := P) (j := p + 2 - 3 * q)
         (by omega))
       have h' : Em N P (genE p (.go w r q)) [⟨w, r, N - (p + 2 - 3 * q)⟩] (9 * N + 3 + 3) := by
-        unfold genE; rw [if_neg hc]; exact h
+        simp only [genE, hc, ↓reduceIte]; exact h
       refine h'.cast ?_ (by omega)
-      unfold entG; rw [if_neg hc]
+      simp only [entG, hc, ↓reduceIte]
       congr 2
       omega
 

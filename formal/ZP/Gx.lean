@@ -61,7 +61,7 @@ theorem rowsG_app (N : Nat) : ∀ (q : Nat) (A C : List (Act × Act × Act)),
 
 theorem entG_back {N p : Nat} {w r : Bool} {q : Nat} (h : 3 * q ≤ p + 2) :
     entG N p (.go w r q) = ⟨w, r, N + 3 * q - p - 2⟩ := by
-  unfold entG; rw [if_neg (by omega)]
+  simp only [entG, show ¬ (p + 3 ≤ 3 * q) by omega, ↓reduceIte]
 
 theorem eG_A (N f : Nat) : entG N (3 * f + 2) (.go true true (f + 1)) = ⟨true, true, N - 1⟩ := by
   rw [entG_back (by omega)]; congr 1; omega
