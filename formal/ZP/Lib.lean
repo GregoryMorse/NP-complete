@@ -172,19 +172,17 @@ theorem r1_ok {S : List (List Bool)} {i t : Nat} (hit : i ≠ t) (hi : i < S.len
     stk_eq
   | cons b l =>
     have e1 : ExecB (.pop i) S (S.set i l) 1 := ExecB.pop.to (by rw [h, List.tail_cons]) (Nat.le_refl _)
-    have e2 := mv_ok hit l (S.set i l) (by simpa using hi) (by simpa using ht) (getD_set_eq _ hi)
-    have e3 := ExecB.push (i := i) (b := b) (S := ((S.set i l).set i []).set t
-      (l.reverse ++ (S.set i l).getD t []))
-    have e4 := mv_ok (Ne.symm hit) l.reverse
-      ((((S.set i l).set i []).set t (l.reverse ++ (S.set i l).getD t [])).set i
-        (b :: (((S.set i l).set i []).set t (l.reverse ++ (S.set i l).getD t [])).getD i []))
-      (by simpa using ht) (by simpa using hi)
-      (by rw [getD_set_ne _ (Ne.symm hit), getD_set_eq _ (by simpa using ht),
-        getD_set_ne _ (Ne.symm hit), hT, List.append_nil])
-    have hb : ExecB (r1b i t b) S (S.set i (l ++ [b])) (8 * l.length + 4) := by
-      refine (e1.seq (e2.seq (e3.seq e4))).to ?_ (by simp only [List.length_reverse]; omega)
-      clear e1 e2 e3 e4 h
-      stk_eq
+    have e2 : ExecB (mv i t) (S.set i l) ((S.set i []).set t l.reverse) (4 * l.length + 1) :=
+      (mv_ok hit l (S.set i l) (by simpa using hi) (by simpa using ht) (getD_set_eq _ hi)).to
+        (by clear e1 h; stk_eq) (Nat.le_refl _)
+    have e3 : ExecB (.push i b) ((S.set i []).set t l.reverse) ((S.set i [b]).set t l.reverse) 1 :=
+      ExecB.push.to (by clear e1 e2 h; stk_eq) (Nat.le_refl _)
+    have e4 : ExecB (mv t i) ((S.set i [b]).set t l.reverse) (S.set i (l ++ [b]))
+        (4 * l.reverse.length + 1) :=
+      (mv_ok (Ne.symm hit) l.reverse _ (by simpa using ht) (by simpa using hi)
+        (getD_set_eq _ (by simpa using ht))).to (by clear e1 e2 e3 h; stk_eq) (Nat.le_refl _)
+    have hb : ExecB (r1b i t b) S (S.set i (l ++ [b])) (8 * l.length + 4) :=
+      (e1.seq (e2.seq (e3.seq e4))).to rfl (by simp only [List.length_reverse]; omega)
     have hb' : ExecB (sel (b :: l) .skip (r1b i t false) (r1b i t true)) S (S.set i (l ++ [b]))
         (8 * l.length + 4) := by
       cases b <;> exact hb
