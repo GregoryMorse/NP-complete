@@ -198,41 +198,66 @@ theorem q1 {a : Nat} (ha : a ≤ Q) : a ≤ pw Q 1 := by rw [pw_eq, Nat.pow_one]
 
 end bounds
 
+theorem bR (n Q : Nat) (lin : 128 * (n + 2) ≤ Q) : rB (n + 1) ≤ pw Q 3 := by
+  have hQ2 : 2 ≤ Q := by omega
+  have hQ1 : 1 ≤ Q := by omega
+  have a : (n + 1 + 3) * (8 * (n + 1) + 8) ≤ pw Q 2 :=
+    qmul (q1 (show n + 1 + 3 ≤ Q by omega)) (q1 (show 8 * (n + 1) + 8 ≤ Q by omega)) rfl
+  have b : 2 * (n + 1) + 3 ≤ pw Q 2 := qup hQ1 (q1 (by omega)) (by decide)
+  have c : (n + 1 + 3) * (8 * (n + 1) + 8) + (2 * (n + 1) + 3) ≤ pw Q 3 := qadd hQ2 a b rfl
+  unfold rB
+  generalize (n + 1 + 3) * (8 * (n + 1) + 8) = P at c ⊢
+  generalize pw Q 3 = P3 at c ⊢
+  clear a b
+  omega
+
+theorem bS (n Q : Nat) (lin : 128 * (n + 2) ≤ Q) : stepB (n + 1) (n + 1) + 2 ≤ pw Q 7 := by
+  have hQ2 : 2 ≤ Q := by omega
+  have hQ1 : 1 ≤ Q := by omega
+  have hR := bR n Q lin
+  have a2 : 2 ≤ pw Q 3 := qup hQ1 (q1 hQ2) (by decide)
+  have a : rB (n + 1) + 2 ≤ pw Q 4 := qadd hQ2 hR a2 rfl
+  have b : (n + 1 + 4) * (rB (n + 1) + 2) ≤ pw Q 5 := qmul (q1 (show n + 1 + 4 ≤ Q by omega)) a rfl
+  have c : 2 * (n + 1) + 42 ≤ pw Q 5 := qup hQ1 (q1 (by omega)) (by decide)
+  have d : (n + 1 + 4) * (rB (n + 1) + 2) + (2 * (n + 1) + 42) ≤ pw Q 6 := qadd hQ2 b c rfl
+  have e : pw Q 6 ≤ pw Q 7 := qup hQ1 (Nat.le_refl _) (by decide)
+  unfold stepB
+  generalize (n + 1 + 4) * (rB (n + 1) + 2) = P at d ⊢
+  generalize pw Q 6 = P6 at d e
+  generalize pw Q 7 = P7 at e ⊢
+  clear a b c a2 hR
+  omega
+
+theorem bU (n Q : Nat) (lin : 128 * (n + 2) ≤ Q) : ugB n (n + 1) ≤ pw Q 10 := by
+  have hQ2 : 2 ≤ Q := by omega
+  have hQ1 : 1 ≤ Q := by omega
+  have p : (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ pw Q 8 :=
+    qmul (q1 (show n + 1 ≤ Q by omega)) (bS n Q lin) rfl
+  have r : rB (n + 1) ≤ pw Q 8 := qup hQ1 (bR n Q lin) (by decide)
+  have l : 64 * n + 64 ≤ pw Q 9 := qup hQ1 (q1 (by omega)) (by decide)
+  have s1 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ pw Q 9 := qadd hQ2 r p rfl
+  have s2 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) + (64 * n + 64) ≤ pw Q 10 :=
+    qadd hQ2 s1 l rfl
+  unfold ugB
+  generalize rB (n + 1) = R at s2 ⊢
+  generalize (n + 1) * (stepB (n + 1) (n + 1) + 2) = P at s2 ⊢
+  generalize pw Q 10 = P10 at s2 ⊢
+  clear p r l s1
+  omega
+
 theorem total_Q (n t Q : Nat) (lin : 128 * (n + 2) ≤ Q) (ht : t ≤ ugB n (n + 1)) :
     8 * (4 * n + 6) + 16 * (10 + 3) + 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ pw Q 23 := by
   have hQ2 : 2 ≤ Q := by omega
   have hQ1 : 1 ≤ Q := by omega
-  have hR : rB (n + 1) ≤ pw Q 3 := by
-    unfold rB
-    have a : (n + 1 + 3) * (8 * (n + 1) + 8) ≤ pw Q 2 :=
-      qmul (q1 (show n + 1 + 3 ≤ Q by omega)) (q1 (show 8 * (n + 1) + 8 ≤ Q by omega)) rfl
-    have b : 2 * (n + 1) + 3 ≤ pw Q 2 := qup hQ1 (q1 (by omega)) (by decide)
-    have c : (n + 1 + 3) * (8 * (n + 1) + 8) + (2 * (n + 1) + 3) ≤ pw Q 3 := qadd hQ2 a b rfl
-    omega
-  have hS : stepB (n + 1) (n + 1) + 2 ≤ pw Q 7 := by
-    unfold stepB
-    have a2 : 2 ≤ pw Q 3 := qup hQ1 (q1 hQ2) (by decide)
-    have a : rB (n + 1) + 2 ≤ pw Q 4 := qadd hQ2 hR a2 rfl
-    have b : (n + 1 + 4) * (rB (n + 1) + 2) ≤ pw Q 5 := qmul (q1 (show n + 1 + 4 ≤ Q by omega)) a rfl
-    have c : 2 * (n + 1) + 42 ≤ pw Q 5 := qup hQ1 (q1 (by omega)) (by decide)
-    have d : (n + 1 + 4) * (rB (n + 1) + 2) + (2 * (n + 1) + 42) ≤ pw Q 6 := qadd hQ2 b c rfl
-    have e : pw Q 6 ≤ pw Q 7 := qup hQ1 (Nat.le_refl _) (by decide)
-    omega
-  have hU : ugB n (n + 1) ≤ pw Q 10 := by
-    unfold ugB
-    have p : (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ pw Q 8 :=
-      qmul (q1 (show n + 1 ≤ Q by omega)) hS rfl
-    have r : rB (n + 1) ≤ pw Q 8 := qup hQ1 hR (by decide)
-    have l : 64 * n + 64 ≤ pw Q 9 := qup hQ1 (q1 (by omega)) (by decide)
-    have s1 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ pw Q 9 := qadd hQ2 r p rfl
-    have s2 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) + (64 * n + 64) ≤ pw Q 10 :=
-      qadd hQ2 s1 l rfl
-    omega
-  have ht' : t ≤ pw Q 10 := Nat.le_trans ht hU
+  have ht' : t ≤ pw Q 10 := Nat.le_trans ht (bU n Q lin)
   have w : 4 * n + 6 + 2 * (10 + 3) + 2 * t + 2 ≤ pw Q 11 := by
     have h1 : 4 * n + 34 ≤ pw Q 10 := qup hQ1 (q1 (by omega)) (by decide)
     have h2 : pw Q 11 = pw Q 10 * Q := by rw [pw_eq, pw_eq, Nat.pow_succ]
     have h3 := Nat.mul_le_mul_left (pw Q 10) (show 3 ≤ Q by omega)
+    rw [h2]
+    generalize pw Q 10 = P at h1 h3 ht' ⊢
+    generalize P * Q = PQ at h3 ⊢
+    clear ht
     omega
   have v : 40 * t ≤ pw Q 11 := qmul (q1 (show 40 ≤ Q by omega)) ht' rfl
   have pr : 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ pw Q 22 := qmul v w rfl

@@ -53,7 +53,7 @@ theorem pushN_ok : ∀ (n : Nat) (Q : List Bool),
     ExecB (pushN n) (SV R L Q C A X) (SV R L (List.replicate n true ++ Q) C A X) (n + 1)
   | 0, Q => ExecB.skip.to rfl (Nat.le_refl _)
   | n + 1, Q => by
-    have h1 := pushN_ok (R := R) (L := L) (C := C) (A := A) (X := X) n Q
+    have h1 := pushN_ok n Q
     have h2 : ExecB (.push 2 true) (SV R L (List.replicate n true ++ Q) C A X)
         (SV R L (List.replicate (n + 1) true ++ Q) C A X) 1 := ExecB.push.to rfl (Nat.le_refl _)
     exact (h1.seq h2).to rfl (by omega)
