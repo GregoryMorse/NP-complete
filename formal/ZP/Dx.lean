@@ -73,7 +73,7 @@ theorem sep_okj {M : Mach} {e : Nat} : ∀ (m s : Nat) (L R : List Bool), Sub M 
       zz; zz; exact Lead.refl
     have h2 := sep_okj m (s + 2) (true :: false :: L) R.tail.tail (hs'.at rfl)
     refine (h1.trans h2).re rfl (by simp [sepL]) ?_ (by omega)
-    rw [drop_tt]
+    rw [drop_tt, show 2 * (m + 1) + 2 = 2 * m + 2 + 2 by omega]
 
 /-! ## The machine -/
 
