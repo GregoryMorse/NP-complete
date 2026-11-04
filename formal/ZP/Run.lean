@@ -156,7 +156,7 @@ theorem cdn_all (c : Nat) : cdn c ∈ ALL := by
 /-- One rotation of the count-down. -/
 theorem cdStep (R : List Bool) (hR : InvR R) (g : Nat) (Lw V : List Nat) (c : Nat) (hc : c ∈ bits)
     (hL : Bits Lw) (hV : NoB V) (hVb : ∃ a ∈ V, a ∈ bits) :
-    ∃ g', 1 ≤ g' ∧ zpLogic.Reach
+    ∃ g', 1 ≤ g' ∧ zpBase.Reach
       (hd Q.BK2 ((bitsOf R).reverse ++ List.replicate g 0 ++ 0 :: (Lw ++ [c])) (1 :: V))
       (hd Q.BK2 ((bitsOf (rot R)).reverse ++ List.replicate g' 0 ++ 0 :: (Lw ++ [cdn c])) (1 :: V)) := by
   have hA := segA (bitsOf R).reverse Lw V g c hc (bitsOf_rev R) hL hV
@@ -174,7 +174,7 @@ theorem cdStep (R : List Bool) (hR : InvR R) (g : Nat) (Lw V : List Nat) (c : Na
 /-- The whole count-down: `iota` rotations, leaving a blank scanned cell. -/
 theorem countdown (R : List Bool) (hR : InvR R) (g : Nat) (hg : 1 ≤ g) (Lw V : List Nat) (x : Option Bool)
     (hL : Bits Lw) (hV : NoB V) (hVb : ∃ a ∈ V, a ∈ bits) :
-    ∃ g', 1 ≤ g' ∧ zpLogic.Reach
+    ∃ g', 1 ≤ g' ∧ zpBase.Reach
       (hd Q.BK2 ((bitsOf R).reverse ++ List.replicate g 0 ++ 0 :: (Lw ++ [cellN x])) (1 :: V))
       (hd Q.BK2 ((bitsOf (rotN (iota x) R)).reverse ++ List.replicate g' 0 ++ 0 :: (Lw ++ [0])) (1 :: V)) := by
   rcases x with _ | _ | _
@@ -190,7 +190,7 @@ theorem countdown (R : List Bool) (hR : InvR R) (g : Nat) (hg : 1 ≤ g) (Lw V :
 theorem tokens (Lw : List Nat) (ch p b : Nat) (X : List Nat) (hL : Bits Lw) (hch : ch = 0 ∨ ch = 2 ∨ ch = 3)
     (hb : b ∈ bits) (hX : Sym4 X) :
     ∀ (t : Nat) (R : List Bool) (R' : List Nat) (a y : Nat), bitsOf R = R' ++ [2] →
-      ∃ g', 1 ≤ g' ∧ zpLogic.Reach
+      ∃ g', 1 ≤ g' ∧ zpBase.Reach
         (hdR Q.NAV [2] (R'.reverse ++ 0 :: (List.replicate a 0 ++ List.replicate (t + 1) 1 ++
           List.replicate y 0 ++ 0 :: (Lw ++ ch :: 1 :: (List.replicate p 1 ++ b :: X)))))
         (hd Q.BK2 ((bitsOf (rotN t R)).reverse ++ List.replicate g' 0 ++ 0 :: (Lw ++ [ch]))
@@ -353,10 +353,10 @@ def RE (o : Bool) (W F : List Nat) : ZC := hdR (dpOf (bn o)) [1] (W ++ 1 :: F)
 theorem dec (n : Nat) (ds : List Nat) (hds : Dig n ds) (Qw Lw Rw W : List Nat) (g : Nat)
     (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
     (0 < valr n ds → ∃ ds', Dig n ds' ∧ ds'.length = ds.length ∧ valr n ds' + 1 = valr n ds ∧
-      zpLogic.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: FWr n ds))))
+      zpBase.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: FWr n ds))))
         (hd Q.FBACK (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: FWr n ds'))))) ∧
     (valr n ds = 0 →
-      zpLogic.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: FWr n ds))))
+      zpBase.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: FWr n ds))))
         (hd Q.EXH (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
           (1 :: (Rw ++ 1 :: (W ++ 1 :: FWr n (ds.map fun _ => n + 1)))))) := by
   have hC := segC Qw Lw Rw W (FWr n ds) g hQ hL hR hW (FWr_noB n ds)
@@ -384,7 +384,7 @@ theorem dec (n : Nat) (ds : List Nat) (hds : Dig n ds) (Qw Lw Rw W : List Nat) (
 
 theorem post (R1 : List Bool) (h0 : false ∈ R1) (Lw2 : List Nat) (ch2 p b : Nat) (X2 : List Nat) (y : Nat)
     (hL : Bits Lw2) (hch : ch2 = 0 ∨ ch2 = 2 ∨ ch2 = 3) (hb : b ∈ bits) (hX2 : Sym4 X2) :
-    ∃ g', 1 ≤ g' ∧ zpLogic.Reach
+    ∃ g', 1 ≤ g' ∧ zpBase.Reach
       (hd Q.RTW (bitsOf R1).reverse
         (List.replicate y 0 ++ 0 :: (Lw2 ++ ch2 :: 1 :: (List.replicate p 1 ++ b :: X2))))
       (hd Q.BK2 ((bitsOf (rotN (entryOnes R1 + 1) (rot R1))).reverse ++ List.replicate g' 0 ++
@@ -404,11 +404,11 @@ theorem post (R1 : List Bool) (h0 : false ∈ R1) (Lw2 : List Nat) (ch2 p b : Na
 
 theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) (W F : List Nat)
     (hW : NoB W) (hF : NoB F) (hFb : ∃ a ∈ F, a ∈ bits) :
-    (R1.getD 2 false = false → zpLogic.Reach
+    (R1.getD 2 false = false → zpBase.Reach
       (hd Q.FBACK ((bitsOf R1).reverse ++ List.replicate g 0 ++ 0 :: (z.Lw ++ [0]))
         (1 :: (z.Rw ++ 1 :: (W ++ 1 :: F))))
       (RE (R1.getD 0 false) W F)) ∧
-    (R1.getD 2 false = true → ∃ g', 1 ≤ g' ∧ zpLogic.Reach
+    (R1.getD 2 false = true → ∃ g', 1 ≤ g' ∧ zpBase.Reach
       (hd Q.FBACK ((bitsOf R1).reverse ++ List.replicate g 0 ++ 0 :: (z.Lw ++ [0]))
         (1 :: (z.Rw ++ 1 :: (W ++ 1 :: F))))
       (Bd (rotN (entryOnes R1 + 1) (rot R1)) g' (z.mv (R1.getD 0 false) (R1.getD 1 false)) W F)) := by
@@ -444,7 +444,7 @@ theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) 
       subst h2'
       have hcode : (bitsOf (r0 :: r1 :: true :: rest)).reverse = (bitsOf rest).reverse ++ [3, bn r1, bn r0] := by
         rw [bits3]; rfl
-      show ∃ g', 1 ≤ g' ∧ zpLogic.Reach _ (Bd _ g' (z.mv r0 r1) W F)
+      show ∃ g', 1 ≤ g' ∧ zpBase.Reach _ (Bd _ g' (z.mv r0 r1) W F)
       rw [hcode]
       rcases z with ⟨Rt, c, Lt⟩
       cases r1 with
@@ -500,7 +500,7 @@ theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) 
 theorem runI (n : Nat) (W : List Nat) (hW : NoB W) :
     ∀ T R g z ds, InvR R → 1 ≤ g → z.WF → Dig n ds → ds ≠ [] → valr n ds = T →
       ∃ ds', Dig n ds' ∧ ds'.length = ds.length ∧
-        zpLogic.Reach (Bd R g z W (FWr n ds)) (RE (runAux T R z.tape z.Rt.length) W (FWr n ds'))
+        zpBase.Reach (Bd R g z W (FWr n ds)) (RE (runAux T R z.tape z.Rt.length) W (FWr n ds'))
   | T, R, g, z, ds, hR, hg, hz, hds, hne, hv => by
     have h1 : (1 : Nat) ∈ NB := by simp [NB]
     have hV : NoB (z.Rw ++ 1 :: (W ++ 1 :: FWr n ds)) :=

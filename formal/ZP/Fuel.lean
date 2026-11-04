@@ -76,7 +76,7 @@ theorem fvalid {L U Z R : List Nat} (hL : Sym4 L) (hU : Sym4 U) (hZ : Sym4 Z) (h
 
 /-- Decrementing a nonzero digit. -/
 theorem dec_pos (n u : Nat) (hu : u ≤ n) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
-    zpLogic.Reach (hd Q.DEC1 (L ++ blkW n (u + 1)) R) (hd Q.FBACK L (blkW n u ++ R)) := by
+    zpBase.Reach (hd Q.DEC1 (L ++ blkW n (u + 1)) R) (hd Q.FBACK L (blkW n u ++ R)) := by
   have e1 : n + 1 - (u + 1) = n - u := by omega
   have e2 : n + 1 - u = n - u + 1 := by omega
   unfold blkW
@@ -107,7 +107,7 @@ theorem dec_pos (n u : Nat) (hu : u ≤ n) (L R : List Nat) (hL : Sym4 L) (hR : 
 
 /-- A zero digit borrows: it is refilled and `DEC1` moves to the block before it. -/
 theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) (hR1 : R = [] ∨ ∃ R', R = 1 :: R') :
-    zpLogic.Reach (hd Q.DEC1 (L ++ blkW n 0) R) (hd Q.DEC1 L (blkW n (n + 1) ++ R)) := by
+    zpBase.Reach (hd Q.DEC1 (L ++ blkW n 0) R) (hd Q.DEC1 L (blkW n (n + 1) ++ R)) := by
   have e : blkW n 0 = 1 :: (List.replicate n 2 ++ [2]) := by
     simp [blkW, rep_cons_comm, List.replicate_succ]
   have e' : blkW n (n + 1) = 1 :: (List.replicate n 3 ++ [3]) := by
@@ -136,7 +136,7 @@ theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) (hR1 : R =
 
 /-- The borrow meets the double `M`. -/
 theorem exh (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
-    zpLogic.Reach (hd Q.DEC1 (L ++ [1]) R) (hd Q.EXH L (1 :: R)) :=
+    zpBase.Reach (hd Q.DEC1 (L ++ [1]) R) (hd Q.EXH L (1 :: R)) :=
   checkTT (env := [L, [], [], R]) (E := []) (k := 3)
     (fvalid hL Sym4.nil Sym4.nil hR) trivial
     (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 3 .id])
@@ -151,7 +151,7 @@ def wsets : Env := [ALL, NB, ALL]
 
 /-- `FBACK` and `EXH` walk left over non-blank cells. -/
 theorem walkL (q : Nat) (hq : q = Q.FBACK ∨ q = Q.EXH) (L W R : List Nat) (hL : Sym4 L) (hW : NoB W)
-    (hR : Sym4 R) : zpLogic.Reach (hd q (L ++ W) R) (hd q L (W ++ R)) := by
+    (hR : Sym4 R) : zpBase.Reach (hd q (L ++ W) R) (hd q L (W ++ R)) := by
   have hv : Valid wsets [L, W, R] := Valid.cons hL (Valid.cons hW (Valid.cons hR (Valid.nil _)))
   rcases hq with rfl | rfl
   · exact checkTT (env := [L, W, R]) (E := []) (k := 3) hv trivial
@@ -191,13 +191,13 @@ theorem FWr_noB (n : Nat) : ∀ ds, NoB (FWr n ds)
 /-- One decrement of a fuel `M FWr ds` (the `M` is the one before the first block). -/
 theorem fuel (n : Nat) : ∀ ds, Dig n ds → ∀ L R, Sym4 L → Sym4 R → (R = [] ∨ ∃ R', R = 1 :: R') →
     (0 < valr n ds → ∃ ds', Dig n ds' ∧ ds'.length = ds.length ∧ valr n ds' + 1 = valr n ds ∧
-      zpLogic.Reach (hd Q.DEC1 (L ++ [1] ++ FWr n ds) R) (hd Q.FBACK (L ++ [1]) (FWr n ds' ++ R))) ∧
+      zpBase.Reach (hd Q.DEC1 (L ++ [1] ++ FWr n ds) R) (hd Q.FBACK (L ++ [1]) (FWr n ds' ++ R))) ∧
     (valr n ds = 0 →
-      zpLogic.Reach (hd Q.DEC1 (L ++ [1] ++ FWr n ds) R)
+      zpBase.Reach (hd Q.DEC1 (L ++ [1] ++ FWr n ds) R)
         (hd Q.EXH L (1 :: (FWr n (ds.map fun _ => n + 1) ++ R))))
   | [], _, L, R, hL, hR, _ => by
     refine ⟨fun h => absurd h (Nat.lt_irrefl 0), fun _ => ?_⟩
-    show zpLogic.Reach (hd Q.DEC1 (L ++ [1] ++ []) R) (hd Q.EXH L (1 :: ([] ++ R)))
+    show zpBase.Reach (hd Q.DEC1 (L ++ [1] ++ []) R) (hd Q.EXH L (1 :: ([] ++ R)))
     rw [List.append_nil, List.nil_append]
     exact exh L R hL hR
   | d :: ds, hd0, L, R, hL, hR, hR1 => by

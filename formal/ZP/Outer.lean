@@ -2,12 +2,14 @@ module
 
 public import ZP.Defs
 public import ZP.Logic
+public import ZP.LogicBase
+public import ZP.ExtChecks
 public import ZP.SymExec
 
 @[expose] public section
 
 /-!
-# Layer N3: the outer loop of `zpLogic`, segment by segment
+# Layer N3: the outer loop of `zpBase`, segment by segment
 
 Configurations are symbolic (`ZP/SymExec.lean`). Word variables hold logical
 symbols; `bits = [2, 3]` are the symbols `'0'`, `'1'`. The segment checks are
@@ -61,10 +63,10 @@ def P1 : SC := ⟨Q.GRB, [.sym 1, .sym 3, .blk 1 (.const 3), .sym 1, .blk 1 .id,
 
 theorem phase1 (j s : List Nat) (hj : ∀ a ∈ j, a ∈ bits) (hs : ∀ a ∈ s, a ∈ bits) :
     zpLogic.Reach1 (L0.den [j, s]) (P1.den [j, s]) := by
-  have hA : zpLogic.Reach1 (L0.den [j, s]) (F1.den [j, [], s]) :=
+  have hA : zpBase.Reach1 (L0.den [j, s]) (F1.den [j, [], s]) :=
     check1 (sets := [bits, bits]) (E := []) (ρ := [[0], [], [1]]) (k := 9)
       (Valid.cons hj (Valid.cons hs (Valid.nil _))) trivial (by decide +kernel)
-  have hL : zpLogic.Reach (F1.den [j, [], s]) (F1.den [j, [] ++ s, []]) := by
+  have hL : zpBase.Reach (F1.den [j, [], s]) (F1.den [j, [] ++ s, []]) := by
     refine LTM.Reach.fold (S := bits) (fun u v => F1.den [j, u, v]) ?_ s [] (nil_valid _) hs
     intro u b v hb hu hv
     have hval : Valid [bits, bits, bits] [j, u, v] :=
@@ -78,6 +80,6 @@ theorem phase1 (j s : List Nat) (hj : ∀ a ∈ j, a ∈ bits) (hs : ∀ a ∈ s
     check (sets := [bits, bits, bits]) (E := [2]) (ρ := [[0], [1]]) (k := 19)
       (Valid.cons hj (Valid.cons hs (Valid.cons (nil_valid _) (Valid.nil _)))) ⟨rfl, trivial⟩
       (by decide +kernel)
-  exact (hA.trans hL).trans hB
+  exact ((zpBase_ext_zpLogic.reach1 (hA.trans hL))).trans hB
 
 end ZP

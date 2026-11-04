@@ -69,7 +69,7 @@ def dpOf (b : Nat) : Nat := if b = 3 then Q.DP11 else Q.DP10
 
 theorem segA (Qw Lw W : List Nat) (g ch : Nat) (hch : ch ∈ bits) (hQ : Bits Qw) (hL : Bits Lw)
     (hW : NoB W) :
-    zpLogic.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [ch])) (1 :: W))
+    zpBase.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [ch])) (1 :: W))
       (hd Q.TW Qw (List.replicate g 0 ++ 0 :: (Lw ++ cdn ch :: 1 :: W))) := by
   have hv := ivalid hQ (zeros4 g) hL Bits.nil hW NoB.nil
   rcases mem_bits hch with rfl | rfl
@@ -86,7 +86,7 @@ theorem segA (Qw Lw W : List Nat) (g ch : Nat) (hch : ch ∈ bits) (hQ : Bits Qw
 
 theorem segB (Z Lw X : List Nat) (a g p ch b : Nat) (hch : ch = 0 ∨ ch = 2 ∨ ch = 3) (hb : b ∈ bits)
     (hZ : Bits Z) (hL : Bits Lw) (hX : Sym4 X) :
-    zpLogic.Reach
+    zpBase.Reach
       (hdR Q.NAV [2] (Z ++ 0 :: (List.replicate a 0 ++ List.replicate g 0 ++ 0 :: (Lw ++ ch :: 1 ::
         (List.replicate p 1 ++ b :: X)))))
       (hd Q.BK2 (2 :: Z ++ 0 :: (List.replicate a 0 ++ List.replicate g 0 ++ 0 :: (Lw ++ [ch])))
@@ -140,7 +140,7 @@ theorem segB (Z Lw X : List Nat) (a g p ch b : Nat) (hch : ch = 0 ∨ ch = 2 ∨
 
 theorem segC (Qw Lw Rw W F : List Nat) (g : Nat) (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw)
     (hW : NoB W) (hF : NoB F) :
-    zpLogic.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: F))))
+    zpBase.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: F))))
       (hd Q.DEC1 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]) ++ 1 :: (Rw ++ 1 :: W) ++ [1] ++ F) []) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW hF
   exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, F]) (E := []) (k := 12) hv trivial
@@ -154,7 +154,7 @@ theorem segC (Qw Lw Rw W F : List Nat) (g : Nat) (hQ : Bits Qw) (hL : Bits Lw) (
 
 theorem segExh (Qw Lw Rw W : List Nat) (g r : Nat) (hr : r ∈ bits) (hQ : Bits Qw) (hL : Bits Lw)
     (hR : Bits Rw) (hW : NoB W) :
-    zpLogic.Reach (hd Q.EXH (Qw ++ [r] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
+    zpBase.Reach (hd Q.EXH (Qw ++ [r] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
       (hdR Q.DP10 [1] W) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
   rcases mem_bits hr with rfl | rfl
@@ -173,7 +173,7 @@ theorem segExh (Qw Lw Rw W : List Nat) (g r : Nat) (hr : r ∈ bits) (hQ : Bits 
 
 theorem segHalt (Qw Lw Rw W : List Nat) (g r0 r1 : Nat) (h0 : r0 ∈ bits) (h1 : r1 ∈ bits)
     (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
-    zpLogic.Reach (hd Q.FBACK (Qw ++ [2, r1, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
+    zpBase.Reach (hd Q.FBACK (Qw ++ [2, r1, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
         (1 :: (Rw ++ 1 :: W)))
       (hdR (dpOf r0) [1] W) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
@@ -200,7 +200,7 @@ theorem segHalt (Qw Lw Rw W : List Nat) (g r0 r1 : Nat) (h0 : r0 ∈ bits) (h1 :
         (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
-    zpLogic.Reach (hd Q.FBACK ([2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
+    zpBase.Reach (hd Q.FBACK ([2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
       (hdR Q.DP10 [1] W) := by
   have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
   exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 32) hv trivial
@@ -211,7 +211,7 @@ theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (
 
 theorem segShort2 (Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hL : Bits Lw) (hR : Bits Rw)
     (hW : NoB W) :
-    zpLogic.Reach (hd Q.FBACK ([2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
+    zpBase.Reach (hd Q.FBACK ([2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
       (hdR (dpOf r0) [1] W) := by
   have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
   rcases mem_bits h0 with rfl | rfl
@@ -231,7 +231,7 @@ theorem segShort2 (Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hL : Bit
 /-- Guest left move at cell 0: the head stays. -/
 theorem segMv0e (Qw Lw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hQ : Bits Qw) (hL : Bits Lw)
     (hW : NoB W) :
-    zpLogic.Reach (hd Q.FBACK (Qw ++ [3, 2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: 1 :: W))
+    zpBase.Reach (hd Q.FBACK (Qw ++ [3, 2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: 1 :: W))
       (hd Q.RTW (Qw ++ [3, 2, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ r0 :: 1 :: 1 :: W))) := by
   have hv := ivalid hQ (zeros4 g) hL Bits.nil hW NoB.nil
   rcases mem_bits h0 with rfl | rfl
@@ -251,7 +251,7 @@ theorem segMv0e (Qw Lw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hQ : Bits 
 /-- Guest left move onto the cell `c`. -/
 theorem segMv0c (Qw Lw Rw W : List Nat) (g r0 c : Nat) (h0 : r0 ∈ bits) (hc : c ∈ bits)
     (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
-    zpLogic.Reach (hd Q.FBACK (Qw ++ [3, 2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
+    zpBase.Reach (hd Q.FBACK (Qw ++ [3, 2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
         (1 :: c :: (Rw ++ 1 :: W)))
       (hd Q.RTW (Qw ++ [3, 2, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ r0 :: c :: 1 :: (Rw ++ 1 :: W)))) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
@@ -284,7 +284,7 @@ theorem segMv0c (Qw Lw Rw W : List Nat) (g r0 c : Nat) (h0 : r0 ∈ bits) (hc : 
 /-- Guest right move. -/
 theorem segMv1 (Qw Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits)
     (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
-    zpLogic.Reach (hd Q.FBACK (Qw ++ [3, 3, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
+    zpBase.Reach (hd Q.FBACK (Qw ++ [3, 3, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
         (1 :: (Rw ++ 1 :: W)))
       (hd Q.RTW (Qw ++ [3, 3, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ 1 :: r0 :: (Rw ++ 1 :: W)))) := by
   have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
@@ -306,7 +306,7 @@ theorem segMv1 (Qw Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits)
 
 /-- Two tokens left: consume one, then a normal rotation starts. -/
 theorem segE1a (Z X : List Nat) (a y : Nat) (hZ : Bits Z) (hX : Sym4 X) :
-    zpLogic.Reach
+    zpBase.Reach
       (hdR Q.NAV [2] (Z ++ 0 :: (List.replicate a 0 ++ [1, 1] ++ List.replicate y 0 ++ 0 :: X)))
       (hd Q.TW (2 :: Z) (0 :: (List.replicate a 0 ++ [1, 0] ++ List.replicate y 0 ++ 0 :: X))) := by
   have hv := nvalid hZ (zeros4 a) (zeros4 y) Bits.nil Sym4.nil hX
@@ -319,7 +319,7 @@ theorem segE1a (Z X : List Nat) (a y : Nat) (hZ : Bits Z) (hX : Sym4 X) :
 
 /-- Three or more tokens left. -/
 theorem segE1b (Z X : List Nat) (a y p : Nat) (hZ : Bits Z) (hX : Sym4 X) :
-    zpLogic.Reach
+    zpBase.Reach
       (hdR Q.NAV [2] (Z ++ 0 :: (List.replicate a 0 ++ 1 :: (List.replicate p 1 ++ [1]) ++
         List.replicate y 0 ++ 0 :: X)))
       (hd Q.TW (2 :: Z) (0 :: (List.replicate a 0 ++ 1 :: (List.replicate p 1 ++ [0]) ++
@@ -336,7 +336,7 @@ theorem segE1b (Z X : List Nat) (a y p : Nat) (hZ : Bits Z) (hX : Sym4 X) :
 /-- The last token: back to `BK2` on the new scanned cell. -/
 theorem segE2 (Z Lw X : List Nat) (a y p ch b : Nat) (hch : ch = 0 ∨ ch = 2 ∨ ch = 3) (hb : b ∈ bits)
     (hZ : Bits Z) (hL : Bits Lw) (hX : Sym4 X) :
-    zpLogic.Reach
+    zpBase.Reach
       (hdR Q.NAV [2] (Z ++ 0 :: (List.replicate a 0 ++ [1] ++ List.replicate y 0 ++ 0 :: (Lw ++ ch :: 1 ::
         (List.replicate p 1 ++ b :: X)))))
       (hd Q.BK2 (2 :: Z ++ 0 :: (List.replicate a 0 ++ [0] ++ List.replicate y 0 ++ 0 :: (Lw ++ [ch])))

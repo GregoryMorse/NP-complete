@@ -2,6 +2,7 @@ module
 
 public import ZP.Defs
 public import ZP.Logic
+public import ZP.LogicBase
 public import ZP.SymExec
 public import ZP.Outer
 
@@ -290,9 +291,9 @@ theorem rvalid {R H X : List Nat} (hR : Bits R) (hH : Bits H) (hX : ∀ a ∈ X,
 /-- One move, from a symbolic check. -/
 theorem rstep {q q' h b k : Nat} {R H X : List Nat} (hR : Bits R) (hH : Bits H)
     (hX : ∀ a ∈ X, a ∈ ALL)
-    (hc : mreachN zpLogic rsets [] k ((Fs q h b).norm [])
+    (hc : mreachN zpBase rsets [] k ((Fs q h b).norm [])
       ((Fr q' h).subst (Item.inst [[.sym b, .blk 0 .id], [.sym b, .blk 1 .id], [.blk 2 .id]])) = true) :
-    zpLogic.Reach (rst q h (b :: R) H X) (rst q' h (R ++ [b]) (b :: H) X) := by
+    zpBase.Reach (rst q h (b :: R) H X) (rst q' h (R ++ [b]) (b :: H) X) := by
   rw [rst_cons]
   have := checkI (E := []) (rvalid hR hH hX) trivial hc
   have e : (R ++ [b]).reverse = b :: R.reverse := by simp
@@ -302,9 +303,9 @@ theorem rstep {q q' h b k : Nat} {R H X : List Nat} (hR : Bits R) (hH : Bits H)
 
 /-- The closing 0. -/
 theorem rfin {q h k : Nat} {R H X : List Nat} (hR : Bits R) (hH : Bits H) (hX : ∀ a ∈ X, a ∈ ALL)
-    (hc : mreachN zpLogic rsets [] k ((Fs q h 2).norm [])
+    (hc : mreachN zpBase rsets [] k ((Fs q h 2).norm [])
       ((Nv h).subst (Item.inst [[.blk 0 .id], [.blk 1 .id], [.blk 2 .id]])) = true) :
-    zpLogic.Reach (rst q h (2 :: R) H X) (rnav h R H X) := by
+    zpBase.Reach (rst q h (2 :: R) H X) (rnav h R H X) := by
   rw [rst_cons]
   exact checkI (E := []) (rvalid hR hH hX) trivial hc
 
@@ -324,23 +325,23 @@ theorem ones_snoc (m : Nat) : ones m ++ [3] = 3 :: ones m := by
 /-- Moving step lemmas, for one mode. -/
 structure RotMode (qW qD qO h : Nat) : Prop where
   w : ∀ b R H X, b ∈ bits → Bits R → Bits H → (∀ a ∈ X, a ∈ ALL) →
-    zpLogic.Reach (rst qW h (b :: R) H X) (rst qD h (R ++ [b]) (b :: H) X)
+    zpBase.Reach (rst qW h (b :: R) H X) (rst qD h (R ++ [b]) (b :: H) X)
   d : ∀ b R H X, b ∈ bits → Bits R → Bits H → (∀ a ∈ X, a ∈ ALL) →
-    zpLogic.Reach (rst qD h (b :: R) H X) (rst qO h (R ++ [b]) (b :: H) X)
+    zpBase.Reach (rst qD h (b :: R) H X) (rst qO h (R ++ [b]) (b :: H) X)
   o : ∀ R H X, Bits R → Bits H → (∀ a ∈ X, a ∈ ALL) →
-    zpLogic.Reach (rst qO h (3 :: R) H X) (rst qO h (R ++ [3]) (3 :: H) X)
+    zpBase.Reach (rst qO h (3 :: R) H X) (rst qO h (R ++ [3]) (3 :: H) X)
   z : ∀ R H X, Bits R → Bits H → (∀ a ∈ X, a ∈ ALL) →
-    zpLogic.Reach (rst qO h (2 :: R) H X) (rnav h R H X)
+    zpBase.Reach (rst qO h (2 :: R) H X) (rnav h R H X)
 
 theorem oloop {qW qD qO h : Nat} (M : RotMode qW qD qO h) :
     ∀ m R H X, Bits R → Bits H → (∀ a ∈ X, a ∈ ALL) →
-      zpLogic.Reach (rst qO h (ones m ++ 2 :: R) H X) (rnav h (R ++ ones m) (ones m ++ H) X)
+      zpBase.Reach (rst qO h (ones m ++ 2 :: R) H X) (rnav h (R ++ ones m) (ones m ++ H) X)
   | 0, R, H, X, hR, hH, hX => by
-    show zpLogic.Reach (rst qO h (2 :: R) H X) (rnav h (R ++ []) H X)
+    show zpBase.Reach (rst qO h (2 :: R) H X) (rnav h (R ++ []) H X)
     rw [List.append_nil]
     exact M.z R H X hR hH hX
   | m + 1, R, H, X, hR, hH, hX => by
-    show zpLogic.Reach (rst qO h (3 :: (ones m ++ 2 :: R)) H X)
+    show zpBase.Reach (rst qO h (3 :: (ones m ++ 2 :: R)) H X)
       (rnav h (R ++ 3 :: ones m) ((3 :: ones m) ++ H) X)
     refine (M.o _ H X ((Bits.rep m).app (Bits.cons (by simp [bits]) hR)) hH hX).trans ?_
     have e1 : ones m ++ 2 :: R ++ [3] = ones m ++ 2 :: (R ++ [3]) := by simp
@@ -360,7 +361,7 @@ holes beside the closing 0's hole. -/
 theorem rotate {qW qD qO h : Nat} (M : RotMode qW qD qO h) (R : List Bool) (h0 : false ∈ R)
     (X : List Nat) (hX : ∀ a ∈ X, a ∈ ALL) :
     ∃ R' H, bitsOf (rot R) = R' ++ [2] ∧ H.length = entryOnes R + 2 ∧ Bits H ∧
-      zpLogic.Reach (rst qW h (bitsOf R) [] X) (rnav h R' H X) := by
+      zpBase.Reach (rst qW h (bitsOf R) [] X) (rnav h R' H X) := by
   obtain ⟨m, R', e, hent, hrot⟩ := entry_split R h0
   cases R with
   | nil => simp at h0
@@ -391,7 +392,7 @@ theorem rotate {qW qD qO h : Nat} (M : RotMode qW qD qO h) (R : List Bool) (h0 :
       · rw [hrot]
         simp [bitsOf, ones]
       · simp [ones, hent]
-      · show zpLogic.Reach (rst qW h ((if a then 3 else 2) :: bitsOf T) [] X) _
+      · show zpBase.Reach (rst qW h ((if a then 3 else 2) :: bitsOf T) [] X) _
         refine hW.trans ?_
         rw [hTb]
         refine hD.trans ?_

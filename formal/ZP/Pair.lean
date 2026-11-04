@@ -5,6 +5,7 @@ public import ZP.Abstract
 public import ZP.Logic
 public import ZP.SymExec
 public import ZP.Outer
+public import ZP.ExtChecks
 public import ZP.Rot
 public import ZP.Fuel
 public import ZP.Interp
@@ -551,7 +552,7 @@ theorem setup (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W F : List Nat)
   rw [rst_hd, rnav_hd] at hr
   have hcode : (bitsOf (Pb.reverse ++ [false])).reverse = 2 :: bitsOf Pb := by
     simp [bitsOf]
-  have hB0 := hA.trans (hr.of_eq (by rw [hcode]) rfl)
+  have hB0 := hA.trans (zpBase_ext_zpLogic.reach (hr.of_eq (by rw [hcode]) rfl))
   have eT : Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) = 1 :: (W ++ 1 :: F) := by
     have e : Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) =
         (Vq ++ [1]) ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) := by simp
@@ -566,7 +567,7 @@ theorem setup (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W F : List Nat)
   cases Xb with
   | nil =>
     have hB := segB R'.reverse [] X' k 0 p 0 b (Or.inl rfl) hb hRr Bits.nil hX'
-    refine ⟨k + 1, by omega, hB0.trans (hB.of_eq ?_ ?_)⟩
+    refine ⟨k + 1, by omega, hB0.trans (zpBase_ext_zpLogic.reach (hB.of_eq ?_ ?_))⟩
     · rw [eT, eV, hk]
       simp [List.replicate_succ, rep_cons_comm, bitsOf]
     · unfold Bd Zp.Lw Zp.Rw
@@ -575,7 +576,7 @@ theorem setup (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W F : List Nat)
   | cons x xt =>
     have hB := segB R'.reverse (bitsOf xt.reverse) X' (k + 1) 0 p (bn x) b (bn_cases x) hb hRr
       (Bits.ofB _) hX'
-    refine ⟨k + 1 + 1, by omega, hB0.trans (hB.of_eq ?_ ?_)⟩
+    refine ⟨k + 1 + 1, by omega, hB0.trans (zpBase_ext_zpLogic.reach (hB.of_eq ?_ ?_))⟩
     · rw [eT, eV, hk, bitsOf_cons, bitsOf_reverse]
       simp
     · unfold Bd Zp.Lw Zp.Rw
@@ -612,7 +613,7 @@ theorem runFrom (n : Nat) (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W : List 
   have ht : (⟨[], Xb.head?, Xb.tail⟩ : Zp).tape = fun i => Xb[i]? := by
     cases Xb <;> rfl
   rw [ht] at h2
-  exact ⟨ds', hd', hl', h1.trans h2⟩
+  exact ⟨ds', hd', hl', h1.trans (zpBase_ext_zpLogic.reach h2)⟩
 
 
 /-! ## Binary counters (least significant bit first) -/
