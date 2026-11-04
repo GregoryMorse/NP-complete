@@ -47,14 +47,16 @@ def LTM.conf (L : LTM) : Nat → Option LConf
   | 0 => some ⟨0, fun _ => 0, 0⟩
   | k + 1 => (L.conf k).bind L.step
 
-/-- A beep-exact simulation of the abstract program by a logical machine that never
+/-- A beep-exact simulation of the abstract program of `C` by a logical machine that never
 halts. -/
-structure LMacroSim (L : LTM) where
+structure LMacroSimC (C : Nat → Nat → Prop) [∀ J S, Decidable (C J S)] (L : LTM) where
   time : Nat → Nat
   mono : ∀ n, time n < time (n + 1)
   total : ∀ k, ∃ c, L.conf k = some c
   beeps : ∀ n,
     (∃ k, time n ≤ k ∧ k < time (n + 1) ∧ ∃ c, L.conf k = some c ∧ c.q = L.beep) ↔
-      ¬ Correct (absState n).1 (absState n).2
+      ¬ C (absStateC C n).1 (absStateC C n).2
+
+abbrev LMacroSim (L : LTM) : Type := LMacroSimC Correct L
 
 end ZP
