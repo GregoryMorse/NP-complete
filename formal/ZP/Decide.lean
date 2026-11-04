@@ -177,7 +177,7 @@ theorem InP_of_Sentence (h : Sentence) : InP Lp := by
   unfold clock at hr
   have hz : zexec (gMach (startCode J)) ((x.length + 2) ^ (J.length + 1) - 1) 0 [] x =
       exec (gMach (startCode J)) ((x.length + 2) ^ (J.length + 1) - 1) 0 (inTape x) 0 :=
-    (exec_z _ _ 0 [] x).symm.trans (by rw [inTape_z])
+    (exec_z _ _ 0 [] x).symm.trans (by rw [inTape_z]; rfl)
   unfold Lp
   rw [← hr, ← hz, ← hiff]
   exact decide_eq_true_iff
