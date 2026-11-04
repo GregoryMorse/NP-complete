@@ -6,7 +6,7 @@ public import ZP.GuestCompile
 @[expose] public section
 
 /-!
-# The sentence and P = NP: what is proved so far
+# The sentence and P = NP: one direction
 
 * `sentence_iff`: `Sentence` says exactly that one guest code `J` decides `L`
   within `clock J`, on every input.
@@ -14,8 +14,8 @@ public import ZP.GuestCompile
   that `clock` exceeds its time bound).
 * `sentence_of_PeqNP`: hence `P = NP → Sentence`, given `L ∈ NP`.
 
-Still open in Lean: `L ∈ NP` (a universal guest interpreter as a machine) and the
-converse `Sentence → P = NP` (`L` is NP-hard, and a clocked simulation of `J`).
+`L ∈ NP` is `Lp_InNP` (`ZP/Verif.lean`); the converse `Sentence → P = NP` and the
+equivalence `sentence_iff_PeqNP` are in `ZP/Hard.lean`.
 -/
 
 namespace ZP.Cx

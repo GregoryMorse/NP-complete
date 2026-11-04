@@ -160,13 +160,13 @@ theorem xl_ok (h : 1 ≤ N) : ∀ (x O : List Bool), ExecB XL (ES x O N P)
             (ES x ((flat (xbE N false)).reverse ++ O) N P) (1 + (54 * N + 40)) :=
           ((ExecB.pop (i := 0) (S := ES (false :: x) O N P)).to (S2 := ES x O N P) rfl
             (Nat.le_refl _)).seq (em_XB h false x O)
-        exact (ExecB.cs (i := 0) (pe := .skip) (pf := .seq (.pop 0) (XB false))
+        exact (ExecB.cs (i := 0) (S := ES (false :: x) O N P) (pe := .skip) (pf := .seq (.pop 0) (XB false))
           (pt := .seq (.pop 0) (XB true)) hb).to rfl (by omega)
       · have hb : ExecB (.seq (.pop 0) (XB true)) (ES (true :: x) O N P)
             (ES x ((flat (xbE N true)).reverse ++ O) N P) (1 + (54 * N + 40)) :=
           ((ExecB.pop (i := 0) (S := ES (true :: x) O N P)).to (S2 := ES x O N P) rfl
             (Nat.le_refl _)).seq (em_XB h true x O)
-        exact (ExecB.cs (i := 0) (pe := .skip) (pf := .seq (.pop 0) (XB false))
+        exact (ExecB.cs (i := 0) (S := ES (true :: x) O N P) (pe := .skip) (pf := .seq (.pop 0) (XB false))
           (pt := .seq (.pop 0) (XB true)) hb).to rfl (by omega)
     have e2 := xl_ok h x ((flat (xbE N b)).reverse ++ O)
     refine (ExecB.whT (by cases b <;> rfl) e1 e2).to ?_ ?_
@@ -335,7 +335,7 @@ theorem gen_ok (V : Mach) (k m E : Nat) (x : List Bool) :
   rw [g0] at l1
   rw [g11] at l11
   have hG : genB V k m E x.length = 9 * genT n pad N F (powB (n + 2) E) + 8 * n + 2 := by
-    unfold genB; rw [← hn, ← hpad, ← hF, hNv, hpad]
+    unfold genB; rw [hNv, hF, hpad, ← hn]
   rw [hG]
   unfold genT
   rw [← hF] at h4 h6

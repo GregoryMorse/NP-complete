@@ -23,6 +23,12 @@ cache download and build. The layout follows the
 | `ZP/Complexity.lean` | one-tape TMs (`Mach`, `exec`), `InP`, `InNP`, `PeqNP`; P ⊆ NP (**proved**) |
 | `ZP/GuestTM.lean`, `ZP/GuestCompile.lean` | a guest code is a TM and every TM is a guest code of any padded length, step for step (**proved**) |
 | `ZP/PNP.lean` | `Sentence` ↔ some guest decides L within its clock; L ∈ P → `Sentence`; P = NP ∧ L ∈ NP → `Sentence` (**proved**) |
+| `ZP/Zx.lean`, `ZP/Gad.lean`, `ZP/Pop.lean`, `ZP/Prog.lean`, `ZP/Lib.lean` | machine toolkit: zipper semantics, tape gadgets, a stack language compiled to machines (**proved**) |
+| `ZP/Sim.lean`, `ZP/UG.lean`, `ZP/Verif.lean` | a stack program that simulates any `Mach`; the universal guest interpreter; **L ∈ NP** (`Lp_InNP`) |
+| `ZP/Clock.lean`, `ZP/Raw.lean`, `ZP/Decide.lean` | clocks, P ⊆ NP (`InP_InNP`), and **`Sentence → L ∈ P`** (`InP_of_Sentence`) by a clocked simulation of the guest decider |
+| `ZP/Body.lean`, `ZP/Scan.lean`, `ZP/Dx.lean` | the instance machine `DX V k m x` of an NP verifier: input check, certificate bound, clocked run of `V` |
+| `ZP/Tg.lean`, `ZP/Ents.lean`, `ZP/Gen.lean`, `ZP/Gx.lean` | the compiled code of `DX V k m x`, written out by a stack program `GEN` in polynomial time |
+| `ZP/HardB.lean`, `ZP/Hard.lean` | polynomial bounds; **L is NP-hard** (`red_iff`, `InP_of_InNP`) and **`Sentence ↔ P = NP`** (`sentence_iff_PeqNP`) |
 | `ZP/Checks.lean` | kernel-evaluated (`decide`) agreement with `ref/zp2_ref.py` on small cases |
 | `comparator.json`, `formalization.yaml`, `LICENSE` | Palomar submission metadata |
 
@@ -35,11 +41,17 @@ theorem ZP.zp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpMachine ↔ ZP.Senten
 The machine is Z_P v2, the 278-state native design (`docs/native.md`); until
 2026-11 the development targeted the 1371-state v1 table.
 
-`Sentence ↔ P = NP` is **partly** formalized (`ZP/PNP.lean`). Still open in Lean:
-* L ∈ NP: a universal guest interpreter built as a `Mach`, with a polynomial time bound;
-* `Sentence → P = NP`: a clocked simulation of the guest decider (so that it halts),
-  and L NP-hard under reductions computed by machines. The paper (`docs/native.md`)
-  only sketches the NP-hardness of the v2 language L (by padding).
+`Sentence ↔ P = NP` is **proved** as well (`ZP/Hard.lean`):
+
+```lean
+theorem ZP.Cx.sentence_iff_PeqNP : ZP.Sentence ↔ ZP.Cx.PeqNP
+```
+
+* `P = NP → Sentence`: L ∈ NP (`Lp_InNP`) and L ∈ P → `Sentence` (`ZP/PNP.lean`).
+* `Sentence → P = NP`: P ⊆ NP (`InP_InNP`); `Sentence` gives a machine deciding L in
+  polynomial time (`InP_of_Sentence`); every NP language reduces to L by
+  `x ↦ code (DX V k m x) ((|x|+2)^E)`, computed by the stack program `GEN` in
+  polynomial time (`red_iff`, `gen_ok`), so it is in P (`InP_of_InNP`).
 
 ## Status
 * CI (`.github/workflows/ci.yml`, job *Lean*) builds everything and prints a census of the
