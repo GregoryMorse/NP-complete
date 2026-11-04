@@ -63,6 +63,8 @@ theorem ZP.Cx.sentence_iff_PeqNP : ZP.Sentence ↔ ZP.Cx.PeqNP
   `formal/comparator.json`.
 
 ## Local use
+In a cloud session, install the toolchain from GitHub as in `plans/00-setup.md` (elan's own
+download host is blocked by the proxy). Plans for the other native machines are in `plans/`.
 ```bash
 cd formal && lake build                 # needs elan; toolchain from lean-toolchain
 ./scripts/verify-comparator.sh          # needs bwrap
