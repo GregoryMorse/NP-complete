@@ -21,3 +21,4 @@ public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile
 public import ZP.PNP
+public import ZP.Zx
