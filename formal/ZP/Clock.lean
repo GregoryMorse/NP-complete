@@ -108,7 +108,7 @@ theorem mul1_ok {R L Q A : List Bool} (a : Nat) : ∀ (c : Nat) (D : List Bool),
     have hd := addn_ok (R := R) (L := L) (Q := Q) (C := List.replicate c true) (A := A) a D
     have ih := mul1_ok (R := R) (L := L) (Q := Q) (A := A) a c (List.replicate a true ++ D)
     refine (ExecB.whT (by rfl) (hp.seq hd) ih).to ?_ ?_
-    · simp [Nat.add_mul, rep_add]
+    · rw [Nat.add_mul, Nat.one_mul, rep_add true (c * a) a, List.append_assoc]
     · have := Nat.add_mul c 1 (8 * a + 4)
       omega
 
