@@ -143,3 +143,40 @@ theorem, and write a design note before any Lean.
 ## Estimate
 
 ~1500–2500 new lines: 300 Defs/Checks, ~1000 segments and loops, ~400 counting library.
+
+## Status
+
+Done (all build green, pushed):
+- `ZP/DefsPP.lean` (`accCount`, `inPP`, `CorrectPP`, `SentencePP`), `ZP/ChecksPP.lean`
+  (values checked against `ref/zpp_ref.py`, first beeps `(1,3) (2,3) (3,1)`, 295 states).
+- `ZP/TablePP.lean`, `ZP/LogicPP.lean` (generated), `ZP/CompilePP.lean`
+  (`zppCert`, `zppCert_ok`, `zppMacroSimC`: the table simulates `zppLogic` gadget by gadget).
+
+Still to do: sections 3 (pair lemma), 4 (top). Notes from tracing `native/zpp.py` on the first
+pair (use `python3 /tmp/trace.py`-style tracing: run `logic.run`-like loop, print the tape at
+the first entry into each phase state):
+
+- **Layout.** `M_g J M_1 s M_2 C M_3 A M_4 M B_1`. There is no separate "fuel-start" `M`:
+  - after `C` is built, `BD6` on the blank writes `M_3`, moves left and enters `BN1` (zp2
+    goes right into `GRB`, which then writes the block-start `M`). So the `BD6` step is the
+    same as zp2's `GRB`-on-blank step, and the second BLK builds `A = 1^(|s|+1)` after `M_3`,
+    which in zp2 terms is a fuel-style block `M 1^(|s|+1)`;
+  - `BD6` on `M` then `BD7` skip over `A` (the new `M_3 A` block was just built), and
+    `BD7` on the blank writes `M_4` and goes to `GRB` (the verifier fuel block `M B_1` is built
+    by the third BLK, and `BD7` on `M` recognises it, going to `VG1`).
+- **The run reuses `runFrom` unchanged.** `runFrom` is stated for an arbitrary `NoB` word `W`
+  between the guest source and the fuel; take `W = j ++ 1 :: (s ++ 1 :: (C ++ 1 :: A))`. The
+  odometer's borrow meets `M_4 M` as its "double M". Only the start config `GCv` and the
+  dispatch after the run change.
+- **New dispatch.** After a verifier run with result `r` the machine is in `DP3r` on the
+  `C` flag cell. Accept (`r=1`): `DP31 → DPA1 → DPA2 → AD` decrements `A`; `ACHK` looks at
+  whether the leading bit flipped (`ALC → VA1`: truth 1, erase `A` etc.) or not (`ALB → VN2`:
+  continue like a rejection). Reject (`r=0`): `DP30 → VN1 → VN2` as in zp2. `VFE` now skips
+  `A` (`VFA`) when refilling, then `VF2` refills the verifier fuel.
+- **Lemmas not reusable from zp2** (they use a changed state): `blkVer`, `blkDecStep`,
+  `blkDecLast`, `gcEnd`, `vAcc`, `vRej*`, `vUnder`, `sinc0/E`, `jinc0/E` (see the failures
+  listed when `Pair.lean` is retargeted to `zpBase`; they are exactly the transitions that
+  `LogicBase.lean` zeroes). `decFuel` uses `BD*`, so it is re-proved for `zppLogic`.
+- Create segment lemmas as in `ZP/Pair.lean`: pick start/end `SC`s, find the fuel with
+  `scripts/symexec.py` (`reachN`; point it at `ZP/LogicPP.lean`, see plan 01 step E.3, which
+  is not done yet), then `checkFF … (by decide +kernel)`.

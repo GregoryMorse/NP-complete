@@ -57,7 +57,7 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 ## Checklist
 
 - [x] 01 generic pipeline (steps A–H; F partial, see the status section)
-- [ ] 02 Z_PP
+- [ ] 02 Z_PP (defs, checks, certificate done; pair lemma and top theorem remain)
 - [ ] 06 Z_PSPACE
 - [ ] 03 Z_FACTOR
 - [ ] 04 Z_DLOG
