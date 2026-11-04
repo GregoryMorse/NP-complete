@@ -170,12 +170,12 @@ def PRE (k m : Nat) : Cmd :=
   .seq (mv 1 8) (.seq (CLK k) (.seq (clr 5) (.seq (pushK 5 m) (.seq MUL (.seq CMP
     (.seq (clr 3) (clr 5)))))))
 
-def MAIN (V : Mach) (k : Nat) : Cmd :=
+def BMAIN (V : Mach) (k : Nat) : Cmd :=
   .seq (CLK k) (.seq (clr 5) (.seq (encL 0 6) (.seq (.seq (.push 6 false) (.push 6 true))
     (.seq (encL 9 6) (.seq (.seq (.push 6 false) (.push 6 true)) (.seq (mv 6 0)
       (.seq (SIM V) (.seq (clr 0) (mv 4 0)))))))))
 
-def BODY (V : Mach) (k m : Nat) : Cmd := .seq (PRE k m) (.cs 10 (MAIN V k) (clr 0) (clr 0))
+def BODY (V : Mach) (k m : Nat) : Cmd := .seq (PRE k m) (.cs 10 (BMAIN V k) (clr 0) (clr 0))
 
 theorem ok_BODY (V : Mach) (k m : Nat) : Ok 12 (BODY V k m) :=
   ⟨⟨okb_ok 12 (mv 1 8) (by decide), Ok.mono (by decide) _ (ok_CLK k), okb_ok 12 (clr 5) (by decide),
@@ -193,7 +193,7 @@ def preB (k m n c : Nat) : Nat :=
     ((n + 2) ^ k * (8 * m + 4) + 4 * ((n + 2) ^ k * m) + 2 + (6 * c + 1 +
       (2 * ((n + 2) ^ k * m) + 1 + (2 * m + 1)))))))
 
-theorem pre_ok (k m : Nat) (x c0 : List Bool) :
+theorem bpre_ok (k m : Nat) (x c0 : List Bool) :
     ExecB (PRE k m) (WS x c0 [] [] [] [] [] [] ++ [[], [], [], []])
       (WS x [] [] [] [] [] [] [] ++
         [[], c0, List.replicate (c0.length - (x.length + 2) ^ k * m) true, []])
@@ -262,7 +262,7 @@ theorem lay2_rev (x c0 : List Bool) :
   simp
 
 theorem main_ok (V : Mach) (k : Nat) (x c0 : List Bool) :
-    ∃ S', ExecB (MAIN V k) (WS x [] [] [] [] [] [] [] ++ [[], c0, [], []]) S'
+    ∃ S', ExecB (BMAIN V k) (WS x [] [] [] [] [] [] [] ++ [[], c0, [], []]) S'
         (mainB V k x.length c0.length) ∧
       (S'.getD 0 [] ≠ [] ↔ (zexec V ((x.length + 2) ^ k) 0 [] (lay [x, c0])).getD false = true) := by
   have e1 := (clk_ok (L := []) x k).frame (ok_CLK k) (by simp [WS]) [[], c0, [], []]
@@ -308,7 +308,11 @@ theorem main_ok (V : Mach) (k : Nat) (x c0 : List Bool) :
         [[], [], [], []])
       (WS (lay [x, c0]) [] [] (List.replicate ((x.length + 2) ^ k) true) [] [] [] [] ++
         [[], [], [], []]) (4 * (2 * x.length + 2 * c0.length + 4) + 1) := by
-    refine (mv_ok (i := 6) (j := 0) (by decide) _ _ (by simp [WS]) (by simp [WS]) rfl).to ?_
+    refine (mv_ok (i := 6) (j := 0) (by decide)
+      (true :: false :: ((encR c0).reverse ++ true :: false :: (encR x).reverse))
+      (WS [] [] [] (List.replicate ((x.length + 2) ^ k) true) [] []
+        (true :: false :: ((encR c0).reverse ++ true :: false :: (encR x).reverse)) [] ++
+        [[], [], [], []]) (by simp [WS]) (by simp [WS]) rfl).to ?_
       (Nat.le_of_eq (by rw [hW]))
     rw [← lay2_rev x c0]
     simp [WS]
@@ -345,13 +349,13 @@ theorem body_ok (V : Mach) (k m : Nat) (x c0 : List Bool) :
         (bodyB V k m x.length c0.length) ∧
       (S'.getD 0 [] ≠ [] ↔ c0.length ≤ (x.length + 2) ^ k * m ∧
         (zexec V ((x.length + 2) ^ k) 0 [] (lay [x, c0])).getD false = true) := by
-  have e1 := pre_ok k m x c0
+  have e1 := bpre_ok k m x c0
   generalize (x.length + 2) ^ k * m = P at e1 ⊢
   by_cases hc : c0.length ≤ P
   · have h0 : c0.length - P = 0 := by omega
     rw [h0] at e1
     obtain ⟨S', e2, hS'⟩ := main_ok V k x c0
-    have e2' : ExecB (.cs 10 (MAIN V k) (clr 0) (clr 0))
+    have e2' : ExecB (.cs 10 (BMAIN V k) (clr 0) (clr 0))
         (WS x [] [] [] [] [] [] [] ++ [[], c0, List.replicate 0 true, []]) S'
         (mainB V k x.length c0.length + 1) := ExecB.cs e2
     refine ⟨S', (e1.seq e2').to rfl (by unfold bodyB; omega), ?_⟩
@@ -363,7 +367,7 @@ theorem body_ok (V : Mach) (k m : Nat) (x c0 : List Bool) :
         (WS [] [] [] [] [] [] [] [] ++ [[], c0, List.replicate (d + 1) true, []])
         (2 * x.length + 1) :=
       (clr_ok (i := 0) x _ (by simp [WS]) rfl).to rfl (Nat.le_refl _)
-    have e2' : ExecB (.cs 10 (MAIN V k) (clr 0) (clr 0))
+    have e2' : ExecB (.cs 10 (BMAIN V k) (clr 0) (clr 0))
         (WS x [] [] [] [] [] [] [] ++ [[], c0, List.replicate (d + 1) true, []])
         (WS [] [] [] [] [] [] [] [] ++ [[], c0, List.replicate (d + 1) true, []])
         (2 * x.length + 1 + 1) := ExecB.cs e2
