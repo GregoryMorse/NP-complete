@@ -52,7 +52,7 @@ theorem rotk_U {x gr R gl k clk e bad fw fd ans : List Bool} (h0 : false ∈ R) 
 theorem rl_U {x gr gl clk e bad fw fd ans : List Bool} : ∀ (m : Nat) (R : List Bool), false ∈ R →
     ExecB RL (U x gr R gl (List.replicate m true ++ []) clk e bad fw fd ans)
       (U x gr (rotN m R) gl [] clk e bad fw fd ans) (m * (rB R.length + 2) + 1)
-  | 0, R, _ => (ExecB.whF rfl).to rfl (by omega)
+  | 0, R, _ => ExecB.to (ExecB.whF (by rfl)) rfl (by omega)
   | m + 1, R, h0 => by
     have b1 : ExecB (.pop 5) (U x gr R gl (List.replicate (m + 1) true ++ []) clk e bad fw fd ans)
         (U x gr R gl (List.replicate m true ++ []) clk e bad fw fd ans) 1 :=
@@ -62,7 +62,7 @@ theorem rl_U {x gr gl clk e bad fw fd ans : List Bool} : ∀ (m : Nat) (R : List
     have ih := rl_U (x := x) (gr := gr) (gl := gl) (clk := clk) (e := e) (bad := bad) (fw := fw)
       (fd := fd) (ans := ans) m (rot R) (mem_rot h0)
     rw [length_rot] at ih
-    refine (ExecB.whT rfl (b1.seq b2) ih).to rfl ?_
+    refine (ExecB.whT (by rfl) (b1.seq b2) ih).to rfl ?_
     have hx := Nat.add_mul m 1 (rB R.length + 2)
     rw [Nat.one_mul] at hx
     omega
@@ -71,10 +71,11 @@ theorem iota_U {x gr R gl k clk e bad fw fd ans : List Bool} (h0 : false ∈ R) 
     ExecB IOTA (U x gr R gl k clk e bad fw fd ans)
       (U x gr (rotN (iota gr.head?) R) gl k clk e bad fw fd ans) (2 * rB R.length + 1) := by
   match gr with
-  | [] => exact (ExecB.cs ExecB.skip).to rfl (by omega)
-  | false :: g => exact (ExecB.cs (rot_U h0)).to rfl (by omega)
+  | [] => exact ExecB.to (ExecB.cs (by exact ExecB.skip)) rfl (by omega)
+  | false :: g => exact ExecB.to (ExecB.cs (by exact rot_U h0)) rfl (by omega)
   | true :: g =>
-    exact (ExecB.cs ((rot_U h0).seq (rot_U (mem_rot h0)))).to rfl (by rw [length_rot]; omega)
+    exact ExecB.to (ExecB.cs (by exact (rot_U h0).seq (rot_U (mem_rot h0)))) rfl
+      (by rw [length_rot]; omega)
 
 /-! ## One guest step -/
 
@@ -140,7 +141,7 @@ theorem step_halt {x e bad R gl gr clk R1 : List Bool} (h0 : false ∈ R)
         (U x gr [] gl [] clk e bad [w] [] []) 3 := (mv1_nil rfl).to rfl (by omega)
     have a4 := halt_U (x := x) (e := e) (bad := bad) (gr := gr) (gl := gl) (clk := clk) (rest := [])
       (fdl := []) (w := w) (by simp)
-    exact (a1.seq (a2.seq (a3.seq (ExecB.cs a4)))).to rfl (by omega)
+    exact (a1.seq (a2.seq (a3.seq (ExecB.cs (by exact a4))))).to rfl (by omega)
   | w :: d :: rest, h2, _ =>
     have a2 : ExecB (mv1 2 9) (U x gr (w :: d :: rest) gl [] clk e bad [] [] [])
         (U x gr (d :: rest) gl [] clk e bad [w] [] []) 3 :=
@@ -184,11 +185,11 @@ theorem step_cont {x e bad R gl gr clk : List Bool} {w d : Bool} {rest : List Bo
   have c3 : ExecB MOVE (U x (w :: gr.tail) (true :: rest) gl [] clk e bad [w] [d] [])
       (U x (gmove d w gl gr).2 (true :: rest) (gmove d w gl gr).1 [] clk e bad [w] [d] []) 4 := by
     cases d with
-    | true => exact (ExecB.cs (mv1_cons (by decide) rfl)).to rfl (by omega)
+    | true => exact ExecB.to (ExecB.cs (by exact mv1_cons (by decide) rfl)) rfl (by omega)
     | false =>
       cases gl with
-      | nil => exact (ExecB.cs (mv1_nil rfl)).to rfl (by omega)
-      | cons b l => exact (ExecB.cs (mv1_cons (by decide) rfl)).to rfl (by omega)
+      | nil => exact ExecB.to (ExecB.cs (by exact mv1_nil rfl)) rfl (by omega)
+      | cons b l => exact ExecB.to (ExecB.cs (by exact mv1_cons (by decide) rfl)) rfl (by omega)
   have c4 : ExecB (mv1 10 2)
       (U x (gmove d w gl gr).2 (true :: rest) (gmove d w gl gr).1 [] clk e bad [w] [d] [])
       (U x (gmove d w gl gr).2 (d :: true :: rest) (gmove d w gl gr).1 [] clk e bad [w] [] []) 3 :=
@@ -205,8 +206,8 @@ theorem step_cont {x e bad R gl gr clk : List Bool} {w d : Bool} {rest : List Bo
   have c8 := rl_U (x := x) (gr := (gmove d w gl gr).2) (gl := (gmove d w gl gr).1) (clk := clk)
     (e := e) (bad := bad) (fw := []) (fd := []) (ans := []) (entryOnes (w :: d :: true :: rest))
     (rot (rot (w :: d :: true :: rest))) (mem_rot (mem_rot hm))
-  refine (a1.seq (a2.seq (a3.seq (ExecB.cs (c1.seq (c2.seq (c3.seq (c4.seq (c5.seq
-    (c6.seq (c7.seq c8)))))))))))).to rfl ?_
+  refine (a1.seq (a2.seq (a3.seq (ExecB.cs (by exact c1.seq (c2.seq (c3.seq (c4.seq (c5.seq
+    (c6.seq (c7.seq c8))))))))))).to rfl ?_
   simp only [length_rot, hn]
   have hq : (R.length + 3) * (8 * R.length + 8) + 1 ≤ rB R.length := by unfold rB; omega
   have he : entryOnes (w :: d :: true :: rest) ≤ R.length := by
@@ -229,7 +230,7 @@ theorem main_U (x e bad : List Bool) : ∀ (T : Nat) (R gl gr : List Bool), fals
     ∃ gl' gr' R', ExecB MAIN (U x gr R gl [] (List.replicate T true) e bad [] [] [])
       (U x gr' R' gl' [] [] e bad [] [] (ansOf (runAux T R (ztape gl gr) gl.length)))
       (T * (stepB R.length T + 2) + 1)
-  | 0, R, gl, gr, _ => ⟨gl, gr, R, (ExecB.whF rfl).to rfl (by omega)⟩
+  | 0, R, gl, gr, _ => ⟨gl, gr, R, ExecB.to (ExecB.whF (by rfl)) rfl (by omega)⟩
   | T + 1, R, gl, gr, h0 => by
     have hmono : stepB R.length T ≤ stepB R.length (T + 1) := by unfold stepB; omega
     have b1 : ExecB (.pop 6) (U x gr R gl [] (List.replicate (T + 1) true) e bad [] [] [])
@@ -239,9 +240,11 @@ theorem main_U (x e bad : List Bool) : ∀ (T : Nat) (R gl gr : List Bool), fals
     cases h2 : R1.getD 2 false with
     | false =>
       rw [if_neg (by decide)]
-      have b2 := step_halt (x := x) (e := e) (bad := bad) (clk := List.replicate T true) h0 hR1 h2
+      have b2 := step_halt (x := x) (e := e) (bad := bad) (gl := gl) (clk := List.replicate T true)
+        h0 hR1 h2
       rw [List.length_replicate] at b2
-      refine ⟨gl, gr, R1, (ExecB.whT rfl (b1.seq b2) (ExecB.whF rfl)).to rfl ?_⟩
+      refine ⟨gl, gr, R1, (ExecB.whT (i := 6) (me := false) (mf := true) (mt := true) (by rfl)
+        (b1.seq b2) (ExecB.whF (by rfl))).to rfl ?_⟩
       have := main_bound (stepB R.length T) (stepB R.length (T + 1)) T hmono
       omega
     | true =>
@@ -253,7 +256,8 @@ theorem main_U (x e bad : List Bool) : ∀ (T : Nat) (R gl gr : List Bool), fals
         | [_], h => simp at h
         | [_, _], h => simp at h
         | _ :: _ :: false :: _, h => simp at h
-      have b2 := step_cont (x := x) (e := e) (bad := bad) (clk := List.replicate T true) h0 hR1
+      have b2 := step_cont (x := x) (e := e) (bad := bad) (gl := gl) (clk := List.replicate T true)
+        h0 hR1
       rw [List.length_replicate] at b2
       have hR2 : false ∈ rotN (entryOnes (w :: d :: true :: rest) + 1) (rot (w :: d :: true :: rest)) :=
         mem_rotN _ (mem_rot (by rw [← hR1]; exact mem_rotN _ h0))
@@ -261,7 +265,7 @@ theorem main_U (x e bad : List Bool) : ∀ (T : Nat) (R gl gr : List Bool), fals
           R.length := by rw [length_rotN, length_rot, ← hR1, length_rotN]
       obtain ⟨gl', gr', R', hm⟩ := main_U x e bad T _ (gmove d w gl gr).1 (gmove d w gl gr).2 hR2
       rw [(gmove_ok d w gl gr).1, (gmove_ok d w gl gr).2, hn2] at hm
-      refine ⟨gl', gr', R', (ExecB.whT rfl (b1.seq b2) hm).to ?_ ?_⟩
+      refine ⟨gl', gr', R', (ExecB.whT (by rfl) (b1.seq b2) hm).to ?_ ?_⟩
       · rfl
       · exact main_bound _ _ T hmono
 
@@ -283,7 +287,7 @@ theorem mvx_U {c gl k bad fw fd ans : List Bool} : ∀ (s r clk e : List Bool),
     ExecB MVX (U s c r gl k clk e bad fw fd ans)
       (U [] c (s.reverse ++ r) gl k (List.replicate s.length true ++ clk)
         (List.replicate s.length true ++ e) bad fw fd ans) (6 * s.length + 1)
-  | [], r, clk, e => (ExecB.whF rfl).to rfl (by omega)
+  | [], r, clk, e => ExecB.to (ExecB.whF (by rfl)) rfl (by omega)
   | b :: s, r, clk, e => by
     have hb : ExecB (mvx b) (U (b :: s) c r gl k clk e bad fw fd ans)
         (U s c (b :: r) gl k (true :: clk) (true :: e) bad fw fd ans) 4 :=
@@ -293,36 +297,36 @@ theorem mvx_U {c gl k bad fw fd ans : List Bool} : ∀ (s r clk e : List Bool),
       cases b <;> exact hb
     have ih := mvx_U (c := c) (gl := gl) (k := k) (bad := bad) (fw := fw) (fd := fd) (ans := ans)
       s (b :: r) (true :: clk) (true :: e)
-    refine (ExecB.whT (by cases b <;> rfl) (ExecB.cs hb') ih).to ?_ (by simp only [List.length_cons]; omega)
+    refine (ExecB.whT (by cases b <;> rfl) (ExecB.cs (by exact hb')) ih).to ?_ (by simp only [List.length_cons]; omega)
     simp [U, List.replicate_succ']
 
 theorem lc_U {x r gl k clk ans : List Bool} : ∀ (c tt bd : List Bool) (a : Nat),
     ExecB LC [x, c, r, tt, gl, k, clk, List.replicate a true, bd, [], [], ans, []]
       [x, [], r, c.reverse ++ tt, gl, k, clk, List.replicate (a - c.length) true,
         List.replicate (c.length - a) true ++ bd, [], [], ans, []] (6 * c.length + 1)
-  | [], tt, bd, a => (ExecB.whF rfl).to (by simp) (by omega)
+  | [], tt, bd, a => ExecB.to (ExecB.whF (by rfl)) (by simp) (by omega)
   | b :: c, tt, bd, 0 => by
     have hb : ExecB (lcb b) [x, b :: c, r, tt, gl, k, clk, List.replicate 0 true, bd, [], [], ans, []]
         [x, c, r, b :: tt, gl, k, clk, [], true :: bd, [], [], ans, []] 4 :=
-      (ExecB.pop.seq (ExecB.push.seq (ExecB.cs ExecB.push))).to rfl (Nat.le_refl _)
+      (ExecB.pop.seq (ExecB.push.seq (ExecB.cs (by exact ExecB.push)))).to rfl (Nat.le_refl _)
     have hb' : ExecB (sel (b :: c) .skip (lcb false) (lcb true))
         [x, b :: c, r, tt, gl, k, clk, List.replicate 0 true, bd, [], [], ans, []]
         [x, c, r, b :: tt, gl, k, clk, [], true :: bd, [], [], ans, []] 4 := by
       cases b <;> exact hb
     have ih := lc_U (x := x) (r := r) (gl := gl) (k := k) (clk := clk) (ans := ans) c (b :: tt)
       (true :: bd) 0
-    refine (ExecB.whT (by cases b <;> rfl) (ExecB.cs hb') ih).to ?_ (by simp only [List.length_cons]; omega)
+    refine (ExecB.whT (by cases b <;> rfl) (ExecB.cs (by exact hb')) ih).to ?_ (by simp only [List.length_cons]; omega)
     simp [List.replicate_succ']
   | b :: c, tt, bd, a + 1 => by
     have hb : ExecB (lcb b) [x, b :: c, r, tt, gl, k, clk, List.replicate (a + 1) true, bd, [], [], ans, []]
         [x, c, r, b :: tt, gl, k, clk, List.replicate a true, bd, [], [], ans, []] 4 :=
-      (ExecB.pop.seq (ExecB.push.seq (ExecB.cs ExecB.pop))).to rfl (Nat.le_refl _)
+      (ExecB.pop.seq (ExecB.push.seq (ExecB.cs (by exact ExecB.pop)))).to rfl (Nat.le_refl _)
     have hb' : ExecB (sel (b :: c) .skip (lcb false) (lcb true))
         [x, b :: c, r, tt, gl, k, clk, List.replicate (a + 1) true, bd, [], [], ans, []]
         [x, c, r, b :: tt, gl, k, clk, List.replicate a true, bd, [], [], ans, []] 4 := by
       cases b <;> exact hb
     have ih := lc_U (x := x) (r := r) (gl := gl) (k := k) (clk := clk) (ans := ans) c (b :: tt) bd a
-    refine (ExecB.whT (by cases b <;> rfl) (ExecB.cs hb') ih).to ?_ (by simp only [List.length_cons]; omega)
+    refine (ExecB.whT (by cases b <;> rfl) (ExecB.cs (by exact hb')) ih).to ?_ (by simp only [List.length_cons]; omega)
     simp
 
 theorem ck_U {x gr r gl clk bad : List Bool} (m : Nat) :
@@ -336,10 +340,18 @@ theorem fin_U {gr r gl e bad : List Bool} (v : Bool) :
     ∃ S', ExecB FIN (U [] gr r gl [] [] e bad [] [] (ansOf v)) S' 3 ∧
       (S'.getD 0 [] ≠ [] ↔ bad = [] ∧ v = true) := by
   match bad, v with
-  | [], false => exact ⟨_, (ExecB.cs (ExecB.cs ExecB.skip)).to rfl (by omega), by simp [U]⟩
-  | [], true => exact ⟨_, ExecB.cs (ExecB.cs ExecB.push), by simp [U]⟩
-  | false :: _, v => exact ⟨_, (ExecB.cs ExecB.skip).to rfl (by omega), by simp [U]⟩
-  | true :: _, v => exact ⟨_, (ExecB.cs ExecB.skip).to rfl (by omega), by simp [U]⟩
+  | [], false =>
+    exact ⟨U [] gr r gl [] [] e [] [] [] [],
+      ExecB.to (ExecB.cs (by exact ExecB.cs (by exact ExecB.skip))) rfl (by omega), by simp [U]⟩
+  | [], true =>
+    exact ⟨U [true] gr r gl [] [] e [] [] [] [true],
+      ExecB.to (ExecB.cs (by exact ExecB.cs (by exact ExecB.push))) rfl (by omega), by simp [U]⟩
+  | false :: l, v =>
+    exact ⟨U [] gr r gl [] [] e (false :: l) [] [] (ansOf v),
+      ExecB.to (ExecB.cs (by exact ExecB.skip)) rfl (by omega), by simp [U]⟩
+  | true :: l, v =>
+    exact ⟨U [] gr r gl [] [] e (true :: l) [] [] (ansOf v),
+      ExecB.to (ExecB.cs (by exact ExecB.skip)) rfl (by omega), by simp [U]⟩
 
 /-- Operation bound for `UG` on `s, c`. -/
 def ugB (n m : Nat) : Nat :=
@@ -397,8 +409,10 @@ theorem ug_ok (s c : List Bool) :
     (bad := if s.length + 1 - c.length = 0 then List.replicate (c.length - (s.length + 1)) true
       else true :: List.replicate (c.length - (s.length + 1)) true)
     (runAux (s.length + 1) (rot (s.reverse ++ [false])) (ztape [] c) ([] : List Bool).length)
-  have hl : (rot (s.reverse ++ [false])).length = s.length + 1 := by rw [length_rot]; simp
-  rw [hl] at t5 t9
+  have hl0 : (s.reverse ++ [false]).length = s.length + 1 := by simp
+  have hl : (rot (s.reverse ++ [false])).length = s.length + 1 := by rw [length_rot, hl0]
+  rw [hl0] at t5
+  rw [hl] at t9
   have hlen : S'.length = 13 := by
     obtain ⟨t, -, ht⟩ := t10
     rw [ht.len]; rfl
