@@ -175,63 +175,68 @@ theorem ok_UG : Ok 13 UG := okb_ok 13 UG (by decide)
 section bounds
 variable {Q : Nat}
 
-theorem qmul {a b p q r : Nat} (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ q) (hr : p + q = r) :
-    a * b ≤ Q ^ r := by
-  subst hr; rw [Nat.pow_add]; exact Nat.mul_le_mul ha hb
+/-- `Q ^ k`, kept opaque so that `omega` treats it as an atom. -/
+@[irreducible] def pw (Q k : Nat) : Nat := Q ^ k
 
-theorem qadd {a b p r : Nat} (hQ : 2 ≤ Q) (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ p) (hr : p + 1 = r) :
-    a + b ≤ Q ^ r := by
+theorem pw_eq (Q k : Nat) : pw Q k = Q ^ k := by rw [pw]
+
+theorem qmul {a b p q r : Nat} (ha : a ≤ pw Q p) (hb : b ≤ pw Q q) (hr : p + q = r) :
+    a * b ≤ pw Q r := by
+  subst hr; rw [pw_eq] at ha hb ⊢; rw [Nat.pow_add]; exact Nat.mul_le_mul ha hb
+
+theorem qadd {a b p r : Nat} (hQ : 2 ≤ Q) (ha : a ≤ pw Q p) (hb : b ≤ pw Q p) (hr : p + 1 = r) :
+    a + b ≤ pw Q r := by
   subst hr
-  have h1 : Q ^ (p + 1) = Q ^ p * Q := by rw [Nat.pow_succ]
-  have h2 := Nat.mul_le_mul_left (Q ^ p) hQ
+  have h1 : pw Q (p + 1) = pw Q p * Q := by rw [pw_eq, pw_eq, Nat.pow_succ]
+  have h2 := Nat.mul_le_mul_left (pw Q p) hQ
   omega
 
-theorem qup {a p q : Nat} (hQ : 1 ≤ Q) (ha : a ≤ Q ^ p) (h : p ≤ q) : a ≤ Q ^ q :=
-  Nat.le_trans ha (Nat.pow_le_pow_right hQ h)
+theorem qup {a p q : Nat} (hQ : 1 ≤ Q) (ha : a ≤ pw Q p) (h : p ≤ q) : a ≤ pw Q q := by
+  rw [pw_eq] at ha ⊢; exact Nat.le_trans ha (Nat.pow_le_pow_right hQ h)
 
-theorem q1 {a : Nat} (ha : a ≤ Q) : a ≤ Q ^ 1 := by rw [Nat.pow_one]; exact ha
+theorem q1 {a : Nat} (ha : a ≤ Q) : a ≤ pw Q 1 := by rw [pw_eq, Nat.pow_one]; exact ha
 
 end bounds
 
 theorem total_Q (n t Q : Nat) (lin : 128 * (n + 2) ≤ Q) (ht : t ≤ ugB n (n + 1)) :
-    8 * (4 * n + 6) + 16 * (10 + 3) + 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ Q ^ 23 := by
+    8 * (4 * n + 6) + 16 * (10 + 3) + 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ pw Q 23 := by
   have hQ2 : 2 ≤ Q := by omega
   have hQ1 : 1 ≤ Q := by omega
-  have hR : rB (n + 1) ≤ Q ^ 3 := by
+  have hR : rB (n + 1) ≤ pw Q 3 := by
     unfold rB
-    have a : (n + 1 + 3) * (8 * (n + 1) + 8) ≤ Q ^ 2 :=
+    have a : (n + 1 + 3) * (8 * (n + 1) + 8) ≤ pw Q 2 :=
       qmul (q1 (show n + 1 + 3 ≤ Q by omega)) (q1 (show 8 * (n + 1) + 8 ≤ Q by omega)) rfl
-    have b : 2 * (n + 1) + 3 ≤ Q ^ 2 := qup hQ1 (q1 (by omega)) (by decide)
-    have c : (n + 1 + 3) * (8 * (n + 1) + 8) + (2 * (n + 1) + 3) ≤ Q ^ 3 := qadd hQ2 a b rfl
+    have b : 2 * (n + 1) + 3 ≤ pw Q 2 := qup hQ1 (q1 (by omega)) (by decide)
+    have c : (n + 1 + 3) * (8 * (n + 1) + 8) + (2 * (n + 1) + 3) ≤ pw Q 3 := qadd hQ2 a b rfl
     omega
-  have hS : stepB (n + 1) (n + 1) + 2 ≤ Q ^ 7 := by
+  have hS : stepB (n + 1) (n + 1) + 2 ≤ pw Q 7 := by
     unfold stepB
-    have a2 : 2 ≤ Q ^ 3 := qup hQ1 (q1 hQ2) (by decide)
-    have a : rB (n + 1) + 2 ≤ Q ^ 4 := qadd hQ2 hR a2 rfl
-    have b : (n + 1 + 4) * (rB (n + 1) + 2) ≤ Q ^ 5 := qmul (q1 (show n + 1 + 4 ≤ Q by omega)) a rfl
-    have c : 2 * (n + 1) + 42 ≤ Q ^ 5 := qup hQ1 (q1 (by omega)) (by decide)
-    have d : (n + 1 + 4) * (rB (n + 1) + 2) + (2 * (n + 1) + 42) ≤ Q ^ 6 := qadd hQ2 b c rfl
-    have e : Q ^ 6 ≤ Q ^ 7 := Nat.pow_le_pow_right hQ1 (by decide)
+    have a2 : 2 ≤ pw Q 3 := qup hQ1 (q1 hQ2) (by decide)
+    have a : rB (n + 1) + 2 ≤ pw Q 4 := qadd hQ2 hR a2 rfl
+    have b : (n + 1 + 4) * (rB (n + 1) + 2) ≤ pw Q 5 := qmul (q1 (show n + 1 + 4 ≤ Q by omega)) a rfl
+    have c : 2 * (n + 1) + 42 ≤ pw Q 5 := qup hQ1 (q1 (by omega)) (by decide)
+    have d : (n + 1 + 4) * (rB (n + 1) + 2) + (2 * (n + 1) + 42) ≤ pw Q 6 := qadd hQ2 b c rfl
+    have e : pw Q 6 ≤ pw Q 7 := qup hQ1 (Nat.le_refl _) (by decide)
     omega
-  have hU : ugB n (n + 1) ≤ Q ^ 10 := by
+  have hU : ugB n (n + 1) ≤ pw Q 10 := by
     unfold ugB
-    have p : (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ Q ^ 8 :=
+    have p : (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ pw Q 8 :=
       qmul (q1 (show n + 1 ≤ Q by omega)) hS rfl
-    have r : rB (n + 1) ≤ Q ^ 8 := qup hQ1 hR (by decide)
-    have l : 64 * n + 64 ≤ Q ^ 9 := qup hQ1 (q1 (by omega)) (by decide)
-    have s1 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ Q ^ 9 := qadd hQ2 r p rfl
-    have s2 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) + (64 * n + 64) ≤ Q ^ 10 :=
+    have r : rB (n + 1) ≤ pw Q 8 := qup hQ1 hR (by decide)
+    have l : 64 * n + 64 ≤ pw Q 9 := qup hQ1 (q1 (by omega)) (by decide)
+    have s1 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ pw Q 9 := qadd hQ2 r p rfl
+    have s2 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) + (64 * n + 64) ≤ pw Q 10 :=
       qadd hQ2 s1 l rfl
     omega
-  have ht' : t ≤ Q ^ 10 := Nat.le_trans ht hU
-  have w : 4 * n + 6 + 2 * (10 + 3) + 2 * t + 2 ≤ Q ^ 11 := by
-    have h1 : 4 * n + 34 ≤ Q ^ 10 := qup hQ1 (q1 (by omega)) (by decide)
-    have h2 : Q ^ 11 = Q ^ 10 * Q := by rw [Nat.pow_succ]
-    have h3 := Nat.mul_le_mul_left (Q ^ 10) (show 3 ≤ Q by omega)
+  have ht' : t ≤ pw Q 10 := Nat.le_trans ht hU
+  have w : 4 * n + 6 + 2 * (10 + 3) + 2 * t + 2 ≤ pw Q 11 := by
+    have h1 : 4 * n + 34 ≤ pw Q 10 := qup hQ1 (q1 (by omega)) (by decide)
+    have h2 : pw Q 11 = pw Q 10 * Q := by rw [pw_eq, pw_eq, Nat.pow_succ]
+    have h3 := Nat.mul_le_mul_left (pw Q 10) (show 3 ≤ Q by omega)
     omega
-  have v : 40 * t ≤ Q ^ 11 := qmul (q1 (show 40 ≤ Q by omega)) ht' rfl
-  have pr : 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ Q ^ 22 := qmul v w rfl
-  have li : 8 * (4 * n + 6) + 16 * (10 + 3) ≤ Q ^ 22 := qup hQ1 (q1 (by omega)) (by decide)
+  have v : 40 * t ≤ pw Q 11 := qmul (q1 (show 40 ≤ Q by omega)) ht' rfl
+  have pr : 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ pw Q 22 := qmul v w rfl
+  have li : 8 * (4 * n + 6) + 16 * (10 + 3) ≤ pw Q 22 := qup hQ1 (q1 (by omega)) (by decide)
   exact qadd hQ2 li pr rfl
 
 theorem lin8 (n : Nat) : 128 * (n + 2) ≤ (n + 2) ^ 8 := by
@@ -246,7 +251,7 @@ theorem total_lt (n t a : Nat) (ha : a = 4 * n + 6) (ht : t ≤ ugB n (n + 1)) :
     8 * a + 16 * (10 + 3) + 40 * t * (a + 2 * (10 + 3) + 2 * t + 2) < (n + 2) ^ 200 := by
   subst ha
   have h := total_Q n t _ (lin8 n) ht
-  rw [← Nat.pow_mul] at h
+  rw [pw_eq, ← Nat.pow_mul] at h
   exact Nat.lt_of_le_of_lt h
     (Nat.pow_lt_pow_right (Nat.lt_of_lt_of_le (by decide) (Nat.le_add_left 2 n)) (by decide))
 
