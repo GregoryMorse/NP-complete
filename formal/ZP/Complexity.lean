@@ -18,7 +18,8 @@ machine (`ZP/GuestTM.lean`).
 * `InP A`: some machine halts on every input `x` within `(|x|+2)^k` steps with
   the answer `A x`.
 * `InNP A`: `A x` holds iff some certificate `c` with `|c| ≤ m·(|x|+2)^k` makes the
-  verifier accept `x ␣ c` within `(|x|+2)^k` steps.
+  verifier accept the pair tape of `x` and `c` within `(|x|+2)^k` steps. On that tape
+  each bit `b` takes the two cells `1 b`, and `x` and `c` are each followed by `0 1`.
 * `PeqNP`: the two classes are equal.
 
 Any polynomial bound is dominated by some `(n+2)^k`, so these are the usual
@@ -62,9 +63,12 @@ def exec (M : Mach) : Nat → Nat → (Nat → Option Bool) → Nat → Option B
 /-- The input tape. -/
 def inTape (x : List Bool) : Nat → Option Bool := fun i => x[i]?
 
-/-- Input `x`, a blank, then the certificate `c`. -/
-def pairTape (x c : List Bool) : Nat → Option Bool := fun i =>
-  if i < x.length then x[i]? else if i = x.length then none else c[i - x.length - 1]?
+/-- Each bit `b` written as the two cells `1 b`. -/
+def dbl (x : List Bool) : List Bool := x.flatMap fun b => [true, b]
+
+/-- Input `x` and certificate `c`, each doubled and followed by the end mark `0 1`. -/
+def pairTape (x c : List Bool) : Nat → Option Bool :=
+  inTape (dbl x ++ false :: true :: (dbl c ++ [false, true]))
 
 def InP (A : List Bool → Prop) : Prop :=
   ∃ (M : Mach) (k : Nat), ∀ x, ∃ b, exec M ((x.length + 2) ^ k) 0 (inTape x) 0 = some b ∧
@@ -87,31 +91,5 @@ theorem exec_mono (M : Mach) : ∀ (T : Nat) (q : Nat) (tape : Nat → Option Bo
     split at e
     · exact e
     · exact exec_mono M T _ _ _ b e T' (by omega)
-
-theorem pairTape_nil (x : List Bool) : pairTape x [] = inTape x := by
-  funext i
-  unfold pairTape inTape
-  by_cases h1 : i < x.length
-  · simp [h1]
-  · have : x[i]? = none := List.getElem?_eq_none (by omega)
-    rw [this]
-    by_cases h2 : i = x.length <;> simp [h1, h2]
-
-theorem InP_InNP {A : List Bool → Prop} (h : InP A) : InNP A := by
-  obtain ⟨M, k, hM⟩ := h
-  refine ⟨M, k, 0, fun x => ?_⟩
-  obtain ⟨b, hb, hA⟩ := hM x
-  constructor
-  · intro hx
-    refine ⟨[], Nat.zero_le _, ?_⟩
-    rw [pairTape_nil, hb, hA.mpr hx]
-  · rintro ⟨c, hc, he⟩
-    have : c = [] := List.eq_nil_of_length_eq_zero (by simpa using hc)
-    subst this
-    rw [pairTape_nil, hb] at he
-    exact hA.mp (Option.some.inj he)
-
-theorem PeqNP_iff : PeqNP ↔ ∀ A, InNP A → InP A :=
-  ⟨fun h A => (h A).mpr, fun h A => ⟨InP_InNP, h A⟩⟩
 
 end ZP.Cx

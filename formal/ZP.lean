@@ -27,3 +27,4 @@ public import ZP.Pop
 public import ZP.Prog
 public import ZP.Lib
 public import ZP.UG
+public import ZP.Verif
