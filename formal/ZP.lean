@@ -2,13 +2,25 @@ module
 
 public import ZP.Defs
 public import ZP.Table
+public import ZP.TablePP
+public import ZP.TablePS
+public import ZP.TableF
+public import ZP.TableD
+public import ZP.TableG
 public import ZP.Abstract
 public import ZP.Bridge
 public import ZP.LTM
 public import ZP.Logic
+public import ZP.LogicBase
+public import ZP.LogicPP
+public import ZP.LogicPS
+public import ZP.LogicF
+public import ZP.LogicD
+public import ZP.LogicG
 public import ZP.Zip
 public import ZP.SymExec
 public import ZP.Ext
+public import ZP.ExtChecks
 public import ZP.Outer
 public import ZP.Rot
 public import ZP.Fuel
