@@ -29,3 +29,4 @@ public import ZP.Lib
 public import ZP.UG
 public import ZP.Verif
 public import ZP.Sim
+public import ZP.Clock

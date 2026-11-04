@@ -214,10 +214,21 @@ theorem zexec_gmove {M : Mach} {T q : Nat} {L R : List Bool} {w d : Bool} {q' : 
 /-- A bound on one simulated step with `T` ticks left. -/
 def sB (M : Mach) (T : Nat) : Nat := 2 * T + 3 * qm M + 10
 
+theorem gmove_len (d w : Bool) (L R : List Bool) :
+    (gmove d w L R).2.length + (gmove d w L R).1.length ≤ R.length + L.length + 1 := by
+  cases d with
+  | true => simp [gmove] <;> omega
+  | false =>
+    cases L with
+    | nil => simp [gmove] <;> omega
+    | cons b l => simp [gmove] <;> omega
+
 theorem sim_ok (M : Mach) (X : List (List Bool)) : ∀ (T q : Nat) (L R : List Bool), q ≤ qm M →
-    ∃ R' L' Q', ExecB (SIM M) (SV R L (List.replicate q true) (List.replicate T true) [] X)
-      (SV R' L' Q' [] (ansOf ((zexec M T q L R).getD false)) X) (T * (sB M T + 2) + 1)
-  | 0, q, L, R, _ => ⟨R, L, List.replicate q true, ExecB.to (ExecB.whF (by rfl)) rfl (by omega)⟩
+    ∃ R' L' Q', R'.length + L'.length ≤ R.length + L.length + T ∧
+      ExecB (SIM M) (SV R L (List.replicate q true) (List.replicate T true) [] X)
+        (SV R' L' Q' [] (ansOf ((zexec M T q L R).getD false)) X) (T * (sB M T + 2) + 1)
+  | 0, q, L, R, _ =>
+    ⟨R, L, List.replicate q true, by omega, ExecB.to (ExecB.whF (by rfl)) rfl (by omega)⟩
   | T + 1, q, L, R, hq => by
     have hmono : sB M T ≤ sB M (T + 1) := by unfold sB; omega
     have b1 : ExecB (.pop 3) (SV R L (List.replicate q true) (List.replicate (T + 1) true) [] X)
@@ -231,7 +242,7 @@ theorem sim_ok (M : Mach) (X : List (List Bool)) : ∀ (T q : Nat) (L R : List B
         b T
       rw [← ha] at h0
       have b2 := disp_ok M.tbl q h0
-      refine ⟨R, L, List.replicate (q - M.tbl.length) true, (ExecB.whT (i := 3) (me := false) (mf := true) (mt := true) (by rfl)
+      refine ⟨R, L, List.replicate (q - M.tbl.length) true, by omega, (ExecB.whT (i := 3) (me := false) (mf := true) (mt := true) (by rfl)
         (b1.seq b2) (ExecB.whF (by rfl))).to rfl ?_⟩
       have := main_bound (sB M T) (sB M (T + 1)) T hmono
       have h3 : 2 * T + 2 + 2 * q + 2 ≤ sB M T := by unfold sB; omega
@@ -248,8 +259,9 @@ theorem sim_ok (M : Mach) (X : List (List Bool)) : ∀ (T q : Nat) (L R : List B
         rw [ha, show q - M.tbl.length = 0 by omega]
         exact act_go w d q'
       have b2 := disp_ok M.tbl q h0
-      obtain ⟨R', L', Q', ih⟩ := sim_ok M X T q' (gmove d w L R).1 (gmove d w L R).2 hq2
-      refine ⟨R', L', Q', (ExecB.whT (by rfl) (b1.seq b2) ih).to rfl ?_⟩
+      obtain ⟨R', L', Q', hl, ih⟩ := sim_ok M X T q' (gmove d w L R).1 (gmove d w L R).2 hq2
+      have hg := gmove_len d w L R
+      refine ⟨R', L', Q', by omega, (ExecB.whT (by rfl) (b1.seq b2) ih).to rfl ?_⟩
       have := main_bound (sB M T) (sB M (T + 1)) T hmono
       have hq3 : q' ≤ qm M := hq2
       have h3 : q' + 6 + 2 * q + 2 ≤ sB M T := by unfold sB; omega
