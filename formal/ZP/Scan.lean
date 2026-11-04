@@ -78,8 +78,8 @@ theorem xchk_ok {M : Mach} {e : Nat} : ∀ (x : List Bool) (f : Nat) (L R : List
       refine Or.inr (Rej.of_lead (q1 := f + 1) (L1 := false :: L) (R1 := []) (T := 1) ?_
         (rej_at hs rfl))
       zz; exact Lead.refl
-    | false :: false :: _ =>
-      refine Or.inr (Rej.of_lead (q1 := f + 1) (L1 := false :: L) (R1 := false :: _) (T := 1) ?_
+    | false :: false :: R2 =>
+      refine Or.inr (Rej.of_lead (q1 := f + 1) (L1 := false :: L) (R1 := false :: R2) (T := 1) ?_
         (rej_at hs rfl))
       zz; exact Lead.refl
     | false :: true :: rest =>
