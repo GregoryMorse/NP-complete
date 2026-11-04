@@ -22,3 +22,4 @@ public import ZP.GuestTM
 public import ZP.GuestCompile
 public import ZP.PNP
 public import ZP.Zx
+public import ZP.Gad
