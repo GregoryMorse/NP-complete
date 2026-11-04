@@ -55,3 +55,4 @@ public import ZP.Gen
 public import ZP.Gx
 public import ZP.HardB
 public import ZP.Hard
+public import ZP.GenericP

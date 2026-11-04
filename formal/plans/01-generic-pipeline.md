@@ -200,3 +200,31 @@ free, once each machine's `Quasihalts ↔ SentenceC (CorrectF inX)` is proved. K
   - `lmacroSim_of_pairs`;
   - `sentenceF_iff_InP`.
 - README file table updated.
+
+## Status (done)
+
+Steps A–E, G and H are done, F is partly done. Deviations from the text above:
+
+- A: `SentenceC`, `absStepC`, `absStateC`, `AbstractQuasihaltsC`, `abstractQuasihaltsC_iff`
+  (`ZP/Abstract.lean`); the old names are abbreviations/aliases.
+- B: `MacroSimC`, `quasihalts_iff_of_macroSimC` (`ZP/Bridge.lean`); `LMacroSimC` in `ZP/LTM.lean`.
+- C: `Cert` (fields `L T entry side glen`), `Cert.OK` (fields `chk beep e0 s0`),
+  `Cert.macroSimC_of_logic K hK S`, and `zpCert`, `zpCert_ok` (`ZP/Compile.lean`).
+  A new machine writes `xCert : Cert := ⟨xLogic, xMachine, xEntry, xSide, xGlen⟩` and
+  proves `xCert.OK` like `zpCert_ok` (chunks of 32 states: `Cert.allFrom` +
+  `decide +kernel`; the beep check as one `decide +kernel`).
+- D: `LTM.Ext`, `.reach`, `.reach1`, `LTM.extB`, `LTM.ext_of_extB` (`ZP/Ext.lean`).
+- E: `gen_logic.py <zp|base|zpp|zps|zfac|zdl|zgi>` and `gen_table.py <machines/ name>`,
+  generating `ZP/Logic{,Base,PP,PS,F,D,G}.lean` and `ZP/Table{,PP,PS,F,D,G}.lean`
+  (CI regenerates all). `ZP/ExtChecks.lean` has `zpBase_ext_zpLogic`, `…_zppLogic`,
+  `…_zpsLogic`, `…_zfacLogic`, `…_zdlLogic`, `…_zgiLogic`. Numbering as planned;
+  the new state names are in `namespace QPP` etc. `zmul` and `zntt` are not generated yet.
+- F (partial): `Rot`, `Fuel`, `Interp`, `Run` are stated for `zpBase`; in `Outer` all but
+  `phase1` is. `Pair.lean` is **still `zpLogic`**, lifting the base lemmas with
+  `zpBase_ext_zpLogic.reach`. Splitting out a `PairCore.lean` is left to plan 02, when
+  it is known which loop lemmas Z_PP can reuse. Note that `decFuel` is *not* base: it
+  uses BD*, which PP changes, so PP re-proves it.
+- G: `PairData L C` and `PairData.macroSim` (`ZP/LogicalG.lean`); `ZP/Logical.lean`
+  instantiates it with `pair_main`.
+- H: `CorrectF f`, `sentenceF_iff`, `sentenceF_of_InP`, `InP_of_sentenceF`,
+  `sentenceF_iff_InP` (`ZP/GenericP.lean`, namespace `ZP.Cx`).
