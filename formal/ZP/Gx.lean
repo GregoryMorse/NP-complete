@@ -156,10 +156,18 @@ theorem xl_ok (h : 1 ≤ N) : ∀ (x O : List Bool), ExecB XL (ES x O N P)
     have e1 : ExecB (.cs 0 .skip (.seq (.pop 0) (XB false)) (.seq (.pop 0) (XB true)))
         (ES (b :: x) O N P) (ES x ((flat (xbE N b)).reverse ++ O) N P) (54 * N + 42) := by
       cases b
-      · exact (ExecB.cs ((ExecB.pop.to rfl (Nat.le_refl _)).seq (em_XB h false x O))).to rfl
-          (by omega)
-      · exact (ExecB.cs ((ExecB.pop.to rfl (Nat.le_refl _)).seq (em_XB h true x O))).to rfl
-          (by omega)
+      · have hb : ExecB (.seq (.pop 0) (XB false)) (ES (false :: x) O N P)
+            (ES x ((flat (xbE N false)).reverse ++ O) N P) (1 + (54 * N + 40)) :=
+          ((ExecB.pop (i := 0) (S := ES (false :: x) O N P)).to (S2 := ES x O N P) rfl
+            (Nat.le_refl _)).seq (em_XB h false x O)
+        exact (ExecB.cs (i := 0) (pe := .skip) (pf := .seq (.pop 0) (XB false))
+          (pt := .seq (.pop 0) (XB true)) hb).to rfl (by omega)
+      · have hb : ExecB (.seq (.pop 0) (XB true)) (ES (true :: x) O N P)
+            (ES x ((flat (xbE N true)).reverse ++ O) N P) (1 + (54 * N + 40)) :=
+          ((ExecB.pop (i := 0) (S := ES (true :: x) O N P)).to (S2 := ES x O N P) rfl
+            (Nat.le_refl _)).seq (em_XB h true x O)
+        exact (ExecB.cs (i := 0) (pe := .skip) (pf := .seq (.pop 0) (XB false))
+          (pt := .seq (.pop 0) (XB true)) hb).to rfl (by omega)
     have e2 := xl_ok h x ((flat (xbE N b)).reverse ++ O)
     refine (ExecB.whT (by cases b <;> rfl) e1 e2).to ?_ ?_
     · rw [List.flatMap_cons, flat_app, List.reverse_append, List.append_assoc]
@@ -242,13 +250,17 @@ theorem gen_ok (V : Mach) (k m E : Nat) (x : List Bool) :
     (S2 := WS x [] (List.replicate ((n + 2) * 6) true ++ List.replicate pad true) []
       (List.replicate pad true) [] [] []) (by simp [WS]) (Nat.le_refl _)
   -- stage 4: the rest of NN
-  have hNN : List.replicate (3 * F - 1) true ++
+  have hNN : List.replicate (3 * F0 V k m - 1) true ++
       (List.replicate ((n + 2) * 6) true ++ List.replicate pad true) = List.replicate N true := by
     rw [← rep_add, ← rep_add]; congr 1; omega
-  have s4 := (pushK_gen (i := 2) (3 * F - 1)
+  have s4 := (pushK_gen (i := 2) (3 * F0 V k m - 1)
     (WS x [] (List.replicate ((n + 2) * 6) true ++ List.replicate pad true) []
       (List.replicate pad true) [] [] []) (by simp [WS])).to (S2 := ES x [] N pad)
-    (by show WS x [] _ [] _ [] [] [] = _; rw [hNN]; rfl) (Nat.le_refl _)
+    (by
+      show WS x [] (List.replicate (3 * F0 V k m - 1) true ++
+        (List.replicate ((n + 2) * 6) true ++ List.replicate pad true)) []
+        (List.replicate pad true) [] [] [] = _
+      rw [hNN]; rfl) (Nat.le_refl _)
   -- stages 5-8: emission
   have hN1 : 1 ≤ N := by omega
   have s5 := (em_eZ (N := N) (P := pad)) x []
