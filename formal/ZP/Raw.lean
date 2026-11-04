@@ -271,7 +271,6 @@ theorem rm_ok (m : Nat) {p : Cmd} (hok : Ok (m + 2) p) {x : List Bool}
   have hmono : 40 * t * ((lay (x :: List.replicate (m + 1) [])).length + 2 * t + 2) ≤
       40 * t * (2 * x.length + 2 * m + 2 * t + 8) :=
     Nat.mul_le_mul_left _ (by rw [length_lay_raw]; omega)
-  simp only [List.length_nil, Nat.zero_add] at hT3
   generalize 40 * t * (2 * x.length + 2 * m + 2 * t + 8) = P2 at hF hmono
   generalize 40 * t * ((lay (x :: List.replicate (m + 1) [])).length + 2 * t + 2) = P1 at hT4 hmono
   generalize x.length * (16 * x.length + 28) = P0 at hF hT3

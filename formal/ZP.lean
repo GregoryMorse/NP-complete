@@ -31,3 +31,4 @@ public import ZP.Verif
 public import ZP.Sim
 public import ZP.Clock
 public import ZP.Raw
+public import ZP.Decide
