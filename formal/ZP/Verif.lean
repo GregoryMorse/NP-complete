@@ -124,7 +124,7 @@ theorem vm_ok (m : Nat) {p : Cmd} (hok : Ok (m + 3) p) {x y : List Bool}
   rw [inTape_z]
   refine (exec_z (vm m p) F 0 [] (lay [x, y])).trans (chain.halts hact F ?_)
   have hL : (sepL m ++ ((lay [x, y]).reverse ++ [])).length = 2 * m + (lay [x, y]).length := by
-    simp [length_sepL]
+    simp [length_sepL] <;> omega
   rw [hL]
   omega
 
@@ -175,11 +175,13 @@ theorem ok_UG : Ok 13 UG := okb_ok 13 UG (by decide)
 section bounds
 variable {Q : Nat}
 
-theorem qmul {a b p q : Nat} (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ q) : a * b ≤ Q ^ (p + q) := by
-  rw [Nat.pow_add]; exact Nat.mul_le_mul ha hb
+theorem qmul {a b p q r : Nat} (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ q) (hr : p + q = r) :
+    a * b ≤ Q ^ r := by
+  subst hr; rw [Nat.pow_add]; exact Nat.mul_le_mul ha hb
 
-theorem qadd {a b p : Nat} (hQ : 2 ≤ Q) (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ p) :
-    a + b ≤ Q ^ (p + 1) := by
+theorem qadd {a b p r : Nat} (hQ : 2 ≤ Q) (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ p) (hr : p + 1 = r) :
+    a + b ≤ Q ^ r := by
+  subst hr
   have h1 : Q ^ (p + 1) = Q ^ p * Q := by rw [Nat.pow_succ]
   have h2 := Nat.mul_le_mul_left (Q ^ p) hQ
   omega
@@ -198,38 +200,39 @@ theorem total_Q (n t Q : Nat) (lin : 128 * (n + 2) ≤ Q) (ht : t ≤ ugB n (n +
   have hR : rB (n + 1) ≤ Q ^ 3 := by
     unfold rB
     have a : (n + 1 + 3) * (8 * (n + 1) + 8) ≤ Q ^ 2 :=
-      qmul (q1 (show n + 1 + 3 ≤ Q by omega)) (q1 (show 8 * (n + 1) + 8 ≤ Q by omega))
-    have b : 2 * (n + 1) + 3 ≤ Q ^ 2 := qup hQ1 (q1 (by omega)) (by omega)
-    have c : _ ≤ Q ^ 3 := qadd hQ2 a b
+      qmul (q1 (show n + 1 + 3 ≤ Q by omega)) (q1 (show 8 * (n + 1) + 8 ≤ Q by omega)) rfl
+    have b : 2 * (n + 1) + 3 ≤ Q ^ 2 := qup hQ1 (q1 (by omega)) (by decide)
+    have c : (n + 1 + 3) * (8 * (n + 1) + 8) + (2 * (n + 1) + 3) ≤ Q ^ 3 := qadd hQ2 a b rfl
     omega
   have hS : stepB (n + 1) (n + 1) + 2 ≤ Q ^ 7 := by
     unfold stepB
-    have a : rB (n + 1) + 2 ≤ Q ^ 4 := qadd hQ2 hR (qup hQ1 (q1 (show 2 ≤ Q by omega)) (by omega))
-    have b : (n + 1 + 4) * (rB (n + 1) + 2) ≤ Q ^ 5 := qmul (q1 (show n + 1 + 4 ≤ Q by omega)) a
-    have c : 2 * (n + 1) + 42 ≤ Q ^ 5 := qup hQ1 (q1 (by omega)) (by omega)
-    have d : _ ≤ Q ^ 6 := qadd hQ2 b c
-    have e : Q ^ 6 ≤ Q ^ 7 := Nat.pow_le_pow_right hQ1 (by omega)
+    have a2 : 2 ≤ Q ^ 3 := qup hQ1 (q1 hQ2) (by decide)
+    have a : rB (n + 1) + 2 ≤ Q ^ 4 := qadd hQ2 hR a2 rfl
+    have b : (n + 1 + 4) * (rB (n + 1) + 2) ≤ Q ^ 5 := qmul (q1 (show n + 1 + 4 ≤ Q by omega)) a rfl
+    have c : 2 * (n + 1) + 42 ≤ Q ^ 5 := qup hQ1 (q1 (by omega)) (by decide)
+    have d : (n + 1 + 4) * (rB (n + 1) + 2) + (2 * (n + 1) + 42) ≤ Q ^ 6 := qadd hQ2 b c rfl
+    have e : Q ^ 6 ≤ Q ^ 7 := Nat.pow_le_pow_right hQ1 (by decide)
     omega
   have hU : ugB n (n + 1) ≤ Q ^ 10 := by
     unfold ugB
     have p : (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ Q ^ 8 :=
-      qmul (q1 (show n + 1 ≤ Q by omega)) hS
-    have r : rB (n + 1) ≤ Q ^ 8 := qup hQ1 hR (by omega)
-    have l : 64 * n + 64 ≤ Q ^ 9 := qup hQ1 (q1 (by omega)) (by omega)
-    have s1 : _ ≤ Q ^ 9 := qadd hQ2 r p
-    have s2 : _ ≤ Q ^ 10 := qadd hQ2 s1 l
+      qmul (q1 (show n + 1 ≤ Q by omega)) hS rfl
+    have r : rB (n + 1) ≤ Q ^ 8 := qup hQ1 hR (by decide)
+    have l : 64 * n + 64 ≤ Q ^ 9 := qup hQ1 (q1 (by omega)) (by decide)
+    have s1 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) ≤ Q ^ 9 := qadd hQ2 r p rfl
+    have s2 : rB (n + 1) + (n + 1) * (stepB (n + 1) (n + 1) + 2) + (64 * n + 64) ≤ Q ^ 10 :=
+      qadd hQ2 s1 l rfl
     omega
   have ht' : t ≤ Q ^ 10 := Nat.le_trans ht hU
   have w : 4 * n + 6 + 2 * (10 + 3) + 2 * t + 2 ≤ Q ^ 11 := by
-    have h1 : 4 * n + 34 ≤ Q ^ 10 := qup hQ1 (q1 (by omega)) (by omega)
-    have h2 : Q ^ 11 = Q ^ 10 * Q := Nat.pow_succ
+    have h1 : 4 * n + 34 ≤ Q ^ 10 := qup hQ1 (q1 (by omega)) (by decide)
+    have h2 : Q ^ 11 = Q ^ 10 * Q := by rw [Nat.pow_succ]
     have h3 := Nat.mul_le_mul_left (Q ^ 10) (show 3 ≤ Q by omega)
     omega
-  have v : 40 * t ≤ Q ^ 11 := qmul (q1 (show 40 ≤ Q by omega)) ht'
-  have pr : 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ Q ^ 22 := qmul v w
-  have li : 8 * (4 * n + 6) + 16 * (10 + 3) ≤ Q ^ 22 := qup hQ1 (q1 (by omega)) (by omega)
-  exact qadd hQ2 li pr
-
+  have v : 40 * t ≤ Q ^ 11 := qmul (q1 (show 40 ≤ Q by omega)) ht' rfl
+  have pr : 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ Q ^ 22 := qmul v w rfl
+  have li : 8 * (4 * n + 6) + 16 * (10 + 3) ≤ Q ^ 22 := qup hQ1 (q1 (by omega)) (by decide)
+  exact qadd hQ2 li pr rfl
 
 theorem lin8 (n : Nat) : 128 * (n + 2) ≤ (n + 2) ^ 8 := by
   have h7 : 128 ≤ (n + 2) ^ 7 := by
