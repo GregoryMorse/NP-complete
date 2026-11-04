@@ -115,12 +115,10 @@ theorem length_frag (k : Nat) : ∀ (c : Cmd) (s e : Nat), (frag k c s e).length
   | .cs i a b c, s, e => by
     simp only [frag, flen, List.length_append, length_preRows, length_testRows,
       length_frag k a, length_frag k b, length_frag k c]
-    omega
   | .seq p q, s, e => by
     simp only [frag, flen, List.length_append, length_frag k p, length_frag k q]
   | .wh i me mf mt p, s, e => by
     simp only [frag, flen, List.length_append, length_preRows, length_testRows, length_frag k p]
-    omega
   | .skip, s, e => rfl
 
 /-! ## Lists of stacks -/
@@ -176,7 +174,7 @@ theorem Exec.lay_le {c : Cmd} {S S' : List (List Bool)} {t : Nat} (h : Exec c S 
   induction h with
   | @push i b S =>
     have := length_set_lay S i (b :: S.getD i [])
-    simp at this
+    rw [List.length_cons] at this
     omega
   | @pop i S =>
     have := length_set_lay S i (S.getD i []).tail
@@ -194,9 +192,9 @@ theorem ok_sel (k : Nat) (a b c : Cmd) (ha : Ok k a) (hb : Ok k b) (hc : Ok k c)
   | false :: _ => hb
   | true :: _ => hc
 
-theorem sub_sel {M : Mach} {k : Nat} {a b c : Cmd} {e ae af at : Nat}
-    (ha : Sub M ae (frag k a ae e)) (hb : Sub M af (frag k b af e)) (hc : Sub M at (frag k c at e)) :
-    ∀ st : List Bool, Sub M (tsel ae af at st) (frag k (sel st a b c) (tsel ae af at st) e)
+theorem sub_sel {M : Mach} {k : Nat} {a b c : Cmd} {e ae af atr : Nat}
+    (ha : Sub M ae (frag k a ae e)) (hb : Sub M af (frag k b af e)) (hc : Sub M atr (frag k c atr e)) :
+    ∀ st : List Bool, Sub M (tsel ae af atr st) (frag k (sel st a b c) (tsel ae af atr st) e)
   | [] => ha
   | false :: _ => hb
   | true :: _ => hc
@@ -215,11 +213,11 @@ theorem set_same (S : List (List Bool)) (i : Nat) (h : S.getD i [] = []) : S.set
 
 /-! ## The test step, shared by branches and loops -/
 
-theorem test_full {M : Mach} {s i ae af at : Nat} (S : List (List Bool)) (hi : i < S.length)
+theorem test_full {M : Mach} {s i ae af atr : Nat} (S : List (List Bool)) (hi : i < S.length)
     (hp : Sub M s (preRows s i (s + 3 * i + 2)))
-    (ht : Sub M (s + 3 * i + 2) (testRows (s + 3 * i + 2) ae af at)) (X : List Bool) :
+    (ht : Sub M (s + 3 * i + 2) (testRows (s + 3 * i + 2) ae af atr)) (X : List Bool) :
     ∃ T, T ≤ 8 * (lay S).length + 10 ∧
-      Lead M s [] (lay S ++ X) (tsel ae af at (S.getD i [])) [] (lay S ++ X) T := by
+      Lead M s [] (lay S ++ X) (tsel ae af atr (S.getD i [])) [] (lay S ++ X) T := by
   have h1 := pre_ok hp S hi X
   rw [drop_get S i hi] at h1
   have h2 := test_ok ht (S.getD i []) (lay (S.take i)).reverse (lay (S.drop (i + 1)) ++ X)
@@ -247,7 +245,7 @@ theorem frag_ok {k : Nat} (hk0 : 0 < k) {c : Cmd} {S S' : List (List Bool)} {t :
     have hc : k - i = (k - i - 1) + 1 := by omega
     rw [hc] at hs2
     have h1 := pre_ok hs1 S hi X
-    rw [drop_get S i hi, lay_layI _ (by simp)] at h1
+    rw [drop_get S i hi] at h1
     have h2 := push_blocks e (k - i - 1) (s + 3 * i + 2) (S.getD i [] :: S.drop (i + 1))
       (by simp; omega) hs2 true b (lay (S.take i)).reverse X
     have hf : ∀ c g, Sub M g (pushRows g e c) → Sub M (g + 8 * c) (finRows (g + 8 * c) e) := by
@@ -262,10 +260,11 @@ theorem frag_ok {k : Nat} (hk0 : 0 < k) {c : Cmd} {S S' : List (List Bool)} {t :
       (lay (S.take i)).reverse) X
     have hl := lay_split S i hi
     have hl2 := lay_layI (S.getD i [] :: S.drop (i + 1)) (by simp)
-    refine ⟨X.drop 2, _, ?_, ((h1.re rfl rfl (by simp) rfl).trans (h2.trans h3)).re rfl rfl ?_ rfl⟩
+    refine ⟨X.drop 2, _, ?_, ((h1.re rfl rfl (by rw [hl2, List.append_assoc]; try rfl)
+      rfl).trans (h2.trans h3)).re rfl rfl ?_ rfl⟩
     · have hL : (lay S).length = (lay (S.take i)).length +
           (layI (S.getD i [] :: S.drop (i + 1))).length + 2 := by
-        rw [hl, hl2]; simp; omega
+        rw [hl, hl2]; simp only [List.length_append, List.length_cons, List.length_nil]; omega
       simp only [List.length_append, List.length_reverse, List.length_cons]
       omega
     · rw [lay_set S i hi, show lay ((b :: S.getD i []) :: S.drop (i + 1)) =
@@ -285,8 +284,8 @@ theorem frag_ok {k : Nat} (hk0 : 0 < k) {c : Cmd} {S S' : List (List Bool)} {t :
       rw [hst] at h1 hl
       have h2 := pop_empty hs2 (lay (S.take i)).reverse (lay (S.drop (i + 1)) ++ X)
       refine ⟨X, _, ?_, ((h1.re rfl rfl (by simp) rfl).trans h2).re rfl rfl ?_ rfl⟩
-      · rw [hl]
-        simp
+      · rw [hl] at hW
+        simp only [List.length_append, List.length_reverse] at hW ⊢
         omega
       · rw [List.tail_nil, set_same S i hst, hl]
         simp
@@ -296,7 +295,7 @@ theorem frag_ok {k : Nat} (hk0 : 0 < k) {c : Cmd} {S S' : List (List Bool)} {t :
         (lay (S.take i)).reverse X
       refine ⟨false :: true :: X, _, ?_, ((h1.re rfl rfl (by simp) rfl).trans h2).re rfl rfl ?_ rfl⟩
       · have : (lay (st :: S.drop (i + 1))).length ≤ (lay ((b :: st) :: S.drop (i + 1))).length := by
-          simp
+          simp <;> omega
         rw [hl] at hW
         simp only [List.length_append, List.length_reverse] at hW hT2 ⊢
         omega
