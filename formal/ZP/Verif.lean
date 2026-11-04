@@ -85,16 +85,19 @@ theorem vm_ok (m : Nat) {p : Cmd} (hok : Ok (m + 3) p) {x y : List Bool}
       40 * t * ((lay [x, y]).length + 2 * (m + 3) + 2 * t + 2) < F) :
     exec (vm m p) F 0 (inTape (lay [x, y])) 0 = some (decide (S'.getD 0 [] ≠ [])) := by
   have hs := vm_sub m p
-  have h1s : Sub (vm m p) 0 (gotoRows 0 6 2) := hs.left
-  have hB := hs.at (b' := 6) (by rw [length_gotoRows])
-  have h2s : Sub (vm m p) 6 (sepRows 6 (2 * m + 8) m) := hB.left
-  have hC := hB.at (b' := 2 * m + 8) (by rw [length_sepRows] <;> omega)
-  have h3s : Sub (vm m p) (2 * m + 8) (retRows (2 * m + 8) (2 * m + 28)) := hC.left
-  have hD := hC.at (b' := 2 * m + 28) (by rw [length_retRows] <;> omega)
+  have h1s : Sub (vm m p) 0 (gotoRows 0 6 2) := hs.left.left.left.left
+  have h2s : Sub (vm m p) 6 (sepRows 6 (2 * m + 8) m) :=
+    hs.left.left.left.at (by rw [length_gotoRows])
+  have h3s : Sub (vm m p) (2 * m + 8) (retRows (2 * m + 8) (2 * m + 28)) :=
+    hs.left.left.at (by rw [List.length_append, length_gotoRows, length_sepRows] <;> omega)
   have h4s : Sub (vm m p) (2 * m + 28) (frag (m + 3) p (2 * m + 28) (2 * m + 28 + flen (m + 3) p)) :=
-    hD.left
+    hs.left.at (by
+      rw [List.length_append, List.length_append, length_gotoRows, length_sepRows,
+        length_retRows] <;> omega)
   have h5s : Sub (vm m p) (2 * m + 28 + flen (m + 3) p) [(H, .halt false, .halt true)] :=
-    hD.at (by rw [length_frag])
+    hs.at (by
+      rw [List.length_append, List.length_append, List.length_append, length_gotoRows,
+        length_sepRows, length_retRows, length_frag] <;> omega)
   have g1 := goto 2 0 (by omega) h1s [x, y] [] [] rfl
   have g2 := sep_ok m 6 ((lay [x, y]).reverse ++ []) h2s
   have g3 := ret h3s (sepL m ++ ((lay [x, y]).reverse ++ [])) false true []
@@ -177,7 +180,7 @@ theorem qmul {a b p q : Nat} (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ q) : a * b ≤ Q
 
 theorem qadd {a b p : Nat} (hQ : 2 ≤ Q) (ha : a ≤ Q ^ p) (hb : b ≤ Q ^ p) :
     a + b ≤ Q ^ (p + 1) := by
-  have h1 : Q ^ (p + 1) = Q ^ p * Q := Nat.pow_succ
+  have h1 : Q ^ (p + 1) = Q ^ p * Q := by rw [Nat.pow_succ]
   have h2 := Nat.mul_le_mul_left (Q ^ p) hQ
   omega
 
@@ -188,17 +191,8 @@ theorem q1 {a : Nat} (ha : a ≤ Q) : a ≤ Q ^ 1 := by rw [Nat.pow_one]; exact 
 
 end bounds
 
-theorem total_lt (n t a : Nat) (ha : a = 4 * n + 6) (ht : t ≤ ugB n (n + 1)) :
-    8 * a + 16 * (10 + 3) + 40 * t * (a + 2 * (10 + 3) + 2 * t + 2) < (n + 2) ^ 200 := by
-  subst ha
-  obtain ⟨Q, hQe⟩ : ∃ Q, Q = (n + 2) ^ 8 := ⟨_, rfl⟩
-  have lin : 128 * (n + 2) ≤ Q := by
-    have h7 : 128 ≤ (n + 2) ^ 7 := by
-      have := Nat.pow_le_pow_left (show 2 ≤ n + 2 by omega) 7
-      simpa using this
-    have h8 : (n + 2) ^ 8 = (n + 2) ^ 7 * (n + 2) := Nat.pow_succ
-    have hm := Nat.mul_le_mul_right (n + 2) h7
-    omega
+theorem total_Q (n t Q : Nat) (lin : 128 * (n + 2) ≤ Q) (ht : t ≤ ugB n (n + 1)) :
+    8 * (4 * n + 6) + 16 * (10 + 3) + 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ Q ^ 23 := by
   have hQ2 : 2 ≤ Q := by omega
   have hQ1 : 1 ≤ Q := by omega
   have hR : rB (n + 1) ≤ Q ^ 3 := by
@@ -234,9 +228,24 @@ theorem total_lt (n t a : Nat) (ha : a = 4 * n + 6) (ht : t ≤ ugB n (n + 1)) :
   have v : 40 * t ≤ Q ^ 11 := qmul (q1 (show 40 ≤ Q by omega)) ht'
   have pr : 40 * t * (4 * n + 6 + 2 * (10 + 3) + 2 * t + 2) ≤ Q ^ 22 := qmul v w
   have li : 8 * (4 * n + 6) + 16 * (10 + 3) ≤ Q ^ 22 := qup hQ1 (q1 (by omega)) (by omega)
-  have tot : _ ≤ Q ^ 23 := qadd hQ2 li pr
-  rw [hQe, ← Nat.pow_mul] at tot
-  exact Nat.lt_of_le_of_lt tot (Nat.pow_lt_pow_right (by omega) (by omega))
+  exact qadd hQ2 li pr
+
+
+theorem lin8 (n : Nat) : 128 * (n + 2) ≤ (n + 2) ^ 8 := by
+  have h7 : 128 ≤ (n + 2) ^ 7 := by
+    have := Nat.pow_le_pow_left (show 2 ≤ n + 2 by omega) 7
+    simpa using this
+  have hm := Nat.mul_le_mul_right (n + 2) h7
+  rw [← Nat.pow_succ] at hm
+  exact hm
+
+theorem total_lt (n t a : Nat) (ha : a = 4 * n + 6) (ht : t ≤ ugB n (n + 1)) :
+    8 * a + 16 * (10 + 3) + 40 * t * (a + 2 * (10 + 3) + 2 * t + 2) < (n + 2) ^ 200 := by
+  subst ha
+  have h := total_Q n t _ (lin8 n) ht
+  rw [← Nat.pow_mul] at h
+  exact Nat.lt_of_le_of_lt h
+    (Nat.pow_lt_pow_right (Nat.lt_of_lt_of_le (by decide) (Nat.le_add_left 2 n)) (by decide))
 
 /-! ## `L ∈ NP` -/
 
@@ -256,9 +265,10 @@ theorem Lp_InNP : InNP Lp := by
     have hE' : Exec UG (x :: c :: List.replicate (10 + 1) []) S' t := hE
     refine ⟨c, ?_, ?_⟩
     · have : x.length + 2 ≤ (x.length + 2) ^ 200 := by
-        have := Nat.pow_le_pow_right (show 0 < x.length + 2 by omega) (show 1 ≤ 200 by omega)
+        have := Nat.pow_le_pow_right (show 0 < x.length + 2 by omega) (show 1 ≤ 200 by decide)
         rwa [Nat.pow_one] at this
-      omega
+      rw [Nat.one_mul, hc]
+      exact Nat.le_trans (Nat.le_succ _) this
     · rw [pairTape_lay, vm_ok 10 ok_UG hE' _ (total_lt x.length t _
         (by rw [length_lay2, hc]; omega) (by rw [hc] at ht; exact ht))]
       exact congrArg some (decide_eq_true (hiff.mpr ⟨hc, hr⟩))
