@@ -109,7 +109,8 @@ theorem pop_full {M : Mach} {s e c : Nat} (hs : Sub M s (popRows s e c)) (b : Bo
   have h1 := pop_region1 hb st true b L (lay Q ++ X)
   obtain ⟨T2, hT2, h2⟩ := pop_blocks e c (s + 22 + 21) Q hQ hr
     ((encR st ++ [false, true]).reverse ++ L) X
-  refine ⟨_, ?_, ((h0.trans (h1.trans h2)).ri rfl (by simp)).re rfl rfl (by simp) rfl⟩
+  refine ⟨_, ?_, ((h0.trans ((h1.ri rfl (by simp)).trans (h2.ri rfl (by simp)))).ri rfl
+    (by simp)).re rfl rfl (by simp) rfl⟩
   simp [length_encR, length_lay] at hT2 ⊢
   omega
 
