@@ -27,15 +27,15 @@ theorem rep_snoc (b : Bool) : ∀ (n : Nat) (X : List Bool),
     rw [List.replicate_succ, List.cons_append, rep_snoc b n X]
     rfl
 
-def pushN (i : Nat) (b : Bool) : Nat → Cmd
+def pushB (i : Nat) (b : Bool) : Nat → Cmd
   | 0 => .skip
-  | n + 1 => .seq (.push i b) (pushN i b n)
+  | n + 1 => .seq (.push i b) (pushB i b n)
 
-theorem pushN_gen {i : Nat} (b : Bool) : ∀ (n : Nat) (S : List (List Bool)), i < S.length →
-    ExecB (pushN i b n) S (S.set i (List.replicate n b ++ S.getD i [])) (n + 1)
+theorem pushB_gen {i : Nat} (b : Bool) : ∀ (n : Nat) (S : List (List Bool)), i < S.length →
+    ExecB (pushB i b n) S (S.set i (List.replicate n b ++ S.getD i [])) (n + 1)
   | 0, S, hi => ExecB.skip.to (by stk_eq) (Nat.le_refl _)
   | n + 1, S, hi => by
-    have h2 := pushN_gen b n (S.set i (b :: S.getD i [])) (by simpa using hi)
+    have h2 := pushB_gen b n (S.set i (b :: S.getD i [])) (by simpa using hi)
     rw [getD_set_eq _ hi, rep_snoc] at h2
     refine (ExecB.push.seq h2).to (by stk_eq) (by omega)
 
@@ -233,16 +233,17 @@ theorem em_genE {N P B p : Nat} (a : Act) (hp : p + 3 ≤ N) (ht : tgA B a) (hB 
     have hq : q ≤ B := ht
     by_cases hc : p + 3 ≤ 3 * q
     · have h := em_eW (w := w) (d := r) (body_pushK (N := N) (P := P) (3 * q - p - 2))
-      refine Em.cast (c := genE p (.go w r q)) ?_ ?_ (show 3 * q - p - 2 + 1 + 3 ≤ 9 * N + 7 by omega)
-      · unfold genE; rw [if_pos hc]; exact h
-      · unfold entG; rw [if_pos hc]
+      have h' : Em N P (genE p (.go w r q)) [⟨w, r, 3 * q - p - 2⟩] (3 * q - p - 2 + 1 + 3) := by
+        unfold genE; rw [if_pos hc]; exact h
+      exact h'.cast (by unfold entG; rw [if_pos hc]) (by omega)
     · have h := em_eW (w := w) (d := r) (body_NNpop (N := N) (P := P) (j := p + 2 - 3 * q)
         (by omega))
-      refine Em.cast (c := genE p (.go w r q)) ?_ ?_ (show 9 * N + 3 + 3 ≤ 9 * N + 7 by omega)
-      · unfold genE; rw [if_neg hc]; exact h
-      · unfold entG; rw [if_neg hc]
-        congr 2
-        omega
+      have h' : Em N P (genE p (.go w r q)) [⟨w, r, N - (p + 2 - 3 * q)⟩] (9 * N + 3 + 3) := by
+        unfold genE; rw [if_neg hc]; exact h
+      refine h'.cast ?_ (by omega)
+      unfold entG; rw [if_neg hc]
+      congr 2
+      omega
 
 def genRows : Nat → List (Act × Act × Act) → Cmd
   | _, [] => .skip
@@ -259,7 +260,7 @@ theorem em_genRows {N P B : Nat} (hB : 3 * B ≤ N) : ∀ (rows : List (Act × A
     have h1 := em_genE (P := P) r.1 (p := 3 * q) (by omega) t1 hB
     have h2 := em_genE (P := P) r.2.1 (p := 3 * q + 1) (by omega) t2 hB
     have h3 := em_genE (P := P) r.2.2 (p := 3 * q + 2) (by omega) t3 hB
-    have h4 := em_genRows hB rs (q + 1) ht' (by omega)
+    have h4 := em_genRows (P := P) hB rs (q + 1) ht' (by omega)
     refine (h1.seq (h2.seq (h3.seq h4))).cast rfl ?_
     simp only [List.length_cons, Nat.add_mul, Nat.one_mul]
     generalize rs.length * (27 * N + 21) = Z
@@ -270,7 +271,7 @@ theorem ok_popK : ∀ j, Ok 8 (popK 1 j)
   | j + 1 => ⟨show 1 < 8 by decide, ok_popK j⟩
 
 theorem ok_genE (p : Nat) : ∀ a, Ok 8 (genE p a)
-  | .halt b => okb_ok 8 _ (by cases b <;> decide)
+  | .halt b => by cases b <;> exact okb_ok 8 (eW _ false .skip) (by decide)
   | .go w r q => by
     have hb : Ok 8 (if p + 3 ≤ 3 * q then pushK 1 (3 * q - p - 2)
         else .seq NNc (popK 1 (p + 2 - 3 * q))) := by
