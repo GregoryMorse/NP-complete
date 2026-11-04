@@ -86,6 +86,12 @@ theorem addn_ok {R L Q C A : List Bool} (a : Nat) (D : List Bool) :
     h2.to (by simp [WS]) (by simp)
   exact (h1.seq h2').to rfl (by omega)
 
+theorem rep_add (b : Bool) : ∀ n m : Nat,
+    List.replicate (n + m) b = List.replicate n b ++ List.replicate m b
+  | 0, _ => by simp
+  | n + 1, m => by
+    rw [Nat.succ_add, List.replicate_succ, List.replicate_succ, rep_add b n m]; rfl
+
 def mb : Cmd := .seq (.pop 3) ADDN
 def MUL1 : Cmd := .wh 3 false true true mb
 def MUL : Cmd := .seq MUL1 (mv 6 3)
@@ -102,7 +108,7 @@ theorem mul1_ok {R L Q A : List Bool} (a : Nat) : ∀ (c : Nat) (D : List Bool),
     have hd := addn_ok (R := R) (L := L) (Q := Q) (C := List.replicate c true) (A := A) a D
     have ih := mul1_ok (R := R) (L := L) (Q := Q) (A := A) a c (List.replicate a true ++ D)
     refine (ExecB.whT (by rfl) (hp.seq hd) ih).to ?_ ?_
-    · simp [Nat.add_mul, List.replicate_add]
+    · simp [Nat.add_mul, rep_add]
     · have := Nat.add_mul c 1 (8 * a + 4)
       omega
 
