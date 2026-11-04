@@ -37,3 +37,4 @@ public import ZP.Body
 public import ZP.Dx
 public import ZP.Tg
 public import ZP.Ents
+public import ZP.Gen
