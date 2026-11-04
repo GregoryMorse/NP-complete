@@ -89,7 +89,9 @@ theorem InP_of_InNP (hS : Sentence) {A : List Bool → Prop} (hA : InNP A) : InP
     rw [tl_WS, tl_WS] at this
     simp only [List.length_nil] at this
     omega
-  refine ⟨_, rm_ok 6 ⟨ok_GEN _ _ _ _, ok_PD _ _⟩ hE _
+  have hok : Ok (6 + 2) (.seq (GEN V k m (padE V k m)) (PD (gMach (startCode J)) (J.length + 1))) :=
+    ⟨ok_GEN _ _ _ _, ok_PD _ _⟩
+  refine ⟨_, rm_ok 6 hok hE _
     (dec_bound V k m (padE V k m) (gMach (startCode J)) (J.length + 1) x.length s.length tg tp
       hsl htg htp), ?_⟩
   have hr := hJ s
