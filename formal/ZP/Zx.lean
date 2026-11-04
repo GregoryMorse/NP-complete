@@ -237,12 +237,12 @@ theorem Lead.pL0 {M : Mach} {base j : Nat} {rows : List (Act × Act × Act)}
 set_option hygiene false in
 /-- One step of a gadget whose rows are `Sub M base _` under the name `hs`. -/
 macro "zs" : tactic => `(tactic| first
-  | (refine Lead.pR hs ?_ ?_; rfl)
-  | (refine Lead.pL hs ?_ ?_; rfl)
-  | (refine Lead.pL0 hs ?_ ?_; rfl)
-  | (refine Lead.pR (j := 0) hs ?_ ?_; rfl)
-  | (refine Lead.pL (j := 0) hs ?_ ?_; rfl)
-  | (refine Lead.pL0 (j := 0) hs ?_ ?_; rfl))
+  | (apply Lead.pR hs; rfl)
+  | (apply Lead.pL hs; rfl)
+  | (apply Lead.pL0 hs; rfl)
+  | (apply Lead.pR (j := 0) hs; rfl)
+  | (apply Lead.pL (j := 0) hs; rfl)
+  | (apply Lead.pL0 (j := 0) hs; rfl))
 
 /-! ## Common rows -/
 
@@ -299,7 +299,7 @@ theorem ret {M : Mach} {base exit : Nat} (hs : Sub M base (retRows base exit)) :
       Lead M base L (a :: a' :: rest) exit [] (L.reverse ++ a :: a' :: rest) (7 * L.length + 6)
   | [], a, a', rest => ret_end hs a a' rest
   | c :: l, a, a', rest => by
-    have h := (ret_step hs a a' c l rest).trans (ret l c a (a' :: rest))
+    have h := (ret_step hs a a' c l rest).trans (ret hs l c a (a' :: rest))
     have e : (c :: l).reverse ++ a :: a' :: rest = l.reverse ++ c :: a :: a' :: rest := by simp
     rw [e]
     exact h.cast (by simp only [List.length_cons]; omega)
