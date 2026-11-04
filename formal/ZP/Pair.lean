@@ -1085,7 +1085,7 @@ theorem pair_main (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
   have eJ : str J = rJ.reverse := by rw [← hrJ, str_numR]
   have eJ1 : str (J + 1) = (incR rJ).reverse := by rw [← hrJ, ← numR_inc, str_numR]
   by_cases hc : Correct J S
-  · have e : absStep (J, S) = (J, S + 1) := by simp [absStep, hc]
+  · have e : absStep (J, S) = (J, S + 1) := absStep_pos hc
     rw [e]
     have ho : run (str J) (str S) (clock (str J) (str S)) = inL (str S) := hc
     rw [ho] at hA
@@ -1099,7 +1099,7 @@ theorem pair_main (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
     have hinc := sincL (1 :: bitsOf (str J)) (NoB.cons one_nb hj.noB) rS 0
     obtain ⟨n, hn⟩ := hA.trans (hok.trans (hinc.of_eq (c4 := lay J (S + 1)) (by rw [eS]; rfl) (by rw [lay_hdR, eS1]; simp)))
     exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
-  · have e : absStep (J, S) = (J + 1, 1) := by simp [absStep, hc]
+  · have e : absStep (J, S) = (J + 1, 1) := absStep_neg hc
     rw [e]
     have ho : run (str J) (str S) (clock (str J) (str S)) = !inL (str S) := by
       have h' : run (str J) (str S) (clock (str J) (str S)) ≠ inL (str S) := hc
