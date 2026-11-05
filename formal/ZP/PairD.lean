@@ -968,4 +968,79 @@ theorem shr0 (Q : List Nat) (hQ : Sym4 Q) :
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+
+/-! ## Copying `P` into `D` -/
+
+theorem cpLoop (G : List Nat) (hG : Sym4 G) : ∀ (u i : Nat),
+    zdlLogic.Reach
+      (hdR QD.CP1 (List.replicate i 3 ++ [1]) (List.replicate i 2 ++ (List.replicate u 3 ++ 1 :: G)))
+      (hdR QD.CP1 (List.replicate (i + u) 3 ++ [1]) (List.replicate (i + u) 2 ++ 1 :: G))
+  | 0, i => by simpa using LTM.Reach.refl _ _
+  | u + 1, i => by
+    have h1 := cpIter (List.replicate i 3) (List.replicate i 2) (List.replicate u 3) G (rep_t3 i)
+      (rep_z2 i) (rep_t3 u) hG
+    have h2 := cpLoop G hG u (i + 1)
+    refine (h1.of_eq ?_ ?_).trans (h2.of_eq rfl ?_)
+    · simp [List.replicate_succ]
+    · have a1 : List.replicate (i + 1) 3 = 3 :: List.replicate i 3 := rfl
+      have a2 : List.replicate (i + 1) 2 = List.replicate i 2 ++ [2] := List.replicate_succ' ..
+      rw [a1, a2]; simp
+    · have : i + 1 + u = i + (u + 1) := by omega
+      rw [this]
+
+
+/-! ## Primality: the division test -/
+
+theorem succ_modD (i d : Nat) (hd2 : 2 ≤ d) :
+    (i + 1) % d = if i % d + 1 < d then i % d + 1 else 0 := F.succ_mod i d hd2
+
+theorem pLoop (Q : List Nat) (hQ : Sym4 Q) (d : Nat) (hd2 : 2 ≤ d) : ∀ u i : Nat,
+    zdlLogic.Reach
+      (hdR QD.X4 (List.replicate (i % d) 2 ++ (List.replicate (d - i % d) 3 ++ [1]))
+        (List.replicate i 2 ++ (List.replicate u 3 ++ 1 :: Q)))
+      (hdR QD.X4 (List.replicate ((i + u) % d) 2 ++ (List.replicate (d - (i + u) % d) 3 ++ [1]))
+        (List.replicate (i + u) 2 ++ 1 :: Q))
+  | 0, i => by simpa using LTM.Reach.refl _ _
+  | u + 1, i => by
+    have hj : i % d < d := Nat.mod_lt _ (by omega)
+    have hsm := succ_modD i d hd2
+    have e : i + 1 + u = i + (u + 1) := by omega
+    have hmid := pLoop Q hQ d hd2 u (i + 1)
+    rw [e] at hmid
+    have hA : List.replicate (i + 1) 2 = List.replicate i 2 ++ [2] := List.replicate_succ' ..
+    by_cases hlt : i % d + 1 < d
+    · simp only [hlt, ↓reduceIte] at hsm
+      have h1 := pIter1 (List.replicate (i % d) 2) (List.replicate (d - i % d - 2) 3)
+        (List.replicate i 2) (List.replicate u 3) Q (rep_z2 _) (rep_t3 _) (rep_z2 _) (rep_t3 _) hQ
+      have hrep : List.replicate (d - i % d) 3 = 3 :: 3 :: List.replicate (d - i % d - 2) 3 := by
+        obtain ⟨k, hk⟩ : ∃ k, d - i % d = k + 2 := ⟨d - i % d - 2, by omega⟩
+        rw [hk]; simp [List.replicate_succ]
+      have hrep2 : List.replicate (d - (i + 1) % d) 3 = 3 :: List.replicate (d - i % d - 2) 3 := by
+        rw [hsm]
+        obtain ⟨k, hk⟩ : ∃ k, d - i % d = k + 2 := ⟨d - i % d - 2, by omega⟩
+        have : d - (i % d + 1) = k + 1 := by omega
+        rw [this, show d - i % d - 2 = k by omega]
+        simp [List.replicate_succ]
+      have hK : List.replicate (i % d + 1) 2 = List.replicate (i % d) 2 ++ [2] := List.replicate_succ' ..
+      refine LTM.Reach.trans (c' := hdR QD.X4
+        (List.replicate ((i + 1) % d) 2 ++ (List.replicate (d - (i + 1) % d) 3 ++ [1]))
+        (List.replicate (i + 1) 2 ++ (List.replicate u 3 ++ 1 :: Q)))
+        (h1.of_eq ?_ ?_) hmid
+      · rw [hrep]; simp [List.replicate_succ]
+      · rw [hrep2, hsm, hK, hA]; simp
+    · simp only [hlt, ↓reduceIte] at hsm
+      have e3 : d - i % d = 1 := by omega
+      have h1 := pIter2 (List.replicate (i % d) 2) (List.replicate i 2) (List.replicate u 3) Q
+        (rep_z2 _) (rep_z2 _) (rep_t3 _) hQ
+      have hd' : List.replicate d 3 = List.replicate (i % d) 3 ++ [3] := by
+        rw [← List.replicate_succ']; congr 1; omega
+      refine LTM.Reach.trans (c' := hdR QD.X4
+        (List.replicate ((i + 1) % d) 2 ++ (List.replicate (d - (i + 1) % d) 3 ++ [1]))
+        (List.replicate (i + 1) 2 ++ (List.replicate u 3 ++ 1 :: Q)))
+        (h1.of_eq ?_ ?_) hmid
+      · rw [e3]; simp [List.replicate_succ]
+      · rw [hsm, hA]
+        simp only [List.length_replicate, Nat.sub_zero, List.replicate_zero, List.nil_append, hd']
+        simp
+
 end ZP.D
