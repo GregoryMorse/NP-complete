@@ -301,4 +301,97 @@ theorem search_machine (E : GEnv) (chk : List Nat → Bool) (Acc : ZC) (hC : E.C
 
 end GEnv
 
+theorem injL_mem (m : Nat) : ∀ t w, w ∈ injL m t ↔ w.length = t ∧ w.Nodup ∧ ∀ v ∈ w, 1 ≤ v ∧ v ≤ m := by
+  intro t
+  induction t with
+  | zero =>
+    intro w
+    simp only [injL, List.mem_singleton]
+    constructor
+    · rintro rfl; simp
+    · rintro ⟨h, -, -⟩; exact List.length_eq_zero_iff.1 h
+  | succ t ih =>
+    intro w
+    simp only [injL, List.mem_flatMap, List.mem_filterMap, List.mem_map, List.mem_range]
+    constructor
+    · rintro ⟨w0, hw0, i, ⟨a, ha, rfl⟩, hv⟩
+      by_cases hm : (a + 1) ∈ w0
+      · simp [hm] at hv
+      have hn : (a + 1) ∉ w0 := hm
+      simp [hm] at hv
+      subst hv
+      obtain ⟨hl, hnd, hr⟩ := (ih w0).1 hw0
+      refine ⟨by simp [hl], ?_, ?_⟩
+      · rw [List.nodup_append]
+        exact ⟨hnd, by simp, fun x hx y hy hxy => by simp at hy; subst hy; subst hxy; exact hn hx⟩
+      · intro x hx
+        rcases List.mem_append.1 hx with hx | hx
+        · exact hr x hx
+        · simp at hx; subst hx; omega
+    · rintro ⟨hl, hnd, hr⟩
+      rcases List.eq_nil_or_concat w with h0 | ⟨w0, v, hw⟩
+      · subst h0; simp at hl
+      · subst hw
+        have hl0 : w0.length = t := by simpa using hl
+        have hnd' := (List.nodup_append.1 (by simpa using hnd)).1
+        have hn : v ∉ w0 := by
+          have := (List.nodup_append.1 (by simpa using hnd)).2.2
+          intro hv; exact this v hv v (by simp) rfl
+        have hrv : 1 ≤ v ∧ v ≤ m := hr v (by simp)
+        refine ⟨w0, (ih w0).2 ⟨hl0, hnd', fun x hx => hr x (by simp [hx])⟩, v, ⟨v - 1, by omega, by omega⟩, ?_⟩
+        simp [hn]
+
+theorem vlen : ∀ (m : Nat) (w : List Nat), w.Nodup → (∀ v ∈ w, 1 ≤ v ∧ v ≤ m) → w.length ≤ m := by
+  intro m
+  induction m with
+  | zero =>
+    intro w _ h
+    cases w with
+    | nil => simp
+    | cons a w => have := h a (List.mem_cons_self ..); omega
+  | succ m ih =>
+    intro w hnd h
+    by_cases hm : (m + 1) ∈ w
+    · have h1 := ih (w.erase (m + 1)) (hnd.erase _) (by
+        intro v hv
+        have hne : v ≠ m + 1 := (List.Nodup.mem_erase_iff hnd).1 hv |>.1
+        have hv' := (List.Nodup.mem_erase_iff hnd).1 hv |>.2
+        have := h v hv'
+        omega)
+      rw [List.length_erase_of_mem hm] at h1
+      have : 0 < w.length := List.length_pos_of_mem hm
+      omega
+    · exact Nat.le_succ_of_le (ih w hnd (fun v hv => by
+        have := h v hv
+        have : v ≠ m + 1 := fun e => hm (e ▸ hv)
+        omega))
+
+/-- The search result is `inLG`. -/
+theorem inLG_iff_Rch (s : List Bool) (b : Bool)
+    (h : Rch (fun st => checkG st (parseG s).1 (parseG s).2.1 (parseG s).2.2) (parseG s).1 [] (parseG s).1 b) :
+    b = true ↔ inLG s = true := by
+  rw [Rch_sem h ⟨List.nodup_nil, by simp⟩ (Nat.le_refl _)]
+  unfold inLG
+  simp only [List.any_eq_true, List.mem_range, decide_eq_true_eq]
+  constructor
+  · rintro ⟨st, hex, hk⟩
+    have hv : VStack (parseG s).1 st := by
+      rcases hex with rfl | ⟨t0, x, hs, hx, hvs⟩
+      · exact ⟨List.nodup_nil, by simp⟩
+      · exact hvs
+    refine ⟨st.length, Nat.lt_succ_of_le (vlen _ st hv.1 hv.2), st, (injL_mem _ _ _).2 ⟨rfl, hv.1, hv.2⟩, hk⟩
+  · rintro ⟨t, ht, w, hw, hk⟩
+    obtain ⟨hl, hnd, hr⟩ := (injL_mem _ _ _).1 hw
+    refine ⟨w, ?_, hk⟩
+    cases w with
+    | nil => exact Or.inl rfl
+    | cons a w' =>
+      obtain ⟨t0, x, hw'⟩ : ∃ t0 x, a :: w' = t0 ++ [x] := by
+        rcases List.eq_nil_or_concat (a :: w') with h | ⟨t0, x, h⟩
+        · exact absurd h (by simp)
+        · exact ⟨t0, x, by simpa using h⟩
+      refine Or.inr ⟨t0, x, hw', ?_, hnd, hr⟩
+      have : x ∈ a :: w' := by rw [hw']; simp
+      exact (hr x this).2
+
 end ZP.G
