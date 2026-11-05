@@ -94,3 +94,19 @@ Prove `zfGlue.Ext zgiLogic` (37 glue transitions shared; measured).
 
 ~4000–5500 lines. Split the work into ≥ 3 sessions: (setup + search skeleton with
 `checkW` sorried), (`checkW`), (glue + top).
+
+
+## Status (in progress)
+
+Done and building (no sorry), files `ZP/PairG.lean` and `ZP/SearchG.lean` (not yet imported by `ZP.lean`):
+- shared decider/new-instance part copied for `zgiLogic`; `ni0`, `ni2a`, `gtcLoop` (setup: copy becomes `M ++ fz Xr`, entry `gUP`);
+- push of a copy of `m` (`pushAll`), unmarking walks (`gupWalk`, `gflWalk`), the pairwise collision scan of the top against
+  one entry (`cmpAll`) and against all entries (`scanLoop`), `failPath`, pop/decrement/empty-stack lemmas;
+- abstract DFS (`Rch`, `Expl`, `Rch_sem`, `Rch_total`) and the machine lemma `GEnv.search_machine`, parameterised by
+  `CheckSpec` (the check phase).
+
+Still to do: (1) `CheckSpec` (states `gGL gUW gUW2 gXm gY1* gLP* gLW* gM1 gIL* gN* gS3 gS4 gD* gTR* gN2c/d gHU* gHC gFN*`
+and `gFG`); (2) the link `Rch [] m b` <-> `inLG` (via `Expl` and `injL`); (3) the truth phase wrapper
+(entry `gUP` -> result `FR0/FE/FR1`), `newInstG`, `pair_mainG`, `MainG`, Challenge/Solution/comparator entries.
+Key tape facts: the stack is stored top-first as `Enc rest` (`U v = 1^v M`), so the check word is `rest` itself;
+`good s := checkG s m X H`.
