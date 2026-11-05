@@ -1,7 +1,7 @@
 {
   "challenge_module": "Challenge",
   "solution_module": "Solution",
-  "theorem_names": ["ZP.zp_quasihalts_iff_sentence"],
+  "theorem_names": ["ZP.zp_quasihalts_iff_sentence", "ZP.zpp_quasihalts_iff_sentence"],
   "definition_names": [],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
 }

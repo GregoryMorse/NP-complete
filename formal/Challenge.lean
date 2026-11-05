@@ -2,6 +2,7 @@ module
 
 public import ZP.Defs
 public import ZP.Table
+public import ZP.DefsPP
 
 public section
 
@@ -21,4 +22,7 @@ The further equivalence `ZP.Sentence ↔ P = NP` is proved on paper
 -/
 
 theorem ZP.zp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpMachine ↔ ZP.Sentence := by
+  sorry
+
+theorem ZP.zpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppMachine ↔ ZP.SentencePP := by
   sorry

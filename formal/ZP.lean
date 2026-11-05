@@ -34,7 +34,9 @@ public import ZP.Checks
 public import ZP.DefsPP
 public import ZP.ChecksPP
 public import ZP.CompilePP
+public import ZP.Count
 public import ZP.PairPP
+public import ZP.MainPP
 public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile
