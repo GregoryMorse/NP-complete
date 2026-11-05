@@ -103,14 +103,15 @@ theorem dec_pos (n u : Nat) (hu : u ≤ n) (L R : List Nat) (hL : Sym4 L) (hR : 
       (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, rep_cons_comm, List.replicate_succ, Fn.app])
 
 /-- A zero digit borrows: it is refilled and `DEC1` moves to the block before it. -/
-theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) (hR1 : R = [] ∨ ∃ R', R = 1 :: R') :
+theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R)
+    (hR1 : R = [] ∨ (∃ R', R = 1 :: R') ∨ ∃ R', R = 0 :: R') :
     zmBase.Reach (hd Q.DEC1 (L ++ blkW n 0) R) (hd Q.DEC1 L (blkW n (n + 1) ++ R)) := by
   have e : blkW n 0 = 1 :: (List.replicate n 2 ++ [2]) := by
     simp [blkW, rep_cons_comm, List.replicate_succ]
   have e' : blkW n (n + 1) = 1 :: (List.replicate n 3 ++ [3]) := by
     simp [blkW, rep_cons_comm, List.replicate_succ]
   rw [e, e']
-  rcases hR1 with rfl | ⟨R', rfl⟩
+  rcases hR1 with rfl | ⟨R', rfl⟩ | ⟨R', rfl⟩
   · exact checkTT (env := [L, [], List.replicate n 2, []]) (E := []) (k := 12)
       (fvalid hL Sym4.nil (Sym4.rep _ _ (by simp [ALL])) Sym4.nil) trivial
       (ls := [.blk 0 .id, .sym 1, .blk 2 (.const 2), .sym 2]) (rs := [])
@@ -125,6 +126,17 @@ theorem borrow (n : Nat) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) (hR1 : R =
       (fvalid hL Sym4.nil (Sym4.rep _ _ (by simp [ALL])) hR') trivial
       (ls := [.blk 0 .id, .sym 1, .blk 2 (.const 2), .sym 2]) (rs := [.sym 1, .blk 3 .id])
       (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 1, .blk 3 .id])
+      (by decide +kernel)
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app])
+      (by simp [dR, Item.den, List.getD, map_id_app])
+      (by simp [dR, Item.den, List.getD, map_id_app])
+      (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app])
+
+  · have hR' : Sym4 R' := fun a ha => hR a (List.mem_cons_of_mem _ ha)
+    exact checkTT (env := [L, [], List.replicate n 2, R']) (E := []) (k := 12)
+      (fvalid hL Sym4.nil (Sym4.rep _ _ (by simp [ALL])) hR') trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 2 (.const 2), .sym 2]) (rs := [.sym 0, .blk 3 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 0, .blk 3 .id])
       (by decide +kernel)
       (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app])
       (by simp [dR, Item.den, List.getD, map_id_app])
@@ -168,57 +180,63 @@ theorem walkL (q : Nat) (hq : q = Q.FBACK ∨ q = Q.EXH) (L W R : List Nat) (hL 
       (by simp [dR, Item.den, List.getD, map_id_app])
       (by simp [dR, Item.den, List.getD, map_id_app])
 
-/-! ## The odometer -/
+/-! ## The odometer (mixed widths) -/
+
+/-- A digit: its block width `n` (the digit is at most `n + 1`) and its value. -/
+abbrev Dg := Nat × Nat
 
 /-- Blocks, least significant first in the list, last on the tape. -/
-def FWr (n : Nat) : List Nat → List Nat
+def FWr : List Dg → List Nat
   | [] => []
-  | d :: ds => FWr n ds ++ blkW n d
+  | (n, d) :: ds => FWr ds ++ blkW n d
 
-def valr (n : Nat) : List Nat → Nat
+def valr : List Dg → Nat
   | [] => 0
-  | d :: ds => d + (n + 2) * valr n ds
+  | (n, d) :: ds => d + (n + 2) * valr ds
 
-def Dig (n : Nat) (ds : List Nat) : Prop := ∀ d ∈ ds, d ≤ n + 1
+def Dig (ds : List Dg) : Prop := ∀ p ∈ ds, p.2 ≤ p.1 + 1
 
-theorem FWr_noB (n : Nat) : ∀ ds, NoB (FWr n ds)
+/-- The digits all set to their maximum. -/
+def full (ds : List Dg) : List Dg := ds.map fun p => (p.1, p.1 + 1)
+
+theorem FWr_noB : ∀ ds, NoB (FWr ds)
   | [] => fun _ h => by cases h
-  | d :: ds => (FWr_noB n ds).app (blkW_noB n d)
+  | (n, d) :: ds => (FWr_noB ds).app (blkW_noB n d)
 
 /-- One decrement of a fuel `M FWr ds` (the `M` is the one before the first block). -/
-theorem fuel (n : Nat) : ∀ ds, Dig n ds → ∀ L R, Sym4 L → Sym4 R → (R = [] ∨ ∃ R', R = 1 :: R') →
-    (0 < valr n ds → ∃ ds', Dig n ds' ∧ ds'.length = ds.length ∧ valr n ds' + 1 = valr n ds ∧
-      zmBase.Reach (hd Q.DEC1 (L ++ [1] ++ FWr n ds) R) (hd Q.FBACK (L ++ [1]) (FWr n ds' ++ R))) ∧
-    (valr n ds = 0 →
-      zmBase.Reach (hd Q.DEC1 (L ++ [1] ++ FWr n ds) R)
-        (hd Q.EXH L (1 :: (FWr n (ds.map fun _ => n + 1) ++ R))))
+theorem fuel : ∀ ds, Dig ds → ∀ L R, Sym4 L → Sym4 R → (R = [] ∨ (∃ R', R = 1 :: R') ∨ ∃ R', R = 0 :: R') →
+    (0 < valr ds → ∃ ds', Dig ds' ∧ ds'.map Prod.fst = ds.map Prod.fst ∧ valr ds' + 1 = valr ds ∧
+      zmBase.Reach (hd Q.DEC1 (L ++ [1] ++ FWr ds) R) (hd Q.FBACK (L ++ [1]) (FWr ds' ++ R))) ∧
+    (valr ds = 0 →
+      zmBase.Reach (hd Q.DEC1 (L ++ [1] ++ FWr ds) R)
+        (hd Q.EXH L (1 :: (FWr (full ds) ++ R))))
   | [], _, L, R, hL, hR, _ => by
     refine ⟨fun h => absurd h (Nat.lt_irrefl 0), fun _ => ?_⟩
     show zmBase.Reach (hd Q.DEC1 (L ++ [1] ++ []) R) (hd Q.EXH L (1 :: ([] ++ R)))
     rw [List.append_nil, List.nil_append]
     exact exh L R hL hR
-  | d :: ds, hd0, L, R, hL, hR, hR1 => by
-    have hds : Dig n ds := fun x hx => hd0 x (List.mem_cons_of_mem _ hx)
-    have hdn : d ≤ n + 1 := hd0 d (List.mem_cons_self ..)
-    have hL1 : Sym4 (L ++ [1] ++ FWr n ds) :=
-      (hL.app (Sym4.cons (by simp [ALL]) Sym4.nil)).app (FWr_noB n ds).sym4
-    have eA : L ++ [1] ++ FWr n (d :: ds) = (L ++ [1] ++ FWr n ds) ++ blkW n d :=
+  | (n, d) :: ds, hd0, L, R, hL, hR, hR1 => by
+    have hds : Dig ds := fun x hx => hd0 x (List.mem_cons_of_mem _ hx)
+    have hdn : d ≤ n + 1 := hd0 (n, d) (List.mem_cons_self ..)
+    have hL1 : Sym4 (L ++ [1] ++ FWr ds) :=
+      (hL.app (Sym4.cons (by simp [ALL]) Sym4.nil)).app (FWr_noB ds).sym4
+    have eA : L ++ [1] ++ FWr ((n, d) :: ds) = (L ++ [1] ++ FWr ds) ++ blkW n d :=
       (List.append_assoc _ _ _).symm
     rw [eA]
     cases d with
     | zero =>
-      have hB := borrow n (L ++ [1] ++ FWr n ds) R hL1 hR hR1
+      have hB := borrow n (L ++ [1] ++ FWr ds) R hL1 hR hR1
       have hR2 : Sym4 (blkW n (n + 1) ++ R) := (blkW_noB n _).sym4.app hR
-      have ih := fuel n ds hds L (blkW n (n + 1) ++ R) hL hR2 (Or.inr ⟨_, rfl⟩)
-      have hv : valr n (0 :: ds) = (n + 2) * valr n ds := by simp [valr]
+      have ih := fuel ds hds L (blkW n (n + 1) ++ R) hL hR2 (Or.inr (Or.inl ⟨_, rfl⟩))
+      have hv : valr ((n, 0) :: ds) = (n + 2) * valr ds := by simp [valr]
       refine ⟨fun hpos => ?_, fun hz => ?_⟩
-      · have hpos' : 0 < valr n ds := by
+      · have hpos' : 0 < valr ds := by
           rw [hv] at hpos
-          rcases Nat.eq_zero_or_pos (valr n ds) with h | h
+          rcases Nat.eq_zero_or_pos (valr ds) with h | h
           · rw [h, Nat.mul_zero] at hpos; exact absurd hpos (Nat.lt_irrefl 0)
           · exact h
         obtain ⟨ds', hd', hl', hv', hr'⟩ := ih.1 hpos'
-        refine ⟨(n + 1) :: ds', ?_, by simp [hl'], ?_, hB.trans ?_⟩
+        refine ⟨(n, n + 1) :: ds', ?_, by simp [hl'], ?_, hB.trans ?_⟩
         · intro x hx
           rcases List.mem_cons.mp hx with e | e
           · rw [e]; exact Nat.le_refl _
@@ -227,37 +245,51 @@ theorem fuel (n : Nat) : ∀ ds, Dig n ds → ∀ L R, Sym4 L → Sym4 R → (R 
           simp only [valr]
           rw [Nat.mul_add, Nat.mul_one]
           omega
-        · have e2 : FWr n ((n + 1) :: ds') ++ R = FWr n ds' ++ (blkW n (n + 1) ++ R) := by
+        · have e2 : FWr ((n, n + 1) :: ds') ++ R = FWr ds' ++ (blkW n (n + 1) ++ R) := by
             simp [FWr]
           rw [e2]
           exact hr'
-      · have hz' : valr n ds = 0 := by
+      · have hz' : valr ds = 0 := by
           rw [hv] at hz
           rcases Nat.mul_eq_zero.mp hz with h | h
           · omega
           · exact h
         refine hB.trans ?_
-        have e2 : 1 :: (FWr n ((0 :: ds).map fun _ => n + 1) ++ R) =
-            1 :: (FWr n (ds.map fun _ => n + 1) ++ (blkW n (n + 1) ++ R)) := by
-          simp [FWr]
+        have e2 : 1 :: (FWr (full ((n, 0) :: ds)) ++ R) =
+            1 :: (FWr (full ds) ++ (blkW n (n + 1) ++ R)) := by
+          simp [FWr, full]
         rw [e2]
         exact ih.2 hz'
     | succ u =>
-      have hD := dec_pos n u (by omega) (L ++ [1] ++ FWr n ds) R hL1 hR
-      have hW := walkL Q.FBACK (Or.inl rfl) (L ++ [1]) (FWr n ds) (blkW n u ++ R)
-        (hL.app (Sym4.cons (by simp [ALL]) Sym4.nil)) (FWr_noB n ds) ((blkW_noB n u).sym4.app hR)
-      refine ⟨fun _ => ⟨u :: ds, ?_, rfl, ?_, hD.trans ?_⟩, fun hz => ?_⟩
+      have hD := dec_pos n u (by omega) (L ++ [1] ++ FWr ds) R hL1 hR
+      have hW := walkL Q.FBACK (Or.inl rfl) (L ++ [1]) (FWr ds) (blkW n u ++ R)
+        (hL.app (Sym4.cons (by simp [ALL]) Sym4.nil)) (FWr_noB ds) ((blkW_noB n u).sym4.app hR)
+      refine ⟨fun _ => ⟨(n, u) :: ds, ?_, rfl, ?_, hD.trans ?_⟩, fun hz => ?_⟩
       · intro x hx
         rcases List.mem_cons.mp hx with e | e
-        · rw [e]; omega
+        · rw [e]; show u ≤ n + 1; omega
         · exact hds x e
       · simp only [valr]
         omega
-      · have e2 : FWr n (u :: ds) ++ R = FWr n ds ++ (blkW n u ++ R) := by simp [FWr]
+      · have e2 : FWr ((n, u) :: ds) ++ R = FWr ds ++ (blkW n u ++ R) := by simp [FWr]
         rw [e2]
         exact hW
       · simp only [valr] at hz
         exact absurd hz (by omega)
 
+
+/-- The product of the radices. -/
+def rad : List Dg → Nat
+  | [] => 1
+  | (n, _) :: ds => (n + 2) * rad ds
+
+theorem valr_full (ds : List Dg) : valr (full ds) + 1 = rad ds := by
+  induction ds with
+  | nil => rfl
+  | cons p ds ih =>
+    obtain ⟨n, d⟩ := p
+    show (n + 1) + (n + 2) * valr (full ds) + 1 = (n + 2) * rad ds
+    rw [← ih, Nat.mul_add, Nat.mul_one]
+    omega
 
 end ZP.Mul
