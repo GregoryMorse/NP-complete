@@ -327,4 +327,51 @@ theorem innerLoopF (F : HFam) (q : Nat) (hq : q = QG.gIL1b ∨ q = QG.gIL1) (ms 
       · rw [← hun]
         simp [unm_append, unm_rep2, unm_rep3, unm1, List.replicate_succ', List.append_assoc, rep_cons_comm, unm_unm]
 
+
+theorem HP_noB : ∀ (hs : List (List Nat)) (c : Nat), (∀ t ∈ hs, Bits t) → NoB (HP hs c)
+  | [], _, _ => NoB.nil
+  | [t], c, h => by
+    have ht := (h t (List.mem_cons_self ..)).noB
+    intro a ha
+    simp only [HP, List.mem_cons] at ha
+    rcases ha with rfl | ha
+    · split <;> simp [NB]
+    · exact ht a ha
+  | t :: u :: ts, c, h => by
+    have ht := (h t (List.mem_cons_self ..)).noB
+    have ih := HP_noB (u :: ts) (c - 1) (fun s hs => h s (List.mem_cons_of_mem _ hs))
+    intro a ha
+    simp only [HP, List.mem_cons, List.mem_append] at ha
+    rcases ha with rfl | ha | rfl | ha
+    · split <;> simp [NB]
+    · exact ht a ha
+    · simp [NB]
+    · exact ih a ha
+
+theorem HP_unm : ∀ (hs : List (List Nat)) (c : Nat), unm (HP hs c) = unm (HP hs 0)
+  | [], _ => rfl
+  | [t], c => by
+    simp only [HP]; split <;> simp [unm_cons, unm1]
+  | t :: u :: ts, c => by
+    have ih := HP_unm (u :: ts) (c - 1)
+    have ih0 := HP_unm (u :: ts) (0 - 1)
+    simp only [HP, unm_cons, unm_append, ih, ih0]
+    split <;> simp [unm1]
+
+/-- The family of `H` tapes with `c` passed entries, `c = 0..|hs|`. -/
+def HFam.ofHP (hs : List (List Nat)) (hne : hs ≠ []) (hb : ∀ t ∈ hs, Bits t) (Zt : List Nat) (hZ : Sym4 Zt) : HFam where
+  Hc := HP hs
+  N := hs.length
+  Zt := Zt
+  Hu := unm (HP hs 0)
+  hZ := hZ
+  nb := fun c _ => HP_noB hs c hb
+  un := fun c _ => HP_unm hs c
+  step := fun c hc => by
+    obtain ⟨R0, h1, h2⟩ := HP_split hs c hc
+    refine ⟨hs.take c, R0, fun t ht => hb t (List.mem_of_mem_take ht), h1, h2⟩
+  last := by
+    obtain ⟨tl, h1, h2⟩ := HP_full hs hne
+    refine ⟨hs.dropLast, tl, fun t ht => hb t (List.dropLast_subset _ ht), hb tl (List.mem_of_getLast? h2), h1⟩
+
 end ZP.G
