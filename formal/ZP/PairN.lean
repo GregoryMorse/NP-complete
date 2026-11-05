@@ -202,4 +202,107 @@ theorem xsDecN (a b c : Nat) (Dt R : List Nat) (ha : a ∈ bits) (hb : b ∈ bit
       (ls' := [.sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl rfl
 
+/-! ## Divisibility test by marking: `D` counts `a` modulo `d` -/
+
+/-- One cell of `P` is marked; one cell of `D` is marked (`D` has at least two unmarked cells). -/
+theorem xIterA (r k a m : Nat) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QN.X4 ([0] ++ List.replicate r 2 ++ 3 :: 3 :: List.replicate k 3 ++ [1])
+        (List.replicate a 2 ++ 3 :: List.replicate m 3 ++ 1 :: R))
+      (hdR QN.X4 ([0] ++ List.replicate r 2 ++ 2 :: 3 :: List.replicate k 3 ++ [1])
+        (List.replicate a 2 ++ 2 :: List.replicate m 3 ++ 1 :: R)) := by
+  have hV : Valid [Mk, T3, Mk, T3, ALL] [List.replicate r 2, List.replicate k 3, List.replicate a 2, List.replicate m 3, R] :=
+    Valid.cons (rep2_mk r) (Valid.cons (rep_t3 k) (Valid.cons (rep2_mk a) (Valid.cons (rep_t3 m) (Valid.cons hR (Valid.nil _)))))
+  exact checkFF (env := [List.replicate r 2, List.replicate k 3, List.replicate a 2, List.replicate m 3, R]) (E := []) (k := 200) hV trivial
+    (ls := [.sym 0, .blk 0 .id, .sym 3, .sym 3, .blk 1 .id, .sym 1])
+    (rs := [.blk 2 .id, .sym 3, .blk 3 .id, .sym 1, .blk 4 .id])
+    (ls' := [.sym 0, .blk 0 .id, .sym 2, .sym 3, .blk 1 .id, .sym 1])
+    (rs' := [.blk 2 .id, .sym 2, .blk 3 .id, .sym 1, .blk 4 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `D` is full after the mark: it is reset. -/
+theorem xIterB (r a m : Nat) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QN.X4 ([0] ++ List.replicate r 2 ++ 3 :: [1]) (List.replicate a 2 ++ 3 :: List.replicate m 3 ++ 1 :: R))
+      (hdR QN.X4 ([0] ++ List.replicate (r + 1) 3 ++ [1]) (List.replicate a 2 ++ 2 :: List.replicate m 3 ++ 1 :: R)) := by
+  have hV : Valid [Mk, Mk, T3, ALL] [List.replicate r 2, List.replicate a 2, List.replicate m 3, R] :=
+    Valid.cons (rep2_mk r) (Valid.cons (rep2_mk a) (Valid.cons (rep_t3 m) (Valid.cons hR (Valid.nil _))))
+  have : znttLogic.Reach
+      (hdR QN.X4 ([0] ++ List.replicate r 2 ++ 3 :: [1]) (List.replicate a 2 ++ 3 :: List.replicate m 3 ++ 1 :: R))
+      (hdR QN.X4 ([0] ++ List.replicate r 3 ++ 3 :: [1]) (List.replicate a 2 ++ 2 :: List.replicate m 3 ++ 1 :: R)) :=
+    checkFF (env := [List.replicate r 2, List.replicate a 2, List.replicate m 3, R]) (E := []) (k := 200) hV trivial
+      (ls := [.sym 0, .blk 0 .id, .sym 3, .sym 1])
+      (rs := [.blk 1 .id, .sym 3, .blk 2 .id, .sym 1, .blk 3 .id])
+      (ls' := [.sym 0, .blk 0 (.const 3), .sym 3, .sym 1])
+      (rs' := [.blk 1 .id, .sym 2, .blk 2 .id, .sym 1, .blk 3 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  refine this.of_eq rfl ?_
+  simp [List.replicate_succ', List.append_assoc]
+
+/-- `D` after `a` cells of `P` have been counted: `a % d` marks. -/
+def Dm (d a : Nat) : List Nat := [0] ++ List.replicate (a % d) 2 ++ List.replicate (d - a % d) 3 ++ [1]
+
+theorem s2 (r : Nat) : List.replicate (r + 1) 2 = List.replicate r 2 ++ [2] := List.replicate_succ'
+theorem s3 (k : Nat) : List.replicate (k + 1) 3 = 3 :: List.replicate k 3 := List.replicate_succ ..
+
+theorem xLoop (d p : Nat) (hd : 2 ≤ d) (R : List Nat) (hR : Sym4 R) : ∀ g a, a + g = p →
+    znttLogic.Reach
+      (hdR QN.X4 (Dm d a) (List.replicate a 2 ++ List.replicate (p - a) 3 ++ 1 :: R))
+      (hdR QN.X4 (Dm d p) (List.replicate p 2 ++ 1 :: R)) := by
+  intro g
+  induction g with
+  | zero =>
+    intro a ha
+    obtain rfl : a = p := by omega
+    exact (LTM.Reach.refl _ _).of_eq (by simp) rfl
+  | succ g ih =>
+    intro a ha
+    obtain ⟨m, hm⟩ : ∃ m, p - a = m + 1 := ⟨p - a - 1, by omega⟩
+    have hlt : a % d < d := Nat.mod_lt _ (by omega)
+    have hsm := ZP.F.succ_mod a d hd
+    have h2 := ih (a + 1) (by omega)
+    have e : p - (a + 1) = m := by omega
+    rw [e] at h2
+    by_cases hc : a % d + 1 < d
+    · obtain ⟨k, hk⟩ : ∃ k, d - a % d = k + 2 := ⟨d - a % d - 2, by omega⟩
+      have h1 := xIterA (a % d) k a m R hR
+      have e2 : (a + 1) % d = a % d + 1 := by rw [hsm]; simp [hc]
+      have e3 : d - (a % d + 1) = k + 1 := by omega
+      have eA : hdR QN.X4 (Dm d a) (List.replicate a 2 ++ List.replicate (p - a) 3 ++ 1 :: R)
+          = hdR QN.X4 ([0] ++ List.replicate (a % d) 2 ++ 3 :: 3 :: List.replicate k 3 ++ [1])
+            (List.replicate a 2 ++ 3 :: List.replicate m 3 ++ 1 :: R) := by
+        unfold Dm
+        rw [hk, hm]
+        simp [List.replicate_succ, List.append_assoc]
+      have eB : hdR QN.X4 ([0] ++ List.replicate (a % d) 2 ++ 2 :: 3 :: List.replicate k 3 ++ [1])
+            (List.replicate a 2 ++ 2 :: List.replicate m 3 ++ 1 :: R)
+          = hdR QN.X4 (Dm d (a + 1)) (List.replicate (a + 1) 2 ++ List.replicate m 3 ++ 1 :: R) := by
+        unfold Dm
+        rw [e2, e3]
+        simp only [s2, s3, List.append_assoc, List.cons_append, List.singleton_append, List.nil_append]
+      rw [eA]
+      refine h1.trans ?_
+      rw [eB]
+      exact h2
+    · have hd1 : d - a % d = 1 := by omega
+      have h1 := xIterB (a % d) a m R hR
+      have e2 : (a + 1) % d = 0 := by rw [hsm]; simp [hc]
+      have eA : hdR QN.X4 (Dm d a) (List.replicate a 2 ++ List.replicate (p - a) 3 ++ 1 :: R)
+          = hdR QN.X4 ([0] ++ List.replicate (a % d) 2 ++ 3 :: [1])
+            (List.replicate a 2 ++ 3 :: List.replicate m 3 ++ 1 :: R) := by
+        unfold Dm
+        rw [hd1, hm]
+        simp [List.replicate_succ, List.append_assoc]
+      have ed : a % d + 1 = d := by omega
+      have eB : hdR QN.X4 ([0] ++ List.replicate (a % d + 1) 3 ++ [1])
+            (List.replicate a 2 ++ 2 :: List.replicate m 3 ++ 1 :: R)
+          = hdR QN.X4 (Dm d (a + 1)) (List.replicate (a + 1) 2 ++ List.replicate m 3 ++ 1 :: R) := by
+        unfold Dm
+        rw [e2, ed]
+        simp only [s2, s3, List.append_assoc, List.cons_append, List.singleton_append, List.nil_append, Nat.sub_self, Nat.sub_zero, List.replicate_zero]
+      rw [eA]
+      refine h1.trans ?_
+      rw [eB]
+      exact h2
+
 end ZP.N
