@@ -94,3 +94,4 @@ public import ZP.PairN2
 public import ZP.PairN3
 public import ZP.PairN4
 public import ZP.PairN5
+public import ZP.PairN6
