@@ -608,4 +608,277 @@ theorem gtcLoop (R : List Nat) (hR : Sym4 R) : ∀ (Xr P : List Nat), Bits Xr �
       rcases mem_bits hb with rfl | rfl <;> simp [ALL]
     exact (hstep.of_eq rfl rfl).trans ((ih _ hXr' hP').of_eq rfl (by simp [fz]))
 
+/-! ## Search: pushing a copy of `m` -/
+
+/-- A stack entry: `v` unmarked cells and its own `M`. -/
+def U (v : Nat) : List Nat := List.replicate v 3 ++ [1]
+
+/-- The stack, top first. -/
+def Enc : List Nat → List Nat
+  | [] => []
+  | v :: r => U v ++ Enc r
+
+def Mk : List Nat := [2]
+
+theorem rep3_o13 (k : Nat) : ∀ a ∈ List.replicate k 3, a ∈ O13 := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [O13]
+
+theorem rep2_mk (k : Nat) : ∀ a ∈ List.replicate k 2, a ∈ Mk := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [Mk]
+
+theorem Enc_o13 : ∀ r : List Nat, ∀ a ∈ Enc r, a ∈ O13
+  | [] => fun a h => by cases h
+  | v :: r => fun a ha => by
+    rw [Enc, U, List.append_assoc] at ha
+    rcases List.mem_append.1 ha with ha | ha
+    · exact rep3_o13 v a ha
+    · rcases List.mem_append.1 ha with ha | ha
+      · have : a = 1 := by simpa using ha
+        rw [this]; simp [O13]
+      · exact Enc_o13 r a ha
+
+theorem o13_sym4 {w : List Nat} (h : ∀ a ∈ w, a ∈ O13) : Sym4 w := fun a ha => by
+  have := h a ha
+  simp [O13] at this
+  rcases this with rfl | rfl <;> simp [ALL]
+
+theorem o13_noB {w : List Nat} (h : ∀ a ∈ w, a ∈ O13) : NoB w := fun a ha => by
+  have := h a ha
+  simp [O13] at this
+  rcases this with rfl | rfl <;> simp [NB]
+
+theorem mk_noB {w : List Nat} (h : ∀ a ∈ w, a ∈ Mk) : NoB w := fun a ha => by
+  have := h a ha
+  simp [Mk] at this
+  subst this; simp [NB]
+
+theorem gprStep3 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPR P (3 :: R)) (hdR QG.gPR (P ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gprStepM (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPR P (1 :: R)) (hdR QG.gPR2 (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gpr2Step3 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPR2 P (3 :: R)) (hdR QG.gPR (P ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gpr2End (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPR2 P (1 :: R)) (hdR QG.gPM (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gprCells (R : List Nat) (hR : Sym4 R) : ∀ (k : Nat) (P : List Nat), Sym4 P →
+    zgiLogic.Reach (hdR QG.gPR P (List.replicate k 3 ++ 1 :: R))
+      (hdR QG.gPR2 (P ++ (List.replicate k 3 ++ [1])) R)
+  | 0, P, hP => (gprStepM P R hP hR).of_eq rfl rfl
+  | k + 1, P, hP => by
+    have h1 := gprStep3 P (List.replicate k 3 ++ 1 :: R) hP
+      (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (Sym4.cons (by simp [ALL]) hR))
+    have h2 := gprCells R hR k (P ++ [3]) (hP.app (Sym4.cons (by simp [ALL]) Sym4.nil))
+    exact (h1.of_eq (by simp [List.replicate_succ]) rfl).trans (h2.of_eq rfl (by simp [List.replicate_succ, List.append_assoc]))
+
+theorem gprEntry (P R : List Nat) (k : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPR2 P (U (k + 1) ++ R)) (hdR QG.gPR2 (P ++ U (k + 1)) R) := by
+  have h1 := gpr2Step3 P (List.replicate k 3 ++ 1 :: R) hP
+    (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (Sym4.cons (by simp [ALL]) hR))
+  have h2 := gprCells R hR k (P ++ [3]) (hP.app (Sym4.cons (by simp [ALL]) Sym4.nil))
+  exact (h1.of_eq (by simp [U, List.replicate_succ]) rfl).trans
+    (h2.of_eq rfl (by simp [U, List.replicate_succ]))
+
+theorem gprWalk (R : List Nat) (hR : Sym4 R) : ∀ (rest : List Nat), (∀ v ∈ rest, 1 ≤ v) →
+    ∀ P : List Nat, Sym4 P →
+    zgiLogic.Reach (hdR QG.gPR2 P (Enc rest ++ R)) (hdR QG.gPR2 (P ++ Enc rest) R)
+  | [], _, P, _ => by
+    simp only [Enc, List.nil_append, List.append_nil]
+    exact LTM.Reach.refl _ _
+  | v :: rest, hv, P, hP => by
+    obtain ⟨k, rfl⟩ : ∃ k, v = k + 1 := ⟨v - 1, by have := hv v (List.mem_cons_self ..); omega⟩
+    have hrest : ∀ v ∈ rest, 1 ≤ v := fun a ha => hv a (List.mem_cons_of_mem _ ha)
+    have hE : Sym4 (Enc rest ++ R) := (o13_sym4 (Enc_o13 rest)).app hR
+    have h1 := gprEntry P (Enc rest ++ R) k hP hE
+    have hP' : Sym4 (P ++ U (k + 1)) := hP.app (o13_sym4 (fun a ha => by
+      simp only [U, List.mem_append, List.mem_cons, List.not_mem_nil, or_false] at ha
+      rcases ha with ha | ha
+      · exact rep3_o13 _ a ha
+      · rw [ha]; simp [O13]))
+    have h2 := gprWalk R hR rest hrest (P ++ U (k + 1)) hP'
+    exact (h1.of_eq (by simp [Enc]) rfl).trans (h2.of_eq rfl (by simp [Enc, List.append_assoc]))
+
+theorem gpmMark (P R : List Nat) (c : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPM P (List.replicate c 2 ++ 3 :: R))
+      (hd QG.gPL (P ++ List.replicate c 2) (2 :: R)) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate c 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk c) (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [P, List.replicate c 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 3, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 2, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gpmEnd1 (P R : List Nat) (c : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPM P (List.replicate c 2 ++ 1 :: R))
+      (hd QG.gPU (P ++ List.replicate c 2) (1 :: R)) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate c 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk c) (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [P, List.replicate c 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gpmEnd0 (P R : List Nat) (c : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gPM P (List.replicate c 2 ++ 0 :: R))
+      (hd QG.gPU (P ++ List.replicate c 2) (0 :: R)) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate c 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk c) (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [P, List.replicate c 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 0, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gplWalk (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gPL A R) (hdR QG.gPR [3] (A ++ R)) := by
+  have hV : Valid [NB, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.sym 3]) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gupFirst (A R : List Nat) (hA : ∀ a ∈ A, a ∈ O13) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gUP A R) (hdR QG.gPR2 [1] (A ++ R)) := by
+  have hV : Valid [O13, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.sym 1]) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gpuWalk (m : Nat) (E R : List Nat) (hE : ∀ a ∈ E, a ∈ O13) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gPU (List.replicate m 3 ++ 1 :: (E ++ 1 :: List.replicate m 2)) R)
+      (hdR QG.gDP [] (List.replicate m 3 ++ 1 :: (E ++ 1 :: (List.replicate m 3 ++ R)))) := by
+  have hV : Valid [O13, O13, Mk, ALL] [List.replicate m 3, E, List.replicate m 2, R] :=
+    Valid.cons (rep3_o13 m) (Valid.cons hE (Valid.cons (rep2_mk m) (Valid.cons hR (Valid.nil _))))
+  exact checkTF (env := [List.replicate m 3, E, List.replicate m 2, R]) (E := []) (k := 6) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id]) (rs := [.blk 3 .id])
+    (ls' := []) (rs' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 (.const 3), .blk 3 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem sym4_rep (k c : Nat) (h : c ∈ ALL) : Sym4 (List.replicate k c) := Sym4.rep k c h
+
+theorem U_o13 (v : Nat) : ∀ a ∈ U v, a ∈ O13 := fun a ha => by
+  have := Enc_o13 [v] a (by simpa [Enc] using ha)
+  exact this
+
+theorem pushIter (m c : Nat) (hc : c < m) (rest Zt : List Nat) (hr : ∀ v ∈ rest, 1 ≤ v) (hZ : Sym4 Zt) :
+    zgiLogic.Reach
+      (hdR QG.gPR2 (List.replicate c 3 ++ [1])
+        (Enc rest ++ 1 :: (List.replicate c 2 ++ (List.replicate (m - c) 3 ++ Zt))))
+      (hdR QG.gPR2 (List.replicate (c + 1) 3 ++ [1])
+        (Enc rest ++ 1 :: (List.replicate (c + 1) 2 ++ (List.replicate (m - (c + 1)) 3 ++ Zt)))) := by
+  have hP0 : Sym4 (List.replicate c 3 ++ [1]) := o13_sym4 (U_o13 c)
+  have hEnc : Sym4 (Enc rest) := o13_sym4 (Enc_o13 rest)
+  have hmk : Sym4 (List.replicate c 2) := sym4_rep _ _ (by simp [ALL])
+  have hr3 : Sym4 (List.replicate (m - (c + 1)) 3 ++ Zt) :=
+    (sym4_rep _ _ (by simp [ALL])).app hZ
+  have hX : Sym4 (List.replicate c 2 ++ 3 :: (List.replicate (m - (c + 1)) 3 ++ Zt)) :=
+    hmk.app (Sym4.cons (by simp [ALL]) hr3)
+  have hmc : m - c = (m - (c + 1)) + 1 := by omega
+  have eX : List.replicate c 2 ++ (List.replicate (m - c) 3 ++ Zt)
+      = List.replicate c 2 ++ 3 :: (List.replicate (m - (c + 1)) 3 ++ Zt) := by
+    rw [hmc]; simp [List.replicate_succ]
+  have h1 := gprWalk (1 :: (List.replicate c 2 ++ 3 :: (List.replicate (m - (c + 1)) 3 ++ Zt)))
+    (Sym4.cons (by simp [ALL]) hX) rest hr (List.replicate c 3 ++ [1]) hP0
+  have hPP : Sym4 (List.replicate c 3 ++ [1] ++ Enc rest) := hP0.app hEnc
+  have h2 := gpr2End (List.replicate c 3 ++ [1] ++ Enc rest)
+    (List.replicate c 2 ++ 3 :: (List.replicate (m - (c + 1)) 3 ++ Zt)) hPP hX
+  have hPP2 : Sym4 (List.replicate c 3 ++ [1] ++ Enc rest ++ [1]) := hPP.app (Sym4.cons (by simp [ALL]) Sym4.nil)
+  have h3 := gpmMark (List.replicate c 3 ++ [1] ++ Enc rest ++ [1]) (List.replicate (m - (c + 1)) 3 ++ Zt) c hPP2 hr3
+  have hA : NoB (List.replicate c 3 ++ [1] ++ Enc rest ++ [1] ++ List.replicate c 2) :=
+    (((o13_noB (U_o13 c)).app (o13_noB (Enc_o13 rest))).app (NoB.cons one_nb NoB.nil)).app (mk_noB (rep2_mk c))
+  have h4 := gplWalk (List.replicate c 3 ++ [1] ++ Enc rest ++ [1] ++ List.replicate c 2)
+    (2 :: (List.replicate (m - (c + 1)) 3 ++ Zt)) hA (Sym4.cons (by simp [ALL]) hr3)
+  have hS : Sym4 (Enc rest ++ 1 :: (List.replicate (c + 1) 2 ++ (List.replicate (m - (c + 1)) 3 ++ Zt))) :=
+    hEnc.app (Sym4.cons (by simp [ALL]) ((sym4_rep _ _ (by simp [ALL])).app hr3))
+  have h5 := gprCells (Enc rest ++ 1 :: (List.replicate (c + 1) 2 ++ (List.replicate (m - (c + 1)) 3 ++ Zt))) hS c [3]
+    (Sym4.cons (by simp [ALL]) Sym4.nil)
+  rw [eX]
+  have hh := h1.trans (h2.trans (h3.trans h4))
+  have e1 : hdR QG.gPR [3] (List.replicate c 3 ++ 1 :: (Enc rest ++ 1 :: (List.replicate (c + 1) 2 ++ (List.replicate (m - (c + 1)) 3 ++ Zt))))
+      = hdR QG.gPR [3] (List.replicate c 3 ++ [1] ++ Enc rest ++ [1] ++ List.replicate c 2 ++ 2 :: (List.replicate (m - (c + 1)) 3 ++ Zt)) := by
+    simp [List.replicate_succ', List.append_assoc]
+  have hh' := hh.trans (h5.of_eq e1 rfl)
+  refine hh'.of_eq rfl ?_
+  simp [List.replicate_succ, List.append_assoc]
+
+theorem pushLoop (m : Nat) (rest Zt : List Nat) (hr : ∀ v ∈ rest, 1 ≤ v) (hZ : Sym4 Zt) :
+    ∀ d c, c + d = m →
+    zgiLogic.Reach
+      (hdR QG.gPR2 (List.replicate c 3 ++ [1])
+        (Enc rest ++ 1 :: (List.replicate c 2 ++ (List.replicate (m - c) 3 ++ Zt))))
+      (hdR QG.gPR2 (List.replicate m 3 ++ [1])
+        (Enc rest ++ 1 :: (List.replicate m 2 ++ (List.replicate (m - m) 3 ++ Zt)))) := by
+  intro d
+  induction d with
+  | zero =>
+    intro c hc
+    obtain rfl : c = m := by omega
+    exact LTM.Reach.refl _ _
+  | succ d ih =>
+    intro c hc
+    have h1 := pushIter m c (by omega) rest Zt hr hZ
+    have h2 := ih (c + 1) (by omega)
+    exact h1.trans h2
+
+theorem pushDone (m : Nat) (rest : List Nat) (Z' : List Nat) (z : Nat) (hz : z = 0 ∨ z = 1)
+    (hr : ∀ v ∈ rest, 1 ≤ v) (hZ : Sym4 Z') :
+    zgiLogic.Reach
+      (hdR QG.gPR2 (List.replicate m 3 ++ [1])
+        (Enc rest ++ 1 :: (List.replicate m 2 ++ (List.replicate (m - m) 3 ++ (z :: Z')))))
+      (hdR QG.gDP [] (Enc (m :: rest) ++ 1 :: (List.replicate m 3 ++ (z :: Z')))) := by
+  have hP0 : Sym4 (List.replicate m 3 ++ [1]) := o13_sym4 (U_o13 m)
+  have hEnc : Sym4 (Enc rest) := o13_sym4 (Enc_o13 rest)
+  have hmk : Sym4 (List.replicate m 2) := sym4_rep _ _ (by simp [ALL])
+  have hz4 : Sym4 (z :: Z') := Sym4.cons (by rcases hz with rfl | rfl <;> simp [ALL]) hZ
+  have hX : Sym4 (List.replicate m 2 ++ (z :: Z')) := hmk.app hz4
+  have h1 := gprWalk (1 :: (List.replicate m 2 ++ (z :: Z'))) (Sym4.cons (by simp [ALL]) hX) rest hr
+    (List.replicate m 3 ++ [1]) hP0
+  have hPP : Sym4 (List.replicate m 3 ++ [1] ++ Enc rest) := hP0.app hEnc
+  have h2 := gpr2End (List.replicate m 3 ++ [1] ++ Enc rest) (List.replicate m 2 ++ (z :: Z')) hPP hX
+  have hPP2 : Sym4 (List.replicate m 3 ++ [1] ++ Enc rest ++ [1]) := hPP.app (Sym4.cons (by simp [ALL]) Sym4.nil)
+  have h3 : zgiLogic.Reach (hdR QG.gPM (List.replicate m 3 ++ [1] ++ Enc rest ++ [1]) (List.replicate m 2 ++ (z :: Z')))
+      (hd QG.gPU (List.replicate m 3 ++ [1] ++ Enc rest ++ [1] ++ List.replicate m 2) (z :: Z')) := by
+    rcases hz with rfl | rfl
+    · exact gpmEnd0 _ Z' m hPP2 hZ
+    · exact gpmEnd1 _ Z' m hPP2 hZ
+  have h4 := gpuWalk m (Enc rest) (z :: Z') (Enc_o13 rest) hz4
+  have hh := h1.trans (h2.trans h3)
+  have hh' := hh.trans (h4.of_eq (by simp [List.append_assoc]) rfl)
+  refine hh'.of_eq (by simp) ?_
+  simp [Enc, U, List.append_assoc]
+
+/-- The push: the head enters `gUP` at the right end of the stack and the boundary; a new top
+equal to `m` is built. -/
+theorem pushAll (m : Nat) (rest : List Nat) (Z' : List Nat) (z : Nat) (hz : z = 0 ∨ z = 1)
+    (hr : ∀ v ∈ rest, 1 ≤ v) (hZ : Sym4 Z') :
+    zgiLogic.Reach
+      (hdR QG.gPR2 [1] (Enc rest ++ 1 :: (List.replicate m 3 ++ (z :: Z'))))
+      (hdR QG.gDP [] (Enc (m :: rest) ++ 1 :: (List.replicate m 3 ++ (z :: Z')))) := by
+  have hz4 : Sym4 (z :: Z') := Sym4.cons (by rcases hz with rfl | rfl <;> simp [ALL]) hZ
+  have h := pushLoop m rest (z :: Z') hr hz4 m 0 (by omega)
+  exact (h.of_eq (by simp) rfl).trans (pushDone m rest Z' z hz hr hZ)
+
 end ZP.G
