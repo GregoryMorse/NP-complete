@@ -834,4 +834,285 @@ theorem rootF (j : List Nat) (s : List Nat) (Cq : List Nat) (Fu : List Nat) (hj 
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+
+/-! ## The game tree -/
+
+/-- The walker state for a finished node with `d` levels below it. -/
+def wkQ (r : Bool) (d : Nat) : Nat :=
+  if r then (if d % 2 = 0 then QPS.WK1E else QPS.WK1A)
+  else (if d % 2 = 0 then QPS.WK0E else QPS.WK0A)
+
+/-- The walker has finished the node with prefix `p` and `d` levels below it, value `r`. -/
+def WKcfg (j : List Nat) (Sb p : List Bool) (d : Nat) (r : Bool) (dd : Nat) : ZC :=
+  hd (wkQ r d) (1 :: (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf p)))
+    (List.replicate d 3 ++ 1 :: FWr Sb.length [dd])
+
+/-- The run of the verifier from `GCv`: its result is passed to the dispatch. -/
+theorem runPS (j : List Nat) (hj : Bits j) (Sb cl : List Bool) (hcl : cl.length = Sb.length + 1) :
+    ∃ d, d ≤ Sb.length + 1 ∧
+      zpsLogic.Reach (GCv j Sb cl)
+        (hdR (dpOf (bn (run Sb cl.reverse (Sb.length + 1)))) [1]
+          (j ++ 1 :: (bitsOf Sb ++ 1 :: (bitsOf cl.reverse ++ 1 :: FWr Sb.length [d])))) := by
+  have hW : NoB (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf cl.reverse)) :=
+    hj.noB.app (NoB.cons one_nb ((Bits.ofB _).noB.app (NoB.cons one_nb (Bits.ofB _).noB)))
+  obtain ⟨ds', hd', hl', h⟩ := runFrom Sb.length (j ++ [1]) (1 :: j) Sb cl.reverse
+    (blkW Sb.length (Sb.length + 1)) (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf cl.reverse)) [Sb.length + 1]
+    rfl (NoB.cons one_nb hj.noB) (blkW_noB _ _).sym4 hW
+    (fun d hd => by simp at hd; omega) (by simp) (by simp [FWr])
+  have hv : valr Sb.length [Sb.length + 1] = Sb.length + 1 := by simp [valr]
+  rw [hv] at h
+  obtain ⟨d, rfl⟩ : ∃ d, ds' = [d] := by
+    rcases ds' with _ | ⟨d, _ | ⟨e, t⟩⟩
+    · simp at hl'
+    · exact ⟨d, rfl⟩
+    · simp at hl'
+  refine ⟨d, hd' d (by simp), ?_⟩
+  unfold RE at h
+  unfold GCv
+  simpa using h
+
+
+theorem toWK (j : List Nat) (hj : Bits j) (Sb p : List Bool) (hp : p ≠ []) (o : Bool) (Fu : List Nat)
+    (hFu : NoB Fu) :
+    zpsLogic.Reach (hdR (dpOf (bn o)) [1] (j ++ 1 :: (bitsOf Sb ++ 1 :: (bitsOf p ++ 1 :: Fu))))
+      (hd (wkQ o 0) (1 :: (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf p))) (1 :: Fu)) := by
+  rcases p with _ | ⟨c, rest⟩
+  · exact absurd rfl hp
+  rcases List.eq_nil_or_concat rest with rfl | ⟨Cm, c1, rfl⟩
+  · cases o
+    · exact (toWK1_0 j (bitsOf Sb) Fu (bn c) hj (Bits.ofB _) hFu (bn_bits c)).of_eq
+        (by simp [dpOf, bn, bitsOf]) (by simp [wkQ, QPS.WK0E, bitsOf, bn])
+    · exact (toWK1_1 j (bitsOf Sb) Fu (bn c) hj (Bits.ofB _) hFu (bn_bits c)).of_eq
+        (by simp [dpOf, bn, bitsOf]) (by simp [wkQ, bitsOf, bn])
+  · cases o
+    · exact (toWK2_0 j (bitsOf Sb) (bitsOf Cm) Fu (bn c) (bn c1) hj (Bits.ofB _) (Bits.ofB _) hFu
+        (bn_bits c) (bn_bits c1)).of_eq (by simp [dpOf, bn, bitsOf]) (by simp [wkQ, bitsOf, bn])
+    · exact (toWK2_1 j (bitsOf Sb) (bitsOf Cm) Fu (bn c) (bn c1) hj (Bits.ofB _) (Bits.ofB _) hFu
+        (bn_bits c) (bn_bits c1)).of_eq (by simp [dpOf, bn, bitsOf]) (by simp [wkQ, bitsOf, bn])
+
+
+theorem rep_succ_cons (d : Nat) : 3 :: List.replicate d 3 = List.replicate (d + 1) 3 := rfl
+
+theorem wk0_gen (Y R : List Nat) (hY : NoB Y) (hR : NoB R) (b : Bool) (d : Nat) :
+    zpsLogic.Reach (hd (wkQ b d) (Y ++ [2]) R) (hd (wkQ b (d + 1)) Y (3 :: R)) := by
+  by_cases h : d % 2 = 0
+  · have h' : ¬ (d + 1) % 2 = 0 := by omega
+    cases b
+    · simpa [wkQ, h, h'] using wk0_0E Y R hY hR
+    · simpa [wkQ, h, h'] using wk0_1E Y R hY hR
+  · have h' : (d + 1) % 2 = 0 := by omega
+    cases b
+    · simpa [wkQ, h, h'] using wk0_0A Y R hY hR
+    · simpa [wkQ, h, h'] using wk0_1A Y R hY hR
+
+theorem wk1d_gen (Y R : List Nat) (hY : NoB Y) (hR : NoB R) (b : Bool) (d : Nat)
+    (hdom : (b == (d % 2 == 0)) = true) :
+    zpsLogic.Reach (hd (wkQ b d) (Y ++ [3]) R) (hd (wkQ b (d + 1)) Y (3 :: R)) := by
+  by_cases h : d % 2 = 0
+  · have h' : ¬ (d + 1) % 2 = 0 := by omega
+    cases b
+    · simp [h] at hdom
+    · simpa [wkQ, h, h'] using wk1d_1E Y R hY hR
+  · have h' : (d + 1) % 2 = 0 := by omega
+    cases b
+    · simpa [wkQ, h, h'] using wk1d_0A Y R hY hR
+    · simp [h] at hdom
+
+theorem wk1n_gen (Y R : List Nat) (hY : NoB Y) (hR : NoB R) (b : Bool) (d : Nat)
+    (hdom : ¬ (b == (d % 2 == 0)) = true) :
+    zpsLogic.Reach (hd (wkQ b d) (Y ++ [3]) R) (hdR Q.VFE (Y ++ [2]) R) := by
+  by_cases h : d % 2 = 0
+  · cases b
+    · simpa [wkQ, h] using wk1n_0E Y R hY hR
+    · simp [h] at hdom
+  · cases b
+    · simp [h] at hdom
+    · simpa [wkQ, h] using wk1n_1A Y R hY hR
+
+
+/-- Running the subtree at prefix `p` (with `d` levels below) from the first leaf. -/
+theorem nodePS (j : List Nat) (hj : Bits j) (Sb : List Bool) :
+    ∀ d (p : List Bool), p.length + d = Sb.length + 1 →
+      ∃ dd, dd ≤ Sb.length + 1 ∧ zpsLogic.Reach (GCv j Sb (p ++ List.replicate d true).reverse)
+        (WKcfg j Sb p d (gval Sb d p) dd) := by
+  intro d
+  induction d with
+  | zero =>
+    intro p hp
+    have hp' : p.length = Sb.length + 1 := by omega
+    obtain ⟨dd, hdd, h⟩ := runPS j hj Sb p.reverse (by simp [hp'])
+    have hne : p ≠ [] := by
+      intro e; rw [e] at hp'; simp at hp'
+    refine ⟨dd, hdd, ?_⟩
+    have hT := toWK j hj Sb p hne (run Sb p (Sb.length + 1)) (FWr Sb.length [dd]) (FWr_noB _ _)
+    simp only [List.reverse_reverse] at h
+    simp only [List.replicate_zero, List.append_nil]
+    refine h.trans (hT.of_eq rfl ?_)
+    simp [WKcfg, gval]
+  | succ d ih =>
+    intro p hp
+    have hq : (p ++ [true]).length + d = Sb.length + 1 := by simp; omega
+    obtain ⟨dd, hdd, h1⟩ := ih (p ++ [true]) hq
+    have e1 : (p ++ [true]) ++ List.replicate d true = p ++ List.replicate (d + 1) true := by
+      simp [List.replicate_succ]
+    rw [e1] at h1
+    have hY : NoB (1 :: (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf p))) :=
+      NoB.cons one_nb (hj.noB.app (NoB.cons one_nb ((Bits.ofB _).noB.app
+        (NoB.cons one_nb (Bits.ofB _).noB))))
+    have hR : NoB (List.replicate d 3 ++ 1 :: FWr Sb.length [dd]) :=
+      (t3_noB (rep_t3 d)).app (NoB.cons one_nb (FWr_noB _ _))
+    have hL1 : WKcfg j Sb (p ++ [true]) d (gval Sb d (p ++ [true])) dd =
+        hd (wkQ (gval Sb d (p ++ [true])) d) (1 :: (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf p)) ++ [3])
+          (List.replicate d 3 ++ 1 :: FWr Sb.length [dd]) := by
+      simp [WKcfg, bitsOf]
+    rw [hL1] at h1
+    by_cases hdom : (gval Sb d (p ++ [true]) == (d % 2 == 0)) = true
+    · refine ⟨dd, hdd, h1.trans ?_⟩
+      have hv : gval Sb (d + 1) p = gval Sb d (p ++ [true]) := by
+        simp only [gval]
+        rw [if_pos hdom]
+      rw [hv]
+      refine (wk1d_gen _ _ hY hR _ d hdom).of_eq rfl ?_
+      simp [WKcfg, List.replicate_succ]
+    · -- second child
+      have hdom' : ¬ (gval Sb d (p ++ [true]) == (d % 2 == 0)) = true := hdom
+      have hv : gval Sb (d + 1) p = gval Sb d (p ++ [false]) := by
+        simp only [gval]
+        rw [if_neg hdom]
+      have hq' : (p ++ [false]).length + d = Sb.length + 1 := by simp; omega
+      obtain ⟨dd', hdd', h2⟩ := ih (p ++ [false]) hq'
+      have e2 : (p ++ [false]) ++ List.replicate d true = p ++ false :: List.replicate d true := by
+        simp
+      rw [e2] at h2
+      have hF : FWr Sb.length [dd] = 1 :: (List.replicate dd 3 ++ List.replicate (Sb.length + 1 - dd) 2) := by
+        simp [FWr, blkW]
+      have hRef := refill j (bitsOf Sb) (bitsOf p) (List.replicate d 3) (List.replicate dd 3)
+        (List.replicate (Sb.length + 1 - dd) 2) hj (Bits.ofB _) (Bits.ofB _) (rep_t3 _) (rep_t3 _)
+        (rep_z2 _)
+      have hDE : List.replicate dd 3 ++ List.replicate (Sb.length + 1 - dd) 3 = List.replicate (Sb.length + 1) 3 := by
+        rw [List.replicate_append_replicate]; congr 1; omega
+      have h3 : zpsLogic.Reach (hdR Q.VFE (1 :: (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf p)) ++ [2])
+          (List.replicate d 3 ++ 1 :: FWr Sb.length [dd]))
+          (GCv j Sb (p ++ false :: List.replicate d true).reverse) := by
+        refine hRef.of_eq (by simp [hF]) ?_
+        unfold GCv
+        simp [bitsOf, blkW, hDE]
+      have hR' : NoB (List.replicate d 3 ++ 1 :: FWr Sb.length [dd']) :=
+        (t3_noB (rep_t3 d)).app (NoB.cons one_nb (FWr_noB _ _))
+      have hL2 : WKcfg j Sb (p ++ [false]) d (gval Sb d (p ++ [false])) dd' =
+          hd (wkQ (gval Sb d (p ++ [false])) d) (1 :: (j ++ 1 :: (bitsOf Sb ++ 1 :: bitsOf p)) ++ [2])
+            (List.replicate d 3 ++ 1 :: FWr Sb.length [dd']) := by
+        simp [WKcfg, bitsOf]
+      rw [hL2] at h2
+      refine ⟨dd', hdd', h1.trans ((wk1n_gen _ _ hY hR _ d hdom).trans (h3.trans (h2.trans ?_)))⟩
+      rw [hv]
+      refine (wk0_gen _ _ hY hR' _ d).of_eq rfl ?_
+      simp [WKcfg, List.replicate_succ]
+
+
+theorem wkM_true (Y R : List Nat) (hY : NoB Y) (hR : NoB R) (d : Nat) :
+    zpsLogic.Reach (hd (wkQ true d) (Y ++ [1]) R) (hdR QPS.VA1 (Y ++ [1]) R) := by
+  by_cases h : d % 2 = 0
+  · simpa [wkQ, h] using wkM_1E Y R hY hR
+  · simpa [wkQ, h] using wkM_1A Y R hY hR
+
+theorem wkM_false (Y R : List Nat) (hY : NoB Y) (hR : NoB R) (d : Nat) :
+    zpsLogic.Reach (hd (wkQ false d) (Y ++ [1]) R) (hdR Q.VU2 (Y ++ [1]) R) := by
+  by_cases h : d % 2 = 0
+  · simpa [wkQ, h] using wkM_0E Y R hY hR
+  · simpa [wkQ, h] using wkM_0A Y R hY hR
+
+/-- The whole verifier: it leaves the truth flag `inPS s`. -/
+theorem vFullPS (j : List Nat) (hj : Bits j) (Sb : List Bool) :
+    zpsLogic.Reach (GCv j Sb (List.replicate (Sb.length + 1) true)) (TR j Sb (inPS Sb)) := by
+  obtain ⟨dd, hdd, h⟩ := nodePS j hj Sb (Sb.length + 1) [] (by simp)
+  simp only [List.nil_append, List.reverse_replicate] at h
+  have hY : NoB (1 :: (j ++ 1 :: bitsOf Sb)) :=
+    NoB.cons one_nb (hj.noB.app (NoB.cons one_nb (Bits.ofB _).noB))
+  have hR : NoB (List.replicate (Sb.length + 1) 3 ++ 1 :: FWr Sb.length [dd]) :=
+    (t3_noB (rep_t3 _)).app (NoB.cons one_nb (FWr_noB _ _))
+  have hL : WKcfg j Sb [] (Sb.length + 1) (gval Sb (Sb.length + 1) []) dd =
+      hd (wkQ (gval Sb (Sb.length + 1) []) (Sb.length + 1)) (1 :: (j ++ 1 :: bitsOf Sb) ++ [1])
+        (List.replicate (Sb.length + 1) 3 ++ 1 :: FWr Sb.length [dd]) := by
+    simp [WKcfg, bitsOf]
+  rw [hL] at h
+  have hinPS : inPS Sb = gval Sb (Sb.length + 1) [] := rfl
+  rw [hinPS]
+  refine h.trans ?_
+  cases hr : gval Sb (Sb.length + 1) [] with
+  | true =>
+    refine (wkM_true _ _ hY hR _).trans ?_
+    by_cases hn : Sb.length = 0
+    · have := rootT1 j (bitsOf Sb) (FWr Sb.length [dd]) hj (Bits.ofB _) (FWr_noB _ _)
+      refine this.of_eq (by rw [hn]; simp [List.replicate_succ]) (by simp [TR, tflag])
+    · have := rootT2 j (bitsOf Sb) (List.replicate (Sb.length - 1) 3) (FWr Sb.length [dd]) hj
+        (Bits.ofB _) (rep_t3 _) (FWr_noB _ _)
+      refine this.of_eq (by
+        rw [show Sb.length + 1 = (Sb.length - 1) + 1 + 1 by omega]
+        simp [List.replicate_succ]) (by simp [TR, tflag])
+  | false =>
+    refine (wkM_false _ _ hY hR _).trans ?_
+    have := rootF j (bitsOf Sb) (List.replicate Sb.length 3) (FWr Sb.length [dd]) hj (Bits.ofB _)
+      (rep_t3 _) (FWr_noB _ _)
+    refine this.of_eq (by simp [List.replicate_succ]) (by simp [TR, tflag])
+
+/-! ## One pair -/
+
+theorem pair_mainPS (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
+    ∃ n, 0 < n ∧
+      ((¬ ¬ CorrectPS J S → zpsLogic.zrun n (lay J S) = some (lay (absStepC CorrectPS (J, S)).1 (absStepC CorrectPS (J, S)).2)) ∧
+       (¬ CorrectPS J S → ∃ a c1 c2, a < n ∧ zpsLogic.zrun a (lay J S) = some c1 ∧ c1.q = zpsLogic.beep ∧
+          zpsLogic.zstep c1 = some c2 ∧
+          zpsLogic.zrun (n - a - 1) c2 = some (lay (absStepC CorrectPS (J, S)).1 (absStepC CorrectPS (J, S)).2))) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  obtain ⟨Fu, hFu, hD⟩ := dPhase (str J) (str S) (inPS (str S))
+  have hA := (vStart J S).trans ((vFullPS _ hj (str S)).trans hD)
+  obtain ⟨rS, hrS⟩ := numR_surj S hS
+  obtain ⟨rJ, hrJ⟩ := numR_surj J hJ
+  have eS : str S = rS.reverse := by rw [← hrS, str_numR]
+  have eS1 : str (S + 1) = (incR rS).reverse := by rw [← hrS, ← numR_inc, str_numR]
+  have eJ : str J = rJ.reverse := by rw [← hrJ, str_numR]
+  have eJ1 : str (J + 1) = (incR rJ).reverse := by rw [← hrJ, ← numR_inc, str_numR]
+  by_cases hc : CorrectPS J S
+  · have e : absStepC CorrectPS (J, S) = (J, S + 1) := absStepC_pos hc
+    rw [e]
+    have ho : run (str J) (str S) (clock (str J) (str S)) = inPS (str S) := hc
+    rw [ho] at hA
+    have hok : zpsLogic.Reach
+        (hdR (dpOf (bn (inPS (str S)))) [1]
+          (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (1 :: (tflag (inPS (str S)) ++ 1 :: Fu)))))
+        (hd Q.SINC (1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))) []) := by
+      cases inPS (str S)
+      · exact (dOk0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
+      · exact (dOk1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
+    have hinc := sincL (1 :: bitsOf (str J)) (NoB.cons one_nb hj.noB) rS 0
+    obtain ⟨n, hn⟩ := hA.trans (hok.trans (hinc.of_eq (c4 := lay J (S + 1)) (by rw [eS]; rfl) (by rw [lay_hdR, eS1]; simp)))
+    exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
+  · have e : absStepC CorrectPS (J, S) = (J + 1, 1) := absStepC_neg hc
+    rw [e]
+    have ho : run (str J) (str S) (clock (str J) (str S)) = !inPS (str S) := by
+      have h' : run (str J) (str S) (clock (str J) (str S)) ≠ inPS (str S) := hc
+      revert h'
+      cases run (str J) (str S) (clock (str J) (str S)) <;> cases inPS (str S) <;> decide
+    rw [ho] at hA
+    obtain ⟨Y, h1, h3⟩ : ∃ Y, zpsLogic.Reach
+        (hdR (dpOf (bn (!inPS (str S)))) [1]
+          (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (1 :: (tflag (inPS (str S)) ++ 1 :: Fu)))))
+        (hd Q.BEEP (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [1]))) Y) ∧
+        zpsLogic.Reach (hdR Q.EAs (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [2]))) Y)
+          (hd Q.JINC (1 :: bitsOf (str J)) [1]) := by
+      cases inPS (str S)
+      · exact ⟨1 :: Fu, (dBad1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
+          dBad1E _ _ Fu hj hs hFu⟩
+      · exact ⟨3 :: 1 :: Fu, (dBad0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
+          dBad0E _ _ Fu hj hs hFu⟩
+    obtain ⟨n1, hn1⟩ := hA.trans h1
+    obtain ⟨n2, hn2⟩ := h3.trans ((jincL rJ 0).of_eq (c4 := lay (J + 1) 1) (by rw [eJ]; rfl) (by rw [lay_hdR, eJ1, str_one]; rfl))
+    refine ⟨n1 + 1 + 1 + n2, by omega, fun h => absurd hc h,
+      fun _ => ⟨n1 + 1, _, _, by omega, hn1, rfl, beepStep _ _ Y, ?_⟩⟩
+    rw [show n1 + 1 + 1 + n2 - (n1 + 1) - 1 = n2 by omega]
+    exact hn2
+
+
 end ZP.PS

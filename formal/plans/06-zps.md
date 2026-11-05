@@ -110,3 +110,14 @@ reduction with the padding of `Hard.lean`). Write a design note before any Lean.
 
 ~1200–2000 lines, the smallest after PP. The walker segments are 4 states × 2 values,
 generated with symexec.
+
+## Status: DONE
+
+Files: `ZP/DefsPS`, `ChecksPS`, `TablePS`, `LogicPS`, `CompilePS`, `PairPS`, `MainPS`.
+Same recipe as plan 02. Notes:
+- Only the four dispatch lemmas (`vAcc vRejE vRejC vUnder`) fail when `Pair.lean` is copied for `zpsLogic`.
+- The generated walker lemmas (`toWK1_*, toWK2_*, wk0_*, wk1d_*, wk1n_*, wkM_*, refill, root*`)
+  are single steps or small sweeps; wrappers `wk0_gen/wk1d_gen/wk1n_gen/wkM_*` hide the
+  parity bookkeeping (`wkQ r d`).
+- `nodePS` is the game-tree induction; `vFullPS` handles the root; `pair_mainPS` is the copy of
+  `pair_main`.

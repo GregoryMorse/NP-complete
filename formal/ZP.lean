@@ -41,6 +41,7 @@ public import ZP.DefsPS
 public import ZP.ChecksPS
 public import ZP.CompilePS
 public import ZP.PairPS
+public import ZP.MainPS
 public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile

@@ -3,6 +3,7 @@ module
 public import ZP.Defs
 public import ZP.Table
 public import ZP.DefsPP
+public import ZP.DefsPS
 
 public section
 
@@ -25,4 +26,7 @@ theorem ZP.zp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpMachine ↔ ZP.Senten
   sorry
 
 theorem ZP.zpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppMachine ↔ ZP.SentencePP := by
+  sorry
+
+theorem ZP.zps_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpsMachine ↔ ZP.SentencePS := by
   sorry
