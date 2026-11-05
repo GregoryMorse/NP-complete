@@ -114,4 +114,63 @@ theorem uwWalk (R : List Nat) (hR : Sym4 R) : ∀ (cs : List (List Nat)) (P : Li
     exact (h1.of_eq (by simp [MEs, ME, List.append_assoc]) rfl).trans
       (h2.of_eq rfl (by simp [MEs, ME, unm_append, unm1, List.append_assoc]))
 
+theorem uw2End (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gUW2 P (1 :: R)) (hdR QG.gXm (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `gXm` unmarks the cells of `m` and leaves them. -/
+theorem xmStep (P R : List Nat) (b : Nat) (hb : b ∈ bits) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gXm P (b :: R)) (hdR QG.gXm (P ++ [unm1 b]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  rcases mem_bits hb with rfl | rfl
+  · exact (checkFF (env := [P, R]) (E := []) (k := 3) (q' := QG.gXm) (A' := P ++ [3]) (R' := R) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+  · exact (checkFF (env := [P, R]) (E := []) (k := 3) (q' := QG.gXm) (A' := P ++ [3]) (R' := R) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+
+theorem xmEnd (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gXm P (1 :: R)) (hdR QG.gY1e (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem xmCells (R : List Nat) (hR : Sym4 R) : ∀ (c P : List Nat), Bits c → Sym4 P →
+    zgiLogic.Reach (hdR QG.gXm P (c ++ 1 :: R)) (hdR QG.gY1e (P ++ unm c ++ [1]) R)
+  | [], P, _, hP => (xmEnd P R hP hR).of_eq (by simp) (by simp)
+  | b :: c, P, hc, hP => by
+    have hb := hc b (List.mem_cons_self ..)
+    have hc' : Bits c := fun a ha => hc a (List.mem_cons_of_mem _ ha)
+    have h1 := xmStep P (c ++ 1 :: R) b hb hP (by simp [ALL, hR, hc'.sym4])
+    have hP' : Sym4 (P ++ [unm1 b]) := by
+      rcases mem_bits hb with rfl | rfl <;> simp [unm1, ALL, hP]
+    have h2 := xmCells R hR c (P ++ [unm1 b]) hc' hP'
+    exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp [unm]))
+
+theorem MEs_noB : ∀ cs : List (List Nat), (∀ c ∈ cs, Bits c) → NoB (MEs cs)
+  | [], _ => NoB.nil
+  | c :: cs, h => by
+    have hc := h c (List.mem_cons_self ..)
+    have := MEs_noB cs (fun d hd => h d (List.mem_cons_of_mem _ hd))
+    simp [MEs, ME, NB, hc.noB, this]
+
+/-- The unmarking walk over `w` and `m`: from the left end of the entries to the start of `X`. -/
+theorem phaseU (ws : List (List Nat)) (c R P : List Nat) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ [])
+    (hc : Bits c) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gUW2 P (MEs ws ++ 1 :: (c ++ 1 :: R)))
+      (hdR QG.gY1e (P ++ unm (MEs ws) ++ [1] ++ unm c ++ [1]) R) := by
+  have hR1 : Sym4 (1 :: (c ++ 1 :: R)) := by simp [ALL, hc.sym4, hR]
+  have h1 := uwWalk (1 :: (c ++ 1 :: R)) hR1 ws P hws hP
+  have hn := unm_nb (MEs_noB ws (fun e he => (hws e he).1))
+  have hP1 : Sym4 (P ++ unm (MEs ws)) := by simp [hP, hn.sym4]
+  have h2 := uw2End (P ++ unm (MEs ws)) (c ++ 1 :: R) hP1 (by simp [ALL, hc.sym4, hR])
+  have hP2 : Sym4 (P ++ unm (MEs ws) ++ [1]) := by simp [hP, hn.sym4, ALL]
+  have h3 := xmCells R hR c _ hc hP2
+  exact (h1.of_eq rfl rfl).trans ((h2.of_eq rfl rfl).trans (h3.of_eq rfl rfl))
+
 end ZP.G
