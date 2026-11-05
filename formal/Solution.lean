@@ -19,3 +19,6 @@ theorem ZP.zpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppMachine ↔ ZP.Sent
 
 theorem ZP.zps_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpsMachine ↔ ZP.SentencePS :=
   ZP.zpsQuasihalts_iff_sentence
+
+theorem ZP.zfac_quasihalts_iff_sentence : ZP.Quasihalts ZP.zfacMachine ↔ ZP.SentenceF :=
+  ZP.zfacQuasihalts_iff_sentence

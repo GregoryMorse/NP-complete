@@ -59,7 +59,7 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [x] 01 generic pipeline (steps A–H; F partial, see the status section)
 - [x] 02 Z_PP (`ZP.zppQuasihalts_iff_sentence`, `zpp_quasihalts_iff_InP`; comparator-checked)
 - [x] 06 Z_PSPACE (`ZP.zpsQuasihalts_iff_sentence`, `zps_quasihalts_iff_InP`; comparator-checked)
-- [ ] 03 Z_FACTOR
+- [x] 03 Z_FACTOR (`ZP.zfacQuasihalts_iff_sentence`, `zfac_quasihalts_iff_InP`; comparator-checked)
 - [ ] 04 Z_DLOG
 - [ ] 05 Z_GI
 - [ ] 07 Z_MUL

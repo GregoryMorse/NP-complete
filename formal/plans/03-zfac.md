@@ -153,3 +153,20 @@ reused by 04), `DivF` (phase 3), `PairF` (`pairF_main`, top theorems).
 
 ~2500–3500 lines. The conversion is the hardest part, because of nested sweeps with
 marks.
+
+## Status: DONE
+
+Files: `ZP/DefsF`, `ChecksF`, `TableF`, `LogicF`, `CompileF`, `PairF`, `MainF`.
+`PairF.lean` (~1400 lines) is the reusable material for plans 04 (DLOG) and 05 (GI):
+
+- Copied from `Pair.lean` and *refitted* (`/tmp/refit.py`-style script: re-derive each segment's fuel `k`
+  with `symexec.py` against the new logic file): `gcEnd` (now `GC → GP → GCM`, needs the decider
+  flag cell to start `Rest`), `setup/runFrom/dPhase` (extra hypothesis `∃ R', Rest = 1 :: R'`),
+  `sinc*/jinc*` (end in `QF.NI`).
+- Conversion to unary: `dig2/dig3/dstep/dEnd/sepStep/endM/endLone` (generated), `dloop` (doubling),
+  `digitStep`, `convLoop` (spec: `lyt`, `lay1`, `parseState`, `numbers_eq`).
+- Divisibility: `aIter1/aIter2/endDiv{M,B}/endNdiv{M,B}/rsStart/fr0*` (generated), `aLoop`, `rsG`,
+  `roundDiv/roundNdiv`, `divLoop`, `truthPhase` (conv + division, spec `inLF`).
+- Result: `frPath0/1` (+ `hdR_zeros`: blank prefix), `newInstF`, `pair_mainF`.
+- DLOG/GI reuse: `ni0/ni2`, `layF`, `newInstF`'s shape, `convLoop` (DLOG only), `frPath*`,
+  `dPhase`, `pair_mainF`'s proof text (replace the truth phase).
