@@ -737,7 +737,7 @@ theorem P1pre_hdR (j s : List Nat) :
 `A`, `M_4`, and the fuel. -/
 def GCvPP (j : List Nat) (Sb cl a : List Bool) : ZC :=
   hdR Q.GC (1 :: (1 :: (j ++ [1]) ++ (bitsOf Sb ++ [1])))
-    (bitsOf cl.reverse ++ 1 :: (bitsOf a ++ 1 :: blkW Sb.length (Sb.length + 1)))
+    (bitsOf cl.reverse ++ 1 :: (bitsOf a.reverse ++ 1 :: blkW Sb.length (Sb.length + 1)))
 
 theorem vStartPP (J S : Nat) :
     zppLogic.Reach1 (lay J S)
@@ -793,7 +793,211 @@ theorem vStartPP (J S : Nat) :
     (c4 := GCvPP (bitsOf (str J)) (str S) (List.replicate ((str S).length + 1) true)
         (List.replicate ((str S).length + 1) true)) (by simp) (by
       unfold GCvPP
-      simp [bitsOf, blkW, List.replicate_succ, rep_cons_comm])
+      simp [bitsOf, blkW, List.replicate_succ, rep_cons_comm, List.reverse_replicate])
   exact h1.trans (a1.trans (a2.trans (a3.trans (a4.trans a5))))
+
+
+/-! ## One verifier pass -/
+
+/-- The run of the verifier from `GCvPP`: `A` is just more of the work area. -/
+theorem runPP (j : List Nat) (hj : Bits j) (Sb cl al : List Bool) (hcl : cl.length = Sb.length + 1) :
+    ∃ d, d ≤ Sb.length + 1 ∧
+      zppLogic.Reach (GCvPP j Sb cl al)
+        (hdR (dpOf (bn (run Sb cl.reverse (Sb.length + 1)))) [1]
+          (j ++ 1 :: (bitsOf Sb ++ 1 :: (bitsOf cl.reverse ++ 1 :: (bitsOf al.reverse ++
+            1 :: FWr Sb.length [d]))))) := by
+  have hW : NoB (j ++ 1 :: (bitsOf Sb ++ 1 :: (bitsOf cl.reverse ++ 1 :: bitsOf al.reverse))) :=
+    hj.noB.app (NoB.cons one_nb ((Bits.ofB _).noB.app (NoB.cons one_nb
+      ((Bits.ofB _).noB.app (NoB.cons one_nb (Bits.ofB _).noB)))))
+  have hR : Sym4 (bitsOf al.reverse ++ 1 :: blkW Sb.length (Sb.length + 1)) :=
+    (Bits.ofB _).sym4.app (Sym4.cons (by simp [ALL]) (blkW_noB _ _).sym4)
+  obtain ⟨ds', hd', hl', h⟩ := runFrom Sb.length (j ++ [1]) (1 :: j) Sb cl.reverse
+    (bitsOf al.reverse ++ 1 :: blkW Sb.length (Sb.length + 1))
+    (j ++ 1 :: (bitsOf Sb ++ 1 :: (bitsOf cl.reverse ++ 1 :: bitsOf al.reverse))) [Sb.length + 1]
+    rfl (NoB.cons one_nb hj.noB) hR hW
+    (fun d hd => by simp at hd; omega) (by simp) (by simp [FWr])
+  have hv : valr Sb.length [Sb.length + 1] = Sb.length + 1 := by simp [valr]
+  rw [hv] at h
+  obtain ⟨d, rfl⟩ : ∃ d, ds' = [d] := by
+    rcases ds' with _ | ⟨d, _ | ⟨e, t⟩⟩
+    · simp at hl'
+    · exact ⟨d, rfl⟩
+    · simp at hl'
+  refine ⟨d, hd' d (by simp), ?_⟩
+  unfold RE at h
+  unfold GCvPP
+  simpa using h
+
+
+/-- LSB-first decrement. -/
+def decA : List Bool → List Bool
+  | [] => []
+  | false :: l => true :: decA l
+  | true :: l => false :: l
+
+theorem decA_spec (k : Nat) (r : List Bool) :
+    decA (List.replicate k false ++ true :: r) = List.replicate k true ++ false :: r := by
+  induction k with
+  | zero => rfl
+  | succ k ih => simp only [List.replicate_succ, List.cons_append, decA, ih]
+
+theorem bitsOf_rep_false (n : Nat) : bitsOf (List.replicate n false) = List.replicate n 2 := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simpa [List.replicate_succ, bitsOf] using ih
+
+theorem bitsOf_rep_true (n : Nat) : bitsOf (List.replicate n true) = List.replicate n 3 := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simpa [List.replicate_succ, bitsOf] using ih
+
+
+theorem bitsOf_rev_cons (x : Bool) (rr : List Bool) (k : Nat) :
+    bitsOf (List.replicate k false ++ true :: x :: rr).reverse =
+      bitsOf rr.reverse ++ bn x :: 3 :: List.replicate k 2 := by
+  simp [bitsOf, bn, List.reverse_append, List.reverse_replicate, List.map_append,
+    List.map_reverse]
+
+/-- One verifier pass of the P = PP machine. -/
+theorem vStepPP (j : List Nat) (hj : Bits j) (Sb cl al : List Bool) (hcl : cl.length = Sb.length + 1)
+    (hA : ∃ k r, al = List.replicate k false ++ true :: r) :
+    (run Sb cl.reverse (Sb.length + 1) = true → ∀ k, al = List.replicate k false ++ [true] →
+      zppLogic.Reach (GCvPP j Sb cl al) (TR j Sb true)) ∧
+    (cl = List.replicate (Sb.length + 1) false →
+      (run Sb cl.reverse (Sb.length + 1) = false ∨ ∀ k, al ≠ List.replicate k false ++ [true]) →
+      zppLogic.Reach (GCvPP j Sb cl al) (TR j Sb false)) ∧
+    (∀ k r, cl = List.replicate k false ++ true :: r →
+      (run Sb cl.reverse (Sb.length + 1) = false ∨ ∀ k, al ≠ List.replicate k false ++ [true]) →
+      zppLogic.Reach (GCvPP j Sb cl al) (GCvPP j Sb (List.replicate k true ++ false :: r)
+        (if run Sb cl.reverse (Sb.length + 1) = true then decA al else al))) := by
+  obtain ⟨d, hdd, h⟩ := runPP j hj Sb cl al hcl
+  have hF : FWr Sb.length [d] = 1 :: (List.replicate d 3 ++ List.replicate (Sb.length + 1 - d) 2) := by
+    simp [FWr, blkW]
+  have hne : cl.reverse ≠ [] := by
+    intro e
+    have := congrArg List.length e
+    simp [hcl] at this
+  refine ⟨fun ho k hk => ?_, fun hz hor => ?_, fun k r hc hor => ?_⟩
+  · rw [ho] at h
+    have hAr : bitsOf al.reverse = 3 :: List.replicate k 2 := by
+      rw [hk]; simp [bitsOf, bn, List.reverse_append, List.reverse_replicate, bitsOf_rep_false]
+    cases hr : cl.reverse with
+    | nil => exact absurd hr hne
+    | cons c rest =>
+      cases rest with
+      | nil =>
+        have hT := accThr1 j (bitsOf Sb) (List.replicate k 2) (FWr Sb.length [d]) (bn c) hj
+          (Bits.ofB _) (rep_z2 k) (FWr_noB _ _) (bn_bits c)
+        refine h.trans (hT.of_eq ?_ (by simp [TR, tflag]))
+        rw [hr, hAr]
+        simp [dpOf, bn, bitsOf]
+      | cons y Cq =>
+        have hT := accThr2 j (bitsOf Sb) (bitsOf Cq) (List.replicate k 2) (FWr Sb.length [d]) (bn c) (bn y)
+          hj (Bits.ofB _) (Bits.ofB _) (rep_z2 k) (FWr_noB _ _) (bn_bits c) (bn_bits y)
+        refine h.trans (hT.of_eq ?_ (by simp [TR, tflag]))
+        rw [hr, hAr]
+        simp [dpOf, bn, bitsOf]
+  · have hcr : bitsOf cl.reverse = 2 :: List.replicate Sb.length 2 := by
+      rw [hz]; simp [bitsOf, List.replicate_succ, rep_snoc_eq]
+    obtain ⟨k0, r0, hal⟩ := hA
+    cases ho : run Sb cl.reverse (Sb.length + 1) with
+    | false =>
+      rw [ho] at h
+      have hU := vUnder j (bitsOf Sb) (List.replicate Sb.length 2)
+        (bitsOf al.reverse ++ 1 :: FWr Sb.length [d]) hj (Bits.ofB _) (rep_z2 _)
+        ((Bits.ofB _).noB.app (NoB.cons one_nb (FWr_noB _ _)))
+      exact h.trans (hU.of_eq (by rw [hcr]; simp [dpOf, bn]) (by simp [TR, tflag]))
+    | true =>
+      rw [ho] at h
+      rw [ho] at hor
+      have hnt := hor.resolve_left (by decide)
+      cases r0 with
+      | nil => exact absurd hal (hnt k0)
+      | cons x rr =>
+        have hU := accUnt j (bitsOf Sb) (List.replicate Sb.length 2) (bitsOf rr.reverse)
+          (List.replicate k0 2) (FWr Sb.length [d]) (bn x) hj (Bits.ofB _) (rep_z2 _) (Bits.ofB _)
+          (rep_z2 _) (FWr_noB _ _) (bn_bits x)
+        refine h.trans (hU.of_eq ?_ (by simp [TR, tflag]))
+        rw [hcr, hal, bitsOf_rev_cons]
+        simp [dpOf, bn]
+  · obtain ⟨k0, r0, hal⟩ := hA
+    have hcr : cl.reverse = r.reverse ++ true :: List.replicate k false := by rw [hc]; simp
+    have hcr' : (List.replicate k true ++ false :: r).reverse = r.reverse ++ false :: List.replicate k true := by
+      simp
+    have hDE : List.replicate d 3 ++ List.replicate (Sb.length + 1 - d) 3 = List.replicate (Sb.length + 1) 3 := by
+      rw [List.replicate_append_replicate]
+      congr 1
+      omega
+    have hBl : blkW Sb.length (Sb.length + 1) = 1 :: List.replicate (Sb.length + 1) 3 := by
+      simp [blkW]
+    cases ho : run Sb cl.reverse (Sb.length + 1) with
+    | false =>
+      rw [ho] at h
+      simp only [Bool.false_eq_true, if_false]
+      cases hr : r.reverse with
+      | nil =>
+        have hE := rejE j (bitsOf Sb) (List.replicate k 2) (List.replicate d 3)
+          (List.replicate (Sb.length + 1 - d) 2) (bitsOf al.reverse) hj (Bits.ofB _) (rep_z2 _) (rep_t3 _)
+          (rep_z2 _) (Bits.ofB _)
+        refine h.trans (hE.of_eq ?_ ?_)
+        · rw [hF, hcr, hr]
+          simp [dpOf, bn, bitsOf]
+        · unfold GCvPP
+          rw [hcr', hr]
+          simp only [List.length_replicate]
+          rw [hDE, hBl]
+          simp [bitsOf]
+      | cons x rr =>
+        have hC := rejC j (bitsOf Sb) (bitsOf rr) (List.replicate k 2) (List.replicate d 3)
+          (List.replicate (Sb.length + 1 - d) 2) (bitsOf al.reverse) (bn x) hj (Bits.ofB _) (Bits.ofB _)
+          (rep_z2 _) (rep_t3 _) (rep_z2 _) (Bits.ofB _) (bn_bits x)
+        refine h.trans (hC.of_eq ?_ ?_)
+        · rw [hF, hcr, hr]
+          simp [dpOf, bn, bitsOf]
+        · unfold GCvPP
+          rw [hcr', hr]
+          simp only [List.length_replicate]
+          rw [hDE, hBl]
+          simp [bitsOf, bn]
+    | true =>
+      rw [ho] at h
+      rw [ho] at hor
+      have hnt := hor.resolve_left (by decide)
+      simp only [if_true]
+      cases r0 with
+      | nil => exact absurd hal (hnt k0)
+      | cons x0 rr0 =>
+        have hAr : bitsOf al.reverse = bitsOf rr0.reverse ++ bn x0 :: 3 :: List.replicate k0 2 := by
+          rw [hal, bitsOf_rev_cons]
+        have hAr' : bitsOf (decA al).reverse = bitsOf rr0.reverse ++ bn x0 :: 2 :: List.replicate k0 3 := by
+          rw [hal, decA_spec]
+          simp [bitsOf, bn, List.reverse_append, List.reverse_replicate, List.map_append,
+            List.map_reverse]
+        cases hr : r.reverse with
+        | nil =>
+          have hE := accEnt j (bitsOf Sb) (List.replicate k 2) (List.replicate d 3)
+            (List.replicate (Sb.length + 1 - d) 2) (bitsOf rr0.reverse) (List.replicate k0 2) (bn x0)
+            hj (Bits.ofB _) (rep_z2 _) (rep_t3 _) (rep_z2 _) (Bits.ofB _) (rep_z2 _) (bn_bits x0)
+          refine h.trans (hE.of_eq ?_ ?_)
+          · rw [hF, hcr, hr, hAr]
+            simp [dpOf, bn, bitsOf]
+          · unfold GCvPP
+            rw [hcr', hr, hAr']
+            simp only [List.length_replicate]
+            rw [hDE, hBl]
+            simp [bitsOf]
+        | cons x rr =>
+          have hC := accCnt j (bitsOf Sb) (bitsOf rr) (List.replicate k 2) (List.replicate d 3)
+            (List.replicate (Sb.length + 1 - d) 2) (bitsOf rr0.reverse) (List.replicate k0 2) (bn x) (bn x0)
+            hj (Bits.ofB _) (Bits.ofB _) (rep_z2 _) (rep_t3 _) (rep_z2 _) (Bits.ofB _) (rep_z2 _)
+            (bn_bits x) (bn_bits x0)
+          refine h.trans (hC.of_eq ?_ ?_)
+          · rw [hF, hcr, hr, hAr]
+            simp [dpOf, bn, bitsOf]
+          · unfold GCvPP
+            rw [hcr', hr, hAr']
+            simp only [List.length_replicate]
+            rw [hDE, hBl]
+            simp [bitsOf, bn]
 
 end ZP.PP
