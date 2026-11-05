@@ -374,4 +374,38 @@ def HFam.ofHP (hs : List (List Nat)) (hne : hs ≠ []) (hb : ∀ t ∈ hs, Bits 
     obtain ⟨tl, h1, h2⟩ := HP_full hs hne
     refine ⟨hs.dropLast, tl, fun t ht => hb t (List.dropLast_subset _ ht), hb tl (List.mem_of_getLast? h2), h1⟩
 
+
+/-- A row iteration that runs out of `H`. -/
+theorem rowIterF (ms : List Nat) (ws xs : List (List Nat)) (Zt : List Nat) (hs : List (List Nat))
+    (hne : hs ≠ []) (hb : ∀ t ∈ hs, Bits t) (hZ : Sym4 Zt)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ [])
+    (i n p q c : Nat) (hc : c ≤ hs.length) (hn : hs.length < c + (i + n)) :
+    FailsTo
+      (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ 0 :: Zt)))))
+      (unm (MEnc ms ++ List.replicate 0 2 ++ List.replicate (i + n + 1) 3 ++ 1 :: (MEs ws ++ 1 ::
+        ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 :: unm (HP hs 0))))))
+      Zt := by
+  let F := HFam.ofHP hs hne hb Zt hZ
+  have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+  have sH := F.sym c hc
+  have hQ : NoB (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)) := by
+    have := MEs_noB ws (fun e he => (hws e he).1)
+    simp [NB, this]
+  have hR' : Sym4 (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ 0 :: Zt))) := by
+    have := rep_sym4 q 2 (by simp [ALL])
+    simp [ALL, sX, this, hZ]
+    exact (HP_noB hs c hb).sym4
+  have h1 := rowReset ms hms i _ _ hQ hR'
+  have hmb : Bits (List.replicate p 3 ++ List.replicate (q + 1) 2) := bits_app (bits_rep3 p) (bits_rep2 (q + 1))
+  have h2 := innerLoopF F QG.gIL1 (Or.inr rfl) ms ws xs _ hms hws hmb hxs (i + n) 0 c hc hn
+  have e1 : List.replicate i 3 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3) ++ 2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ 0 :: Zt))))
+      = List.replicate 0 2 ++ List.replicate (i + n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ 0 :: Zt)))) := by
+    have : List.replicate (i + n + 1) 3 = List.replicate i 3 ++ 3 :: List.replicate n 3 := by
+      rw [show i + n + 1 = i + (n + 1) from rfl, ← List.replicate_append_replicate, List.replicate_succ]
+    rw [this]
+    simp [List.replicate_succ, List.append_assoc]
+  exact FailsTo.pre (h1.of_eq rfl (by rw [e1])) (by simpa [F, HFam.ofHP] using h2)
+
 end ZP.G
