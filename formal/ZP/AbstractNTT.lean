@@ -39,4 +39,136 @@ theorem evalC_ones (c : Nat) (hc : 1 ≤ c) : evalC 1 2 (List.replicate c ((none
   simp only [hv]
   simp [hg]
 
+
+/-- The facts about the prime function that the abstract program needs. -/
+structure NPrime (pr : Nat → Nat) : Prop where
+  pos : ∀ n, 1 ≤ n → 0 < pr n
+  one : pr 1 = 2
+  two : pr 2 = 3
+
+theorem hasCircuit_one (pr : Nat → Nat) (h : NPrime pr) (c : Nat) (hc : 1 ≤ c) : hasCircuit pr c 1 = true := by
+  rw [hasCircuit_iff]
+  refine ⟨List.replicate c ((none : Option Nat), 1), by simp, ?_, ?_⟩
+  · rw [h.one]
+    have : ∀ (k j : Nat), wfAux 2 j (List.replicate k ((none : Option Nat), 1)) := by
+      intro k
+      induction k with
+      | zero => intro j; simp [wfAux]
+      | succ k ih => intro j; simp only [List.replicate_succ, wfAux]; exact ⟨fun x hx => (by cases hx), by omega, ih _⟩
+    exact this _ _
+  · rw [h.one]; exact evalC_ones c hc
+
+theorem hasCircuit_zero_two (pr : Nat → Nat) (h : NPrime pr) : hasCircuit pr 0 2 = false := by
+  have : hasCircuit pr 0 2 = hasCircuit (fun _ => 3) 0 2 := by unfold hasCircuit; rw [h.two]
+  rw [this]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem hasCircuit_one_two (pr : Nat → Nat) (h : NPrime pr) : hasCircuit pr 1 2 = false := by
+  have : hasCircuit pr 1 2 = hasCircuit (fun _ => 3) 1 2 := by unfold hasCircuit; rw [h.two]
+  rw [this]; decide +kernel
+
+set_option maxRecDepth 100000 in
+theorem hasCircuit_two_two (pr : Nat → Nat) (h : NPrime pr) : hasCircuit pr 2 2 = false := by
+  have : hasCircuit pr 2 2 = hasCircuit (fun _ => 3) 2 2 := by unfold hasCircuit; rw [h.two]
+  rw [this]; decide +kernel
+
+theorem hasCircuit_mono (pr : Nat → Nat) (h : NPrime pr) (n : Nat) (hn : 1 ≤ n) (c : Nat) (hc : 2 ≤ c)
+    (hh : hasCircuit pr c n = true) : ∀ d, hasCircuit pr (c + d) n = true := by
+  intro d
+  induction d with
+  | zero => exact hh
+  | succ d ih => exact hasCircuit_pad pr (c + d) n (by omega) hn (h.pos n hn) ih
+
+/-- `c ≥ 3` whenever `n = 2` has a circuit. -/
+theorem three_le (pr : Nat → Nat) (h : NPrime pr) (c : Nat) (hh : hasCircuit pr c 2 = true) : 3 ≤ c := by
+  by_cases h3 : 3 ≤ c
+  · exact h3
+  · exfalso
+    have : c = 0 ∨ c = 1 ∨ c = 2 := by omega
+    rcases this with rfl | rfl | rfl
+    · rw [hasCircuit_zero_two pr h] at hh; cases hh
+    · rw [hasCircuit_one_two pr h] at hh; cases hh
+    · rw [hasCircuit_two_two pr h] at hh; cases hh
+
+def stepN (pr : Nat → Nat) (s : Nat × Nat) : Nat × Nat :=
+  if hasCircuit pr s.1 s.2 = true then (s.1, s.2 + 1) else (s.1 + 1, s.2)
+
+def absN (pr : Nat → Nat) : Nat → Nat × Nat
+  | 0 => (1, 1)
+  | k + 1 => stepN pr (absN pr k)
+
+def AbstractQN (pr : Nat → Nat) : Prop := ∃ N, ∀ k, N ≤ k → hasCircuit pr (absN pr k).1 (absN pr k).2 = true
+
+def SentenceN (pr : Nat → Nat) : Prop := ∃ c, ∀ n, 1 ≤ n → hasCircuit pr c n = true
+
+theorem absN_inv (pr : Nat → Nat) (k : Nat) : 1 ≤ (absN pr k).1 ∧ 1 ≤ (absN pr k).2 := by
+  induction k with
+  | zero => exact ⟨Nat.le_refl _, Nat.le_refl _⟩
+  | succ k ih =>
+    show 1 ≤ (stepN pr (absN pr k)).1 ∧ 1 ≤ (stepN pr (absN pr k)).2
+    unfold stepN
+    split <;> simp <;> omega
+
+theorem absN_c_mono (pr : Nat → Nat) (k m : Nat) : (absN pr k).1 ≤ (absN pr (k + m)).1 := by
+  induction m with
+  | zero => exact Nat.le_refl _
+  | succ m ih =>
+    show (absN pr k).1 ≤ (stepN pr (absN pr (k + m))).1
+    unfold stepN
+    split <;> simp <;> omega
+
+
+theorem absN_succ (pr : Nat → Nat) (k : Nat) : absN pr (k + 1) = stepN pr (absN pr k) := rfl
+
+theorem absN_ok (pr : Nat → Nat) (k : Nat) (h : hasCircuit pr (absN pr k).1 (absN pr k).2 = true) :
+    absN pr (k + 1) = ((absN pr k).1, (absN pr k).2 + 1) := by
+  rw [absN_succ]; unfold stepN; simp [h]
+
+theorem absN_bad (pr : Nat → Nat) (k : Nat) (h : ¬ hasCircuit pr (absN pr k).1 (absN pr k).2 = true) :
+    absN pr (k + 1) = ((absN pr k).1 + 1, (absN pr k).2) := by
+  rw [absN_succ]; unfold stepN; simp [h]
+
+theorem sentence_to_abstract (pr : Nat → Nat) (hp : NPrime pr) : SentenceN pr → AbstractQN pr := by
+  rintro ⟨cs, hcs⟩
+  have hle : ∀ k, (absN pr k).1 ≤ cs := by
+    intro k
+    induction k with
+    | zero =>
+      have := hcs 2 (by omega)
+      have h3 := three_le pr hp cs (hcs 2 (by omega))
+      show 1 ≤ cs; omega
+    | succ k ih =>
+      by_cases h : hasCircuit pr (absN pr k).1 (absN pr k).2 = true
+      · rw [absN_ok pr k h]; exact ih
+      · rw [absN_bad pr k h]
+        have hne : (absN pr k).1 ≠ cs := by
+          intro he
+          apply h
+          rw [he]
+          exact hcs _ (absN_inv pr k).2
+        show (absN pr k).1 + 1 ≤ cs
+        omega
+  apply Classical.byContradiction
+  intro hno
+  have key : ∀ m, ∃ k, m + 1 ≤ (absN pr k).1 := by
+    intro m
+    induction m with
+    | zero => exact ⟨0, Nat.le_refl _⟩
+    | succ m ih =>
+      obtain ⟨k0, hk0⟩ := ih
+      have : ∃ k, k0 ≤ k ∧ ¬ hasCircuit pr (absN pr k).1 (absN pr k).2 = true := by
+        apply Classical.byContradiction
+        intro hh
+        exact hno ⟨k0, fun k hk => Classical.byContradiction fun hb => hh ⟨k, hk, hb⟩⟩
+      obtain ⟨k, hk, hb⟩ := this
+      have hm := absN_c_mono pr k0 (k - k0)
+      rw [show k0 + (k - k0) = k by omega] at hm
+      refine ⟨k + 1, ?_⟩
+      rw [absN_bad pr k hb]
+      show m + 1 + 1 ≤ (absN pr k).1 + 1
+      omega
+  obtain ⟨k, hk⟩ := key cs
+  have := hle k
+  omega
+
 end ZP
