@@ -171,4 +171,86 @@ theorem sentence_to_abstract (pr : Nat → Nat) (hp : NPrime pr) : SentenceN pr 
   have := hle k
   omega
 
+
+theorem passed (pr : Nat → Nat) : ∀ k n, 1 ≤ n → n < (absN pr k).2 →
+    ∃ k', k' < k ∧ (absN pr k').2 = n ∧ hasCircuit pr (absN pr k').1 (absN pr k').2 = true := by
+  intro k
+  induction k with
+  | zero => intro n hn h; simp [absN] at h; omega
+  | succ k ih =>
+    intro n hn h
+    by_cases hc : hasCircuit pr (absN pr k).1 (absN pr k).2 = true
+    · rw [absN_ok pr k hc] at h
+      simp at h
+      by_cases hlt : n < (absN pr k).2
+      · obtain ⟨k', hk', e⟩ := ih n hn hlt
+        exact ⟨k', by omega, e⟩
+      · have : n = (absN pr k).2 := by omega
+        exact ⟨k, by omega, this.symm, hc⟩
+    · rw [absN_bad pr k hc] at h
+      simp at h
+      obtain ⟨k', hk', e⟩ := ih n hn h
+      exact ⟨k', by omega, e⟩
+
+theorem passed_two (pr : Nat → Nat) : ∀ k, 3 ≤ (absN pr k).2 →
+    ∃ k', k' < k ∧ (absN pr k').2 = 2 ∧ hasCircuit pr (absN pr k').1 (absN pr k').2 = true := by
+  intro k
+  induction k with
+  | zero => intro h; simp [absN] at h
+  | succ k ih =>
+    intro h
+    by_cases hc : hasCircuit pr (absN pr k).1 (absN pr k).2 = true
+    · rw [absN_ok pr k hc] at h
+      simp at h
+      by_cases h3 : 3 ≤ (absN pr k).2
+      · obtain ⟨k', hk', e⟩ := ih h3
+        exact ⟨k', by omega, e⟩
+      · exact ⟨k, by omega, by omega, hc⟩
+    · rw [absN_bad pr k hc] at h
+      simp at h
+      obtain ⟨k', hk', e⟩ := ih h
+      exact ⟨k', by omega, e⟩
+
+theorem tail_run (pr : Nat → Nat) (N : Nat) (h : ∀ k, N ≤ k → hasCircuit pr (absN pr k).1 (absN pr k).2 = true) :
+    ∀ i, absN pr (N + i) = ((absN pr N).1, (absN pr N).2 + i) := by
+  intro i
+  induction i with
+  | zero => rfl
+  | succ i ih =>
+    have hc := h (N + i) (by omega)
+    rw [← Nat.add_assoc, absN_ok pr (N + i) hc, ih]
+    simp [Nat.add_assoc]
+
+theorem abstract_to_sentence (pr : Nat → Nat) (hp : NPrime pr) : AbstractQN pr → SentenceN pr := by
+  rintro ⟨N, hN⟩
+  refine ⟨(absN pr N).1, fun n hn => ?_⟩
+  by_cases hge : (absN pr N).2 ≤ n
+  · have hrun := tail_run pr N hN (n - (absN pr N).2)
+    have := hN (N + (n - (absN pr N).2)) (by omega)
+    rw [hrun] at this
+    simpa [show (absN pr N).2 + (n - (absN pr N).2) = n by omega] using this
+  · obtain ⟨k', hk', hn', hc'⟩ := passed pr N n hn (by omega)
+    have hmono := absN_c_mono pr k' (N - k')
+    rw [show k' + (N - k') = N by omega] at hmono
+    by_cases h1 : n = 1
+    · subst h1
+      exact hasCircuit_one pr hp _ (absN_inv pr N).1
+    · have h2 : 3 ≤ (absN pr k').1 := by
+        by_cases h2' : n = 2
+        · rw [hn', h2'] at hc'
+          exact three_le pr hp _ hc'
+        · have h3 : 3 ≤ (absN pr k').2 := by omega
+          obtain ⟨k'', hk'', e, hc''⟩ := passed_two pr k' h3
+          rw [e] at hc''
+          have := three_le pr hp _ hc''
+          have hm2 := absN_c_mono pr k'' (k' - k'')
+          rw [show k'' + (k' - k'') = k' by omega] at hm2
+          omega
+      rw [hn'] at hc'
+      have := hasCircuit_mono pr hp n hn _ (by omega) hc' ((absN pr N).1 - (absN pr k').1)
+      rwa [show (absN pr k').1 + ((absN pr N).1 - (absN pr k').1) = (absN pr N).1 by omega] at this
+
+theorem abstractQN_iff (pr : Nat → Nat) (hp : NPrime pr) : AbstractQN pr ↔ SentenceN pr :=
+  ⟨abstract_to_sentence pr hp, sentence_to_abstract pr hp⟩
+
 end ZP
