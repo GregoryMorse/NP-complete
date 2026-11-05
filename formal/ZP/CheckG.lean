@@ -310,4 +310,77 @@ theorem lw2bMark (P R : List Nat) (v : Nat) (hP : Sym4 P) (hR : Sym4 R) :
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
   exact this.of_eq (by simp [List.replicate_succ]) (by simp [List.replicate_succ])
 
+theorem cxStep (q : Nat) (hq : q = QG.gCX ∨ q = QG.gCX2) (P R : List Nat) (b : Nat) (hb : b ∈ bits)
+    (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR q P (b :: R)) (hdR QG.gCX (P ++ [b]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  rcases mem_bits hb with rfl | rfl <;> rcases hq with rfl | rfl
+  · exact checkFF (env := [P, R]) (E := []) (k := 3) (q' := QG.gCX) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [P, R]) (E := []) (k := 3) (q' := QG.gCX) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [P, R]) (E := []) (k := 3) (q' := QG.gCX) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [P, R]) (E := []) (k := 3) (q' := QG.gCX) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem cxEnd (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gCX P (1 :: R)) (hdR QG.gCX2 (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem cx2End (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gCX2 P (1 :: R)) (hdR QG.gXm (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem cxCells (R : List Nat) (hR : Sym4 R) : ∀ (c P : List Nat), Bits c → Sym4 P →
+    zgiLogic.Reach (hdR QG.gCX P (c ++ 1 :: R)) (hdR QG.gCX2 (P ++ c ++ [1]) R)
+  | [], P, _, hP => (cxEnd P R hP hR).of_eq (by simp) (by simp)
+  | b :: c, P, hc, hP => by
+    have hb := hc b (List.mem_cons_self ..)
+    have hc' : Bits c := fun a ha => hc a (List.mem_cons_of_mem _ ha)
+    have h1 := cxStep QG.gCX (Or.inl rfl) P (c ++ 1 :: R) b hb hP (by simp [ALL, hR, hc'.sym4])
+    have hP' : Sym4 (P ++ [b]) := by
+      rcases mem_bits hb with rfl | rfl <;> simp [ALL, hP]
+    have h2 := cxCells R hR c (P ++ [b]) hc' hP'
+    exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp))
+
+theorem cxEntry (c P R : List Nat) (hc : Bits c) (hne : c ≠ []) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gCX2 P (c ++ 1 :: R)) (hdR QG.gCX2 (P ++ c ++ [1]) R) := by
+  cases c with
+  | nil => exact absurd rfl hne
+  | cons b c =>
+    have hb := hc b (List.mem_cons_self ..)
+    have hc' : Bits c := fun a ha => hc a (List.mem_cons_of_mem _ ha)
+    have h1 := cxStep QG.gCX2 (Or.inr rfl) P (c ++ 1 :: R) b hb hP (by simp [ALL, hR, hc'.sym4])
+    have hP' : Sym4 (P ++ [b]) := by
+      rcases mem_bits hb with rfl | rfl <;> simp [ALL, hP]
+    have h2 := cxCells R hR c (P ++ [b]) hc' hP'
+    exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp))
+
+theorem cxWalk (R : List Nat) (hR : Sym4 R) : ∀ (cs : List (List Nat)) (P : List Nat),
+    (∀ c ∈ cs, Bits c ∧ c ≠ []) → Sym4 P →
+    zgiLogic.Reach (hdR QG.gCX2 P (MEs cs ++ 1 :: R)) (hdR QG.gXm (P ++ MEs cs ++ [1]) R)
+  | [], P, _, hP => (cx2End P R hP hR).of_eq (by simp [MEs]) (by simp [MEs])
+  | c :: cs, P, h, hP => by
+    obtain ⟨hc, hne⟩ := h c (List.mem_cons_self ..)
+    have hcs : ∀ d ∈ cs, Bits d ∧ d ≠ [] := fun d hd => h d (List.mem_cons_of_mem _ hd)
+    have hM : Sym4 (MEs cs ++ 1 :: R) := by
+      have := MEs_sym4 cs (fun d hd => (hcs d hd).1)
+      simp [ALL, this, hR]
+    have h1 := cxEntry c P (MEs cs ++ 1 :: R) hc hne hP hM
+    have hP' : Sym4 (P ++ c ++ [1]) := by simp [ALL, hP, hc.sym4]
+    have h2 := cxWalk R hR cs _ hcs hP'
+    exact (h1.of_eq (by simp [MEs, ME, List.append_assoc]) rfl).trans
+      (h2.of_eq rfl (by simp [MEs, ME, List.append_assoc]))
+
 end ZP.G
