@@ -542,4 +542,78 @@ theorem beepStep (j s Y : List Nat) :
   exact cstep_zstep (by decide +kernel)
 
 
+
+/-! ## The conversion to unary (generated) -/
+
+/-- Conversion: a pair `1 1` is consumed; the target gets its marked cell. -/
+theorem dig3 (T : List Nat) (L : List Nat) (Rt : List Nat) (hT : ∀ a ∈ T, a ∈ T3) (hL : NoB L) (hRt : Sym4 Rt) :
+    zfacLogic.Reach (hd QF.HPF (T ++ (1 :: (L ++ (3 :: ([3]))))) (0 :: (Rt)))
+      (hdR QF.DR ([2]) (T ++ (1 :: (L ++ (0 :: (0 :: (0 :: (Rt)))))))) := by
+  have hV : Valid [T3, NB, ALL] [T, L, Rt] := Valid.cons hT (Valid.cons hL (Valid.cons hRt (Valid.nil _)))
+  exact checkTF (env := [T, L, Rt]) (E := []) (k := 6) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3, .sym 3]) (rs := [.sym 0, .blk 2 .id])
+    (ls' := [.sym 2]) (rs' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 0, .sym 0, .sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Conversion: a pair `1 0` is consumed. -/
+theorem dig2 (T : List Nat) (L : List Nat) (Rt : List Nat) (hT : ∀ a ∈ T, a ∈ T3) (hL : NoB L) (hRt : Sym4 Rt) :
+    zfacLogic.Reach (hd QF.HPF (T ++ (1 :: (L ++ (2 :: ([3]))))) (0 :: (Rt)))
+      (hdR QF.DR ([]) (T ++ (1 :: (L ++ (0 :: (0 :: (0 :: (Rt)))))))) := by
+  have hV : Valid [T3, NB, ALL] [T, L, Rt] := Valid.cons hT (Valid.cons hL (Valid.cons hRt (Valid.nil _)))
+  exact checkTF (env := [T, L, Rt]) (E := []) (k := 6) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2, .sym 3]) (rs := [.sym 0, .blk 2 .id])
+    (ls' := []) (rs' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 0, .sym 0, .sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Doubling: one unmarked `1` is marked and a marked cell appended. -/
+theorem dstep (Z : List Nat) (X : List Nat) (hZ : ∀ a ∈ Z, a ∈ Z2) (hX : Sym4 X) :
+    zfacLogic.Reach (hdR QF.DR (Z) (3 :: (X)))
+      (hdR QF.DR (2 :: (Z ++ ([2]))) (X)) := by
+  have hV : Valid [Z2, ALL] [Z, X] := Valid.cons hZ (Valid.cons hX (Valid.nil _))
+  exact checkFF (env := [Z, X]) (E := []) (k := 5) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.sym 2, .blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Doubling is done: unmark, back to the copy. -/
+theorem dEnd (Z : List Nat) (Y : List Nat) (R : List Nat) (hZ : ∀ a ∈ Z, a ∈ Z2) (hY : NoB Y) (hR : Sym4 R) :
+    zfacLogic.Reach (hdR QF.DR (Z) (1 :: (Y ++ (0 :: (R)))))
+      (hd QF.HPF (List.replicate Z.length 3 ++ (1 :: (Y))) (0 :: (R))) := by
+  have hV : Valid [Z2, NB, ALL] [Z, Y, R] := Valid.cons hZ (Valid.cons hY (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [Z, Y, R]) (E := []) (k := 7) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id, .sym 0, .blk 2 .id])
+    (ls' := [.blk 0 (.const 3), .sym 1, .blk 1 .id]) (rs' := [.sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Conversion: a `0` ends the number; a new separator opens the next target. -/
+theorem sepStep (T : List Nat) (L : List Nat) (Rt : List Nat) (hT : ∀ a ∈ T, a ∈ T3) (hL : NoB L) (hRt : Sym4 Rt) :
+    zfacLogic.Reach (hd QF.HPF (T ++ (1 :: (L ++ ([2])))) (0 :: (Rt)))
+      (hd QF.HPF (1 :: (T ++ (1 :: (L)))) (0 :: (0 :: (Rt)))) := by
+  have hV : Valid [T3, NB, ALL] [T, L, Rt] := Valid.cons hT (Valid.cons hL (Valid.cons hRt (Valid.nil _)))
+  exact checkTT (env := [T, L, Rt]) (E := []) (k := 9) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs := [.sym 0, .blk 2 .id])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 0, .sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Conversion done (the copy is used up). -/
+theorem endM (Lp : List Nat) (Rt : List Nat) (hLp : Sym4 Lp) (hRt : Sym4 Rt) :
+    zfacLogic.Reach (hd QF.HPF (Lp ++ ([1])) (0 :: (Rt)))
+      (hd QF.RS1 (Lp) (1 :: (0 :: (Rt)))) := by
+  have hV : Valid [ALL, ALL] [Lp, Rt] := Valid.cons hLp (Valid.cons hRt (Valid.nil _))
+  exact checkTT (env := [Lp, Rt]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.sym 0, .blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .sym 0, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Conversion done after a trailing lone `1`. -/
+theorem endLone (Lp : List Nat) (Rt : List Nat) (hLp : Sym4 Lp) (hRt : Sym4 Rt) :
+    zfacLogic.Reach (hd QF.HPF (Lp ++ (1 :: ([3]))) (0 :: (Rt)))
+      (hd QF.RS1 (Lp) (1 :: (0 :: (0 :: (Rt))))) := by
+  have hV : Valid [ALL, ALL] [Lp, Rt] := Valid.cons hLp (Valid.cons hRt (Valid.nil _))
+  exact checkTT (env := [Lp, Rt]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .sym 3]) (rs := [.sym 0, .blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .sym 0, .sym 0, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
 end ZP.F
