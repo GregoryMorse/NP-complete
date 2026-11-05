@@ -178,4 +178,84 @@ theorem Rch_total (chk : List Nat → Bool) (m : Nat) : ∀ u rest c, unused m r
           exact ⟨b, Rch.push_no hm hb1 hb⟩
         · exact ⟨true, Rch.push_ok hm hb1⟩
 
+/-! ## The machine side of the search -/
+
+structure GEnv where
+  m : Nat
+  Tc : List Nat
+  Z : List Nat
+  z : Nat
+  Z' : List Nat
+  hT : Tc ++ 0 :: Z = List.replicate m 3 ++ (z :: Z')
+  hz : z = 0 ∨ z = 1
+  hZ' : Sym4 Z'
+  hTc : ∀ a ∈ Tc, a ∈ O13
+  hZ : Sym4 Z
+
+namespace GEnv
+
+def Rt (E : GEnv) : List Nat := 1 :: (E.Tc ++ 0 :: E.Z)
+
+def CfgS (E : GEnv) (rest : List Nat) (c : Nat) : ZC :=
+  hdR QG.gDP [] (List.replicate c 3 ++ 1 :: (Enc rest ++ E.Rt))
+
+def CfgD (E : GEnv) (rest : List Nat) : ZC := hdR QG.gDC [] (Enc rest ++ E.Rt)
+
+def CfgPop (E : GEnv) (rest : List Nat) : ZC := hdR QG.gGL [0] (Enc rest ++ E.Rt)
+
+theorem Rt_sym4 (E : GEnv) : Sym4 E.Rt := by
+  have := o13_sym4 E.hTc
+  simp [Rt, ALL, this, E.hZ]
+
+theorem pop (E : GEnv) (rest : List Nat) : zgiLogic.Reach (E.CfgS rest 0) (E.CfgPop rest) := by
+  have h := gdpPop (Enc rest ++ E.Rt) (by simp [E.Rt_sym4])
+  exact h.of_eq (by simp [CfgS]) (by simp [CfgPop])
+
+theorem dec (E : GEnv) (c : Nat) (rest : List Nat) :
+    zgiLogic.Reach (E.CfgD ((c + 1) :: rest)) (E.CfgS rest c) := by
+  have h := gdcDec (List.replicate c 3 ++ 1 :: (Enc rest ++ E.Rt)) (by simp [E.Rt_sym4, ALL])
+  refine (h.of_eq (by simp [CfgD, Enc, U, List.replicate_succ]) rfl).trans ?_
+  have e : hdR QG.gDP [0] (List.replicate c 3 ++ 1 :: (Enc rest ++ E.Rt)) = E.CfgS rest c := by
+    unfold CfgS
+    exact F.hdR_zeros QG.gDP [0] [] _ (fun a ha => by simp at ha; simp [F.B0, ha])
+  rw [e]
+  exact LTM.Reach.refl _ _
+
+theorem scanColl (E : GEnv) (c : Nat) (rest : List Nat) (hr : ∀ e ∈ rest, 1 ≤ e) (hm : (c + 1) ∈ rest) :
+    zgiLogic.Reach (E.CfgS rest (c + 1)) (E.CfgD ((c + 1) :: rest)) := by
+  have h1 := gdpTop [] (List.replicate c 3 ++ 1 :: (Enc rest ++ E.Rt)) (by simp [ALL]) (by simp [E.Rt_sym4, ALL])
+  have h2 := gkeTop [3] (List.replicate c 3) (Enc rest ++ E.Rt) (by simp [ALL]) (bits_rep3 c) (by simp [E.Rt_sym4])
+  have h3 := (scanLoop (c + 1) E.Tc E.Z E.hTc E.hZ rest [] hr (by simp) (by omega)).2 hm
+  unfold CfgS CfgD Rt
+  unfold Rt at h1 h2
+  simp only [List.replicate_succ, List.append_assoc, Enc, U, MEnc, List.nil_append, List.singleton_append,
+    List.cons_append] at h1 h2 h3 ⊢
+  exact h1.trans (h2.trans h3)
+
+theorem scanPush (E : GEnv) (c : Nat) (rest : List Nat) (hr : ∀ e ∈ rest, 1 ≤ e) (hm : (c + 1) ∉ rest) :
+    zgiLogic.Reach (E.CfgS rest (c + 1)) (E.CfgS ((c + 1) :: rest) E.m) := by
+  have h1 := gdpTop [] (List.replicate c 3 ++ 1 :: (Enc rest ++ E.Rt)) (by simp [ALL]) (by simp [E.Rt_sym4, ALL])
+  have h2 := gkeTop [3] (List.replicate c 3) (Enc rest ++ E.Rt) (by simp [ALL]) (bits_rep3 c) (by simp [E.Rt_sym4])
+  have h3 := (scanLoop (c + 1) E.Tc E.Z E.hTc E.hZ rest [] hr (by simp) (by omega)).1 hm
+  have hnb : NoB (List.replicate (c + 1) 3 ++ [1] ++ MEnc ([] ++ rest)) := by simp [NB]
+  have h4 := gupWalk _ (1 :: (E.Tc ++ 0 :: E.Z)) hnb (by simpa [Rt] using E.Rt_sym4)
+  have hr' : ∀ v ∈ (c + 1) :: rest, 1 ≤ v := by
+    intro v hv
+    rcases List.mem_cons.1 hv with rfl | hv
+    · omega
+    · exact hr v hv
+  have h5 := pushAll E.m ((c + 1) :: rest) E.Z' E.z E.hz hr' E.hZ'
+  have hu : unm (List.replicate (c + 1) 3 ++ [1] ++ MEnc ([] ++ rest)) = Enc ((c + 1) :: rest) := by
+    simp [unm_MEnc, Enc, U, unm1]
+  rw [hu] at h4
+  have hT := E.hT
+  unfold CfgS Rt
+  rw [← hT] at h5
+  unfold Rt at h1 h2
+  simp only [List.replicate_succ, List.append_assoc, Enc, U, MEnc, List.nil_append, List.singleton_append,
+    List.cons_append] at h1 h2 h3 h4 h5 ⊢
+  exact h1.trans (h2.trans (h3.trans (h4.trans h5)))
+
+end GEnv
+
 end ZP.G

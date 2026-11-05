@@ -1521,4 +1521,28 @@ theorem scanLoop (v : Nat) (Tc Z : List Nat) (hTc : ∀ a ∈ Tc, a ∈ O13) (hZ
           · exact h
         exact hmid.trans ((ih2 hm).of_eq rfl (by simp [Enc_append, Enc, U, List.append_assoc]))
 
+theorem gdpPop (X : List Nat) (hX : Sym4 X) :
+    zgiLogic.Reach (hdR QG.gDP [] (1 :: X)) (hdR QG.gGL [0] X) := by
+  have hV : Valid [ALL] [X] := Valid.cons hX (Valid.nil _)
+  exact checkFF (env := [X]) (E := []) (k := 3) hV trivial
+    (ls := []) (rs := [.sym 1, .blk 0 .id])
+    (ls' := [.sym 0]) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gdcDec (X : List Nat) (hX : Sym4 X) :
+    zgiLogic.Reach (hdR QG.gDC [] (3 :: X)) (hdR QG.gDP [0] X) := by
+  have hV : Valid [ALL] [X] := Valid.cons hX (Valid.nil _)
+  exact checkFF (env := [X]) (E := []) (k := 3) hV trivial
+    (ls := []) (rs := [.sym 3, .blk 0 .id])
+    (ls' := [.sym 0]) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gdcEmpty (X : List Nat) (hX : Sym4 X) :
+    zgiLogic.Reach (hdR QG.gDC [] (1 :: X)) (hdR QG.FR0 [1] X) := by
+  have hV : Valid [ALL] [X] := Valid.cons hX (Valid.nil _)
+  exact checkFF (env := [X]) (E := []) (k := 3) hV trivial
+    (ls := []) (rs := [.sym 1, .blk 0 .id])
+    (ls' := [.sym 1]) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 end ZP.G
