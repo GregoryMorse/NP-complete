@@ -1659,4 +1659,91 @@ theorem dlogMain (p g h : Nat) (hp : 1 ≤ p) (R : List Nat) (hR : Sym4 R) : ∀
       (by simp [List.replicate_succ']) rfl
     exact h1'.trans (h2.trans (h3.trans (h4'.of_eq (by simp) rfl)))
 
+
+/-! ## Result path (generated) -/
+
+def B0 : List Nat := [0]
+
+/-- `K` is missing: reject. -/
+theorem kGap (Lc : List Nat) (Gp : List Nat) (hLc : NoB Lc) (hGp : Sym4 Gp) :
+    zdlLogic.Reach (hdR QD.KD (Lc) (0 :: (Gp)))
+      (hd QF.FE (Lc) (2 :: (Gp))) := by
+  have hV : Valid [NB, ALL] [Lc, Gp] := Valid.cons hLc (Valid.cons hGp (Valid.nil _))
+  exact checkFT (env := [Lc, Gp]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 0, .blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 2, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The result 0 is written; erase the left side. -/
+theorem frFE0 (Lc : List Nat) (Gp : List Nat) (j : List Nat) (s : List Nat) (hLc : NoB Lc) (hGp : ∀ a ∈ Gp, a ∈ B0) (hj : Bits j) (hs : Bits s) :
+    zdlLogic.Reach (hd QF.FE (Lc) (2 :: (Gp ++ (1 :: (j ++ (1 :: (s ++ ([1]))))))))
+      (hdR Q.GRB (Gp ++ (1 :: (j ++ (1 :: (s ++ (1 :: (1 :: ([1])))))))) ([])) := by
+  have hV : Valid [NB, B0, bits, bits] [Lc, Gp, j, s] := Valid.cons hLc (Valid.cons hGp (Valid.cons hj (Valid.cons hs (Valid.nil _))))
+  exact checkTF (env := [Lc, Gp, j, s]) (E := []) (k := 12) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .blk 3 .id, .sym 1])
+    (ls' := [.blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .sym 1, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The result 0 is reported and the left side erased. -/
+theorem frPath0 (Lc : List Nat) (Mr : List Nat) (Gp : List Nat) (j : List Nat) (s : List Nat) (hLc : NoB Lc) (hMr : NoB Mr) (hGp : ∀ a ∈ Gp, a ∈ B0) (hj : Bits j) (hs : Bits s) :
+    zdlLogic.Reach (hdR QF.FR0 (Lc) (Mr ++ (0 :: (Gp ++ (1 :: (j ++ (1 :: (s ++ ([1])))))))))
+      (hdR Q.GRB (Gp ++ (1 :: (j ++ (1 :: (s ++ (1 :: (1 :: ([1])))))))) ([])) := by
+  have hV : Valid [NB, NB, B0, bits, bits] [Lc, Mr, Gp, j, s] := Valid.cons hLc (Valid.cons hMr (Valid.cons hGp (Valid.cons hj (Valid.cons hs (Valid.nil _)))))
+  exact checkFF (env := [Lc, Mr, Gp, j, s]) (E := []) (k := 16) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 0, .blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1])
+    (ls' := [.blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .sym 1, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The result 1 is reported and the left side erased. -/
+theorem frPath1 (Lc : List Nat) (Mr : List Nat) (Gp : List Nat) (j : List Nat) (s : List Nat) (hLc : NoB Lc) (hMr : NoB Mr) (hGp : ∀ a ∈ Gp, a ∈ B0) (hj : Bits j) (hs : Bits s) :
+    zdlLogic.Reach (hdR QF.FR1 (Lc) (Mr ++ (0 :: (Gp ++ (1 :: (j ++ (1 :: (s ++ ([1])))))))))
+      (hdR Q.GRB (Gp ++ (1 :: (j ++ (1 :: (s ++ (1 :: (1 :: (3 :: ([1]))))))))) ([])) := by
+  have hV : Valid [NB, NB, B0, bits, bits] [Lc, Mr, Gp, j, s] := Valid.cons hLc (Valid.cons hMr (Valid.cons hGp (Valid.cons hj (Valid.cons hs (Valid.nil _)))))
+  exact checkFF (env := [Lc, Mr, Gp, j, s]) (E := []) (k := 17) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 0, .blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1])
+    (ls' := [.blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .sym 1, .sym 3, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+
+theorem isPrime_iff (p : Nat) : isPrime p = true ↔ scanOK p p := by
+  unfold isPrime scanOK
+  simp only [Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true, List.mem_range, Bool.or_eq_true,
+    bne_iff_ne, ne_eq]
+  constructor
+  · rintro ⟨h2, h⟩
+    refine ⟨h2, fun d' h1 h3 hd => ?_⟩
+    rcases h d' (by omega) with h4 | h4
+    · omega
+    · exact h4 hd
+  · rintro ⟨h2, h⟩
+    refine ⟨h2, fun d hd => ?_⟩
+    by_cases hd2 : d < 2
+    · exact Or.inl hd2
+    · exact Or.inr (h d (by omega) (by omega))
+
+theorem primePhase (p : Nat) (Q : List Nat) (hQ : Sym4 Q) :
+    (isPrime p = true → zdlLogic.Reach (hdR QD.CP1 [1] (List.replicate p 3 ++ 1 :: Q))
+        (hdR QD.Q1 [] ([3] ++ 1 :: (List.replicate p 3 ++ 1 :: Q)))) ∧
+    (isPrime p = false → ∃ L Mr, NoB L ∧ NoB Mr ∧
+        zdlLogic.Reach (hdR QD.CP1 [1] (List.replicate p 3 ++ 1 :: Q)) (hdR QF.FR0 L (Mr ++ Q))) := by
+  have hPQ : Sym4 (List.replicate p 3 ++ 1 :: Q) :=
+    (Sym4.rep p 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hQ)
+  have hcp := cpLoop (Q) hQ p 0
+  have hce := cpEnd (List.replicate p 3) (List.replicate p 2) Q (rep_t3 p) (rep_z2 p) hQ
+  have hsw := xs1sweep (List.replicate p 3) (1 :: (List.replicate p 3 ++ 1 :: Q)) (fun a ha => by
+      rw [List.eq_of_mem_replicate ha]; simp [bits])
+    (Sym4.cons (by simp [ALL]) hPQ)
+  have h0 : zdlLogic.Reach (hdR QD.CP1 [1] (List.replicate p 3 ++ 1 :: Q))
+      (hdR QD.XS2 [] (List.replicate p 3 ++ 1 :: (List.replicate p 3 ++ 1 :: Q))) := by
+    refine (hcp.of_eq (by simp) rfl).trans ((hce.of_eq (by simp) (by simp)).trans (hsw.of_eq rfl (by simp)))
+  have hPQ' : Sym4 (1 :: (List.replicate p 3 ++ 1 :: Q)) := Sym4.cons (by simp [ALL]) hPQ
+  have hsc := scanXS p Q hQ p (List.replicate p 3) (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits]) (by simp)
+  refine ⟨fun hpr => ?_, fun hnp => ?_⟩
+  · have hok := (isPrime_iff p).mp hpr
+    exact h0.trans ((hsc.1 hok).trans (qlSweep [3] _ (NoB.cons (by simp [NB]) NoB.nil) hPQ'))
+  · have hnok : ¬ scanOK p p := fun h => by rw [(isPrime_iff p).mpr h] at hnp; exact absurd hnp (by decide)
+    obtain ⟨L, Mr, hL, hMr, hR⟩ := hsc.2 hnok
+    exact ⟨L, Mr, hL, hMr, h0.trans hR⟩
+
 end ZP.D
