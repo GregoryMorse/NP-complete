@@ -616,4 +616,178 @@ theorem endLone (Lp : List Nat) (Rt : List Nat) (hLp : Sym4 Lp) (hRt : Sym4 Rt) 
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+
+/-! ## The conversion loop -/
+
+theorem rep2_ext (m : Nat) : 2 :: (List.replicate m 2 ++ [2]) = List.replicate (m + 2) 2 := by
+  rw [rep_snoc_eq]; rfl
+
+theorem dloop (X : List Nat) (hX : Sym4 X) : ∀ u m : Nat,
+    zfacLogic.Reach (hdR QF.DR (List.replicate m 2) (List.replicate u 3 ++ X))
+      (hdR QF.DR (List.replicate (m + 2 * u) 2) X)
+  | 0, m => by simpa using LTM.Reach.refl _ _
+  | u + 1, m => by
+    have hX' : Sym4 (List.replicate u 3 ++ X) := (Sym4.rep u 3 (by simp [ALL])).app hX
+    have h1 := dstep (List.replicate m 2) (List.replicate u 3 ++ X) (rep_z2 m) hX'
+    have h2 := dloop X hX u (m + 2)
+    refine (h1.of_eq (by simp [List.replicate_succ]) (by rw [rep2_ext])).trans (h2.of_eq rfl ?_)
+    congr 2
+    omega
+
+
+theorem digitStep (t : Nat) (L Rt : List Nat) (hL : NoB L) (hRt : Sym4 Rt) (b : Bool) :
+    zfacLogic.Reach (hd QF.HPF (List.replicate t 3 ++ 1 :: (L ++ [bn b, 3])) (0 :: Rt))
+      (hd QF.HPF (List.replicate (bitN b + 2 * t) 3 ++ 1 :: L) (0 :: 0 :: 0 :: Rt)) := by
+  have hX : Sym4 (1 :: (L ++ 0 :: (0 :: 0 :: Rt))) :=
+    Sym4.cons (by simp [ALL]) (hL.sym4.app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL])
+      (Sym4.cons (by simp [ALL]) hRt))))
+  have hR2 : Sym4 (0 :: 0 :: Rt) := Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) hRt)
+  have hE := dEnd
+  cases b
+  · have h1 := dig2 (List.replicate t 3) L Rt (rep_t3 t) hL hRt
+    have h2 := dloop (1 :: (L ++ 0 :: (0 :: 0 :: Rt))) hX t 0
+    have h3 := dEnd (List.replicate (0 + 2 * t) 2) L (0 :: 0 :: Rt) (rep_z2 _) hL hR2
+    refine h1.trans ((h2.of_eq (by simp) rfl).trans (h3.of_eq rfl ?_))
+    simp [bitN]
+  · have h1 := dig3 (List.replicate t 3) L Rt (rep_t3 t) hL hRt
+    have h2 := dloop (1 :: (L ++ 0 :: (0 :: 0 :: Rt))) hX t 1
+    have h3 := dEnd (List.replicate (1 + 2 * t) 2) L (0 :: 0 :: Rt) (rep_z2 _) hL hR2
+    refine h1.trans ((h2.of_eq (by simp) rfl).trans (h3.of_eq rfl ?_))
+    simp [bitN]
+
+/-- Layout of the finished numbers, newest first: `n M … `. -/
+def lyt : List Nat → List Nat
+  | [] => []
+  | n :: fr => List.replicate n 3 ++ 1 :: lyt fr
+
+/-- `lyt`-layout without the last separator. -/
+def lay1 : Nat → List Nat → List Nat
+  | c, [] => List.replicate c 3
+  | c, n :: fr => List.replicate c 3 ++ 1 :: lay1 n fr
+
+theorem lay1_eq : ∀ (c : Nat) (fr : List Nat), List.replicate c 3 ++ 1 :: lyt fr = lay1 c fr ++ [1]
+  | c, [] => by simp [lyt, lay1]
+  | c, n :: fr => by
+    have ih := lay1_eq n fr
+    simp only [lyt, lay1, List.cons_append, List.append_assoc]
+    rw [ih]
+
+theorem lyt_noB : ∀ fr : List Nat, NoB (lyt fr)
+  | [] => NoB.nil
+  | n :: fr => (t3_noB (rep_t3 n)).app (NoB.cons one_nb (lyt_noB fr))
+
+def crev (r : List Bool) : List Nat := (bitsOf r).reverse
+
+theorem crev_noB (r : List Bool) : NoB (crev r) := by
+  unfold crev
+  exact (Bits.ofB r).rev.noB
+
+/-- The parser state after consuming `r` (fuel `f`): current number and finished numbers
+(newest first). -/
+def parseState : Nat → List Bool → Nat → List Nat → Nat × List Nat
+  | 0, _, cur, fr => (cur, fr)
+  | _ + 1, [], cur, fr => (cur, fr)
+  | _ + 1, [true], cur, fr => (cur, fr)
+  | f + 1, true :: b :: r, cur, fr => parseState f r (bitN b + 2 * cur) fr
+  | f + 1, false :: r, cur, fr => parseState f r 0 (cur :: fr)
+
+
+theorem crev_cons2 (b : Bool) (r : List Bool) : crev (true :: b :: r) = crev r ++ [bn b, 3] := by
+  simp [crev, bitsOf, bn]
+
+theorem crev_false (r : List Bool) : crev (false :: r) = crev r ++ [2] := by
+  simp [crev, bitsOf]
+
+theorem rep_zero_split (g : Nat) (Rt : List Nat) (hg : 1 ≤ g) :
+    List.replicate g 0 ++ Rt = 0 :: (List.replicate (g - 1) 0 ++ Rt) := by
+  obtain ⟨g', rfl⟩ : ∃ g', g = g' + 1 := ⟨g - 1, by omega⟩
+  simp [List.replicate_succ]
+
+theorem lay1_sym4 : ∀ (c : Nat) (fr : List Nat), Sym4 (lay1 c fr)
+  | c, [] => Sym4.rep c 3 (by simp [ALL])
+  | c, n :: fr => (Sym4.rep c 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) (lay1_sym4 n fr))
+
+theorem rep_add3 (g : Nat) (Rt : List Nat) (hg : 1 ≤ g) :
+    List.replicate (g + 2) 0 ++ Rt = 0 :: 0 :: 0 :: (List.replicate (g - 1) 0 ++ Rt) := by
+  obtain ⟨g', rfl⟩ : ∃ g', g = g' + 1 := ⟨g - 1, by omega⟩
+  simp [List.replicate_succ]
+
+theorem rep_add2 (g : Nat) (Rt : List Nat) (hg : 1 ≤ g) :
+    List.replicate (g + 1) 0 ++ Rt = 0 :: 0 :: (List.replicate (g - 1) 0 ++ Rt) := by
+  obtain ⟨g', rfl⟩ : ∃ g', g = g' + 1 := ⟨g - 1, by omega⟩
+  simp [List.replicate_succ]
+
+theorem convLoop (Rt : List Nat) (hRt : Sym4 Rt) : ∀ (f : Nat) (r : List Bool) (cur : Nat) (fr : List Nat)
+    (g : Nat), 1 ≤ g → r.length ≤ f →
+    zfacLogic.Reach (hd QF.HPF (List.replicate cur 3 ++ 1 :: (lyt fr ++ crev r)) (List.replicate g 0 ++ Rt))
+      (hd QF.RS1 (lay1 (parseState f r cur fr).1 (parseState f r cur fr).2)
+        (1 :: (List.replicate (g + r.length) 0 ++ Rt))) := by
+  intro f
+  induction f with
+  | zero =>
+    intro r cur fr g hg hf
+    have hr : r = [] := List.eq_nil_of_length_eq_zero (by omega)
+    subst hr
+    have hR' : Sym4 (List.replicate (g - 1) 0 ++ Rt) := (zeros4 _).app hRt
+    have h := endM (lay1 cur fr) (List.replicate (g - 1) 0 ++ Rt) (lay1_sym4 _ _) hR'
+    refine h.of_eq ?_ ?_
+    · rw [rep_zero_split g Rt hg]
+      simp [crev, bitsOf, lay1_eq]
+    · rw [← rep_zero_split g Rt hg]
+      simp [parseState]
+  | succ f ih =>
+    intro r cur fr g hg hf
+    have hR' : Sym4 (List.replicate (g - 1) 0 ++ Rt) := (zeros4 _).app hRt
+    have hsplit := rep_zero_split g Rt hg
+    cases r with
+    | nil =>
+      have h := endM (lay1 cur fr) (List.replicate (g - 1) 0 ++ Rt) (lay1_sym4 _ _) hR'
+      refine h.of_eq ?_ ?_
+      · rw [hsplit]
+        simp [crev, bitsOf, lay1_eq]
+      · rw [← hsplit]
+        simp [parseState]
+    | cons x r1 =>
+      cases x with
+      | true =>
+        cases r1 with
+        | nil =>
+          have h := endLone (lay1 cur fr) (List.replicate (g - 1) 0 ++ Rt) (lay1_sym4 _ _) hR'
+          refine h.of_eq ?_ ?_
+          · rw [hsplit]
+            have e := lay1_eq cur fr
+            have e2 : List.replicate cur 3 ++ 1 :: (lyt fr ++ crev [true]) = lay1 cur fr ++ [1, 3] :=
+              calc List.replicate cur 3 ++ 1 :: (lyt fr ++ crev [true])
+                  = (List.replicate cur 3 ++ 1 :: lyt fr) ++ [3] := by simp [crev, bitsOf]
+                _ = lay1 cur fr ++ [1, 3] := by rw [e]; simp
+            rw [e2]
+          · simp only [parseState, List.length_cons, List.length_nil]
+            rw [show g + (0 + 1) = g + 1 by omega, rep_add2 g Rt hg]
+        | cons b r' =>
+          have hL : NoB (lyt fr ++ crev r') := (lyt_noB fr).app (crev_noB r')
+          have h1 := digitStep cur (lyt fr ++ crev r') (List.replicate (g - 1) 0 ++ Rt) hL hR' b
+          have h2 := ih r' (bitN b + 2 * cur) fr (g + 2) (by omega) (by simp at hf; omega)
+          refine (h1.of_eq ?_ rfl).trans (h2.of_eq ?_ ?_)
+          · rw [hsplit, crev_cons2]
+            simp
+          · rw [rep_add3 g Rt hg]
+          · have e : g + (true :: b :: r').length = g + 2 + r'.length := by
+              simp only [List.length_cons]; omega
+            simp only [parseState]
+            rw [e]
+      | false =>
+        have hL : NoB (lyt fr ++ crev r1) := (lyt_noB fr).app (crev_noB r1)
+        have h1 := sepStep (List.replicate cur 3) (lyt fr ++ crev r1) (List.replicate (g - 1) 0 ++ Rt)
+          (rep_t3 cur) hL hR'
+        have h2 := ih r1 0 (cur :: fr) (g + 1) (by omega) (by simp at hf; omega)
+        refine (h1.of_eq ?_ rfl).trans (h2.of_eq ?_ ?_)
+        · rw [hsplit, crev_false]
+          simp
+        · rw [rep_add2 g Rt hg]
+          simp [lyt]
+        · have e : g + (false :: r1).length = g + 1 + r1.length := by
+            simp only [List.length_cons]; omega
+          simp only [parseState]
+          rw [e]
+
 end ZP.F
