@@ -761,4 +761,74 @@ theorem oneRound (s a cM n' u : Nat) (l : List (Nat × Nat)) (hl : ∀ x ∈ l, 
   refine s3.of_eq rfl ?_
   simp [List.append_assoc, Nat.add_comm, Nat.add_left_comm]
 
+/-- The records after `j` rounds of `n` records. -/
+def Lstate (n : Nat) : Nat → List (Nat × Nat)
+  | 0 => []
+  | j + 1 => toTwo (Lstate n j) ++ newRecs (Lstate n j).length n
+
+theorem newRecs_length : ∀ d u, (newRecs u d).length = d
+  | 0, u => rfl
+  | d + 1, u => by simp [newRecs, newRecs_length d]
+
+theorem Lstate_length (n : Nat) : ∀ j, (Lstate n j).length = j * n
+  | 0 => by simp [Lstate]
+  | j + 1 => by
+    simp [Lstate, toTwo, newRecs_length, Lstate_length n j, Nat.succ_mul]
+
+theorem Lstate_flags (n : Nat) : ∀ j, ∀ x ∈ Lstate n j, x.1 = 2 ∨ x.1 = 3
+  | 0, x, hx => by simp [Lstate] at hx
+  | j + 1, x, hx => by
+    simp only [Lstate, List.mem_append] at hx
+    rcases hx with h | h
+    · exact toTwo_flags _ x h
+    · exact newRecs_flags _ _ x h
+
+theorem cLoop (s n' : Nat) : ∀ (a cM j : Nat),
+    znttLogic.Reach
+      (hd QN.RC1 (List.replicate (j * (n' + 1) + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]
+          ++ 1 :: (List.replicate a 3 ++ List.replicate cM 2))
+        (1 :: 3 :: List.replicate n' 3 ++ recsL s (Lstate (n' + 1) j)))
+      (hd QN.RC1 (List.replicate ((j + a) * (n' + 1) + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]
+          ++ 1 :: (List.replicate (a + cM) 2))
+        (1 :: 3 :: List.replicate n' 3 ++ recsL s (Lstate (n' + 1) (j + a)))) := by
+  intro a
+  induction a with
+  | zero =>
+    intro cM j
+    simp only [Nat.add_zero, List.replicate_zero, List.nil_append, Nat.zero_add]
+    exact LTM.Reach.refl _ _
+  | succ a ih =>
+    intro cM j
+    have h1 := oneRound s a cM n' (j * (n' + 1)) (Lstate (n' + 1) j) (Lstate_flags _ _)
+    have h2 := ih (cM + 1) (j + 1)
+    have e : j * (n' + 1) + n' + 3 = (j + 1) * (n' + 1) + 2 := by rw [Nat.succ_mul]; omega
+    have s1 := reach_trans_eq h1 h2 (hd_eq (by
+      rw [e]; simp [List.replicate_succ, List.append_assoc]) (by
+      simp [Lstate, Lstate_length, List.replicate_succ, List.append_assoc]))
+    refine s1.of_eq (by simp [List.replicate_succ, List.append_assoc]) ?_
+    have e1 : j + 1 + a = j + (a + 1) := by omega
+    have e2 : a + (cM + 1) = a + 1 + cM := by omega
+    rw [e1, e2]
+
+/-- The record build: from `WX` (right after the ruler) to the witness initialisation. -/
+theorem buildAll (s n' c' : Nat) :
+    znttLogic.Reach
+      (hd QN.WX [0, 3] (1 :: List.replicate (s + 2) 3 ++ 1 :: (Yc (c' + 1) (n' + 1) ++ [0])))
+      (hd QN.WI0 (List.replicate ((c' + 1) * (n' + 1) + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]
+          ++ 1 :: List.replicate (c' + 1) 3)
+        (1 :: 3 :: List.replicate n' 3 ++ recsL s (Lstate (n' + 1) (c' + 1)))) := by
+  have h1 := wxStart (s + 2) c' (n' + 1)
+  have h2 := cLoop s n' (c' + 1) 0 0
+  have hrec := noB_recsL s (Lstate (n' + 1) (c' + 1)) (Lstate_flags _ _)
+  have hA : NoB (List.replicate ((0 + (c' + 1)) * (n' + 1) + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]) := by
+    noB_tac
+  have hX : NoB (3 :: List.replicate n' 3 ++ recsL s (Lstate (n' + 1) (0 + (c' + 1)))) := by
+    rw [Nat.zero_add]; noB_tac
+  have h3 := rcuEnd _ _ hA hX (c' + 1 + 0)
+  have s1 := reach_trans_eq h1 h2
+    (by rw [hd_trail]; simp [Lstate, recsL, List.replicate_succ', cons_rep, List.append_assoc])
+  have s2 := reach_trans_eq s1 h3 (by simp [List.append_assoc, Nat.zero_add])
+  refine s2.of_eq rfl ?_
+  simp [List.append_assoc, Nat.zero_add]
+
 end ZP.N
