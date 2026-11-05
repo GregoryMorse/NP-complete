@@ -963,4 +963,63 @@ theorem s3Fail (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
     (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+/-! ### Passed `H` entries: first cell `0`, state `gS3` -/
+
+/-- A passed entry `0 t M`. -/
+def MP : List (List Nat) → List Nat
+  | [] => []
+  | t :: ts => 2 :: (t ++ 1 :: MP ts)
+
+theorem MP_sym4 : ∀ ts : List (List Nat), (∀ t ∈ ts, Bits t) → Sym4 (MP ts)
+  | [], _ => Sym4.nil
+  | t :: ts, h => by
+    have := MP_sym4 ts (fun u hu => h u (List.mem_cons_of_mem _ hu))
+    have ht := h t (List.mem_cons_self ..)
+    simp [MP, ALL, ht.sym4, this]
+
+theorem s4Cell (P R : List Nat) (b : Nat) (hb : b ∈ bits) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gS4 P (b :: R)) (hdR QG.gS4 (P ++ [b]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  rcases mem_bits hb with rfl | rfl
+  · exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem s4End (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gS4 P (1 :: R)) (hdR QG.gS3 (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem s4Cells (R : List Nat) (hR : Sym4 R) : ∀ (c P : List Nat), Bits c → Sym4 P →
+    zgiLogic.Reach (hdR QG.gS4 P (c ++ 1 :: R)) (hdR QG.gS3 (P ++ c ++ [1]) R)
+  | [], P, _, hP => (s4End P R hP hR).of_eq (by simp) (by simp)
+  | b :: c, P, hc, hP => by
+    have hb := hc b (List.mem_cons_self ..)
+    have hc' : Bits c := fun a ha => hc a (List.mem_cons_of_mem _ ha)
+    have h1 := s4Cell P (c ++ 1 :: R) b hb hP (by simp [ALL, hR, hc'.sym4])
+    have hP' : Sym4 (P ++ [b]) := by
+      rcases mem_bits hb with rfl | rfl <;> simp [ALL, hP]
+    have h2 := s4Cells R hR c (P ++ [b]) hc' hP'
+    exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp))
+
+theorem s3Walk (R : List Nat) (hR : Sym4 R) : ∀ (ts : List (List Nat)) (P : List Nat),
+    (∀ t ∈ ts, Bits t) → Sym4 P →
+    zgiLogic.Reach (hdR QG.gS3 P (MP ts ++ R)) (hdR QG.gS3 (P ++ MP ts) R)
+  | [], P, _, _ => by simp only [MP, List.nil_append, List.append_nil]; exact LTM.Reach.refl _ _
+  | t :: ts, P, h, hP => by
+    have ht := h t (List.mem_cons_self ..)
+    have hts : ∀ u ∈ ts, Bits u := fun u hu => h u (List.mem_cons_of_mem _ hu)
+    have hM : Sym4 (MP ts ++ R) := by simp [MP_sym4 ts hts, hR]
+    have h1 := s3Passed P (t ++ 1 :: (MP ts ++ R)) hP (by simp [ALL, ht.sym4, hM])
+    have hP1 : Sym4 (P ++ [2]) := by simp [ALL, hP]
+    have h2 := s4Cells (MP ts ++ R) hM t _ ht hP1
+    have hP2 : Sym4 (P ++ [2] ++ t ++ [1]) := by simp [ALL, hP, ht.sym4]
+    have h3 := s3Walk R hR ts _ hts hP2
+    exact (h1.of_eq (by simp [MP]) rfl).trans ((h2.of_eq rfl rfl).trans (h3.of_eq rfl (by simp [MP, List.append_assoc])))
+
 end ZP.G
