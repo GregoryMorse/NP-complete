@@ -94,3 +94,13 @@ P") would need primality in P (AKS). That is out of scope, and **the formal targ
 
 ~2500–3500 lines. The multiply-mod-p double loop is the main risk; design its invariant
 on the Python trace before writing Lean.
+
+## Status: in progress
+
+Done: `ZP/DefsD`, `ChecksD`, `TableD`, `LogicD` (generated), `CompileD` (`zdlCert_ok`, `zdlMacroSimC`).
+Not started: `PairD` (copy `PairF.lean` into `namespace ZP.D` with `zfacLogic → zdlLogic`, drop
+the divisibility part, refit with the script described in plan 03, then the new routines:
+`E0` (conversion end), primality (`CP*`, `XS*`, `X*`, `XC/XD`), compare (`QL/Q*/QY*/KD/KB/QU*`),
+multiply mod p (`I*`, `O*`, `W`, `LE`, `RB*`, `T*`)). Reuse from plan 03: `ni0 ni2 layF newInstF`
+shape, `convLoop`, `frPath0/1`, `hdR_zeros`, `dPhase`/`pair_main` text.
+Spec reminder: `inLD` = `isPrime p && dlogLoop (k+1) 1 g h p` on `(numbers s).reverse`.
