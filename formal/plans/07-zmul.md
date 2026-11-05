@@ -117,3 +117,11 @@ theorem zmul_quasihalts_iff_sentence : Quasihalts zmulMachine ↔ SentenceMul
 2. Fuel and the switch loops.
 3. The `runMul` interpreter theorem.
 4. The check and the top theorem.
+
+## Status (in progress)
+
+`ZP/DefsMul.lean` (trusted definitions, §1) is done and builds: `runMulAux/runMul`, `clockMul`, `checkMul`,
+`correctMulB`, `CorrectMul`, `SentenceMul`. The guest tape is a `List Bool` (its support is an initial segment).
+Sanity checks reproduce the first refutations of `ref/zmul_ref.py` (`('', '')`, `('0', '')`, `('1','11011')`, `('00','')`),
+including that `J = '1'` is correct on all instances before `'11011'`.
+Everything from §2 on (generated files, fuel, switch loops, interpreter theorem, check) is still to do.
