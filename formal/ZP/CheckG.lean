@@ -1296,4 +1296,61 @@ theorem trUnm (P : List Nat) (hP : Sym4 P) (c : Nat) (hc : c = 0 ∨ c = 1) :
           | succ k ihk => simp [List.replicate_succ, ihk]
         simp [List.replicate_succ, hrep]))
 
+
+theorem MEnc_end : ∀ ms : List Nat, MEnc ms = [] ∨ ∃ P, MEnc ms = P ++ [1]
+  | [] => Or.inl rfl
+  | v :: r => by
+    right
+    rcases MEnc_end r with h | ⟨P, h⟩
+    · exact ⟨List.replicate v 2, by simp [MEnc, h]⟩
+    · exact ⟨List.replicate v 2 ++ 1 :: P, by simp [MEnc, h]⟩
+
+theorem MEnc_nb : ∀ ms : List Nat, ∀ a ∈ MEnc ms, a ≠ 0
+  | [] => fun a h => by cases h
+  | v :: r => fun a h => by
+    simp only [MEnc, List.mem_append, List.mem_replicate, List.mem_cons] at h
+    rcases h with ⟨_, rfl⟩ | rfl | h
+    · decide
+    · decide
+    · exact MEnc_nb r a h
+
+theorem MEnc_sym4 (ms : List Nat) : Sym4 (MEnc ms) := by
+  intro a ha
+  have := MEnc_o12 ms a ha
+  simp [O12] at this
+  simp [ALL]; omega
+
+theorem MEnc_end0 (ms : List Nat) : ∃ P c, [0] ++ MEnc ms = P ++ [c] ∧ (c = 0 ∨ c = 1) ∧ Sym4 P := by
+  rcases MEnc_end ms with he | ⟨P, he⟩
+  · exact ⟨[], 0, by simp [he], Or.inl rfl, by simp [ALL]⟩
+  · refine ⟨0 :: P, 1, by simp [he], Or.inr rfl, ?_⟩
+    have := MEnc_sym4 ms
+    rw [he] at this
+    intro a ha
+    rcases List.mem_cons.1 ha with rfl | ha
+    · simp [ALL]
+    · exact this a (List.mem_append_left _ ha)
+
+/-- Reset the target: unmark it (the head sits on the cell of `m` just marked). -/
+theorem rowReset (ms : List Nat) (hms : ∀ e ∈ ms, 1 ≤ e) (i : Nat) (Q R' : List Nat)
+    (hQ : NoB Q) (hR : Sym4 R') :
+    zgiLogic.Reach (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: Q) (2 :: R'))
+      (hdR QG.gIL1 (MEnc ms) (List.replicate i 3 ++ 3 :: (Q ++ 2 :: R'))) := by
+  have hA : NoB (MEnc ms ++ List.replicate i 2 ++ 3 :: Q) := by
+    simp [NB, hQ, MEnc_nb]
+  have hR2 : Sym4 (2 :: R') := by simp [ALL, hR]
+  have h1 := trLeft _ _ hA hR2
+  have hms' := MEnc_sym4 ms
+  have hQs := hQ.sym4
+  have h2 := trSkipList (List.replicate i 2 ++ 3 :: (Q ++ 2 :: R')) (by simp [ALL, hQs, hR]) ms [0] hms (by simp [ALL])
+  have h3 := trStop ([0] ++ MEnc ms) (Q ++ 2 :: R') i (by simp [ALL, hms']) (by simp [ALL, hQs, hR])
+  obtain ⟨P, c, hPc, hc, hPs⟩ := MEnc_end0 ms
+  rw [hPc] at h3
+  have h4 := trUnm P hPs c hc i (3 :: (Q ++ 2 :: R')) (by simp [ALL, hQs, hR])
+  have h5 := (h1.of_eq rfl (by simp [List.append_assoc])).trans
+    ((h2.of_eq rfl (by first | rfl | simp [hPc, List.append_assoc])).trans (h3.trans h4))
+  rw [← hPc] at h5
+  rw [List.singleton_append, hdR_z0] at h5
+  exact h5
+
 end ZP.G
