@@ -881,4 +881,347 @@ theorem pushAll (m : Nat) (rest : List Nat) (Z' : List Nat) (z : Nat) (hz : z = 
   have h := pushLoop m rest (z :: Z') hr hz4 m 0 (by omega)
   exact (h.of_eq (by simp) rfl).trans (pushDone m rest Z' z hz hr hZ)
 
+/-! ## Unmarking walks -/
+
+/-- Unmark a cell. -/
+def unm1 (a : Nat) : Nat := if a = 2 then 3 else a
+
+def unm (A : List Nat) : List Nat := A.map unm1
+
+theorem unm_append (A B : List Nat) : unm (A ++ B) = unm A ++ unm B := List.map_append ..
+
+theorem unm_rep3 (k : Nat) : unm (List.replicate k 3) = List.replicate k 3 := by
+  induction k with
+  | zero => rfl
+  | succ k ih => simp_all [unm, unm1, List.replicate_succ]
+
+theorem unm_rep2 (k : Nat) : unm (List.replicate k 2) = List.replicate k 3 := by
+  induction k with
+  | zero => rfl
+  | succ k ih => simp_all [unm, unm1, List.replicate_succ]
+
+theorem unm_nb {A : List Nat} (h : NoB A) : NoB (unm A) := fun a ha => by
+  obtain ⟨b, hb, rfl⟩ := List.mem_map.1 ha
+  have := h b hb
+  simp [NB] at this
+  rcases this with rfl | rfl | rfl <;> simp [unm1, NB]
+
+theorem gupStep (P R : List Nat) (a : Nat) (ha : a ∈ NB) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gUP (P ++ [a]) R) (hd QG.gUP P (unm1 a :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  simp [NB] at ha
+  rcases ha with rfl | rfl | rfl
+  · exact (checkTT (env := [P, R]) (E := []) (k := 3) (q' := QG.gUP) (A' := P) (R' := 1 :: R) hV trivial
+      (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+  · exact (checkTT (env := [P, R]) (E := []) (k := 3) (q' := QG.gUP) (A' := P) (R' := 3 :: R) hV trivial
+      (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+  · exact (checkTT (env := [P, R]) (E := []) (k := 3) (q' := QG.gUP) (A' := P) (R' := 3 :: R) hV trivial
+      (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+
+theorem gupBase (R : List Nat) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gUP [] R) (hdR QG.gPR2 [1] R) := by
+  have hV : Valid [ALL] [R] := Valid.cons hR (Valid.nil _)
+  exact checkTF (env := [R]) (E := []) (k := 3) hV trivial
+    (ls := []) (rs := [.blk 0 .id])
+    (ls' := [.sym 1]) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gupWalkW (W : List Nat) : ∀ R, NoB W → Sym4 R →
+    zgiLogic.Reach (hd QG.gUP W.reverse R) (hdR QG.gPR2 [1] (unm W.reverse ++ R)) := by
+  induction W with
+  | nil => intro R _ hR; exact (gupBase R hR).of_eq rfl (by simp [unm])
+  | cons a W ih =>
+    intro R hW hR
+    have ha : a ∈ NB := hW a (List.mem_cons_self ..)
+    have hW' : NoB W := fun b hb => hW b (List.mem_cons_of_mem _ hb)
+    have hu : unm1 a ∈ NB := by
+      simp [NB] at ha; rcases ha with rfl | rfl | rfl <;> simp [unm1, NB]
+    have h1 := gupStep W.reverse R a ha (NoB.sym4 (fun b hb => hW' b (List.mem_reverse.mp hb))) hR
+    have h2 := ih (unm1 a :: R) hW' (Sym4.cons (by simp [NB] at hu; simp [ALL]; omega) hR)
+    exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp [unm, unm_append]))
+
+theorem gupWalk (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gUP A R) (hdR QG.gPR2 [1] (unm A ++ R)) := by
+  have := gupWalkW A.reverse R (fun a ha => hA a (List.mem_reverse.mp ha)) hR
+  simpa using this
+
+
+theorem gflStep (P R : List Nat) (a : Nat) (ha : a ∈ NB) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gFL (P ++ [a]) R) (hd QG.gFL P (unm1 a :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  simp [NB] at ha
+  rcases ha with rfl | rfl | rfl
+  · exact (checkTT (env := [P, R]) (E := []) (k := 3) (q' := QG.gFL) (A' := P) (R' := 1 :: R) hV trivial
+      (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+  · exact (checkTT (env := [P, R]) (E := []) (k := 3) (q' := QG.gFL) (A' := P) (R' := 3 :: R) hV trivial
+      (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+  · exact (checkTT (env := [P, R]) (E := []) (k := 3) (q' := QG.gFL) (A' := P) (R' := 3 :: R) hV trivial
+      (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)).of_eq rfl (by simp [unm1])
+
+theorem gflBase (R : List Nat) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gFL [] R) (hdR QG.gDC [] R) := by
+  have hV : Valid [ALL] [R] := Valid.cons hR (Valid.nil _)
+  exact checkTF (env := [R]) (E := []) (k := 3) hV trivial
+    (ls := []) (rs := [.blk 0 .id])
+    (ls' := []) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gflWalkW (W : List Nat) : ∀ R, NoB W → Sym4 R →
+    zgiLogic.Reach (hd QG.gFL W.reverse R) (hdR QG.gDC [] (unm W.reverse ++ R)) := by
+  induction W with
+  | nil => intro R _ hR; exact (gflBase R hR).of_eq rfl (by simp [unm])
+  | cons a W ih =>
+    intro R hW hR
+    have ha : a ∈ NB := hW a (List.mem_cons_self ..)
+    have hW' : NoB W := fun b hb => hW b (List.mem_cons_of_mem _ hb)
+    have hu : unm1 a ∈ NB := by
+      simp [NB] at ha; rcases ha with rfl | rfl | rfl <;> simp [unm1, NB]
+    have h1 := gflStep W.reverse R a ha (NoB.sym4 (fun b hb => hW' b (List.mem_reverse.mp hb))) hR
+    have h2 := ih (unm1 a :: R) hW' (Sym4.cons (by simp [NB] at hu; simp [ALL]; omega) hR)
+    exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp [unm, unm_append]))
+
+theorem gflWalk (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gFL A R) (hdR QG.gDC [] (unm A ++ R)) := by
+  have := gflWalkW A.reverse R (fun a ha => hA a (List.mem_reverse.mp ha)) hR
+  simpa using this
+
+
+/-! ## Collision check of the top against the other entries -/
+
+def O12 : List Nat := [1, 2]
+
+/-- Entries that have been compared: all their cells are marked. -/
+def MEnc : List Nat → List Nat
+  | [] => []
+  | v :: r => List.replicate v 2 ++ 1 :: MEnc r
+
+theorem rep2_o12 (k : Nat) : ∀ a ∈ List.replicate k 2, a ∈ O12 := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [O12]
+
+theorem MEnc_o12 : ∀ r : List Nat, ∀ a ∈ MEnc r, a ∈ O12
+  | [] => fun a h => by cases h
+  | v :: r => fun a ha => by
+    rw [MEnc] at ha
+    rcases List.mem_append.1 ha with ha | ha
+    · exact rep2_o12 v a ha
+    · rcases List.mem_cons.1 ha with rfl | ha
+      · simp [O12]
+      · exact MEnc_o12 r a ha
+
+theorem o12_noB {w : List Nat} (h : ∀ a ∈ w, a ∈ O12) : NoB w := fun a ha => by
+  have := h a ha
+  simp [O12] at this
+  rcases this with rfl | rfl <;> simp [NB]
+
+theorem o12_sym4 {w : List Nat} (h : ∀ a ∈ w, a ∈ O12) : Sym4 w := (o12_noB h).sym4
+
+theorem bits_rep3 (k : Nat) : Bits (List.replicate k 3) := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [bits]
+
+theorem bits_rep2 (k : Nat) : Bits (List.replicate k 2) := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [bits]
+
+theorem rep_cons_snoc (a k : Nat) : a :: (List.replicate k a ++ [a]) = List.replicate (k + 2) a := by
+  rw [show k + 2 = (k + 1) + 1 from rfl, List.replicate_succ, List.replicate_succ']
+
+theorem gkeTop (P T R : List Nat) (hP : Sym4 P) (hT : Bits T) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKE P (T ++ 1 :: R)) (hdR QG.gKE1 (P ++ T ++ [1]) R) := by
+  have hV : Valid [ALL, bits, ALL] [P, T, R] := Valid.cons hP (Valid.cons hT (Valid.cons hR (Valid.nil _)))
+  exact checkFF (env := [P, T, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gke1Skip (P R : List Nat) (e : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKE1 P (List.replicate (e + 1) 2 ++ 1 :: R))
+      (hdR QG.gKE1 (P ++ (List.replicate (e + 1) 2 ++ [1])) R) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate e 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk e) (Valid.cons hR (Valid.nil _)))
+  have : zgiLogic.Reach (hdR QG.gKE1 P (2 :: (List.replicate e 2 ++ 1 :: R)))
+      (hdR QG.gKE1 (P ++ 2 :: (List.replicate e 2 ++ [1])) R) := checkFF (env := [P, List.replicate e 2, R]) (E := []) (k := 6) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ]) (by simp [List.replicate_succ])
+
+theorem gke1Walk (R : List Nat) (hR : Sym4 R) : ∀ (fm : List Nat), (∀ v ∈ fm, 1 ≤ v) → ∀ P : List Nat, Sym4 P →
+    zgiLogic.Reach (hdR QG.gKE1 P (MEnc fm ++ R)) (hdR QG.gKE1 (P ++ MEnc fm) R)
+  | [], _, P, _ => by
+    simp only [MEnc, List.nil_append, List.append_nil]; exact LTM.Reach.refl _ _
+  | v :: fm, hv, P, hP => by
+    obtain ⟨k, rfl⟩ : ∃ k, v = k + 1 := ⟨v - 1, by have := hv v (List.mem_cons_self ..); omega⟩
+    have hfm : ∀ v ∈ fm, 1 ≤ v := fun a ha => hv a (List.mem_cons_of_mem _ ha)
+    have hE : Sym4 (MEnc fm ++ R) := (o12_sym4 (MEnc_o12 fm)).app hR
+    have h1 := gke1Skip P (MEnc fm ++ R) k hP hE
+    have hP' : Sym4 (P ++ (List.replicate (k + 1) 2 ++ [1])) :=
+      hP.app ((sym4_rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) Sym4.nil))
+    have h2 := gke1Walk R hR fm hfm _ hP'
+    exact (h1.of_eq (by simp [MEnc]) rfl).trans (h2.of_eq rfl (by simp [MEnc, List.append_assoc]))
+
+theorem gkeMark0 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKE1 P (3 :: R)) (hdR QG.gKP (P ++ [2]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkeMark (P R : List Nat) (k : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKE1 P (List.replicate k 2 ++ 3 :: R))
+      (hdR QG.gKP (P ++ List.replicate (k + 1) 2) R) := by
+  cases k with
+  | zero => exact (gkeMark0 P R hP hR).of_eq (by simp) (by simp)
+  | succ k =>
+    have hV : Valid [ALL, Mk, ALL] [P, List.replicate k 2, R] :=
+      Valid.cons hP (Valid.cons (rep2_mk k) (Valid.cons hR (Valid.nil _)))
+    have : zgiLogic.Reach (hdR QG.gKE1 P (2 :: (List.replicate k 2 ++ 3 :: R)))
+        (hdR QG.gKP (P ++ 2 :: (List.replicate k 2 ++ [2])) R) := checkFF (env := [P, List.replicate k 2, R]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 3, .blk 2 .id])
+      (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 2]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+    exact this.of_eq (by simp [List.replicate_succ]) (by rw [rep_cons_snoc])
+
+theorem gkp3 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKP P (3 :: R)) (hd QG.gKBm P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkp1 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKP P (1 :: R)) (hd QG.gKBd P (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkbm (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gKBm A R) (hdR QG.gKVm [] (A ++ R)) := by
+  have hV : Valid [NB, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkvm (k : Nat) (R : List Nat) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKVm [] (List.replicate k 2 ++ 3 :: R)) (hdR QG.gKQm (List.replicate (k + 1) 2) R) := by
+  have hV : Valid [Mk, ALL] [List.replicate k 2, R] := Valid.cons (rep2_mk k) (Valid.cons hR (Valid.nil _))
+  have : zgiLogic.Reach (hdR QG.gKVm [] (List.replicate k 2 ++ 3 :: R)) (hdR QG.gKQm (List.replicate k 2 ++ [2]) R) :=
+    checkFF (env := [List.replicate k 2, R]) (E := []) (k := 4) hV trivial
+      (ls := []) (rs := [.blk 0 .id, .sym 3, .blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq rfl (by simp [List.replicate_succ'])
+
+theorem gkbd (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gKBd A R) (hdR QG.gKVd [] (A ++ R)) := by
+  have hV : Valid [NB, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkvd (k : Nat) (R : List Nat) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKVd [] (List.replicate k 2 ++ 3 :: R)) (hdR QG.gKQd (List.replicate (k + 1) 2) R) := by
+  have hV : Valid [Mk, ALL] [List.replicate k 2, R] := Valid.cons (rep2_mk k) (Valid.cons hR (Valid.nil _))
+  have : zgiLogic.Reach (hdR QG.gKVd [] (List.replicate k 2 ++ 3 :: R)) (hdR QG.gKQd (List.replicate k 2 ++ [2]) R) :=
+    checkFF (env := [List.replicate k 2, R]) (E := []) (k := 4) hV trivial
+      (ls := []) (rs := [.blk 0 .id, .sym 3, .blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq rfl (by simp [List.replicate_succ'])
+
+theorem gkqm3 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKQm P (3 :: R)) (hdR QG.gKE (P ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkqm1 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKQm P (1 :: R)) (hdR QG.gKR1 (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkqd3 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKQd P (3 :: R)) (hd QG.gKUV P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkqd1 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKQd P (1 :: R)) (hdR QG.gFG (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkr (P G R : List Nat) (r : Nat) (hP : Sym4 P) (hG : ∀ a ∈ G, a ∈ O12) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKR1 P (G ++ 3 :: (List.replicate r 3 ++ 1 :: R)))
+      (hd QG.gKUV (P ++ G ++ 2 :: List.replicate r 2) (1 :: R)) := by
+  have hV : Valid [ALL, O12, T3, ALL] [P, G, List.replicate r 3, R] :=
+    Valid.cons hP (Valid.cons hG (Valid.cons (rep_t3 r) (Valid.cons hR (Valid.nil _))))
+  exact checkFT (env := [P, G, List.replicate r 3, R]) (E := []) (k := 8) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 3, .blk 2 .id, .sym 1, .blk 3 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 2, .blk 2 (.const 2)]) (rs' := [.sym 1, .blk 3 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gkuv (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gKUV A R) (hdR QG.gKU2 [] (A ++ R)) := by
+  have hV : Valid [NB, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gku2 (a b : Nat) (R : List Nat) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKU2 [] (List.replicate a 2 ++ List.replicate b 3 ++ 1 :: R))
+      (hdR QG.gKE1 (List.replicate (a + b) 3 ++ [1]) R) := by
+  have hV : Valid [Mk, T3, ALL] [List.replicate a 2, List.replicate b 3, R] :=
+    Valid.cons (rep2_mk a) (Valid.cons (rep_t3 b) (Valid.cons hR (Valid.nil _)))
+  have : zgiLogic.Reach (hdR QG.gKU2 [] (List.replicate a 2 ++ List.replicate b 3 ++ 1 :: R))
+      (hdR QG.gKE1 (List.replicate a 3 ++ (List.replicate b 3 ++ [1])) R) :=
+    checkFF (env := [List.replicate a 2, List.replicate b 3, R]) (E := []) (k := 6) hV trivial
+      (ls := []) (rs := [.blk 0 .id, .blk 1 .id, .sym 1, .blk 2 .id])
+      (ls' := [.blk 0 (.const 3), .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq rfl (by rw [← List.append_assoc, List.replicate_append_replicate])
+
+theorem gdpTop (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gDP P (3 :: R)) (hdR QG.gKE (P ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gke1End (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gKE1 P (1 :: R)) (hd QG.gUP P (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 end ZP.G
