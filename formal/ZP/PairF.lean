@@ -995,6 +995,8 @@ theorem aLoop (Pre G : List Nat) (hPre : Sym4 Pre) (hG : Sym4 G) (d : Nat) (hd2 
         simp
 
 
+def B0 : List Nat := [0]
+
 /-- The cell left of `A` is a separator `M` (or blank). -/
 def LeftEnd (Pre : List Nat) : Prop := Pre = [] ∨ ∃ X, NoB X ∧ Pre = X ++ [1]
 
@@ -1250,5 +1252,74 @@ theorem truthPhase (Sb : List Bool) (Rt : List Nat) (hRt : Sym4 Rt) :
       refine hconv'.trans ?_
       rw [hP]
       exact hR
+
+
+/-! ## Blank prefix -/
+
+theorem hdR_eq' (q : Nat) (A R : List Nat) :
+    hdR q A R = ⟨q, sapp A.reverse blank, sapp R blank⟩ := by
+  show (⟨q, sapp (dL [A, R] [.blk 0 .id]) blank, sapp (dR [A, R] [.blk 1 .id]) blank⟩ : ZC) = _
+  rw [dW_blk0, dW_blk1]
+
+theorem sapp_zeros (g : Nat) : sapp (List.replicate g 0) blank = blank := by
+  induction g with
+  | zero => rfl
+  | succ g ih => 
+    show scons 0 (sapp (List.replicate g 0) blank) = blank
+    rw [ih, scons_blank]
+
+theorem hdR_zeros (q : Nat) (Gp A R : List Nat) (hGp : ∀ a ∈ Gp, a ∈ B0) :
+    hdR q (Gp ++ A) R = hdR q A R := by
+  have hz : Gp = List.replicate Gp.length 0 := by
+    apply List.eq_replicate_iff.mpr
+    refine ⟨rfl, fun a ha => ?_⟩
+    have := hGp a ha
+    simpa [B0] using this
+  rw [hdR_eq', hdR_eq', List.reverse_append, sapp_append, hz]
+  simp [sapp_zeros]
+
+
+/-! ## New instance and result (generated) -/
+
+/-- New instance: `M_2`, `H`, walk to the start of `s`. -/
+theorem ni0 (j : List Nat) (s : List Nat) (hj : Bits j) (hs : Bits s) :
+    zfacLogic.Reach (hdR QF.NI (1 :: (j ++ (1 :: (s)))) ([]))
+      (hdR Q.GC (1 :: (1 :: (j ++ ([1])))) (s ++ ([1]))) := by
+  have hV : Valid [bits, bits] [j, s] := Valid.cons hj (Valid.cons hs (Valid.nil _))
+  exact checkFF (env := [j, s]) (E := []) (k := 9) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id]) (rs := [])
+    (ls' := [.sym 1, .sym 1, .blk 0 .id, .sym 1]) (rs' := [.blk 1 .id, .sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The copy is done: `M_2` meets the empty slot, the truth routine starts. -/
+theorem ni2 (Xr : List Nat) (j : List Nat) (s : List Nat) (hXr : Bits Xr) (hj : Bits j) (hs : Bits s) :
+    zfacLogic.Reach (hdR Q.GC (Xr ++ (1 :: (1 :: (j ++ (1 :: (s)))))) ([1]))
+      (hd QF.HPF (1 :: (Xr)) (0 :: (1 :: (j ++ (1 :: (s ++ ([1]))))))) := by
+  have hV : Valid [bits, bits, bits] [Xr, j, s] := Valid.cons hXr (Valid.cons hj (Valid.cons hs (Valid.nil _)))
+  exact checkFT (env := [Xr, j, s]) (E := []) (k := 12) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id]) (rs := [.sym 1])
+    (ls' := [.sym 1, .blk 0 .id]) (rs' := [.sym 0, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The result 0 is reported and the left side erased. -/
+theorem frPath0 (Lc : List Nat) (Mr : List Nat) (Gp : List Nat) (j : List Nat) (s : List Nat) (hLc : NoB Lc) (hMr : NoB Mr) (hGp : ∀ a ∈ Gp, a ∈ B0) (hj : Bits j) (hs : Bits s) :
+    zfacLogic.Reach (hdR QF.FR0 (Lc) (Mr ++ (0 :: (Gp ++ (1 :: (j ++ (1 :: (s ++ ([1])))))))))
+      (hdR Q.GRB (Gp ++ (1 :: (j ++ (1 :: (s ++ (1 :: (1 :: ([1])))))))) ([])) := by
+  have hV : Valid [NB, NB, B0, bits, bits] [Lc, Mr, Gp, j, s] := Valid.cons hLc (Valid.cons hMr (Valid.cons hGp (Valid.cons hj (Valid.cons hs (Valid.nil _)))))
+  exact checkFF (env := [Lc, Mr, Gp, j, s]) (E := []) (k := 16) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 0, .blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1])
+    (ls' := [.blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .sym 1, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The result 1 is reported and the left side erased. -/
+theorem frPath1 (Lc : List Nat) (Mr : List Nat) (Gp : List Nat) (j : List Nat) (s : List Nat) (hLc : NoB Lc) (hMr : NoB Mr) (hGp : ∀ a ∈ Gp, a ∈ B0) (hj : Bits j) (hs : Bits s) :
+    zfacLogic.Reach (hdR QF.FR1 (Lc) (Mr ++ (0 :: (Gp ++ (1 :: (j ++ (1 :: (s ++ ([1])))))))))
+      (hdR Q.GRB (Gp ++ (1 :: (j ++ (1 :: (s ++ (1 :: (1 :: (3 :: ([1]))))))))) ([])) := by
+  have hV : Valid [NB, NB, B0, bits, bits] [Lc, Mr, Gp, j, s] := Valid.cons hLc (Valid.cons hMr (Valid.cons hGp (Valid.cons hj (Valid.cons hs (Valid.nil _)))))
+  exact checkFF (env := [Lc, Mr, Gp, j, s]) (E := []) (k := 17) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 0, .blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1])
+    (ls' := [.blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .sym 1, .sym 3, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 
 end ZP.F
