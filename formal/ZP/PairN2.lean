@@ -171,4 +171,192 @@ theorem copyW (B : List Nat) (hB : NoB B) (s : Nat) :
   have h3 := cpEndW B hB s
   exact (h1.of_eq (by simp) rfl).trans (h2.trans h3)
 
+theorem reach_trans_eq {a b c d : ZC} (h1 : znttLogic.Reach a b) (h2 : znttLogic.Reach c d) (e : b = c) :
+    znttLogic.Reach a d := by
+  subst e; exact h1.trans h2
+
+theorem hd_trail (q : Nat) (A X : List Nat) : hd q A (X ++ [0]) = hd q A X := by
+  rw [hd_eq', hd_eq', ZP.sapp_append]
+  have h0 : sapp [0] blank = blank := ZP.F.sapp_zeros 1
+  rw [h0]
+
+/-! ## One record: header, three copies of `P`, one copy of `W` -/
+
+/-- A new header `MM 0 1 0` is appended behind the records, the head goes to the first cell of `K`. -/
+theorem recHdr (w p cA cM nA nM : Nat) (Rs : List Nat) (hRs : NoB Rs) :
+    znttLogic.Reach
+      (hd QN.RN2 (List.replicate w 3 ++ 1 :: List.replicate p 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate cA 3 ++ List.replicate cM 2)
+        ++ 1 :: (List.replicate nA 3 ++ [3] ++ List.replicate nM 2)) Rs)
+      (hdR QN.KX2 (List.replicate w 3 ++ 1 :: List.replicate p 3 ++ [1])
+        ([3, 3, 3] ++ 1 :: (List.replicate cA 3 ++ List.replicate cM 2)
+        ++ 1 :: (List.replicate nA 3 ++ [2] ++ List.replicate nM 2) ++ Rs ++ [1, 1, 2, 3, 2])) := by
+  have hV : Valid [T3, T3, T3, Mk, T3, Mk, NB]
+      [List.replicate w 3, List.replicate p 3, List.replicate cA 3, List.replicate cM 2, List.replicate nA 3,
+        List.replicate nM 2, Rs] :=
+    Valid.cons (rep_t3 w) (Valid.cons (rep_t3 p) (Valid.cons (rep_t3 cA) (Valid.cons (rep2_mk cM)
+      (Valid.cons (rep_t3 nA) (Valid.cons (rep2_mk nM) (Valid.cons hRs (Valid.nil _)))))))
+  have : znttLogic.Reach
+      (hd QN.RN2 (List.replicate w 3 ++ [1] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ List.replicate cA 3 ++ List.replicate cM 2
+        ++ [1] ++ List.replicate nA 3 ++ [3] ++ List.replicate nM 2) Rs)
+      (hdR QN.KX2 (List.replicate w 3 ++ [1] ++ List.replicate p 3 ++ [1])
+        ([3, 3, 3, 1] ++ List.replicate cA 3 ++ List.replicate cM 2
+        ++ [1] ++ List.replicate nA 3 ++ [2] ++ List.replicate nM 2 ++ Rs ++ [1, 1, 2, 3, 2])) :=
+    checkTF (env := [List.replicate w 3, List.replicate p 3, List.replicate cA 3, List.replicate cM 2,
+        List.replicate nA 3, List.replicate nM 2, Rs]) (E := []) (k := 300) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .blk 2 .id, .blk 3 .id,
+        .sym 1, .blk 4 .id, .sym 3, .blk 5 .id])
+      (rs := [.blk 6 .id])
+      (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1])
+      (rs' := [.sym 3, .sym 3, .sym 3, .sym 1, .blk 2 .id, .blk 3 .id, .sym 1, .blk 4 .id, .sym 2, .blk 5 .id,
+        .blk 6 .id, .sym 1, .sym 1, .sym 2, .sym 3, .sym 2])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.append_assoc]) (by simp [List.append_assoc])
+
+/-- Entry of one `P`-copy: mark the next cell of `K`, open a new field, mark the first cell of `P`. -/
+theorem kEntry (w s k m : Nat) (T : List Nat) (hT : NoB T) :
+    znttLogic.Reach
+      (hdR QN.KX2 (List.replicate w 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1])
+        (List.replicate k 2 ++ 3 :: List.replicate m 3 ++ 1 :: T))
+      (hdR QN.SW3 (List.replicate w 3 ++ [1] ++ [2])
+        (List.replicate (s + 1) 3 ++ 1 :: (List.replicate k 2 ++ 2 :: List.replicate m 3 ++ 1 :: T) ++ [1])) := by
+  have hV : Valid [T3, T3, Mk, T3, NB]
+      [List.replicate w 3, List.replicate s 3, List.replicate k 2, List.replicate m 3, T] :=
+    Valid.cons (rep_t3 w) (Valid.cons (rep_t3 s) (Valid.cons (rep2_mk k) (Valid.cons (rep_t3 m)
+      (Valid.cons hT (Valid.nil _)))))
+  have : znttLogic.Reach
+      (hdR QN.KX2 (List.replicate w 3 ++ [1] ++ [3, 3] ++ List.replicate s 3 ++ [1])
+        (List.replicate k 2 ++ [3] ++ List.replicate m 3 ++ [1] ++ T))
+      (hdR QN.SW3 (List.replicate w 3 ++ [1] ++ [2])
+        ([3] ++ List.replicate s 3 ++ [1] ++ List.replicate k 2 ++ [2] ++ List.replicate m 3 ++ [1] ++ T ++ [1])) :=
+    checkFF (env := [List.replicate w 3, List.replicate s 3, List.replicate k 2, List.replicate m 3, T])
+      (E := []) (k := 300) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .sym 3, .sym 3, .blk 1 .id, .sym 1])
+      (rs := [.blk 2 .id, .sym 3, .blk 3 .id, .sym 1, .blk 4 .id])
+      (ls' := [.blk 0 .id, .sym 1, .sym 2])
+      (rs' := [.sym 3, .blk 1 .id, .sym 1, .blk 2 .id, .sym 2, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  refine this.of_eq (by simp [List.replicate_succ, List.append_assoc]) ?_
+  simp [List.replicate_succ, List.append_assoc]
+
+theorem skipP (w s : Nat) (X : List Nat) (hX : NoB X) :
+    znttLogic.Reach
+      (hdR QN.KX1 (List.replicate w 3 ++ [1]) (List.replicate (s + 2) 3 ++ 1 :: X))
+      (hdR QN.KX2 (List.replicate w 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1]) X) := by
+  have hV : Valid [T3, T3, NB] [List.replicate w 3, List.replicate s 3, X] :=
+    Valid.cons (rep_t3 w) (Valid.cons (rep_t3 s) (Valid.cons hX (Valid.nil _)))
+  have : znttLogic.Reach
+      (hdR QN.KX1 (List.replicate w 3 ++ [1]) ([3, 3] ++ List.replicate s 3 ++ [1] ++ X))
+      (hdR QN.KX2 (List.replicate w 3 ++ [1] ++ [3, 3] ++ List.replicate s 3 ++ [1]) X) :=
+    checkFF (env := [List.replicate w 3, List.replicate s 3, X]) (E := []) (k := 100) hV trivial
+      (ls := [.blk 0 .id, .sym 1]) (rs := [.sym 3, .sym 3, .blk 1 .id, .sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .sym 1, .sym 3, .sym 3, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  refine this.of_eq (by simp [List.replicate_succ, List.append_assoc]) ?_
+  simp [List.replicate_succ, List.append_assoc]
+
+theorem noB_rep (k a : Nat) (h : a ∈ NB) : NoB (List.replicate k a) := fun x hx => by
+  rw [List.eq_of_mem_replicate hx]; exact h
+
+theorem noB_app {u v : List Nat} (hu : NoB u) (hv : NoB v) : NoB (u ++ v) := fun x hx => by
+  rcases List.mem_append.1 hx with h | h
+  · exact hu x h
+  · exact hv x h
+
+/-- One `P`-copy: the next cell of `K` is marked and a copy of `P` is appended. -/
+theorem kIter (w s k m : Nat) (T : List Nat) (hT : NoB T) :
+    znttLogic.Reach
+      (hdR QN.KX2 (List.replicate w 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1])
+        (List.replicate k 2 ++ 3 :: List.replicate m 3 ++ 1 :: T))
+      (hdR QN.KX2 (List.replicate w 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1])
+        (List.replicate (k + 1) 2 ++ List.replicate m 3 ++ 1 :: T ++ [1, 3] ++ List.replicate (s + 1) 2)) := by
+  have hB : NoB (List.replicate k 2 ++ 2 :: List.replicate m 3 ++ 1 :: T) := by
+    intro x hx
+    simp only [List.mem_append, List.mem_cons, List.mem_replicate] at hx
+    rcases hx with (⟨_, rfl⟩ | rfl | ⟨_, rfl⟩) | rfl | hx
+    · simp [NB]
+    · simp [NB]
+    · simp [NB]
+    · simp [NB]
+    · exact hT x hx
+  have h1 := kEntry w s k m T hT
+  have h2 := copyP (List.replicate w 3) (List.replicate k 2 ++ 2 :: List.replicate m 3 ++ 1 :: T)
+    (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [O13]) hB s
+  have hX : NoB (List.replicate k 2 ++ 2 :: List.replicate m 3 ++ 1 :: T ++ [1, 3] ++ List.replicate (s + 1) 2) := by
+    refine noB_app (noB_app hB (fun x hx => ?_)) (noB_rep _ _ (by simp [NB]))
+    simp at hx; rcases hx with rfl | rfl <;> simp [NB]
+  have h3 := skipP w s _ hX
+  refine h1.trans (h2.trans (h3.of_eq ?_ ?_))
+  · simp [List.append_assoc]
+  · simp [List.replicate_succ', List.append_assoc]
+
+/-- `K` has been used up: restore it, mark the first cell of `W` to copy it. -/
+theorem kEnd (u s : Nat) (T : List Nat) (hT : NoB T) :
+    znttLogic.Reach
+      (hdR QN.KX2 (List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1]) ([2, 2, 2] ++ 1 :: T))
+      (hdR QN.SW3 [2]
+        (List.replicate (u + 1) 3 ++ 1 :: (List.replicate (s + 2) 3 ++ [1, 3, 3, 3, 1] ++ T) ++ [1])) := by
+  have hV : Valid [T3, T3, NB] [List.replicate u 3, List.replicate s 3, T] :=
+    Valid.cons (rep_t3 u) (Valid.cons (rep_t3 s) (Valid.cons hT (Valid.nil _)))
+  have : znttLogic.Reach
+      (hdR QN.KX2 ([3, 3] ++ List.replicate u 3 ++ [1] ++ [3, 3] ++ List.replicate s 3 ++ [1]) ([2, 2, 2, 1] ++ T))
+      (hdR QN.SW3 [2]
+        ([3] ++ List.replicate u 3 ++ [1] ++ [3, 3] ++ List.replicate s 3 ++ [1, 3, 3, 3, 1] ++ T ++ [1])) :=
+    checkFF (env := [List.replicate u 3, List.replicate s 3, T]) (E := []) (k := 300) hV trivial
+      (ls := [.sym 3, .sym 3, .blk 0 .id, .sym 1, .sym 3, .sym 3, .blk 1 .id, .sym 1])
+      (rs := [.sym 2, .sym 2, .sym 2, .sym 1, .blk 2 .id])
+      (ls' := [.sym 2])
+      (rs' := [.sym 3, .blk 0 .id, .sym 1, .sym 3, .sym 3, .blk 1 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1,
+        .blk 2 .id, .sym 1])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  refine this.of_eq (by simp [List.replicate_succ, List.append_assoc]) ?_
+  simp [List.replicate_succ, List.append_assoc]
+
+theorem noB_nil : NoB [] := fun x hx => by simp at hx
+
+theorem noB_cons' {a : Nat} {l : List Nat} (ha : a ∈ NB) (h : NoB l) : NoB (a :: l) := fun x hx => by
+  rcases List.mem_cons.1 hx with rfl | hx
+  · exact ha
+  · exact h x hx
+
+macro "noB_tac" : tactic =>
+  `(tactic| repeat (first | assumption | exact noB_nil | apply noB_cons' (by simp [NB]) | apply noB_app | apply noB_rep _ _ (by simp [NB]) | exact noB_Fld _))
+
+/-- A copy field of width `s + 2`: `M 1 0^(s+1)`. -/
+def Fld (s : Nat) : List Nat := [1, 3] ++ List.replicate (s + 1) 2
+
+theorem noB_Fld (s : Nat) : NoB (Fld s) := by
+  intro x hx
+  simp only [Fld, List.mem_append, List.mem_cons, List.mem_replicate] at hx
+  rcases hx with (h | h) | ⟨_, h⟩ <;> simp_all [NB]
+
+/-- The whole record: header and four fields. -/
+def Rec3 (o s u : Nat) : List Nat := [1, 1, 2, o, 2] ++ Fld s ++ Fld s ++ Fld s ++ Fld u
+
+theorem recBuild (u s cA cM nA nM : Nat) (Rs : List Nat) (hRs : NoB Rs) :
+    znttLogic.Reach
+      (hd QN.RN2 (List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate cA 3 ++ List.replicate cM 2)
+        ++ 1 :: (List.replicate nA 3 ++ [3] ++ List.replicate nM 2)) Rs)
+      (hdR QN.RN0 [3] (List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate cA 3 ++ List.replicate cM 2)
+        ++ 1 :: (List.replicate nA 3 ++ [2] ++ List.replicate nM 2) ++ Rs ++ Rec3 3 s u)) := by
+  have hT0 : NoB ((List.replicate cA 3 ++ List.replicate cM 2) ++ 1 :: (List.replicate nA 3 ++ [2] ++ List.replicate nM 2)
+      ++ Rs ++ [1, 1, 2, 3, 2]) := by noB_tac
+  have hF : NoB (Fld s) := noB_Fld s
+  have hT1 : NoB (((List.replicate cA 3 ++ List.replicate cM 2) ++ 1 :: (List.replicate nA 3 ++ [2] ++ List.replicate nM 2)
+      ++ Rs ++ [1, 1, 2, 3, 2]) ++ Fld s) := by noB_tac
+  have hT2 : NoB (((List.replicate cA 3 ++ List.replicate cM 2) ++ 1 :: (List.replicate nA 3 ++ [2] ++ List.replicate nM 2)
+      ++ Rs ++ [1, 1, 2, 3, 2]) ++ Fld s ++ Fld s) := by noB_tac
+  have hT3 : NoB (((List.replicate cA 3 ++ List.replicate cM 2) ++ 1 :: (List.replicate nA 3 ++ [2] ++ List.replicate nM 2)
+      ++ Rs ++ [1, 1, 2, 3, 2]) ++ Fld s ++ Fld s ++ Fld s) := by noB_tac
+  have h0 := recHdr (u + 2) (s + 2) cA cM nA nM Rs hRs
+  have h1 := kIter (u + 2) s 0 2 _ hT0
+  have h2 := kIter (u + 2) s 1 1 _ hT1
+  have h3 := kIter (u + 2) s 2 0 _ hT2
+  have h4 := kEnd u s _ hT3
+  have h5 := copyW (List.replicate (s + 2) 3 ++ [1, 3, 3, 3, 1] ++ (((List.replicate cA 3 ++ List.replicate cM 2)
+      ++ 1 :: (List.replicate nA 3 ++ [2] ++ List.replicate nM 2) ++ Rs ++ [1, 1, 2, 3, 2]) ++ Fld s ++ Fld s ++ Fld s))
+    (by noB_tac) u
+  refine reach_trans_eq (reach_trans_eq (reach_trans_eq (reach_trans_eq (reach_trans_eq h0 h1 ?_) h2 ?_) h3 ?_) h4 ?_) h5 ?_
+    |>.of_eq ?_ ?_
+  all_goals simp [Fld, Rec3, List.replicate_succ, List.append_assoc]
+
 end ZP.N
