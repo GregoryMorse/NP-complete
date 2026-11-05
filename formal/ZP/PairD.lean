@@ -1545,4 +1545,118 @@ theorem mulPhase (p y g : Nat) (hp : 1 ≤ p) (R : List Nat) (hR : Sym4 R) :
   rw [this, Nat.zero_add, Nat.mul_comm g y]
   simp
 
+
+/-! ## The discrete-log loop -/
+
+/-- Back to the start of `Y`. -/
+theorem qlSweepG (X : List Nat) (R : List Nat) (hX : NoB X) (hR : Sym4 R) :
+    zdlLogic.Reach (hd QD.QL (X) (R))
+      (hdR QD.Q1 ([]) (X ++ (R))) := by
+  have hV : Valid [NB, ALL] [X, R] := Valid.cons hX (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [X, R]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+theorem qlSweep (X R : List Nat) (hX : NoB X) (hR : Sym4 R) :
+    zdlLogic.Reach (hd QD.QL X R) (hdR QD.Q1 [] (X ++ R)) := qlSweepG X R hX hR
+
+theorem dlogStep (p g h : Nat) (R : List Nat) (hR : Sym4 R) (n e y : Nat)
+    (hcont : ∀ Yk Hk : List Nat, Bits Yk → Bits Hk → Yk.length = y → Hk.length = h → y ≠ h →
+      ∃ L Mr, NoB L ∧ NoB Mr ∧
+        zdlLogic.Reach
+          (hdR QD.KD (Yk ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 :: (Hk ++ [1]))))
+            (List.replicate e 2 ++ (List.replicate n 3 ++ 1 :: R)))
+          (hdR (if dlogLoop n (y * g % p) g h p then QF.FR1 else QF.FR0) L (Mr ++ R))) :
+    ∃ L Mr, NoB L ∧ NoB Mr ∧
+      zdlLogic.Reach
+        (hdR QD.Q1 [] (List.replicate y 3 ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 ::
+          (List.replicate h 3 ++ 1 :: (List.replicate e 2 ++ (List.replicate n 3 ++ 1 :: R)))))))
+        (hdR (if dlogLoop (n + 1) y g h p then QF.FR1 else QF.FR0) L (Mr ++ R)) := by
+  have hK : Sym4 (List.replicate e 2 ++ (List.replicate n 3 ++ 1 :: R)) :=
+    (Sym4.rep e 2 (by simp [ALL])).app ((Sym4.rep n 3 (by simp [ALL])).app
+      (Sym4.cons (by simp [ALL]) hR))
+  obtain ⟨c1, c2, c3⟩ := cmpLoop (List.replicate p 3) (List.replicate g 3) _ (rep_t3 p) (rep_t3 g) hK y h 0
+  have noB2 : ∀ k, NoB (List.replicate k 2) := fun k => (Bits_rep2 k).noB
+  have noB3 : ∀ k, NoB (List.replicate k 3) := fun k => t3_noB (rep_t3 k)
+  by_cases hyh : y = h
+  · subst hyh
+    have h1 := c1 rfl
+    have hfl : dlogLoop (n + 1) y g y p = true := by simp [dlogLoop]
+    rw [hfl]
+    refine ⟨List.replicate (0 + y) 2 ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 ::
+      (List.replicate (0 + y) 2 ++ [1]))), List.replicate e 2 ++ (List.replicate n 3 ++ [1]),
+      (noB2 _).app (NoB.cons one_nb ((noB3 _).app (NoB.cons one_nb ((noB3 _).app (NoB.cons one_nb
+        ((noB2 _).app (NoB.cons one_nb NoB.nil))))))),
+      (noB2 _).app ((noB3 _).app (NoB.cons one_nb NoB.nil)), ?_⟩
+    refine (h1.of_eq (by simp) ?_)
+    simp
+  · have hfl : dlogLoop (n + 1) y g h p = dlogLoop n (y * g % p) g h p := by simp [dlogLoop, hyh]
+    rw [hfl]
+    rcases Nat.lt_or_gt_of_ne hyh with hlt | hgt
+    · have h3 := c3 hlt
+      obtain ⟨L, Mr, hL, hMr, hR⟩ := hcont (List.replicate (0 + y) 2)
+        (List.replicate (0 + y) 2 ++ List.replicate (h - y) 3) (Bits_rep2 _)
+        (fun a ha => by
+          rcases List.mem_append.mp ha with h | h <;> rw [List.eq_of_mem_replicate h] <;> simp [bits])
+        (by simp) (by simp; omega) hyh
+      exact ⟨L, Mr, hL, hMr, h3.trans (hR.of_eq (by simp) rfl)⟩
+    · have h2 := c2 hgt
+      obtain ⟨L, Mr, hL, hMr, hR⟩ := hcont (List.replicate (0 + h + 1) 2 ++ List.replicate (y - h - 1) 3)
+        (List.replicate (0 + h) 2)
+        (fun a ha => by
+          rcases List.mem_append.mp ha with h | h <;> rw [List.eq_of_mem_replicate h] <;> simp [bits])
+        (Bits_rep2 _) (by simp; omega) (by simp) hyh
+      exact ⟨L, Mr, hL, hMr, h2.trans (hR.of_eq (by simp) rfl)⟩
+
+theorem dlogMain (p g h : Nat) (hp : 1 ≤ p) (R : List Nat) (hR : Sym4 R) : ∀ (n e y : Nat),
+    ∃ L Mr, NoB L ∧ NoB Mr ∧
+      zdlLogic.Reach
+        (hdR QD.Q1 [] (List.replicate y 3 ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 ::
+          (List.replicate h 3 ++ 1 :: (List.replicate e 2 ++ (List.replicate n 3 ++ 1 :: R)))))))
+        (hdR (if dlogLoop (n + 1) y g h p then QF.FR1 else QF.FR0) L (Mr ++ R)) := by
+  intro n
+  induction n with
+  | zero =>
+    intro e y
+    refine dlogStep p g h R hR 0 e y ?_
+    intro Yk Hk hY hH hYl hHl hne
+    have h1 := kEnd Yk (List.replicate p 3) (List.replicate g 3) Hk (List.replicate e 2) R hY (rep_t3 p)
+      (rep_t3 g) hH (rep_z2 e) hR
+    refine ⟨Yk ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 :: (Hk ++ 1 ::
+      (List.replicate e 2 ++ [1])))), [], ?_, NoB.nil, ?_⟩
+    · exact hY.noB.app (NoB.cons one_nb ((t3_noB (rep_t3 p)).app (NoB.cons one_nb ((t3_noB (rep_t3 g)).app
+        (NoB.cons one_nb (hH.noB.app (NoB.cons one_nb ((Bits_rep2 e).noB.app (NoB.cons one_nb NoB.nil)))))))))
+    · simp only [dlogLoop, Bool.false_eq_true, ↓reduceIte]
+      refine h1.of_eq (by simp) ?_
+      simp
+  | succ n ih =>
+    intro e y
+    refine dlogStep p g h R hR (n + 1) e y ?_
+    intro Yk Hk hY hH hYl hHl hne
+    have h1 := kStep Yk (List.replicate p 3) (List.replicate g 3) Hk (List.replicate e 2)
+      (List.replicate n 3) R hY (rep_t3 p) (rep_t3 g) hH (rep_z2 e) (rep_t3 n) hR
+    have hR' : Sym4 (List.replicate h 3 ++ 1 :: (List.replicate e 2 ++ 2 :: (List.replicate n 3 ++ 1 :: R))) :=
+      (Sym4.rep h 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) ((Sym4.rep e 2 (by simp [ALL])).app
+        (Sym4.cons (by simp [ALL]) ((Sym4.rep n 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hR)))))
+    have h2 := mulPhase p y g hp _ hR'
+    have hX : NoB (List.replicate ((y * g) % p) 3 ++ 1 :: List.replicate p 3) :=
+      (t3_noB (rep_t3 _)).app (NoB.cons one_nb (t3_noB (rep_t3 p)))
+    have hR2 : Sym4 (1 :: (List.replicate g 3 ++ 1 :: (List.replicate h 3 ++ 1 :: (List.replicate e 2 ++
+        2 :: (List.replicate n 3 ++ 1 :: R))))) :=
+      Sym4.cons (by simp [ALL]) ((Sym4.rep g 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hR'))
+    have h3 := qlSweep _ _ hX hR2
+    obtain ⟨L, Mr, hL, hMr, h4⟩ := ih (e + 1) ((y * g) % p)
+    refine ⟨L, Mr, hL, hMr, ?_⟩
+    have h1' : zdlLogic.Reach (hdR QD.KD (Yk ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 ::
+          (Hk ++ [1])))) (List.replicate e 2 ++ (List.replicate (n + 1) 3 ++ 1 :: R)))
+        (hdR QD.O1 [] (List.replicate y 3 ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 ::
+          (List.replicate h 3 ++ 1 :: (List.replicate e 2 ++ 2 :: (List.replicate n 3 ++ 1 :: R))))))) :=
+      h1.of_eq (by simp [List.replicate_succ]) (by simp [hYl, hHl])
+    have h4' := h4.of_eq (c3 := hdR QD.Q1 [] (List.replicate ((y * g) % p) 3 ++ 1 :: (List.replicate p 3 ++ 1 ::
+      (List.replicate g 3 ++ 1 :: (List.replicate h 3 ++ 1 :: (List.replicate e 2 ++ 2 :: (List.replicate n 3 ++ 1 :: R)))))))
+      (by simp [List.replicate_succ']) rfl
+    exact h1'.trans (h2.trans (h3.trans (h4'.of_eq (by simp) rfl)))
+
 end ZP.D
