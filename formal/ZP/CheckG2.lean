@@ -164,4 +164,69 @@ theorem rowIterA (ms : List Nat) (ws xs : List (List Nat)) (Rt : List Nat)
     simp [List.replicate_succ, List.append_assoc]
   exact (((h1.of_eq rfl (by rw [e1])).trans h2).trans h3).trans (h4.of_eq rfl (by simp [List.append_assoc]))
 
+/-- The whole row part: `m` iterations, each passing `nn = a - 1` entries of `H`. -/
+theorem rowLoop (ms : List Nat) (ws xs : List (List Nat)) (Rt : List Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ []) (hR : Sym4 Rt)
+    (nn : Nat) : ∀ (p i n q : Nat) (pasT HU : List (List Nat)), i + n = nn →
+    (∀ t ∈ pasT, Bits t) → (∀ t ∈ HU, Bits t) → (p + 1) * nn ≤ HU.length →
+    zgiLogic.Reach
+      (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt)))))
+      (hd QG.gGL (MEnc ms ++ List.replicate nn 2 ++ 3 :: 1 :: MEs ws)
+        (1 :: (List.replicate (p + q + 1) 2 ++ 1 :: (MEs xs ++ 1 ::
+          (MP (pasT ++ HU.take ((p + 1) * nn)) ++ MU (HU.drop ((p + 1) * nn)) ++ Rt))))) := by
+  intro p
+  induction p with
+  | zero =>
+    intro i n q pasT HU hin hp hh hlen
+    subst hin
+    have h1 := rowIterA ms ws xs Rt hms hws hxs hR i n 0 q pasT HU hp hh (by simpa using hlen)
+    have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+    have hp' : ∀ t ∈ pasT ++ HU.take (i + n), Bits t := by
+      intro t ht
+      rcases List.mem_append.1 ht with h | h
+      · exact hp t h
+      · exact hh t (List.mem_of_mem_take h)
+    have hh' : ∀ t ∈ HU.drop (i + n), Bits t := fun t ht => hh t (List.mem_of_mem_drop ht)
+    have hS : Sym4 (MEs xs ++ 1 :: (MP (pasT ++ HU.take (i + n)) ++ MU (HU.drop (i + n)) ++ Rt)) :=
+      sX.app (Sym4.cons (by simp [ALL]) (((MP_sym4 _ hp').app (MU_sym4 _ hh')).app hR))
+    have hP : Sym4 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: (MEs ws ++ [1])) := by
+      have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+      exact (((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])).app
+        (Sym4.cons (by simp [ALL]) (sW.app (by simp [ALL])))
+    have h2 := (gd2Row _ hS q 0 _ hP).2 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: MEs ws) rfl (by simp)
+    simp only [List.replicate, List.nil_append] at h1
+    have := h1.trans h2
+    simpa [Nat.zero_add, Nat.one_mul, List.append_assoc] using this
+  | succ p ih =>
+    intro i n q pasT HU hin hp hh hlen
+    subst hin
+    have h1 := rowIterA ms ws xs Rt hms hws hxs hR i n (p + 1) q pasT HU hp hh (by
+      have : i + n ≤ (p + 1 + 1) * (i + n) := Nat.le_mul_of_pos_left _ (by omega)
+      omega)
+    have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+    have hp' : ∀ t ∈ pasT ++ HU.take (i + n), Bits t := by
+      intro t ht
+      rcases List.mem_append.1 ht with h | h
+      · exact hp t h
+      · exact hh t (List.mem_of_mem_take h)
+    have hh' : ∀ t ∈ HU.drop (i + n), Bits t := fun t ht => hh t (List.mem_of_mem_drop ht)
+    have hS : Sym4 (MEs xs ++ 1 :: (MP (pasT ++ HU.take (i + n)) ++ MU (HU.drop (i + n)) ++ Rt)) :=
+      sX.app (Sym4.cons (by simp [ALL]) (((MP_sym4 _ hp').app (MU_sym4 _ hh')).app hR))
+    have hP : Sym4 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: (MEs ws ++ [1])) := by
+      have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+      exact (((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])).app
+        (Sym4.cons (by simp [ALL]) (sW.app (by simp [ALL])))
+    have h2 := (gd2Row _ hS q (p + 1) _ hP).1 p rfl
+    have h3 := ih (i + n) 0 (q + 1) (pasT ++ HU.take (i + n)) (HU.drop (i + n)) (by omega) hp' hh' (by
+      rw [List.length_drop]
+      have : (p + 1 + 1) * (i + n) = (p + 1) * (i + n) + (i + n) := by rw [Nat.succ_mul]
+      omega)
+    have e1 : (p + 1 + 1) * (i + n) = (i + n) + (p + 1) * (i + n) := by
+      rw [Nat.succ_mul, Nat.add_comm]
+    have e2 : p + 1 + q + 1 = p + (q + 1) + 1 := by omega
+    rw [e1, e2, List.take_add]
+    refine ((h1.trans h2).trans (h3.of_eq (by simp [List.append_assoc]) rfl)).of_eq rfl ?_
+    simp [MP_append, List.append_assoc, List.drop_drop, Nat.add_comm]
+
 end ZP.G
