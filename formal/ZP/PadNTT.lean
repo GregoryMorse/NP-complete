@@ -186,4 +186,72 @@ theorem padVals (t p n : Nat) (hp : 0 < p) (hn : 1 ≤ n) (ht : t < n) (recs : L
   exact valsAux_shift t p n _ ht (recs.drop n) n V0 (Nat.le_refl _) hlen0 (by
     rw [List.take_of_length_le (by omega)])
 
+theorem padRecs_length (n : Nat) (recs : List Rec) (h : n ≤ recs.length) :
+    (padRecs n recs).length = recs.length + n := by
+  simp [padRecs]; omega
+
+theorem padRecs_zs (n : Nat) (recs : List Rec) (h : 2 * n ≤ recs.length) :
+    ((padRecs n recs).drop ((padRecs n recs).length - n)).map Prod.snd =
+      (recs.drop (recs.length - n)).map Prod.snd := by
+  rw [padRecs_length n recs (by omega)]
+  have e : recs.length + n - n = (recs.take n ++ List.replicate n ((none : Option Nat), 0)).length +
+      (recs.length - 2 * n) := by simp; omega
+  unfold padRecs
+  rw [e, List.drop_append]
+  have hm : min n recs.length = n := by omega
+  simp only [List.length_append, List.length_take, List.length_replicate, hm]
+  rw [List.drop_of_length_le (by simp [hm])]
+  rw [show n + n + (recs.length - 2 * n) - (n + n) = recs.length - 2 * n by omega]
+  rw [List.nil_append, ← List.map_drop, List.map_map, List.drop_drop]
+  have e2 : n + (recs.length - 2 * n) = recs.length - n := by omega
+  rw [e2]
+  have : (Prod.snd ∘ shiftRec n) = (Prod.snd : Rec → Nat) := by funext r; rfl
+  rw [this]
+
+theorem evalPass_pad (n p : Nat) (hp : 0 < p) (hn : 1 ≤ n) (recs : List Rec) (h : 2 * n ≤ recs.length)
+    (t : Nat) (ht : t < n) (E : List Nat) :
+    evalPass n p (padRecs n recs) t E = evalPass n p recs t E := by
+  have hv := padVals t p n hp hn ht recs (by omega)
+  have hlen : (valsAux t p 0 recs []).length = recs.length := by rw [valsAux_len]; simp
+  have hzs := padRecs_zs n recs h
+  have hpl := padRecs_length n recs (by omega)
+  unfold evalPass
+  simp only [hzs]
+  simp only [hv, hpl, show recs.length + n - n = recs.length by omega]
+  have hk : ∀ k, k < n → (insN n ((valsAux t p 0 (recs.take n) []).getLastD 0) (valsAux t p 0 recs [])).getD
+      (recs.length + k) 0 = (valsAux t p 0 recs []).getD (recs.length - n + k) 0 := by
+    intro k hk
+    rw [show recs.length + k = (recs.length - n + k) + n by omega]
+    exact insN_getD_ge n _ _ _ (by omega) (by omega)
+  have hall : ((List.range n).all fun k => (insN n ((valsAux t p 0 (recs.take n) []).getLastD 0)
+        (valsAux t p 0 recs [])).getD (recs.length + k) 0 == E.getD k 0)
+      = (List.range n).all fun k => (valsAux t p 0 recs []).getD (recs.length - n + k) 0 == E.getD k 0 := by
+    apply Bool.eq_iff_iff.2
+    simp only [List.all_eq_true, List.mem_range, beq_iff_eq]
+    constructor
+    · intro hh k hk'; rw [← hk k hk']; exact hh k hk'
+    · intro hh k hk'; rw [hk k hk']; exact hh k hk'
+  rw [hall]
+
+theorem evalC_pad (n p : Nat) (hp : 0 < p) (hn : 1 ≤ n) (recs : List Rec) (h : 2 * n ≤ recs.length) :
+    evalC n p (padRecs n recs) = evalC n p recs := by
+  unfold evalC
+  have : ∀ (l : List Nat), (∀ t ∈ l, t < n) → ∀ st : Option (List Nat),
+      l.foldl (fun st t => st.bind fun E => evalPass n p (padRecs n recs) t E) st
+        = l.foldl (fun st t => st.bind fun E => evalPass n p recs t E) st := by
+    intro l
+    induction l with
+    | nil => intros; rfl
+    | cons t l ih =>
+      intro hl st
+      simp only [List.foldl_cons]
+      have ht : t < n := hl t (List.mem_cons_self ..)
+      have : (st.bind fun E => evalPass n p (padRecs n recs) t E) = st.bind fun E => evalPass n p recs t E := by
+        cases st with
+        | none => rfl
+        | some E => exact evalPass_pad n p hp hn recs h t ht E
+      rw [this]
+      exact ih (fun x hx => hl x (List.mem_cons_of_mem _ hx)) _
+  rw [this (List.range n) (fun t ht => List.mem_range.1 ht)]
+
 end ZP
