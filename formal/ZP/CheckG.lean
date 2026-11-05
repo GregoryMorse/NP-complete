@@ -247,4 +247,67 @@ theorem lblMarkO (P R : List Nat) (j : Nat) (hP : Sym4 P) (hR : Sym4 R) :
         (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
     exact this.of_eq (by simp [List.replicate_succ]) (by rw [rep_cons_snoc])
 
+theorem lpMore (q : Nat) (hq : q = QG.gLPe ∨ q = QG.gLPo) (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR q P (3 :: R)) (hd QG.gLW1 P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  rcases hq with rfl | rfl <;>
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem lpEndE (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gLPe P (1 :: R)) (hd QG.gM1 P (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem lpEndO (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gLPo P (1 :: R)) (hd QG.gIL0 P (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem lw1Walk (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gLW1 A R) (hdR QG.gLW2b [0] (A ++ R)) := by
+  have hV : Valid [NB, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id]) (ls' := [.sym 0]) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem lw2bSkip (P R : List Nat) (e : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gLW2b P (List.replicate (e + 1) 2 ++ 1 :: R))
+      (hdR QG.gLW2b (P ++ (List.replicate (e + 1) 2 ++ [1])) R) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate e 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk e) (Valid.cons hR (Valid.nil _)))
+  have : zgiLogic.Reach (hdR QG.gLW2b P (2 :: (List.replicate e 2 ++ 1 :: R)))
+      (hdR QG.gLW2b (P ++ 2 :: (List.replicate e 2 ++ [1])) R) :=
+    checkFF (env := [P, List.replicate e 2, R]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ]) (by simp [List.replicate_succ])
+
+theorem lw2bFail (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gLW2b P (1 :: R)) (hdR QG.gFG (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The first unmarked entry of `w` is marked completely. -/
+theorem lw2bMark (P R : List Nat) (v : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gLW2b P (List.replicate (v + 1) 3 ++ 1 :: R))
+      (hdR QG.gCX2 (P ++ (List.replicate (v + 1) 2 ++ [1])) R) := by
+  have hV : Valid [ALL, T3, ALL] [P, List.replicate v 3, R] :=
+    Valid.cons hP (Valid.cons (rep_t3 v) (Valid.cons hR (Valid.nil _)))
+  have : zgiLogic.Reach (hdR QG.gLW2b P (3 :: (List.replicate v 3 ++ 1 :: R)))
+      (hdR QG.gCX2 (P ++ 2 :: (List.replicate v 2 ++ [1])) R) :=
+    checkFF (env := [P, List.replicate v 3, R]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id, .sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .sym 2, .blk 1 (.const 2), .sym 1]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ]) (by simp [List.replicate_succ])
+
 end ZP.G
