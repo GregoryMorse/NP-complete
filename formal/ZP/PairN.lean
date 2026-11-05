@@ -438,4 +438,95 @@ theorem dStepA (d p : Nat) (hd : 2 ≤ d) (hdv : p % d = 0) (R : List Nat) (hR :
       rcases ha with rfl | ⟨-, rfl⟩ | rfl <;> simp [ZP.F.B0])
   simpa using this
 
+/-- `d = 2` does not divide `p`: the divisor reaches `1`, `p` is prime. -/
+theorem dStepB (p : Nat) (hdv : p % 2 ≠ 0) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (TD 2 p R) (hd QN.WX [0, 0, 3] (1 :: List.replicate p 3 ++ 1 :: R)) := by
+  have h1 := xLoop 2 p (Nat.le_refl _) R hR p 0 (by omega)
+  have hr : p % 2 = 1 := by omega
+  have h2 := xEnd (p % 2) (2 - p % 2) p R hR
+  rw [hr] at h2
+  have h3 := xdMarked 0 1 p R hR
+  have h4 := xs2Dec2 2 3 (List.replicate p 3 ++ 1 :: R) (by simp [bits]) (by simp [bits]) (by simp [ALL, hR])
+  have e1 : hdR QN.X4 (Dm 2 0) (List.replicate 0 2 ++ List.replicate (p - 0) 3 ++ 1 :: R) = TD 2 p R := by
+    simp [Dm, TD]
+  rw [e1] at h1
+  have e2 : hdR QN.X4 (Dm 2 p) (List.replicate p 2 ++ 1 :: R)
+      = hdR QN.X4 ([0] ++ List.replicate 1 2 ++ List.replicate (2 - 1) 3 ++ [1]) (List.replicate p 2 ++ 1 :: R) := by
+    simp [Dm, hr]
+  rw [e2] at h1
+  refine ((h1.trans h2).trans (h3.trans (h4.of_eq (by simp) rfl))).of_eq rfl ?_
+  simp
+
+theorem split3 : ∀ l : List Nat, 3 ≤ l.length → ∃ a b c Dt, l = a :: b :: c :: Dt ∧ Dt.length + 3 = l.length
+  | [], h => by simp at h
+  | [_], h => by simp at h
+  | [_, _], h => by simp at h
+  | a :: b :: c :: Dt, _ => ⟨a, b, c, Dt, rfl, by simp⟩
+
+/-- `d ≥ 3` does not divide `p`: test `d - 1`. -/
+theorem dStepC (d p : Nat) (hd : 3 ≤ d) (hdv : p % d ≠ 0) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (TD d p R) (TD (d - 1) p R) := by
+  have h1 := xLoop d p (by omega) R hR p 0 (by omega)
+  have hlt : p % d < d := Nat.mod_lt _ (by omega)
+  obtain ⟨r', hr'⟩ : ∃ r', p % d = r' + 1 := ⟨p % d - 1, by omega⟩
+  have h2 := xEnd (p % d) (d - p % d) p R hR
+  rw [hr'] at h2
+  have h3 := xdMarked r' (d - (r' + 1)) p R hR
+  have hlen : (List.replicate (r' + 1) 2 ++ List.replicate (d - (r' + 1)) 3).length = d := by
+    simp; omega
+  obtain ⟨a, b, c, Dt, hDl, hDt⟩ := split3 (List.replicate (r' + 1) 2 ++ List.replicate (d - (r' + 1)) 3) (by omega)
+  have hB := bits_Dl (r' + 1) (d - (r' + 1))
+  rw [hDl] at hB
+  have ha := hB a (by simp)
+  have hb := hB b (by simp)
+  have hc := hB c (by simp)
+  have hDtb : Bits Dt := fun x hx => hB x (by simp [hx])
+  have h4 := xs2DecN a b c Dt (List.replicate p 3 ++ 1 :: R) ha hb hc hDtb (by simp [ALL, hR])
+  have e1 : hdR QN.X4 (Dm d 0) (List.replicate 0 2 ++ List.replicate (p - 0) 3 ++ 1 :: R) = TD d p R := by
+    simp [Dm, TD]
+  rw [e1] at h1
+  have e2 : hdR QN.X4 (Dm d p) (List.replicate p 2 ++ 1 :: R)
+      = hdR QN.X4 ([0] ++ List.replicate (r' + 1) 2 ++ List.replicate (d - (r' + 1)) 3 ++ [1]) (List.replicate p 2 ++ 1 :: R) := by
+    simp [Dm, hr']
+  rw [e2] at h1
+  have h5 := (h1.trans h2).trans h3
+  rw [hDl] at h5
+  have h6 := h5.trans (h4.of_eq (by simp) rfl)
+  refine h6.of_eq rfl ?_
+  have hz := ZP.F.hdR_zeros QN.X4 [0] ([0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (List.replicate p 3 ++ 1 :: R)
+    (fun x hx => by simp at hx; simp [hx, ZP.F.B0])
+  unfold TD
+  have e3 : d - 1 = Dt.length + 2 := by omega
+  rw [e3]
+  simp at hz
+  simp [hz, List.replicate_succ]
+
+/-- The divisor loop from `d` down to `2`. -/
+theorem primeTest (p : Nat) (R : List Nat) (hR : Sym4 R) : ∀ d, 2 ≤ d →
+    ((∀ e, 2 ≤ e → e ≤ d → p % e ≠ 0) →
+      znttLogic.Reach (TD d p R) (hd QN.WX [0, 0, 3] (1 :: List.replicate p 3 ++ 1 :: R))) ∧
+    ((∃ e, 2 ≤ e ∧ e ≤ d ∧ p % e = 0) →
+      znttLogic.Reach (TD d p R) (hdR QN.PA0 [] (List.replicate p 3 ++ 1 :: R))) := by
+  intro d
+  induction d with
+  | zero => intro h; omega
+  | succ d ih =>
+    intro hd
+    by_cases hd2 : d + 1 = 2
+    · rw [hd2]
+      refine ⟨fun h => dStepB p (h 2 (Nat.le_refl _) (Nat.le_refl _)) R hR, fun ⟨e, h1, h2, h3⟩ => ?_⟩
+      have : e = 2 := by omega
+      subst this
+      exact dStepA 2 p (Nat.le_refl _) h3 R hR
+    · have hd3 : 3 ≤ d + 1 := by omega
+      by_cases hz : p % (d + 1) = 0
+      · exact ⟨fun h => absurd hz (h _ hd (Nat.le_refl _)), fun _ => dStepA (d + 1) p hd hz R hR⟩
+      · obtain ⟨i1, i2⟩ := ih (by omega)
+        have hs := dStepC (d + 1) p hd3 hz R hR
+        simp only [Nat.add_sub_cancel] at hs
+        refine ⟨fun h => hs.trans (i1 fun e he1 he2 => h e he1 (by omega)), fun ⟨e, h1, h2, h3⟩ => ?_⟩
+        by_cases he : e = d + 1
+        · subst he; exact absurd h3 hz
+        · exact hs.trans (i2 ⟨e, h1, by omega, h3⟩)
+
 end ZP.N
