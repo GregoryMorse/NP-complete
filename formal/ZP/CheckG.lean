@@ -449,4 +449,62 @@ theorem lw2bSkipList (R : List Nat) (hR : Sym4 R) : ∀ (ms : List Nat) (P : Lis
     have h2 := lw2bSkipList R hR ms _ hm hP'
     exact (h1.of_eq (by simp [MEnc]) rfl).trans (h2.of_eq rfl (by simp [MEnc, List.append_assoc]))
 
+theorem Enc_MEs : ∀ l : List Nat, Enc l = MEs (l.map fun e => List.replicate e 3)
+  | [] => rfl
+  | e :: l => by simp [Enc, MEs, ME, U, Enc_MEs l]
+
+theorem Enc_entries (l : List Nat) (h : ∀ e ∈ l, 1 ≤ e) :
+    ∀ c ∈ l.map (fun e => List.replicate e 3), Bits c ∧ c ≠ [] := by
+  intro c hc
+  obtain ⟨e, he, rfl⟩ := List.mem_map.1 hc
+  refine ⟨bits_rep3 e, ?_⟩
+  have := h e he
+  intro hh
+  have := congrArg List.length hh
+  simp at this; omega
+
+/-- One iteration of the label loop: the label has more cells, so one entry of `w` is skipped. -/
+theorem labelIter (b : Bool) (ms ws' : List Nat) (v m : Nat) (d : List Nat) (j r' : Nat) (Xrest : List Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws', 1 ≤ e) (hX : Sym4 Xrest) :
+    zgiLogic.Reach
+      (hdR (LP b) (MEnc ms ++ Enc ((v + 1) :: ws') ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate (j + 1) 2)
+        (3 :: (List.replicate r' 3 ++ 1 :: Xrest)))
+      (hdR QG.gY1e (MEnc (ms ++ [v + 1]) ++ Enc ws' ++ [1] ++ (List.replicate m 3 ++ [1]))
+        (MEnc d ++ List.replicate (j + 1) 2 ++ 3 :: (List.replicate r' 3 ++ 1 :: Xrest))) := by
+  have hcs := Enc_entries ws' hws
+  have hEnc : Enc ws' = MEs (ws'.map fun e => List.replicate e 3) := Enc_MEs ws'
+  have hRt : Sym4 (3 :: (List.replicate r' 3 ++ 1 :: Xrest)) := by simp [ALL, hX]
+  have hP0 : Sym4 (MEnc ms ++ Enc ((v + 1) :: ws') ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate (j + 1) 2) := by
+    simp [ALL]
+  have hP0n : NoB (MEnc ms ++ Enc ((v + 1) :: ws') ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate (j + 1) 2) := by
+    simp [NB]
+  have hA := lpMoreB b _ (List.replicate r' 3 ++ 1 :: Xrest) hP0 (by simp [ALL, hX])
+  have hB := lw1Walk _ _ hP0n hRt
+  have hRest : Sym4 (MEnc d ++ List.replicate (j + 1) 2 ++ (3 :: (List.replicate r' 3 ++ 1 :: Xrest))) := by
+    simp [ALL, hX]
+  have hRest2 : Sym4 (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++ (3 :: (List.replicate r' 3 ++ 1 :: Xrest)))) := by
+    simp [ALL, hRest, hX]
+  have hT : Sym4 (Enc ws' ++ 1 :: (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++
+      (3 :: (List.replicate r' 3 ++ 1 :: Xrest))))) := by
+    simp [ALL, hRest2, hX]
+  have hC1 := lw2bSkipList (List.replicate (v + 1) 3 ++ 1 :: (Enc ws' ++ 1 :: (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++
+      (3 :: (List.replicate r' 3 ++ 1 :: Xrest))))))
+    (by simp [ALL, hT, hX]) ms [0] hms (by simp [ALL])
+  have hC2 := lw2bMark ([0] ++ MEnc ms) (Enc ws' ++ 1 :: (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++
+      (3 :: (List.replicate r' 3 ++ 1 :: Xrest))))) v (by simp [ALL]) hT
+  have hD := cxWalk (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++ (3 :: (List.replicate r' 3 ++ 1 :: Xrest))))
+    hRest2 (ws'.map fun e => List.replicate e 3) ([0] ++ MEnc ms ++ (List.replicate (v + 1) 2 ++ [1])) hcs (by simp [ALL])
+  have hE := xmCells (MEnc d ++ List.replicate (j + 1) 2 ++ (3 :: (List.replicate r' 3 ++ 1 :: Xrest))) hRest
+    (List.replicate m 3) ([0] ++ MEnc ms ++ (List.replicate (v + 1) 2 ++ [1]) ++ MEs (ws'.map fun e => List.replicate e 3) ++ [1])
+    (bits_rep3 m) (by rw [← hEnc]; simp [ALL])
+  rw [← hEnc] at hD hE
+  have hAll := hA.trans (hB.trans ((hC1.of_eq (by simp [Enc, U, MEnc, List.append_assoc]) rfl).trans
+    ((hC2.of_eq rfl rfl).trans ((hD.of_eq (by simp [List.append_assoc]) rfl).trans (hE.of_eq (by simp [List.append_assoc]) rfl)))))
+  refine hAll.of_eq rfl ?_
+  rw [unm_rep3] at *
+  rw [show ([0] ++ MEnc ms ++ (List.replicate (v + 1) 2 ++ [1]) ++ Enc ws' ++ [1] ++ List.replicate m 3 ++ [1]) =
+    0 :: (MEnc (ms ++ [v + 1]) ++ Enc ws' ++ [1] ++ (List.replicate m 3 ++ [1])) by
+      simp [MEnc_append, MEnc, List.append_assoc]]
+  rw [hdR_z0]
+
 end ZP.G
