@@ -102,4 +102,66 @@ theorem gd2Row (S : List Nat) (hS : Sym4 S) (q : Nat) :
       simp [ALL, this, hS])
     exact h2.trans h3
 
+
+theorem rep_sym4 (k c : Nat) (hc : c ∈ ALL) : Sym4 (List.replicate k c) := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; exact hc
+
+theorem bits_app {a b : List Nat} (ha : Bits a) (hb : Bits b) : Bits (a ++ b) := fun x hx => by
+  rcases List.mem_append.1 hx with h | h
+  · exact ha x h
+  · exact hb x h
+
+/-- One iteration of the row part, from the marking of a cell of `m` to the test of `m`. -/
+theorem rowIterA (ms : List Nat) (ws xs : List (List Nat)) (Rt : List Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ []) (hR : Sym4 Rt)
+    (i n p q : Nat) (pasT HU : List (List Nat)) (hp : ∀ t ∈ pasT, Bits t) (hh : ∀ t ∈ HU, Bits t)
+    (hn : i + n ≤ HU.length) :
+    zgiLogic.Reach
+      (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt)))))
+      (hdR QG.gD2 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: (MEs ws ++ [1]))
+        (List.replicate p 3 ++ (List.replicate (q + 1) 2 ++ 1 :: (MEs xs ++ 1 ::
+          (MP (pasT ++ HU.take (i + n)) ++ MU (HU.drop (i + n)) ++ Rt))))) := by
+  have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+  have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+  have sP := MP_sym4 pasT hp
+  have sU := MU_sym4 HU hh
+  have hQ : NoB (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)) := by
+    have := MEs_noB ws (fun e he => (hws e he).1)
+    simp [NB, this]
+  have hR' : Sym4 (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))) := by
+    simp [ALL, sX, sP, sU, hR, rep_sym4 q 2 (by simp [ALL])]
+  have h1 := rowReset ms hms i _ _ hQ hR'
+  have hmb : Bits (List.replicate p 3 ++ List.replicate (q + 1) 2) := bits_app (bits_rep3 p) (bits_rep2 (q + 1))
+  have h2 := innerLoopP QG.gIL1 (Or.inr rfl) ms ws xs (List.replicate p 3 ++ List.replicate (q + 1) 2) Rt
+    hms hws hmb hxs hR (i + n) 0 pasT HU hp hh hn
+  have sMb : Sym4 (List.replicate p 3 ++ List.replicate (q + 1) 2) := hmb.sym4
+  have hp' : ∀ t ∈ pasT ++ HU.take (i + n), Bits t := by
+    intro t ht
+    rcases List.mem_append.1 ht with h | h
+    · exact hp t h
+    · exact hh t (List.mem_of_mem_take h)
+  have hh' : ∀ t ∈ HU.drop (i + n), Bits t := fun t ht => hh t (List.mem_of_mem_drop ht)
+  have sR2 : Sym4 ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 ::
+      (MP (pasT ++ HU.take (i + n)) ++ MU (HU.drop (i + n)) ++ Rt))) :=
+    sMb.app (Sym4.cons (by simp [ALL]) (sX.app (Sym4.cons (by simp [ALL])
+      (((MP_sym4 _ hp').app (MU_sym4 _ hh')).app hR))))
+  have sP0 : Sym4 (MEnc ms ++ List.replicate (0 + (i + n)) 2 ++ [3]) :=
+    ((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])
+  have sRh : Sym4 (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 ::
+      (MP (pasT ++ HU.take (i + n)) ++ MU (HU.drop (i + n)) ++ Rt)))) :=
+    sW.app (Sym4.cons (by simp [ALL]) sR2)
+  have h3 := wd1EndIn (MEnc ms ++ List.replicate (0 + (i + n)) 2 ++ [3])
+    (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 ::
+      (MP (pasT ++ HU.take (i + n)) ++ MU (HU.drop (i + n)) ++ Rt)))) sP0 sRh
+  have h4 := wd1Walk _ sR2 ws (MEnc ms ++ List.replicate (0 + (i + n)) 2 ++ [3] ++ [1]) hws (sP0.app (by simp [ALL]))
+  have e1 : List.replicate i 3 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3) ++ 2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))
+      = List.replicate 0 2 ++ List.replicate (i + n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt)))) := by
+    have : List.replicate (i + n + 1) 3 = List.replicate i 3 ++ 3 :: List.replicate n 3 := by
+      rw [show i + n + 1 = i + (n + 1) from rfl, ← List.replicate_append_replicate, List.replicate_succ]
+    rw [this]
+    simp [List.replicate_succ, List.append_assoc]
+  exact (((h1.of_eq rfl (by rw [e1])).trans h2).trans h3).trans (h4.of_eq rfl (by simp [List.append_assoc]))
+
 end ZP.G
