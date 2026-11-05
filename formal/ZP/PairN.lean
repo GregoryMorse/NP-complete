@@ -654,4 +654,38 @@ theorem rulerLoop (c n : Nat) (hn : 1 ≤ n) (Z : List Nat) (hZ : Sym4 Z) : ∀ 
     rw [show i + 1 + g + 1 = i + (g + 1) + 1 by omega] at h3
     exact ((h1.of_eq (by simp [Cont]) rfl).trans (t2 hc)).trans h3
 
+theorem hdR_trail (q : Nat) (A X : List Nat) : hdR q A (X ++ [0]) = hdR q A X := by
+  rw [ZP.F.hdR_eq', ZP.F.hdR_eq', ZP.sapp_append]
+  have h0 : sapp [0] blank = blank := ZP.F.sapp_zeros 1
+  rw [h0]
+
+/-- From the pair start to the prime `p* = 1 + n i*` (`i*` the least index): the ruler is `P = p*`. -/
+theorem rulerAll (c n : Nat) (hn : 1 ≤ n) (i : Nat) (hi : 1 ≤ i)
+    (hlt : ∀ j, 1 ≤ j → j < i → isPrimeN (1 + n * j) = false) (hpr : isPrimeN (1 + n * i) = true) :
+    znttLogic.Reach (layN c n)
+      (hd QN.WX [0, 3] (1 :: List.replicate (1 + n * i) 3 ++ 1 :: (Yc c n ++ [0]))) := by
+  obtain ⟨g, rfl⟩ : ∃ g, i = g + 1 := ⟨i - 1, by omega⟩
+  have hm : n * (0 + 1) = n := by simp
+  have h1 := rulerRound c n 1 [3] (1 :: [3, 3, 3] ++ 1 :: List.replicate c 3 ++ 1 :: List.replicate n 3) []
+    (by simp [NB]) (by simp [NB]) (by simp [ALL]) (by simp [Yc])
+  have hl : layN c n = hdR QN.PA0 [3] ((1 :: [3, 3, 3] ++ 1 :: List.replicate c 3 ++ 1 :: List.replicate n 3) ++ 0 :: []) := by
+    unfold layN
+    rw [show (0 :: ([] : List Nat)) = [0] from rfl, hdR_trail]
+  rw [hl]
+  have hp2 : 2 ≤ 1 + n := by omega
+  obtain ⟨t1, t2⟩ := primeStage (1 + n) hp2 (Yc c n) [] (noB_Yc c n) (by simp [ALL])
+  have hn1 : List.replicate (1 + n) 3 = List.replicate (1 + n) 3 := rfl
+  by_cases hg : g = 0
+  · subst hg
+    have hprime : isPrimeN (1 + n) = true := by simpa using hpr
+    exact (h1.of_eq rfl rfl).trans ((t1 hprime).of_eq rfl rfl) |>.of_eq rfl (by simp)
+  · have hc : isPrimeN (1 + n) = false := by simpa using hlt 1 (Nat.le_refl _) (by omega)
+    have h3 := rulerLoop c n hn [] (by simp [ALL]) (g - 1) 1 (fun j hj1 hj2 => by
+        have := hlt j (by omega) (by omega)
+        exact this) (by
+        rw [show 1 + (g - 1) + 1 = g + 1 by omega]; exact hpr)
+    rw [show 1 + (g - 1) + 1 = g + 1 by omega] at h3
+    have := (h1.of_eq rfl rfl).trans ((t2 hc).trans (h3.of_eq (by simp [Cont]) rfl))
+    exact this
+
 end ZP.N
