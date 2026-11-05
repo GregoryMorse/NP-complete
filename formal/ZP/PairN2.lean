@@ -726,4 +726,39 @@ theorem nLoop (s cA cM : Nat) : ∀ (d b u a0 w : Nat) (l : List (Nat × Nat)), 
     rw [e1, e2]
     simp [newRecs, List.append_assoc]
 
+def toTwo (l : List (Nat × Nat)) : List (Nat × Nat) := l.map fun x => (2, x.2)
+
+theorem toTwo_flags (l : List (Nat × Nat)) : ∀ x ∈ toTwo l, x.1 = 2 ∨ x.1 = 3 := fun x hx => by
+  simp only [toTwo, List.mem_map] at hx
+  obtain ⟨y, _, rfl⟩ := hx
+  left; rfl
+
+/-- One round: a cell of `C` is marked, the old flags are reset, `n' + 1` records are built. -/
+theorem oneRound (s a cM n' u : Nat) (l : List (Nat × Nat)) (hl : ∀ x ∈ l, x.1 = 2 ∨ x.1 = 3) :
+    znttLogic.Reach
+      (hd QN.RC1 (List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]
+          ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate cM 2))
+        (1 :: 3 :: List.replicate n' 3 ++ recsL s l))
+      (hd QN.RC1 (List.replicate (u + n' + 3) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]
+          ++ 1 :: (List.replicate a 3 ++ [2] ++ List.replicate cM 2))
+        (1 :: List.replicate (n' + 1) 3 ++ recsL s (toTwo l ++ newRecs u (n' + 1)))) := by
+  have hZ := noB_recsL s l hl
+  have hA : NoB (List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]) := by noB_tac
+  have h1 := rc1Mark _ (recsL s l) hA hZ a cM n'
+  have hA' : NoB (List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3] ++
+      1 :: (List.replicate a 3 ++ [2] ++ List.replicate cM 2 ++ 1 :: 3 :: List.replicate n' 3)) := by noB_tac
+  have h2 := roAll s l _ hA' hl
+  have hX : NoB ((List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3] ++
+      1 :: (List.replicate a 3 ++ [2] ++ List.replicate cM 2 ++ 1 :: 3 :: List.replicate n' 3)) ++ recsL s (toTwo l)) := by
+    have := noB_recsL s (toTwo l) (toTwo_flags l)
+    noB_tac
+  have h3 := rnl _ hX
+  have h4 := nLoop s a cM n' 0 u 0 (u + 2) (toTwo l) (by omega) (toTwo_flags l)
+  have s1 := reach_trans_eq h1 h2 rfl
+  have s2 := reach_trans_eq s1 h3 rfl
+  have s3 := reach_trans_eq s2 h4 (by
+    simp [toTwo, List.replicate_succ, List.append_assoc])
+  refine s3.of_eq rfl ?_
+  simp [List.append_assoc, Nat.add_comm, Nat.add_left_comm]
+
 end ZP.N
