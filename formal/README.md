@@ -53,6 +53,24 @@ theorem ZP.Cx.sentence_iff_PeqNP : ZP.Sentence ↔ ZP.Cx.PeqNP
   `x ↦ code (DX V k m x) ((|x|+2)^E)`, computed by the stack program `GEN` in
   polynomial time (`red_iff`, `gen_ok`), so it is in P (`InP_of_InNP`).
 
+## Other native machines
+
+Beyond the P = NP machine (`zpMachine`), the same development proves, for the machines of
+`docs/native.md` that share its guest interpreter, that quasihalting is equivalent to the
+corresponding Σ₂ sentence (and, via `ZP/GenericP.lean`, to the truth function being in P).
+Plans for the rest are in `plans/`.
+
+| machine | theorem (comparator-checked) | files |
+|---|---|---|
+| Z_PP (295 states) | `ZP.zppQuasihalts_iff_sentence`, `ZP.zpp_quasihalts_iff_InP` | `DefsPP ChecksPP TablePP LogicPP CompilePP PairPP MainPP`, `Count` |
+| Z_PSPACE (291) | `ZP.zpsQuasihalts_iff_sentence`, `ZP.zps_quasihalts_iff_InP` | `DefsPS ChecksPS TablePS LogicPS CompilePS PairPS MainPS` |
+| Z_FACTOR (324) | `ZP.zfacQuasihalts_iff_sentence`, `ZP.zfac_quasihalts_iff_InP` | `DefsF ChecksF TableF LogicF CompileF PairF MainF` |
+| Z_DLOG (400) | in progress (definitions, certificate, conversion done) | `DefsD ChecksD TableD LogicD CompileD PairD` |
+
+Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
+transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair
+lemma), `Compile` (generic over a `Cert`), `GenericP` (any truth function).
+
 ## Status
 * CI (`.github/workflows/ci.yml`, job *Lean*) builds everything and prints a census of the
   open `sorry`s. It also checks that `ZP/Table.lean` matches the current `machines/zp_native.tbl` and that
