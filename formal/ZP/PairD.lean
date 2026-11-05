@@ -1487,4 +1487,62 @@ theorem oLoop (p y : Nat) (R : List Nat) (hR : Sym4 R) : ∀ (r gm z : Nat), z <
     · simp [List.replicate_succ']
     · rw [e, show gm + 1 + r = gm + (r + 1) by omega]
 
+
+theorem tLoop (R : List Nat) (hR : Sym4 R) : ∀ (m w d u : Nat),
+    zdlLogic.Reach
+      (hdR QD.T1 (List.replicate w 3 ++ [1])
+        (List.replicate d 3 ++ (List.replicate m 2 ++ (List.replicate u 3 ++ 1 :: R))))
+      (hd QD.QL (List.replicate (w + m) 3 ++ 1 :: (List.replicate (d + m + u) 3)) (1 :: R))
+  | 0, w, d, u => by
+    have h := tEnd (List.replicate w 3) (List.replicate d 3 ++ List.replicate u 3) R (rep_t3 w)
+      (fun a ha => by
+        rcases List.mem_append.mp ha with h | h <;> rw [List.eq_of_mem_replicate h] <;> simp [T3]) hR
+    refine h.of_eq (by simp only [List.replicate_zero, List.nil_append, List.append_assoc]) ?_
+    simp [List.replicate_append_replicate]
+  | m + 1, w, d, u => by
+    have h1 := tIter (List.replicate w 3) (List.replicate d 3) (List.replicate m 2)
+      (List.replicate u 3) R (rep_t3 w) (rep_t3 d) (rep_z2 m) (rep_t3 u) hR
+    have h2 := tLoop R hR m (w + 1) (d + 1) u
+    have a1 : List.replicate (d + 1) 3 = List.replicate d 3 ++ [3] := List.replicate_succ' ..
+    have a2 : List.replicate (w + 1) 3 = 3 :: List.replicate w 3 := rfl
+    have a3 : List.replicate (m + 1) 2 = 2 :: List.replicate m 2 := rfl
+    refine LTM.Reach.trans (c' := hdR QD.T1 (List.replicate (w + 1) 3 ++ [1])
+      (List.replicate (d + 1) 3 ++ (List.replicate m 2 ++ (List.replicate u 3 ++ 1 :: R))))
+      (h1.of_eq ?_ ?_) (h2.of_eq rfl ?_)
+    · rw [a3]; simp
+    · rw [a1, a2]; simp
+    · have e1 : w + 1 + m = w + (m + 1) := by omega
+      have e2 : d + 1 + m + u = d + (m + 1) + u := by omega
+      rw [e1, e2]
+
+/-- `Y := Y * G mod P`. -/
+theorem mulPhase (p y g : Nat) (hp : 1 ≤ p) (R : List Nat) (hR : Sym4 R) :
+    zdlLogic.Reach
+      (hdR QD.O1 [] (List.replicate y 3 ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 :: R))))
+      (hd QD.QL (List.replicate ((y * g) % p) 3 ++ 1 :: List.replicate p 3) (1 :: (List.replicate g 3 ++ 1 :: R))) := by
+  have hz : (0 : Nat) < p := hp
+  have ho := oLoop p y R hR g 0 0 hz
+  have hz' : (0 + g * y) % p < p := Nat.mod_lt _ hz
+  have hg := gEnd (List.replicate y 3) (List.replicate ((0 + g * y) % p) 2)
+    (List.replicate (p - (0 + g * y) % p) 3) (List.replicate (0 + g) 2) R (rep_t3 y) (rep_z2 _)
+    (rep_t3 _) (rep_z2 _) hR
+  simp only [List.length_replicate] at hg
+  have hR3 : Sym4 (List.replicate (0 + g) 3 ++ 1 :: R) :=
+    Sym4.app (Sym4.rep _ 3 (by simp [ALL])) (Sym4.cons (by simp [ALL]) hR)
+  have ht := tLoop (List.replicate (0 + g) 3 ++ 1 :: R) hR3 ((0 + g * y) % p) 0 0 (p - (0 + g * y) % p)
+  have hzz : ∀ X, hdR QD.T1 (List.replicate y 0 ++ [1]) X = hdR QD.T1 [1] X := fun X =>
+    F.hdR_zeros _ _ _ _ (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [F.B0])
+  have h1 : zdlLogic.Reach
+      (hdR QD.O1 [] (List.replicate y 3 ++ 1 :: (List.replicate p 3 ++ 1 :: (List.replicate g 3 ++ 1 :: R))))
+      (hdR QD.O1 [] (List.replicate y 3 ++ 1 :: (List.replicate ((0 + g * y) % p) 2 ++
+        (List.replicate (p - (0 + g * y) % p) 3 ++ 1 :: (List.replicate (0 + g) 2 ++ (1 :: R)))))) :=
+    ho.of_eq (by simp) rfl
+  have h2 := hg.of_eq rfl (hzz _)
+  have h3 := ht.of_eq (c3 := hdR QD.T1 [1] (List.replicate ((0 + g * y) % p) 2 ++
+    (List.replicate (p - (0 + g * y) % p) 3 ++ 1 :: (List.replicate (0 + g) 3 ++ 1 :: R)))) (by simp) rfl
+  refine (h1.trans (h2.trans (h3.of_eq rfl ?_)))
+  have : 0 + (0 + g * y) % p + (p - (0 + g * y) % p) = p := by omega
+  rw [this, Nat.zero_add, Nat.mul_comm g y]
+  simp
+
 end ZP.D
