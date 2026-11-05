@@ -81,4 +81,61 @@ theorem paLoop (c p : Nat) (Z : List Nat) (hZ : Sym4 Z) (n : Nat) : ∀ d j, j +
     rw [e, ← Nat.add_assoc, List.replicate_succ]
     simp [List.replicate_succ, List.append_assoc]
 
+/-! ## Primality test: copy `P` into `D` (left of the separator `M`) -/
+
+/-- `PT0`: go to the left edge, write the separator `M`, step onto `P`. -/
+theorem pt0Start (W Z : List Nat) (hW : NoB W) (hZ : Sym4 Z) :
+    znttLogic.Reach (hd QN.PT0 W (0 :: Z)) (hdR QN.DC1 [1] (W ++ 0 :: Z)) := by
+  have hV : Valid [NB, ALL] [W, Z] := Valid.cons hW (Valid.cons hZ (Valid.nil _))
+  exact checkTF (env := [W, Z]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 0, .blk 1 .id])
+    (ls' := [.sym 1]) (rs' := [.blk 0 .id, .sym 0, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- One copy round: a cell of `P` is marked and a cell is added to `D`. -/
+theorem dcRound (j m : Nat) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QN.DC1 (List.replicate j 3 ++ [1]) (List.replicate j 2 ++ 3 :: List.replicate m 3 ++ 1 :: R))
+      (hdR QN.DC1 (List.replicate (j + 1) 3 ++ [1]) (List.replicate (j + 1) 2 ++ List.replicate m 3 ++ 1 :: R)) := by
+  have hV : Valid [T3, Mk, T3, ALL] [List.replicate j 3, List.replicate j 2, List.replicate m 3, R] :=
+    Valid.cons (rep_t3 j) (Valid.cons (rep2_mk j) (Valid.cons (rep_t3 m) (Valid.cons hR (Valid.nil _))))
+  have : znttLogic.Reach (hdR QN.DC1 (List.replicate j 3 ++ [1]) (List.replicate j 2 ++ 3 :: List.replicate m 3 ++ 1 :: R))
+      (hdR QN.DC1 (3 :: List.replicate j 3 ++ [1]) (List.replicate j 2 ++ 2 :: List.replicate m 3 ++ 1 :: R)) :=
+    checkFF (env := [List.replicate j 3, List.replicate j 2, List.replicate m 3, R]) (E := []) (k := 40) hV trivial
+      (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id, .sym 3, .blk 2 .id, .sym 1, .blk 3 .id])
+      (ls' := [.sym 3, .blk 0 .id, .sym 1]) (rs' := [.blk 1 .id, .sym 2, .blk 2 .id, .sym 1, .blk 3 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  refine this.of_eq (by simp [List.replicate_succ]) ?_
+  have e2 : List.replicate (j + 1) 2 = List.replicate j 2 ++ [2] := List.replicate_succ'
+  have e3 : List.replicate (j + 1) 3 = 3 :: List.replicate j 3 := List.replicate_succ ..
+  simp only [e2, e3, List.append_assoc, List.cons_append, List.nil_append]
+
+theorem dcEnd (p : Nat) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QN.DC1 (List.replicate p 3 ++ [1]) (List.replicate p 2 ++ 1 :: R))
+      (hd QN.XS1 (List.replicate p 3) (1 :: List.replicate p 3 ++ 1 :: R)) := by
+  have hV : Valid [T3, Mk, ALL] [List.replicate p 3, List.replicate p 2, R] :=
+    Valid.cons (rep_t3 p) (Valid.cons (rep2_mk p) (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [List.replicate p 3, List.replicate p 2, R]) (E := []) (k := 40) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 (.const 3), .sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem dcLoop (p : Nat) (R : List Nat) (hR : Sym4 R) : ∀ d j, j + d = p →
+    znttLogic.Reach (hdR QN.DC1 (List.replicate j 3 ++ [1]) (List.replicate j 2 ++ List.replicate (p - j) 3 ++ 1 :: R))
+      (hd QN.XS1 (List.replicate p 3) (1 :: List.replicate p 3 ++ 1 :: R)) := by
+  intro d
+  induction d with
+  | zero =>
+    intro j hj
+    obtain rfl : j = p := by omega
+    have h := dcEnd j R hR
+    exact h.of_eq (by simp) rfl
+  | succ d ih =>
+    intro j hj
+    obtain ⟨m, hm⟩ : ∃ m, p - j = m + 1 := ⟨p - j - 1, by omega⟩
+    have h1 := dcRound j m R hR
+    have h2 := ih (j + 1) (by omega)
+    have e : p - (j + 1) = m := by omega
+    rw [e] at h2
+    refine (h1.of_eq (by rw [hm]; simp [List.replicate_succ, List.append_assoc]) rfl).trans h2
+
 end ZP.N
