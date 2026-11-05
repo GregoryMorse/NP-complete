@@ -70,4 +70,48 @@ theorem uwCells (R : List Nat) (hR : Sym4 R) : ∀ (c P : List Nat), Bits c → 
     have h2 := uwCells R hR c (P ++ [unm1 b]) hc' hP'
     exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp [unm]))
 
+/-- A stack entry that may carry marks: nonempty, cells `0`/`1`. -/
+def ME (c : List Nat) : List Nat := c ++ [1]
+
+def MEs : List (List Nat) → List Nat
+  | [] => []
+  | c :: cs => ME c ++ MEs cs
+
+theorem MEs_sym4 : ∀ cs : List (List Nat), (∀ c ∈ cs, Bits c) → Sym4 (MEs cs)
+  | [], _ => Sym4.nil
+  | c :: cs, h => by
+    have hc := h c (List.mem_cons_self ..)
+    have := MEs_sym4 cs (fun d hd => h d (List.mem_cons_of_mem _ hd))
+    simp [MEs, ME, ALL, hc.sym4, this]
+
+theorem uwEntry (c P R : List Nat) (hc : Bits c) (hne : c ≠ []) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gUW2 P (c ++ 1 :: R)) (hdR QG.gUW2 (P ++ unm c ++ [1]) R) := by
+  cases c with
+  | nil => exact absurd rfl hne
+  | cons b c =>
+    have hb := hc b (List.mem_cons_self ..)
+    have hc' : Bits c := fun a ha => hc a (List.mem_cons_of_mem _ ha)
+    have h1 := uwStep QG.gUW2 QG.gUW P (c ++ 1 :: R) b hb hP (by simp [ALL, hR, hc'.sym4]) (Or.inr rfl) rfl
+    have hP' : Sym4 (P ++ [unm1 b]) := by
+      rcases mem_bits hb with rfl | rfl <;> simp [unm1, ALL, hP]
+    have h2 := uwCells R hR c (P ++ [unm1 b]) hc' hP'
+    exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp [unm]))
+
+theorem uwWalk (R : List Nat) (hR : Sym4 R) : ∀ (cs : List (List Nat)) (P : List Nat),
+    (∀ c ∈ cs, Bits c ∧ c ≠ []) → Sym4 P →
+    zgiLogic.Reach (hdR QG.gUW2 P (MEs cs ++ R)) (hdR QG.gUW2 (P ++ unm (MEs cs)) R)
+  | [], P, _, _ => by
+    simp only [MEs, List.nil_append, unm_nil, List.append_nil]; exact LTM.Reach.refl _ _
+  | c :: cs, P, h, hP => by
+    obtain ⟨hc, hne⟩ := h c (List.mem_cons_self ..)
+    have hcs : ∀ d ∈ cs, Bits d ∧ d ≠ [] := fun d hd => h d (List.mem_cons_of_mem _ hd)
+    have hM : Sym4 (MEs cs ++ R) := (MEs_sym4 cs (fun d hd => (hcs d hd).1)).app hR
+    have h1 := uwEntry c P (MEs cs ++ R) hc hne hP hM
+    have hP' : Sym4 (P ++ unm c ++ [1]) := by
+      have := unm_nb (A := c) hc.noB
+      simp [ALL, hP, this.sym4]
+    have h2 := uwWalk R hR cs _ hcs hP'
+    exact (h1.of_eq (by simp [MEs, ME, List.append_assoc]) rfl).trans
+      (h2.of_eq rfl (by simp [MEs, ME, unm_append, unm1, List.append_assoc]))
+
 end ZP.G
