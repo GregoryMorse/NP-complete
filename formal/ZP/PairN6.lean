@@ -373,6 +373,18 @@ theorem decU_bits (l : List Nat) (h : Bits l) : Bits (decU l) := by
   · simp [bits]
   · exact h x h'
 
+theorem decU_ne : ∀ l : List Nat, l ≠ [] → decU l ≠ []
+  | [], h => absurd rfl h
+  | x :: l, _ => by
+    by_cases hx : x = 2
+    · subst hx; simp [decU]
+    · by_cases h3 : x = 3
+      · subst h3
+        cases l with
+        | nil => simp [decU]
+        | cons z l' => by_cases hz : z = 3 <;> simp [decU, hz]
+      · simp [decU, hx, h3]
+
 theorem ER.dec_ok (r : ER) (h : r.ok) : r.dec.ok where
   f := h.f
   o := h.o
@@ -381,6 +393,10 @@ theorem ER.dec_ok (r : ER) (h : r.ok) : r.dec.ok where
   E := h.E
   z := h.z
   u := decU_bits _ h.u
+  accNe := h.accNe
+  ENe := h.ENe
+  zNe := h.zNe
+  uNe := decU_ne _ h.uNe
 
 theorem bits_cases (Y : List Nat) (hY : Bits Y) :
     Y = [] ∨ (∃ Y', Y = 2 :: Y' ∧ Bits Y') ∨ (∃ Y', Y = 3 :: Y' ∧ Bits Y') := by
@@ -516,5 +532,101 @@ theorem decLoop : ∀ (L : List ER) (r : ER), r.decOk → (∀ r' ∈ L, r'.decO
       · simp [List.append_assoc]
     refine h1'.trans (h2.of_eq rfl ?_)
     simp [eTape, List.append_assoc]
+
+/-! ## Single steps and scans for the marker `MM` -/
+
+theorem step_R1 (q q' c : Nat) (hq : q ≠ znttLogic.beep) (h : znttLogic.act q c = some (c, 1, q')) (A R : List Nat) :
+    znttLogic.Reach (hdR q A (c :: R)) (hdR q' (A ++ [c]) R) := by
+  rw [ZP.F.hdR_eq', ZP.F.hdR_eq']
+  have e1 : sapp (c :: R) blank = scons c (sapp R blank) := rfl
+  have e2 : sapp (A ++ [c]).reverse blank = scons c (sapp A.reverse blank) := by
+    simp [sapp]
+  refine LTM.Reach.step (c' := ⟨q', scons c (sapp A.reverse blank), sapp R blank⟩) hq ?_ ?_
+  · rw [e1]
+    have := LTM.zstep_R (M := znttLogic) (L := sapp A.reverse blank) (R := scons c (sapp R blank)) (q := q) (w := c) (q' := q') (by simpa [scons] using h)
+    have e3 : stail (scons c (sapp R blank)) = sapp R blank := funext fun i => rfl
+    rw [e3] at this
+    exact this
+  · rw [e2]; exact LTM.Reach.refl _ _
+
+/-- The marker-free fields of a record, followed by a boundary. -/
+inductive Scan : List Nat → Prop
+  | nil : Scan []
+  | bit {b : Nat} {X : List Nat} : b ∈ bits → Scan X → Scan (b :: X)
+  | sep {b : Nat} {X : List Nat} : b ∈ bits → Scan X → Scan (1 :: b :: X)
+
+theorem scan_mm (q qm qn : Nat) (hq : q ≠ znttLogic.beep) (hqm : qm ≠ znttLogic.beep)
+    (hb : ∀ b ∈ bits, znttLogic.act q b = some (b, 1, q))
+    (hM : znttLogic.act q 1 = some (1, 1, qm))
+    (hmb : ∀ b ∈ bits, znttLogic.act qm b = some (b, 1, q))
+    (hmM : znttLogic.act qm 1 = some (1, 1, qn)) :
+    ∀ X, Scan X → ∀ (A R : List Nat),
+    znttLogic.Reach (hdR q A (X ++ [1, 1] ++ R)) (hdR qn (A ++ X ++ [1, 1]) R) := by
+  intro X hX
+  induction hX with
+  | nil =>
+    intro A R
+    have h1 := step_R1 q qm 1 hq hM A ([1] ++ R)
+    have h2 := step_R1 qm qn 1 hqm hmM (A ++ [1]) R
+    simpa [List.append_assoc] using h1.trans h2
+  | @bit b X hbm hX ih =>
+    intro A R
+    have h1 := step_R1 q q b hq (hb b hbm) A (X ++ [1, 1] ++ R)
+    have h2 := ih (A ++ [b]) R
+    simpa [List.append_assoc] using h1.trans h2
+  | @sep b X hbm hX ih =>
+    intro A R
+    have h1 := step_R1 q qm 1 hq hM A (b :: X ++ [1, 1] ++ R)
+    have h2 := step_R1 qm q b hqm (hmb b hbm) (A ++ [1]) (X ++ [1, 1] ++ R)
+    have h3 := ih (A ++ [1] ++ [b]) R
+    simpa [List.append_assoc] using h1.trans (h2.trans h3)
+
+theorem scan_end (q qm : Nat) (hq : q ≠ znttLogic.beep) (hqm : qm ≠ znttLogic.beep)
+    (hb : ∀ b ∈ bits, znttLogic.act q b = some (b, 1, q))
+    (hM : znttLogic.act q 1 = some (1, 1, qm))
+    (hmb : ∀ b ∈ bits, znttLogic.act qm b = some (b, 1, q)) :
+    ∀ X, Scan X → ∀ (A : List Nat),
+    znttLogic.Reach (hdR q A X) (hdR q (A ++ X) []) := by
+  intro X hX
+  induction hX with
+  | nil => intro A; simpa using LTM.Reach.refl znttLogic _
+  | @bit b X hbm hX ih =>
+    intro A
+    have h1 := step_R1 q q b hq (hb b hbm) A X
+    have h2 := ih (A ++ [b])
+    simpa [List.append_assoc] using h1.trans h2
+  | @sep b X hbm hX ih =>
+    intro A
+    have h1 := step_R1 q qm 1 hq hM A (b :: X)
+    have h2 := step_R1 qm q b hqm (hmb b hbm) (A ++ [1]) X
+    have h3 := ih (A ++ [1] ++ [b])
+    simpa [List.append_assoc] using h1.trans (h2.trans h3)
+
+theorem scan_bits : ∀ F : List Nat, Bits F → Scan F
+  | [], _ => Scan.nil
+  | b :: F, h => Scan.bit (h b (by simp)) (scan_bits F (fun x hx => h x (by simp [hx])))
+
+theorem scan_sep_app : ∀ (F : List Nat), Bits F → ∀ {b : Nat} {S' : List Nat}, b ∈ bits → Scan S' →
+    Scan (F ++ 1 :: b :: S')
+  | [], _, _, _, hb, hS => Scan.sep hb hS
+  | x :: F, h, _, _, hb, hS => Scan.bit (h x (by simp)) (scan_sep_app F (fun y hy => h y (by simp [hy])) hb hS)
+
+def joinS : List (List Nat) → List Nat
+  | [] => []
+  | F :: Fs => 1 :: (F ++ joinS Fs)
+
+theorem scan_join : ∀ (Fs : List (List Nat)), (∀ F ∈ Fs, Bits F ∧ F ≠ []) → ∀ F0 : List Nat, Bits F0 →
+    Scan (F0 ++ joinS Fs)
+  | [], _, F0, h0 => by simpa [joinS] using scan_bits F0 h0
+  | F :: Fs, hF, F0, h0 => by
+    obtain ⟨hFb, hFne⟩ := hF F (by simp)
+    cases F with
+    | nil => exact absurd rfl hFne
+    | cons b F' =>
+      have hb : b ∈ bits := hFb b (by simp)
+      have hF' : Bits F' := fun x hx => hFb x (by simp [hx])
+      have := scan_sep_app F0 h0 (b := b) (S' := F' ++ joinS Fs) hb
+        (scan_join Fs (fun G hG => hF G (by simp [hG])) F' hF')
+      simpa [joinS, List.append_assoc] using this
 
 end ZP.N

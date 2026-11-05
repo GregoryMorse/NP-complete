@@ -354,6 +354,10 @@ structure ER.ok (r : ER) : Prop where
   E : Bits r.E
   z : Bits r.z
   u : Bits r.u
+  accNe : r.acc ≠ []
+  ENe : r.E ≠ []
+  zNe : r.z ≠ []
+  uNe : r.u ≠ []
 
 theorem bits_mem {a : Nat} (h : a = 2 ∨ a = 3) : a ∈ bits := by
   rcases h with rfl | rfl <;> simp [bits]
@@ -440,6 +444,21 @@ theorem restoreU_bits (l : List Nat) (h : Bits l) : Bits (restoreU l) := by
             | succ x => rfl
       rw [this]; exact h
 
+theorem restoreU_ne : ∀ l : List Nat, l ≠ [] → restoreU l ≠ []
+  | [], h => absurd rfl h
+  | x :: l, _ => by
+    by_cases hx : x = 2
+    · subst hx; simp [restoreU]
+    · have : restoreU (x :: l) = x :: l := by
+        cases x with
+        | zero => rfl
+        | succ x => cases x with
+          | zero => rfl
+          | succ x => cases x with
+            | zero => exact absurd rfl hx
+            | succ x => rfl
+      rw [this]; simp
+
 theorem accInit_bits (x : Bool) (n : Nat) : Bits (accInit x n) := by
   unfold accInit
   apply Bits.cons (by simp [bits])
@@ -455,12 +474,16 @@ theorem ER.ps_ok (r : ER) (h : r.ok) : r.ps.ok where
   E := h.E
   z := h.z
   u := restoreU_bits _ h.u
+  accNe := by simp [ER.ps, accInit]
+  ENe := h.ENe
+  zNe := h.zNe
+  uNe := restoreU_ne _ h.uNe
 
 theorem psMidER (A : List Nat) (hA : ∀ x ∈ A, x ∈ U4) (r : ER) (h : r.psOk) (rest : List Nat) (hrest : NoB rest) :
     znttLogic.Reach
       (hdR QN.RH0 (A ++ [1, 1]) (r.tl ++ [1, 1] ++ rest))
       (hdR QN.RH0 (A ++ [1, 1] ++ r.ps.tl ++ [1, 1]) rest) := by
-  obtain ⟨⟨hf, ho, hpf, hacc, hE, hz, hu⟩, ⟨c1, c2, X, hX⟩, ⟨a, Y, hY⟩⟩ := h
+  obtain ⟨⟨hf, ho, hpf, hacc, hE, hz, hu, _, _, _, _⟩, ⟨c1, c2, X, hX⟩, ⟨a, Y, hY⟩⟩ := h
   have hX' : Bits X := fun x hx => hacc x (by rw [hX]; simp [hx])
   have hc1 : c1 = 2 ∨ c1 = 3 := by
     have := hacc c1 (by rw [hX]; simp); simp [bits] at this; omega
@@ -481,7 +504,7 @@ theorem psLastER (A : List Nat) (hA : ∀ x ∈ A, x ∈ U4) (r : ER) (h : r.psO
     znttLogic.Reach
       (hdR QN.RH0 (A ++ [1, 1]) r.tl)
       (hdR QN.RU2 (A ++ [1, 1] ++ r.ps.tl) []) := by
-  obtain ⟨⟨hf, ho, hpf, hacc, hE, hz, hu⟩, ⟨c1, c2, X, hX⟩, ⟨a, Y, hY⟩⟩ := h
+  obtain ⟨⟨hf, ho, hpf, hacc, hE, hz, hu, _, _, _, _⟩, ⟨c1, c2, X, hX⟩, ⟨a, Y, hY⟩⟩ := h
   have hX' : Bits X := fun x hx => hacc x (by rw [hX]; simp [hx])
   have hc1 : c1 = 2 ∨ c1 = 3 := by
     have := hacc c1 (by rw [hX]; simp); simp [bits] at this; omega
