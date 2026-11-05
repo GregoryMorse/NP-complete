@@ -432,4 +432,21 @@ theorem lblWalk (R : List Nat) (hR : Sym4 R) : ∀ (d : List Nat) (b : Bool) (P 
         cases b <;> simp [hn, this]
     simp [MEnc, List.append_assoc, this]
 
+theorem hdR_z0 (q : Nat) (A R : List Nat) : hdR q (0 :: A) R = hdR q A R := by
+  have := F.hdR_zeros q [0] A R (by simp [F.B0])
+  simpa using this
+
+theorem lw2bSkipList (R : List Nat) (hR : Sym4 R) : ∀ (ms : List Nat) (P : List Nat),
+    (∀ e ∈ ms, 1 ≤ e) → Sym4 P →
+    zgiLogic.Reach (hdR QG.gLW2b P (MEnc ms ++ R)) (hdR QG.gLW2b (P ++ MEnc ms) R)
+  | [], P, _, _ => by simp only [MEnc, List.nil_append, List.append_nil]; exact LTM.Reach.refl _ _
+  | e :: ms, P, h, hP => by
+    obtain ⟨k, rfl⟩ : ∃ k, e = k + 1 := ⟨e - 1, by have := h e (List.mem_cons_self ..); omega⟩
+    have hm : ∀ x ∈ ms, 1 ≤ x := fun x hx => h x (List.mem_cons_of_mem _ hx)
+    have hM : Sym4 (MEnc ms ++ R) := by simp [hR]
+    have h1 := lw2bSkip P (MEnc ms ++ R) k hP hM
+    have hP' : Sym4 (P ++ (List.replicate (k + 1) 2 ++ [1])) := by simp [ALL, hP]
+    have h2 := lw2bSkipList R hR ms _ hm hP'
+    exact (h1.of_eq (by simp [MEnc]) rfl).trans (h2.of_eq rfl (by simp [MEnc, List.append_assoc]))
+
 end ZP.G
