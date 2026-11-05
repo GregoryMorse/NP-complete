@@ -173,4 +173,78 @@ theorem phaseU (ws : List (List Nat)) (c R P : List Nat) (hws : ∀ e ∈ ws, Bi
   have h3 := xmCells R hR c _ hc hP2
   exact (h1.of_eq rfl rfl).trans ((h2.of_eq rfl rfl).trans (h3.of_eq rfl rfl))
 
+/-- A consumed label (all cells marked) is skipped; the parity flips. -/
+theorem lblSkipE (P R : List Nat) (e : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gY1e P (List.replicate (e + 1) 2 ++ 1 :: R))
+      (hdR QG.gY1o (P ++ (List.replicate (e + 1) 2 ++ [1])) R) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate e 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk e) (Valid.cons hR (Valid.nil _)))
+  have : zgiLogic.Reach (hdR QG.gY1e P (2 :: (List.replicate e 2 ++ 1 :: R)))
+      (hdR QG.gY1o (P ++ 2 :: (List.replicate e 2 ++ [1])) R) :=
+    checkFF (env := [P, List.replicate e 2, R]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ]) (by simp [List.replicate_succ])
+
+/-- The next cell of the current label is marked. -/
+theorem lblMarkE (P R : List Nat) (j : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gY1e P (List.replicate j 2 ++ 3 :: R))
+      (hdR QG.gLPe (P ++ List.replicate (j + 1) 2) R) := by
+  cases j with
+  | zero =>
+    have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+    have : zgiLogic.Reach (hdR QG.gY1e P (3 :: R)) (hdR QG.gLPe (P ++ [2]) R) :=
+      checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+        (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+    exact this.of_eq (by simp) (by simp)
+  | succ j =>
+    have hV : Valid [ALL, Mk, ALL] [P, List.replicate j 2, R] :=
+      Valid.cons hP (Valid.cons (rep2_mk j) (Valid.cons hR (Valid.nil _)))
+    have : zgiLogic.Reach (hdR QG.gY1e P (2 :: (List.replicate j 2 ++ 3 :: R)))
+        (hdR QG.gLPe (P ++ 2 :: (List.replicate j 2 ++ [2])) R) :=
+      checkFF (env := [P, List.replicate j 2, R]) (E := []) (k := 6) hV trivial
+        (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 3, .blk 2 .id])
+        (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 2]) (rs' := [.blk 2 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+    exact this.of_eq (by simp [List.replicate_succ]) (by rw [rep_cons_snoc])
+
+/-- A consumed label (all cells marked) is skipped; the parity flips. -/
+theorem lblSkipO (P R : List Nat) (e : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gY1o P (List.replicate (e + 1) 2 ++ 1 :: R))
+      (hdR QG.gY1e (P ++ (List.replicate (e + 1) 2 ++ [1])) R) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate e 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk e) (Valid.cons hR (Valid.nil _)))
+  have : zgiLogic.Reach (hdR QG.gY1o P (2 :: (List.replicate e 2 ++ 1 :: R)))
+      (hdR QG.gY1e (P ++ 2 :: (List.replicate e 2 ++ [1])) R) :=
+    checkFF (env := [P, List.replicate e 2, R]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ]) (by simp [List.replicate_succ])
+
+/-- The next cell of the current label is marked. -/
+theorem lblMarkO (P R : List Nat) (j : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gY1o P (List.replicate j 2 ++ 3 :: R))
+      (hdR QG.gLPo (P ++ List.replicate (j + 1) 2) R) := by
+  cases j with
+  | zero =>
+    have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+    have : zgiLogic.Reach (hdR QG.gY1o P (3 :: R)) (hdR QG.gLPo (P ++ [2]) R) :=
+      checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+        (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+    exact this.of_eq (by simp) (by simp)
+  | succ j =>
+    have hV : Valid [ALL, Mk, ALL] [P, List.replicate j 2, R] :=
+      Valid.cons hP (Valid.cons (rep2_mk j) (Valid.cons hR (Valid.nil _)))
+    have : zgiLogic.Reach (hdR QG.gY1o P (2 :: (List.replicate j 2 ++ 3 :: R)))
+        (hdR QG.gLPo (P ++ 2 :: (List.replicate j 2 ++ [2])) R) :=
+      checkFF (env := [P, List.replicate j 2, R]) (E := []) (k := 6) hV trivial
+        (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 3, .blk 2 .id])
+        (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 2]) (rs' := [.blk 2 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+    exact this.of_eq (by simp [List.replicate_succ]) (by rw [rep_cons_snoc])
+
 end ZP.G
