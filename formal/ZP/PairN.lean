@@ -404,4 +404,38 @@ theorem xdMarked (r s p : Nat) (R : List Nat) (hR : Sym4 R) :
   refine this.of_eq (by simp [List.replicate_succ', List.append_assoc]) ?_
   simp [List.replicate_succ', List.append_assoc]
 
+theorem bits_Dl (r s : Nat) : Bits (List.replicate r 2 ++ List.replicate s 3) := fun a ha => by
+  rcases List.mem_append.1 ha with ha | ha
+  · rw [List.eq_of_mem_replicate ha]; simp [bits]
+  · rw [List.eq_of_mem_replicate ha]; simp [bits]
+
+theorem zeros_B0 (k : Nat) : ∀ a ∈ List.replicate k 0, a ∈ ZP.F.B0 := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [ZP.F.B0]
+
+/-- The state before testing the divisor `d`: `D` is `d` unmarked cells, `P` is unmarked. -/
+def TD (d p : Nat) (R : List Nat) : ZC :=
+  hdR QN.X4 ([0] ++ List.replicate d 3 ++ [1]) (List.replicate p 3 ++ 1 :: R)
+
+/-- `d` divides `p`: composite. -/
+theorem dStepA (d p : Nat) (hd : 2 ≤ d) (hdv : p % d = 0) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (TD d p R) (hdR QN.PA0 [] (List.replicate p 3 ++ 1 :: R)) := by
+  have h1 := xLoop d p hd R hR p 0 (by omega)
+  have h2 := xEnd (p % d) (d - p % d) p R hR
+  rw [hdv] at h2
+  have h3 := xComposite (d - 0) p R hR
+  have e1 : hdR QN.X4 (Dm d 0) (List.replicate 0 2 ++ List.replicate (p - 0) 3 ++ 1 :: R) = TD d p R := by
+    simp [Dm, TD]
+  have e2 : hdR QN.X4 (Dm d p) (List.replicate p 2 ++ 1 :: R)
+      = hdR QN.X4 ([0] ++ List.replicate 0 2 ++ List.replicate (d - 0) 3 ++ [1]) (List.replicate p 2 ++ 1 :: R) := by
+    simp [Dm, hdv]
+  rw [e1] at h1
+  rw [e2] at h1
+  have h4 := (h1.trans h2).trans h3
+  refine h4.of_eq rfl ?_
+  have := ZP.F.hdR_zeros QN.PA0 (0 :: List.replicate (d - 0) 0 ++ [0]) [] (List.replicate p 3 ++ 1 :: R)
+    (fun a ha => by
+      simp at ha
+      rcases ha with rfl | ⟨-, rfl⟩ | rfl <;> simp [ZP.F.B0])
+  simpa using this
+
 end ZP.N
