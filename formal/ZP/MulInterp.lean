@@ -4,6 +4,7 @@ public import ZP.MulFuel
 public import ZP.Defs
 public import ZP.Logic
 public import ZP.SymExec
+public import ZP.LogicMul
 
 @[expose] public section
 
@@ -163,7 +164,31 @@ theorem segExh (Qw Lw Rw W : List Nat) (g r : Nat) (hr : r ∈ bits) (hQ : Bits 
 
 /-! ## Peek: `FBACK` on the blank `ch` reads `R[0..2]` at `Q`'s right end -/
 
--- `segHalt` (halting peek) is not retargeted: `zmul` changes the peek of `t = 0` entries (halt / switch).
+/-- Halting peek, `w = 0`, `d = 0`, `t = 0`: outcome 0 (as in `zp2`). -/
+theorem segHalt0 (Qw Lw Rw W : List Nat) (g : Nat)
+    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    zmBase.Reach (hd Q.FBACK (Qw ++ [2, 2, 2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
+        (1 :: (Rw ++ 1 :: W)))
+      (hdR Q.DP10 [1] W) := by
+  have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
+  exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 64) hv trivial
+        (ls := [.blk 0 .id, .sym 2, .sym 2, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+        (ls' := [.sym 1]) (rs' := [.blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+
+/-- Halting peek, `w = 1`, `d = 0`, `t = 0`: the output check starts at `mK1`; `Rw` is the output. -/
+theorem segHalt1 (Qw Lw Rw W : List Nat) (g : Nat)
+    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    zmulLogic.Reach (hd Q.FBACK (Qw ++ [2, 2, 3] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
+        (1 :: (Rw ++ 1 :: W)))
+      (hdR QMul.mK1 [2] (Rw ++ 1 :: W)) := by
+  have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
+  exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 40) hv trivial
+        (ls := [.blk 0 .id, .sym 2, .sym 2, .sym 3, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+        (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+        (ls' := [.sym 2]) (rs' := [.blk 3 .id, .sym 1, .blk 4 .id])
+        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
     zmBase.Reach (hd Q.FBACK ([2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
@@ -175,7 +200,27 @@ theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (
     (ls' := [.sym 1]) (rs' := [.blk 4 .id])
     (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
--- `segShort2` (short entry, halting) is likewise `zmul`-specific.
+/-- Short entry `[false, false]`: outcome 0. -/
+theorem segShort2_0 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    zmBase.Reach (hd Q.FBACK ([2, 2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
+      (hdR Q.DP10 [1] W) := by
+  have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
+  exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 64) hv trivial
+    (ls := [.sym 2, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+    (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+    (ls' := [.sym 1]) (rs' := [.blk 4 .id])
+    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+
+/-- Short entry `[true, false]`: the output check starts. -/
+theorem segShort2_1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    zmulLogic.Reach (hd Q.FBACK ([2, 3] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
+      (hdR QMul.mK1 [2] (Rw ++ 1 :: W)) := by
+  have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
+  exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 64) hv trivial
+    (ls := [.sym 2, .sym 3, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+    (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+    (ls' := [.sym 2]) (rs' := [.blk 3 .id, .sym 1, .blk 4 .id])
+    (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-! ## Write and move, then `RTW` on `Q`'s right end -/
 
