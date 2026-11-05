@@ -137,3 +137,9 @@ Everything from §2 on (generated files, fuel, switch loops, interpreter theorem
 - `gen_logic.py basemul` generates `ZP/LogicBaseMul.lean` (`zmBase`: zp2 minus the 75 transitions changed by the derived machines and zmul, with zmul's beep state 36); CI regenerates it.
 - `ZP/ExtChecks.lean`: `zmBase_ext_zmulLogic` (kernel-checked).
 - Note: `zmBase` has a different beep state than `zpBase`, so the zpBase-based lemmas (Fuel, Rot, Interp, Run) must be re-proved or re-derived for `zmBase`; that, the mixed-width fuel, switch loops, the `runMul` theorem and the check are still to do.
+
+### Status update (retargeted interpreter lemmas)
+
+- `ZP/MulRot.lean`, `ZP/MulFuel.lean`, `ZP/MulInterp.lean`: copies of `Rot`, `Fuel`, `Interp` with `zpBase` -> `zmBase`, in namespace `ZP.Mul`. They build; only the two halting peek segments (`segHalt`, `segShort2`) fail on `zmBase` (the peek of `t = 0` entries is what zmul changes) and are removed from the copy.
+- Findings from `zmul` traces (entry `FBACK` on `w d 0`): `w=0,d=0` reaches `ER20`/`DP10` (outcome 0), `w=1,d=0` reaches the new states `mK1/mK2` (output check), `d=1` reaches the switch states (`mRX`, `mPB0`, `mPB`, `mL1`, ...). These three exits are the new segments to prove before `MulRun` (copy of `Run.lean`, whose step uses `segHalt/segShort2`).
+- Next: new halt/switch peek segments, `MulRun` with the queue relation `StorRel`, mixed-width fuel, check.
