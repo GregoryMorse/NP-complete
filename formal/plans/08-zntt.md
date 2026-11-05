@@ -121,5 +121,13 @@ Done, building without sorry (`ZP/DefsNTT.lean`, `ZP/PadNTT.lean`, `ZP/AbstractN
 - the abstract program `absN`, `abstractQN_iff : AbstractQN pr ↔ SentenceN pr` for any `pr` with `NPrime pr`,
   and `sentenceN_iff (h : PrimeEx)` for `primeN`.
 
-Still to do: the generalized bridge for this step function (copy of `Bridge.lean`), all of §3 (the machine proof),
+UPDATE: the generalized bridge, generated files and certificate are done (see "Status update" at the end); what is left is
+the single lemma `PairDataA znttLogic (nttProg primeN)` = all of §3 below.
+Still to do: all of §3 (the machine proof),
 and the Challenge/Solution entries (the headline theorem carries the hypothesis `PrimeEx`).
+
+### Status update (generic layer + generated files)
+
+Done on branch lean-n3-p08 (no sorry): ZP/SeqSim.lean (AbsProg, MacroSimA, LMacroSimA, PairDataA.macroSim, quasihalts_iff_of_macroSimA); ZP/CompileSeq.lean (Cert.macroSimA_of_logic); gen_table.py zntt_native and gen_logic.py zntt (standalone numbering; native/mk_exact_map.py recovers the missing exact_zntt_native.json from the 469-state table) giving ZP/TableN.lean (469 states) and ZP/LogicN.lean (254 logical states); ZP/CompileN.lean (znttCert_ok by decide +kernel, znttMacroSimA); ZP/MainN.lean: zntt_quasihalts_iff_sentence (h : PrimeEx) (P : PairDataA znttLogic (nttProg primeN)).
+
+So plan 08 reduces to ONE lemma: PairDataA znttLogic (nttProg primeN), i.e. the layout layNTT c n, the start configuration after k0 steps, and the pair step (from layNTT c n the machine reaches the next layout, visiting BEEP iff hasCircuit c n is false). That is section 3 (rulers, record build, odometer, evaluation pass, power sums, merge); not started.

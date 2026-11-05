@@ -85,6 +85,7 @@ MACH = {
     'zfac': ('zfac', 'zfactor_native', 'zfac', 'F', None),
     'zdl': ('zdl', 'zdlog_native', 'zdl', 'D', 'zfac'),
     'zgi': ('zgi', 'zgi_native', 'zgi', 'G', 'zfac'),
+    'zntt': ('zntt', 'zntt_native', 'zntt', 'N', None),   # standalone: not derived from zp2
 }
 DERIVED = ('zpp', 'zps', 'zfac', 'zdl', 'zgi')   # machines whose changes define zpBase
 
@@ -157,7 +158,7 @@ def main(name='zp'):
     m = importlib.import_module(modname).build()
     qs0 = m.states()
     assert qs0[0] == m.start
-    if name == 'zp':
+    if name in ('zp', 'zntt'):
         qs = qs0
         num = {q: i for i, q in enumerate(qs)}
     else:
@@ -198,9 +199,9 @@ def main(name='zp'):
     body.append('/-- Cell of the pair (0 left, 1 right) at which the table enters `q`. -/')
     body.append(f'def {ident}Side : List Nat :=\n  [' + ', '.join(map(str, side)) + ']\n')
     body += chunked(f'{ident}Glen', '(List Nat)', glen)
-    if name == 'zp':
+    if name in ('zp', 'zntt'):
         body.append('-- State numbers of `zpLogic`, by their names in `native/zp2.py`.')
-        body.append('namespace Q\n' + ''.join(f'def {q} : Nat := {num[q]}\n' for q in qs) + 'end Q\n')
+        body.append(f'namespace Q{suf}\n' + ''.join(f'def {q} : Nat := {num[q]}\n' for q in qs) + f'end Q{suf}\n')
     else:
         new = [q for q in qs if num[q] >= 129]
         body.append(f'-- State numbers of the states that are new in `{modname}` (zp2 names keep their `Q` number).')

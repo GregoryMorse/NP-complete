@@ -80,3 +80,12 @@ public import ZP.Gx
 public import ZP.HardB
 public import ZP.Hard
 public import ZP.GenericP
+public import ZP.DefsNTT
+public import ZP.PadNTT
+public import ZP.AbstractNTT
+public import ZP.SeqSim
+public import ZP.CompileSeq
+public import ZP.TableN
+public import ZP.LogicN
+public import ZP.CompileN
+public import ZP.MainN
