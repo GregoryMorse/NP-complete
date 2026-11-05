@@ -1022,4 +1022,30 @@ theorem s3Walk (R : List Nat) (hR : Sym4 R) : ∀ (ts : List (List Nat)) (P : Li
     have h3 := s3Walk R hR ts _ hts hP2
     exact (h1.of_eq (by simp [MP]) rfl).trans ((h2.of_eq rfl rfl).trans (h3.of_eq rfl (by simp [MP, List.append_assoc])))
 
+/-- Skip one `H` entry: walk to `H`, pass the passed entries, mark the first cell of the next one. -/
+theorem hSkip (P cb mb c' Rest : List Nat) (ws xs pasT : List (List Nat))
+    (hcb : Bits cb) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hmb : Bits mb) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ [])
+    (hpas : ∀ t ∈ pasT, Bits t) (hc' : Bits c') (hP : Sym4 P) (hR : Sym4 Rest) :
+    zgiLogic.Reach
+      (hdR QG.gN1 P (cb ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ 3 :: (c' ++ 1 :: Rest)))))))
+      (hd QG.gIL0 (P ++ cb ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1] ++ MEs xs ++ [1] ++ MP pasT)
+        (2 :: (c' ++ 1 :: Rest))) := by
+  have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+  have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+  have sP := MP_sym4 pasT hpas
+  have s0 : Sym4 (c' ++ 1 :: Rest) := by simp [ALL, hc'.sym4, hR]
+  have s1 : Sym4 (MP pasT ++ 3 :: (c' ++ 1 :: Rest)) := by simp [ALL, sP, s0]
+  have s2 : Sym4 (MEs xs ++ 1 :: (MP pasT ++ 3 :: (c' ++ 1 :: Rest))) := by simp [ALL, sX, s1]
+  have s3 : Sym4 (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ 3 :: (c' ++ 1 :: Rest)))) := by simp [ALL, hmb.sym4, s2]
+  have s4 : Sym4 (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ 3 :: (c' ++ 1 :: Rest))))) := by simp [ALL, sW, s3]
+  have hA := wn1Cells _ s4 cb P hcb hP
+  have hB := wn1Walk _ s3 ws (P ++ cb ++ [1]) hws (by simp [ALL, hP, hcb.sym4])
+  have hC := wn2Cells _ s2 mb (P ++ cb ++ [1] ++ MEs ws ++ [1]) hmb (by simp [ALL, hP, hcb.sym4, sW])
+  have hD := wn2Walk _ s1 xs (P ++ cb ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1]) hxs (by simp [ALL, hP, hcb.sym4, sW, hmb.sym4])
+  have hE := s3Walk (3 :: (c' ++ 1 :: Rest)) (by simp [ALL, s0]) pasT (P ++ cb ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1] ++ MEs xs ++ [1]) hpas (by simp [ALL, hP, hcb.sym4, sW, hmb.sym4, sX])
+  have hF := s3Mark (P ++ cb ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1] ++ MEs xs ++ [1] ++ MP pasT) (c' ++ 1 :: Rest)
+    (by simp [ALL, hP, hcb.sym4, sW, hmb.sym4, sX, sP]) s0
+  exact (hA.of_eq rfl rfl).trans ((hB.of_eq rfl rfl).trans ((hC.of_eq rfl rfl).trans ((hD.of_eq rfl rfl).trans
+    ((hE.of_eq rfl rfl).trans (hF.of_eq rfl rfl)))))
+
 end ZP.G
