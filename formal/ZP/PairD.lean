@@ -1447,4 +1447,44 @@ theorem iLoop (p : Nat) (R : List Nat) (hR : Sym4 R) : ∀ (b a z : Nat), z < p 
       · rw [hA, Nat.sub_zero, e2]; simp
       · rw [e3, show a + 1 + b = a + (b + 1) by omega]
 
+
+theorem oLoop (p y : Nat) (R : List Nat) (hR : Sym4 R) : ∀ (r gm z : Nat), z < p →
+    zdlLogic.Reach
+      (hdR QD.O1 [] (List.replicate y 3 ++ 1 :: (List.replicate z 2 ++ (List.replicate (p - z) 3 ++
+        1 :: (List.replicate gm 2 ++ (List.replicate r 3 ++ 1 :: R))))))
+      (hdR QD.O1 [] (List.replicate y 3 ++ 1 :: (List.replicate ((z + r * y) % p) 2 ++
+        (List.replicate (p - (z + r * y) % p) 3 ++ 1 :: (List.replicate (gm + r) 2 ++ (1 :: R))))))
+  | 0, gm, z, hz => by simpa [Nat.mod_eq_of_lt hz] using LTM.Reach.refl _ _
+  | r + 1, gm, z, hz => by
+    have hpk := pickG (List.replicate y 3) (List.replicate z 2) (List.replicate (p - z) 3)
+      (List.replicate gm 2) (List.replicate r 3) R (rep_t3 y) (rep_z2 z) (rep_t3 _) (rep_z2 gm)
+      (rep_t3 r) hR
+    have hR' : Sym4 (List.replicate gm 2 ++ 2 :: (List.replicate r 3 ++ 1 :: R)) :=
+      (Sym4.rep gm 2 (by simp [ALL])).app (Sym4.cons (by simp [ALL])
+        ((Sym4.rep r 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hR)))
+    have hil := iLoop p (List.replicate gm 2 ++ 2 :: (List.replicate r 3 ++ 1 :: R)) hR' y 0 z hz
+    have hye := yEnd (List.replicate (0 + y) 2) (List.replicate ((z + y) % p) 2)
+      (List.replicate (p - (z + y) % p) 3) (List.replicate gm 2 ++ 2 :: (List.replicate r 3 ++ 1 :: R))
+      (rep_z2 _) (rep_z2 _) (rep_t3 _) hR'
+    have hzy : (z + y) % p < p := Nat.mod_lt _ (by omega)
+    have ih := oLoop p y R hR r (gm + 1) ((z + y) % p) hzy
+    have e : ((z + y) % p + r * y) % p = (z + (r + 1) * y) % p := by
+      rw [Nat.add_mod, Nat.mod_mod, ← Nat.add_mod]
+      congr 1
+      rw [Nat.succ_mul]
+      ac_rfl
+    have hs : zdlLogic.Reach
+        (hdR QD.I1 [] (List.replicate y 3 ++ 1 :: (List.replicate z 2 ++ (List.replicate (p - z) 3 ++
+          1 :: (List.replicate gm 2 ++ 2 :: (List.replicate r 3 ++ 1 :: R)))))) 
+        (hdR QD.O1 [] (List.replicate y 3 ++ 1 :: (List.replicate ((z + y) % p) 2 ++
+          (List.replicate (p - (z + y) % p) 3 ++ 1 :: (List.replicate gm 2 ++ 2 :: (List.replicate r 3 ++ 1 :: R)))))) :=
+      (hil.of_eq (by simp) rfl).trans (hye.of_eq (by simp) (by simp))
+    refine LTM.Reach.trans (c' := hdR QD.I1 []
+      (List.replicate y 3 ++ 1 :: (List.replicate z 2 ++ (List.replicate (p - z) 3 ++
+        1 :: (List.replicate gm 2 ++ 2 :: (List.replicate r 3 ++ 1 :: R)))))) (hpk.of_eq ?_ rfl)
+      (hs.trans (ih.of_eq ?_ ?_))
+    · simp [List.replicate_succ]
+    · simp [List.replicate_succ']
+    · rw [e, show gm + 1 + r = gm + (r + 1) by omega]
+
 end ZP.D
