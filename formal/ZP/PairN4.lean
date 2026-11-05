@@ -86,4 +86,74 @@ theorem initLoop0 (s : Nat) : ∀ (l : List (Nat × Nat)), (∀ x ∈ l, x.1 = 2
     refine h1'.trans (h2'.of_eq rfl ?_)
     simp [recsI, List.append_assoc]
 
+/-- The parameter prefix (with the leading blank) up to and including `Nn`. -/
+def Pre (a s c' n' : Nat) : List Nat :=
+  [0] ++ List.replicate (a + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3] ++ 1 :: List.replicate (c' + 1) 3
+    ++ [1, 3] ++ List.replicate n' 3
+
+theorem Pre_u4 (a s c' n' : Nat) : ∀ x ∈ Pre a s c' n', x ∈ U4 := by
+  intro x hx
+  simp only [Pre, List.mem_append, List.mem_cons, List.mem_replicate, List.not_mem_nil, or_false] at hx
+  simp only [U4, List.mem_cons, List.not_mem_nil, or_false]
+  omega
+
+def recsIP (s : Nat) : List (Nat × Nat) → List Nat
+  | [] => []
+  | (o, u) :: l => RecI 3 o s u ++ recsI s l
+
+/-- Witness initialisation: from the end of the records build to the start of the first pass. -/
+theorem witInit (a s c' n' : Nat) (o u : Nat) (l : List (Nat × Nat))
+    (hl : ∀ x ∈ (o, u) :: l, x.1 = 2 ∨ x.1 = 3) :
+    znttLogic.Reach
+      (hd QN.WI0 ([0] ++ List.replicate (a + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3] ++ 1 :: List.replicate (c' + 1) 3)
+        ([1, 3] ++ List.replicate n' 3 ++ recsL s ((o, u) :: l)))
+      (hd QN.RZ0 (Pre a s c' n' ++ recsIP s ((o, u) :: l)) [0]) := by
+  have ho : o = 2 ∨ o = 3 := hl (o, u) (by simp)
+  have hl' : ∀ x ∈ l, x.1 = 2 ∨ x.1 = 3 := fun x hx => hl x (by simp [hx])
+  have hP := Pre_u4 a s c' n'
+  have hA : ∀ x ∈ Pre a s c' n' ++ [1, 1], x ∈ U4 := u4_two _ hP
+  cases l with
+  | nil =>
+    have h1 := wiSweep a s c' n' (Tail3 o s u) (noB_Tail3 o s u ho)
+    have h2 := recInitLast1 (Pre a s c' n' ++ [1, 1]) hA o s u ho
+    have h1' : znttLogic.Reach
+        (hd QN.WI0 ([0] ++ List.replicate (a + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3] ++ 1 :: List.replicate (c' + 1) 3)
+          ([1, 3] ++ List.replicate n' 3 ++ recsL s [(o, u)]))
+        (hdR QN.WH1 (Pre a s c' n' ++ [1, 1]) (Tail3 o s u)) := by
+      refine h1.of_eq ?_ ?_
+      · simp [Rec3_eq, recsL, List.append_assoc]
+      · simp [Pre, List.append_assoc]
+    refine h1'.trans (h2.of_eq ?_ ?_)
+    · simp [Tail3]
+    · simp [recsIP, RecI, recsI, List.append_assoc]
+  | cons x l' =>
+    obtain ⟨o', u'⟩ := x
+    have ho' : o' = 2 ∨ o' = 3 := hl' (o', u') (by simp)
+    have hl'' : ∀ x ∈ l', x.1 = 2 ∨ x.1 = 3 := fun x hx => hl' x (by simp [hx])
+    have h1 := wiSweep a s c' n' (Tail3 o s u ++ recsL s ((o', u') :: l'))
+      (noB_app (noB_Tail3 o s u ho) (noB_recsL s _ hl'))
+    have h2 := recInitMid1 (Pre a s c' n' ++ [1, 1]) hA o s u ho (Tail3 o' s u' ++ recsL s l')
+      (noB_app (noB_Tail3 o' s u' ho') (noB_recsL s l' hl''))
+    have h3 := initLoop0 s l' hl'' (Pre a s c' n' ++ RecI 3 o s u) (by
+      intro x hx
+      simp only [List.mem_append] at hx
+      rcases hx with h | h
+      · exact hP x h
+      · exact RecI_u4 3 o s u (Or.inr rfl) ho x h) o' u' ho'
+    have h1' : znttLogic.Reach
+        (hd QN.WI0 ([0] ++ List.replicate (a + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3] ++ 1 :: List.replicate (c' + 1) 3)
+          ([1, 3] ++ List.replicate n' 3 ++ recsL s ((o, u) :: (o', u') :: l')))
+        (hdR QN.WH1 (Pre a s c' n' ++ [1, 1]) (Tail3 o s u ++ recsL s ((o', u') :: l'))) := by
+      refine h1.of_eq ?_ ?_
+      · simp [Rec3_eq, recsL, List.append_assoc]
+      · simp [Pre, List.append_assoc]
+    have h2' : znttLogic.Reach
+        (hdR QN.WH1 (Pre a s c' n' ++ [1, 1]) (Tail3 o s u ++ recsL s ((o', u') :: l')))
+        (hdR QN.WH0 (Pre a s c' n' ++ RecI 3 o s u ++ [1, 1]) (Tail3 o' s u' ++ recsL s l')) := by
+      refine h2.of_eq ?_ ?_
+      · simp [Tail3, recsL, Rec3_eq, List.append_assoc]
+      · simp [RecI, List.append_assoc]
+    refine h1'.trans (h2'.trans (h3.of_eq rfl ?_))
+    simp [recsIP, recsI, List.append_assoc]
+
 end ZP.N
