@@ -529,4 +529,73 @@ theorem primeTest (p : Nat) (R : List Nat) (hR : Sym4 R) : ∀ d, 2 ≤ d →
         · subst he; exact absurd h3 hz
         · exact hs.trans (i2 ⟨e, h1, by omega, h3⟩)
 
+theorem hd_eq' (q : Nat) (A R : List Nat) :
+    hd q A R = ⟨q, stail (sapp A.reverse blank), scons (sapp A.reverse blank 0) (sapp R blank)⟩ := by
+  show (⟨q, stail (sapp (dL [A, R] [.blk 0 .id]) blank), scons (sapp (dL [A, R] [.blk 0 .id]) blank 0)
+    (sapp (dR [A, R] [.blk 1 .id]) blank)⟩ : ZC) = _
+  rw [ZP.dW_blk0, ZP.dW_blk1]
+
+/-- A blank at the far left is no change. -/
+theorem hd_zero (q : Nat) (A R : List Nat) : hd q (0 :: A) R = hd q A R := by
+  rw [hd_eq', hd_eq', List.reverse_cons, ZP.sapp_append]
+  have h0 : sapp [0] blank = blank := ZP.F.sapp_zeros 1
+  rw [h0]
+
+theorem isPrimeN_iff (p : Nat) :
+    isPrimeN p = true ↔ 2 ≤ p ∧ ∀ e, 2 ≤ e → e < p → p % e ≠ 0 := by
+  unfold isPrimeN
+  simp only [Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true, List.mem_range, Bool.or_eq_true]
+  constructor
+  · rintro ⟨h2, h⟩
+    refine ⟨h2, fun e he1 he2 => ?_⟩
+    rcases h e he2 with h | h
+    · omega
+    · exact h
+  · rintro ⟨h2, h⟩
+    refine ⟨h2, fun e he => ?_⟩
+    by_cases h1 : e < 2
+    · exact Or.inl h1
+    · exact Or.inr (h e (by omega) he)
+
+/-- The primality stage: from the left end of `P` (after `P += n`) to the verdict. -/
+theorem primeStage (p : Nat) (hp : 2 ≤ p) (Y Z : List Nat) (hY : NoB Y) (hZ : Sym4 Z) :
+    (isPrimeN p = true → znttLogic.Reach (hd QN.PT0 (List.replicate p 3 ++ 1 :: Y) (0 :: Z))
+      (hd QN.WX [0, 3] (1 :: List.replicate p 3 ++ 1 :: (Y ++ 0 :: Z)))) ∧
+    (isPrimeN p = false → znttLogic.Reach (hd QN.PT0 (List.replicate p 3 ++ 1 :: Y) (0 :: Z))
+      (hdR QN.PA0 [] (List.replicate p 3 ++ 1 :: (Y ++ 0 :: Z)))) := by
+  have hW : NoB (List.replicate p 3 ++ 1 :: Y) := by simp [NB, hY]
+  have h1 := pt0Start (List.replicate p 3 ++ 1 :: Y) Z hW hZ
+  have hR0 : Sym4 (Y ++ 0 :: Z) := by simp [ALL, hY.sym4, hZ]
+  have h2 := dcLoop p (Y ++ 0 :: Z) hR0 p 0 (by omega)
+  have h12 := h1.trans (h2.of_eq (by simp) rfl)
+  have hR1 : Sym4 (List.replicate p 3 ++ 1 :: (Y ++ 0 :: Z)) := by simp [ALL, hY.sym4, hZ]
+  by_cases hp2 : p = 2
+  · subst hp2
+    have h3 := xsDec2 3 3 (List.replicate 2 3 ++ 1 :: (Y ++ 0 :: Z)) (by simp [bits]) (by simp [bits]) hR1
+    refine ⟨fun _ => (h12.trans (h3.of_eq (by simp [List.replicate_succ]) rfl)).of_eq rfl rfl, fun h => ?_⟩
+    exact absurd h (by decide)
+  · have hp3 : 3 ≤ p := by omega
+    obtain ⟨k, rfl⟩ : ∃ k, p = k + 3 := ⟨p - 3, by omega⟩
+    have h3 := xsDecN 3 3 3 (List.replicate k 3) (List.replicate (k + 3) 3 ++ 1 :: (Y ++ 0 :: Z))
+      (by simp [bits]) (by simp [bits]) (by simp [bits]) (bits_rep3 k) hR1
+    have h4 := h12.trans (h3.of_eq (by simp [List.replicate_succ]) rfl)
+    have hT : hdR QN.X4 (0 :: 3 :: 3 :: List.replicate (List.replicate k 3).length 3 ++ [1])
+        (List.replicate (k + 3) 3 ++ 1 :: (Y ++ 0 :: Z)) = TD (k + 2) (k + 3) (Y ++ 0 :: Z) := by
+      simp [TD, List.replicate_succ]
+    rw [hT] at h4
+    obtain ⟨t1, t2⟩ := primeTest (k + 3) (Y ++ 0 :: Z) hR0 (k + 2) (by omega)
+    constructor
+    · intro hpr
+      obtain ⟨-, hnd⟩ := (isPrimeN_iff _).1 hpr
+      have := h4.trans (t1 fun e he1 he2 => hnd e he1 (by omega))
+      exact this.of_eq rfl (hd_zero QN.WX [0, 3] _)
+    · intro hnp
+      have hnp' : ¬ (∀ e, 2 ≤ e → e < k + 3 → (k + 3) % e ≠ 0) := fun h =>
+        by have := (isPrimeN_iff (k + 3)).2 ⟨by omega, h⟩; rw [hnp] at this; cases this
+      obtain ⟨e, he⟩ : ∃ e, 2 ≤ e ∧ e < k + 3 ∧ (k + 3) % e = 0 := by
+        apply Classical.byContradiction
+        intro hh
+        exact hnp' fun e he1 he2 hz => hh ⟨e, he1, he2, hz⟩
+      exact h4.trans (t2 ⟨e, he.1, by omega, he.2.2⟩)
+
 end ZP.N
