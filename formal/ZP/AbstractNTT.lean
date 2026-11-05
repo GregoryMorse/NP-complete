@@ -253,4 +253,53 @@ theorem abstract_to_sentence (pr : Nat → Nat) (hp : NPrime pr) : AbstractQN pr
 theorem abstractQN_iff (pr : Nat → Nat) (hp : NPrime pr) : AbstractQN pr ↔ SentenceN pr :=
   ⟨abstract_to_sentence pr hp, sentence_to_abstract pr hp⟩
 
+
+/-! ## The prime `p ≡ 1 (mod n)`, under the existence hypothesis -/
+
+def isPrimeN (p : Nat) : Bool := decide (2 ≤ p) && (List.range p).all fun d => decide (d < 2) || decide (p % d ≠ 0)
+
+/-- The hypothesis: every `n ≥ 1` has a prime `1 + n i` with `i ≥ 1` (Dirichlet for `≡ 1 (mod n)`). -/
+def PrimeEx : Prop := ∀ n, 1 ≤ n → ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true
+
+theorem exists_least (P : Nat → Prop) (h : ∃ i, P i) : ∃ i, P i ∧ ∀ j, P j → i ≤ j := by
+  obtain ⟨i0, hi0⟩ := h
+  induction i0 using Nat.strongRecOn with
+  | _ i ih =>
+    by_cases hl : ∃ j, j < i ∧ P j
+    · obtain ⟨j, hj, hpj⟩ := hl
+      exact ih j hj hpj
+    · refine ⟨i, hi0, fun j hj => ?_⟩
+      exact Nat.le_of_not_lt fun hlt => hl ⟨j, hlt, hj⟩
+
+open Classical in
+/-- `ref.prime`: the least prime `1 + n i`, `i ≥ 1`. -/
+noncomputable def primeN (n : Nat) : Nat :=
+  if h : ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true then
+    1 + n * Classical.choose (exists_least (fun i => 1 ≤ i ∧ isPrimeN (1 + n * i) = true) h)
+  else 0
+
+theorem primeN_spec (n : Nat) (h : ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true) :
+    ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true ∧ primeN n = 1 + n * i ∧
+      ∀ j, 1 ≤ j → isPrimeN (1 + n * j) = true → i ≤ j := by
+  unfold primeN
+  rw [dif_pos h]
+  have hm := Classical.choose_spec (exists_least (fun i => 1 ≤ i ∧ isPrimeN (1 + n * i) = true) h)
+  exact ⟨_, hm.1.1, hm.1.2, rfl, fun j hj hp => hm.2 j ⟨hj, hp⟩⟩
+
+theorem nprime_primeN (h : PrimeEx) : NPrime primeN := by
+  refine ⟨fun n hn => ?_, ?_, ?_⟩
+  · obtain ⟨i, hi, hp, e, -⟩ := primeN_spec n (h n hn)
+    rw [e]; omega
+  · obtain ⟨i, hi, hp, e, hmin⟩ := primeN_spec 1 (h 1 (Nat.le_refl _))
+    have : i ≤ 1 := hmin 1 (Nat.le_refl _) (by decide)
+    have : i = 1 := by omega
+    subst this; rw [e]
+  · obtain ⟨i, hi, hp, e, hmin⟩ := primeN_spec 2 (h 2 (by omega))
+    have : i ≤ 1 := hmin 1 (Nat.le_refl _) (by decide)
+    have : i = 1 := by omega
+    subst this; rw [e]
+
+theorem sentenceN_iff (h : PrimeEx) : AbstractQN primeN ↔ SentenceN primeN :=
+  abstractQN_iff primeN (nprime_primeN h)
+
 end ZP

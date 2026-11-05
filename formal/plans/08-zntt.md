@@ -107,3 +107,19 @@ cleared. Any invariant you state must say that `Nn` is clean at the pair start.
 ~7000–10000 lines across ≥ 6 sessions, plus the prime-existence library. Settle §1
 with the user first. Before writing Lean for item 4, write each subroutine's invariant against
 a Python trace on `DFT_2` (`c = 3, n = 2`, which the tests already run).
+
+
+## Status (in progress)
+
+Decision (user): the prime is handled with the **hypothesis option** `PrimeEx`
+(`∀ n ≥ 1, ∃ i ≥ 1, isPrimeN (1 + n i)`); `primeN` is the least such prime, defined classically.
+
+Done, building without sorry (`ZP/DefsNTT.lean`, `ZP/PadNTT.lean`, `ZP/AbstractNTT.lean`; not yet imported by `ZP.lean`):
+- `evalC`, `allRecs`, `hasCircuit pr c n` (literal mirror of the ref, prime as a parameter);
+- padding `hasCircuit_pad` (`2 ≤ c` => one more round keeps a circuit) with `evalC_pad`;
+- n = 1 witness, `decide +kernel` facts for `n = 2`, `c ≤ 2`;
+- the abstract program `absN`, `abstractQN_iff : AbstractQN pr ↔ SentenceN pr` for any `pr` with `NPrime pr`,
+  and `sentenceN_iff (h : PrimeEx)` for `primeN`.
+
+Still to do: the generalized bridge for this step function (copy of `Bridge.lean`), all of §3 (the machine proof),
+and the Challenge/Solution entries (the headline theorem carries the hypothesis `PrimeEx`).
