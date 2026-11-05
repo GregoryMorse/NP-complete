@@ -1746,4 +1746,136 @@ theorem primePhase (p : Nat) (Q : List Nat) (hQ : Sym4 Q) :
     obtain ⟨L, Mr, hL, hMr, hR⟩ := hsc.2 hnok
     exact ⟨L, Mr, hL, hMr, h0.trans hR⟩
 
+
+/-- Only one number: `G` is missing. -/
+theorem gap1b (P : List Nat) (R : List Nat) (hP : ∀ a ∈ P, a ∈ T3) (hR : Sym4 R) :
+    zdlLogic.Reach (hdR QD.Q1 ([]) (3 :: (1 :: (P ++ (1 :: (0 :: (R)))))))
+      (hd QF.FE (2 :: (1 :: (P ++ ([1])))) (2 :: (R))) := by
+  have hV : Valid [T3, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 5) hV trivial
+    (ls := []) (rs := [.sym 3, .sym 1, .blk 0 .id, .sym 1, .sym 0, .blk 1 .id])
+    (ls' := [.sym 2, .sym 1, .blk 0 .id, .sym 1]) (rs' := [.sym 2, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Only two numbers: `H` is missing. -/
+theorem gap2b (P : List Nat) (G : List Nat) (R : List Nat) (hP : ∀ a ∈ P, a ∈ T3) (hG : ∀ a ∈ G, a ∈ T3) (hR : Sym4 R) :
+    zdlLogic.Reach (hdR QD.Q1 ([]) (3 :: (1 :: (P ++ (1 :: (G ++ (1 :: (0 :: (R)))))))))
+      (hd QF.FE (2 :: (1 :: (P ++ (1 :: (G ++ ([1])))))) (2 :: (R))) := by
+  have hV : Valid [T3, T3, ALL] [P, G, R] := Valid.cons hP (Valid.cons hG (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [P, G, R]) (E := []) (k := 7) hV trivial
+    (ls := []) (rs := [.sym 3, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 0, .blk 2 .id])
+    (ls' := [.sym 2, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 2, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+
+theorem numbers_eq : ∀ (f : Nat) (r : List Bool) (cur : Nat) (fr : List Nat),
+    fr.reverse ++ numsAux f r cur =
+      (parseState f r cur fr).2.reverse ++ [(parseState f r cur fr).1]
+  | 0, r, cur, fr => by simp [numsAux, parseState]
+  | f + 1, [], cur, fr => by simp [numsAux, parseState]
+  | f + 1, [true], cur, fr => by simp [numsAux, parseState]
+  | f + 1, true :: b :: r, cur, fr => by
+    have := numbers_eq f r (2 * cur + if b then 1 else 0) fr
+    simp only [numsAux, parseState]
+    rw [this]
+    cases b <;> simp [bitN, Nat.add_comm]
+  | f + 1, false :: r, cur, fr => by
+    have := numbers_eq f r 0 (cur :: fr)
+    simp only [numsAux, parseState]
+    rw [← this]
+    simp
+
+
+theorem lay1_noB : ∀ (c : Nat) (fr : List Nat), NoB (lay1 c fr)
+  | c, [] => t3_noB (rep_t3 c)
+  | c, n :: fr => (t3_noB (rep_t3 c)).app (NoB.cons one_nb (lay1_noB n fr))
+
+/-- The truth routine: from the start of the conversion to the report of the result. -/
+theorem truthD (Sb : List Bool) (Rt : List Nat) (hRt : Sym4 Rt) :
+    (∃ L Mr, NoB L ∧ NoB Mr ∧
+      zdlLogic.Reach (hd QF.HPF (1 :: crev Sb) (0 :: Rt))
+        (hdR (if inLD Sb then QF.FR1 else QF.FR0) L
+          (Mr ++ (List.replicate (Sb.length + 1) 0 ++ Rt)))) ∨
+    (∃ L, NoB L ∧ inLD Sb = false ∧
+      zdlLogic.Reach (hd QF.HPF (1 :: crev Sb) (0 :: Rt))
+        (hd QF.FE L (2 :: (List.replicate Sb.length 0 ++ Rt)))) := by
+  have hconv := convLoop Rt hRt Sb.length Sb 0 [] 1 (Nat.le_refl _) (Nat.le_refl _)
+  have hnum := numbers_eq Sb.length Sb 0 []
+  simp only [List.reverse_nil, List.nil_append] at hnum
+  have hnum' : numbers Sb = (parseState Sb.length Sb 0 []).2.reverse ++ [(parseState Sb.length Sb 0 []).1] := hnum
+  generalize parseState Sb.length Sb 0 [] = pr at hconv hnum'
+  obtain ⟨c, fr⟩ := pr
+  simp only at hconv hnum'
+  have hG0 : Sym4 (List.replicate (Sb.length + 1) 0 ++ Rt) := (zeros4 _).app hRt
+  have hconv' : zdlLogic.Reach (hd QF.HPF (1 :: crev Sb) (0 :: Rt))
+      (hd QD.E0 (lay1 c fr) (1 :: (List.replicate (Sb.length + 1) 0 ++ Rt))) := by
+    have e : 1 + Sb.length = Sb.length + 1 := by omega
+    rw [e] at hconv
+    refine hconv.of_eq ?_ rfl
+    simp [lyt]
+  have hQ : Sym4 (lyt fr ++ (List.replicate (Sb.length + 1) 0 ++ Rt)) :=
+    (NoB.sym4 (lyt_noB fr)).app hG0
+  have he0 := e0 (lay1 c fr) (1 :: (List.replicate (Sb.length + 1) 0 ++ Rt)) (lay1_noB c fr)
+    (Sym4.cons (by simp [ALL]) hG0)
+  have hcp : zdlLogic.Reach (hd QD.E0 (lay1 c fr) (1 :: (List.replicate (Sb.length + 1) 0 ++ Rt)))
+      (hdR QD.CP1 [1] (List.replicate c 3 ++ 1 :: (lyt fr ++ (List.replicate (Sb.length + 1) 0 ++ Rt)))) := by
+    refine he0.of_eq rfl ?_
+    have this := lay1_eq c fr
+    have e : List.replicate c 3 ++ 1 :: (lyt fr ++ (List.replicate (Sb.length + 1) 0 ++ Rt)) =
+        lay1 c fr ++ 1 :: (List.replicate (Sb.length + 1) 0 ++ Rt) :=
+      calc List.replicate c 3 ++ 1 :: (lyt fr ++ (List.replicate (Sb.length + 1) 0 ++ Rt))
+          = (List.replicate c 3 ++ 1 :: lyt fr) ++ (List.replicate (Sb.length + 1) 0 ++ Rt) := by simp
+        _ = (lay1 c fr ++ [1]) ++ (List.replicate (Sb.length + 1) 0 ++ Rt) := by rw [this]
+        _ = _ := by simp
+    rw [e]
+  obtain ⟨hpr, hnp⟩ := primePhase c _ hQ
+  by_cases hp : isPrime c = true
+  · have hpr' := hpr hp
+    have hGsplit : List.replicate (Sb.length + 1) 0 ++ Rt = 0 :: (List.replicate Sb.length 0 ++ Rt) := by
+      simp [List.replicate_succ]
+    have hGp : Sym4 (List.replicate Sb.length 0 ++ Rt) := (zeros4 _).app hRt
+    have hmain := hconv'.trans (hcp.trans hpr')
+    have hnoB2 : NoB [3] := NoB.cons (by simp [NB]) NoB.nil
+    cases fr with
+    | nil =>
+      have hinP : inLD Sb = false := by unfold inLD; rw [hnum']; simp
+      have h1 := gap1b (List.replicate c 3) (List.replicate Sb.length 0 ++ Rt) (rep_t3 c) hGp
+      refine Or.inr ⟨2 :: 1 :: (List.replicate c 3 ++ [1]),
+        NoB.cons (by simp [NB]) (NoB.cons one_nb ((t3_noB (rep_t3 c)).app (NoB.cons one_nb NoB.nil))),
+        hinP, hmain.trans (h1.of_eq ?_ rfl)⟩
+      simp [lyt, hGsplit]
+    | cons g fr1 =>
+      cases fr1 with
+      | nil =>
+        have hinP : inLD Sb = false := by unfold inLD; rw [hnum']; simp
+        have h1 := gap2b (List.replicate c 3) (List.replicate g 3) (List.replicate Sb.length 0 ++ Rt)
+          (rep_t3 c) (rep_t3 g) hGp
+        refine Or.inr ⟨2 :: 1 :: (List.replicate c 3 ++ 1 :: (List.replicate g 3 ++ [1])),
+          NoB.cons (by simp [NB]) (NoB.cons one_nb ((t3_noB (rep_t3 c)).app (NoB.cons one_nb
+            ((t3_noB (rep_t3 g)).app (NoB.cons one_nb NoB.nil))))),
+          hinP, hmain.trans (h1.of_eq ?_ rfl)⟩
+        simp [lyt, hGsplit]
+      | cons h fr2 =>
+        cases fr2 with
+        | nil => sorry
+        | cons k fr3 => sorry
+  · have hp' : isPrime c = false := by simpa using hp
+    obtain ⟨L, Mr, hL, hMr, hR⟩ := hnp hp'
+    have hin : inLD Sb = false := by
+      unfold inLD
+      rw [hnum']
+      simp only [List.reverse_append, List.reverse_reverse, List.reverse_cons, List.reverse_nil,
+        List.nil_append, List.singleton_append]
+      cases fr with
+      | nil => simp
+      | cons g fr1 => cases fr1 with
+        | nil => simp
+        | cons h fr2 => simp [hp']
+    refine Or.inl ⟨L, Mr ++ lyt fr, hL, hMr.app (lyt_noB fr), ?_⟩
+    rw [hin]
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    refine hconv'.trans (hcp.trans (hR.of_eq rfl ?_))
+    simp
+
 end ZP.D
