@@ -52,6 +52,9 @@ public import ZP.ChecksD
 public import ZP.CompileD
 public import ZP.PairD
 public import ZP.MainD
+public import ZP.DefsG
+public import ZP.ChecksG
+public import ZP.CompileG
 public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile
