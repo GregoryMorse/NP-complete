@@ -143,3 +143,11 @@ Everything from §2 on (generated files, fuel, switch loops, interpreter theorem
 - `ZP/MulRot.lean`, `ZP/MulFuel.lean`, `ZP/MulInterp.lean`: copies of `Rot`, `Fuel`, `Interp` with `zpBase` -> `zmBase`, in namespace `ZP.Mul`. They build; only the two halting peek segments (`segHalt`, `segShort2`) fail on `zmBase` (the peek of `t = 0` entries is what zmul changes) and are removed from the copy.
 - Findings from `zmul` traces (entry `FBACK` on `w d 0`): `w=0,d=0` reaches `ER20`/`DP10` (outcome 0), `w=1,d=0` reaches the new states `mK1/mK2` (output check), `d=1` reaches the switch states (`mRX`, `mPB0`, `mPB`, `mL1`, ...). These three exits are the new segments to prove before `MulRun` (copy of `Run.lean`, whose step uses `segHalt/segShort2`).
 - Next: new halt/switch peek segments, `MulRun` with the queue relation `StorRel`, mixed-width fuel, check.
+
+### Status update (halting peek segments)
+
+- `ZP/MulInterp.lean` now has the halting peeks: `segHalt0`, `segShort1`, `segShort2_0` (outcome 0, `w=d=t=0`; these only use transitions shared with `zp2`, so they are stated for `zmBase` and reach `hdR Q.DP10 [1] W`), and `segHalt1`, `segShort2_1` (outcome 1, `w=1,d=0,t=0`).
+- **Important:** every segment that passes through a transition zmul changes (the `t = 0` peeks `PKT01/PKT11`, the switch, the output check) cannot be proved for `zmBase`; it must be stated for `zmulLogic` and combined with the `zmBase` lemmas through `zmBase_ext_zmulLogic.reach`. So `MulRun` should work with `zmulLogic.Reach`, lifting the `zmBase` pieces (`Rot`, `Fuel`, normal-step segments, `segHalt0`).
+- Exit shape of the outcome-1 halt: `hd FBACK (Qw ++ [2,2,3] ++ 0^g ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)) ⟶ hdR mK1 [2] (Rw ++ 1 :: W)`. `Rw` (the guest cells left of the head) is the output, `Lw`/`Qw`/the gap are blanked, and `mK1` starts the multiplication check on `0 Rw M W`.
+- A Python mirror for designing the remaining segments is `formal/scripts/symexec.py` run with `LOGIC=LogicMul LOGICID=zmul`.
+- Still to do: the switch peek and `switchStep` (shift chain, terminator, pop) with `StorRel`, `MulRun`, mixed-width fuel and its build, the `mK*` output check (`mulCheck`), `pair_mainMul`, `MainMul`, Challenge/Solution entries.
