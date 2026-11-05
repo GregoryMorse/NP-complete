@@ -57,13 +57,13 @@ jobs:
         run: python3 formal/scripts/check_sources.py
       - name: Generated tables match machines/*.tbl
         run: |
-          for m in zp_native zpp_native zps_native zfactor_native zdlog_native zgi_native; do
+          for m in zp_native zpp_native zps_native zfactor_native zdlog_native zgi_native zmul_native; do
             python3 formal/gen_table.py $m
           done
           git diff --exit-code formal/ZP/Table*.lean
       - name: Generated logical machines and certificates match native/*.py
         run: |
-          for m in zp base zpp zps zfac zdl zgi; do
+          for m in zp base zpp zps zfac zdl zgi zmul; do
             python3 formal/gen_logic.py $m
           done
           git diff --exit-code formal/ZP/Logic*.lean

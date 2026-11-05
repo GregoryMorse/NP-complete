@@ -85,6 +85,7 @@ MACH = {
     'zfac': ('zfac', 'zfactor_native', 'zfac', 'F', None),
     'zdl': ('zdl', 'zdlog_native', 'zdl', 'D', 'zfac'),
     'zgi': ('zgi', 'zgi_native', 'zgi', 'G', 'zfac'),
+    'zmul': ('zmul', 'zmul_native', 'zmul', 'Mul', None),
 }
 DERIVED = ('zpp', 'zps', 'zfac', 'zdl', 'zgi')   # machines whose changes define zpBase
 

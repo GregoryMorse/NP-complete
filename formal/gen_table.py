@@ -41,6 +41,7 @@ TABLES = {
     'zfactor_native': ('zfacMachine', 'F'),
     'zdlog_native': ('zdlMachine', 'D'),
     'zgi_native': ('zgiMachine', 'G'),
+    'zmul_native': ('zmulMachine', 'Mul'),
 }
 
 

@@ -125,3 +125,9 @@ theorem zmul_quasihalts_iff_sentence : Quasihalts zmulMachine ↔ SentenceMul
 Sanity checks reproduce the first refutations of `ref/zmul_ref.py` (`('', '')`, `('0', '')`, `('1','11011')`, `('00','')`),
 including that `J = '1'` is correct on all instances before `'11011'`.
 Everything from §2 on (generated files, fuel, switch loops, interpreter theorem, check) is still to do.
+
+### Status update (generated files and certificate)
+
+- `gen_table.py zmul_native` and `gen_logic.py zmul` (parent: zp2 directly) generate `ZP/TableMul.lean` and `ZP/LogicMul.lean` (169 logical states, 190 slots); the CI loops include them.
+- `ZP/CompileMul.lean`: `zmulCert_ok` and `zmulMacroSimC` build with no sorry.
+- Next: `zmBase` (zp2 minus the 16 extra transitions), the Ext facts, mixed-width fuel, switch loops.
