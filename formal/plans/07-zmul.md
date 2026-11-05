@@ -131,3 +131,9 @@ Everything from §2 on (generated files, fuel, switch loops, interpreter theorem
 - `gen_table.py zmul_native` and `gen_logic.py zmul` (parent: zp2 directly) generate `ZP/TableMul.lean` and `ZP/LogicMul.lean` (169 logical states, 190 slots); the CI loops include them.
 - `ZP/CompileMul.lean`: `zmulCert_ok` and `zmulMacroSimC` build with no sorry.
 - Next: `zmBase` (zp2 minus the 16 extra transitions), the Ext facts, mixed-width fuel, switch loops.
+
+### Status update (zmBase)
+
+- `gen_logic.py basemul` generates `ZP/LogicBaseMul.lean` (`zmBase`: zp2 minus the 75 transitions changed by the derived machines and zmul, with zmul's beep state 36); CI regenerates it.
+- `ZP/ExtChecks.lean`: `zmBase_ext_zmulLogic` (kernel-checked).
+- Note: `zmBase` has a different beep state than `zpBase`, so the zpBase-based lemmas (Fuel, Rot, Interp, Run) must be re-proved or re-derived for `zmBase`; that, the mixed-width fuel, switch loops, the `runMul` theorem and the check are still to do.
