@@ -254,4 +254,113 @@ theorem evalC_pad (n p : Nat) (hp : 0 < p) (hn : 1 ≤ n) (recs : List Rec) (h :
       exact ih (fun x hx => hl x (List.mem_cons_of_mem _ hx)) _
   rw [this (List.range n) (fun t ht => List.mem_range.1 ht)]
 
+/-- Well-formed records: pointers go backwards, coefficients are below `p`. -/
+def wfAux (p : Nat) : Nat → List Rec → Prop
+  | _, [] => True
+  | j, (u, b) :: rs => (∀ x, u = some x → x < j) ∧ b < p ∧ wfAux p (j + 1) rs
+
+theorem wfAux_append (p : Nat) : ∀ (as bs : List Rec) (j : Nat),
+    wfAux p j (as ++ bs) ↔ wfAux p j as ∧ wfAux p (j + as.length) bs
+  | [], bs, j => by simp [wfAux]
+  | (u, b) :: as, bs, j => by
+    simp only [List.cons_append, wfAux, List.length_cons]
+    rw [wfAux_append p as bs (j + 1)]
+    rw [show j + (as.length + 1) = j + 1 + as.length by omega]
+    constructor
+    · rintro ⟨h1, h2, h3, h4⟩; exact ⟨⟨h1, h2, h3⟩, h4⟩
+    · rintro ⟨⟨h1, h2, h3⟩, h4⟩; exact ⟨h1, h2, h3, h4⟩
+
+theorem wfAux_none (p : Nat) (hp : 0 < p) : ∀ (k j : Nat), wfAux p j (List.replicate k ((none : Option Nat), 0))
+  | 0, j => by simp [wfAux]
+  | k + 1, j => by
+    simp only [List.replicate_succ, wfAux]
+    exact ⟨fun x hx => (by cases hx), hp, wfAux_none p hp k (j + 1)⟩
+
+theorem wfAux_shift (p n : Nat) : ∀ (rs : List Rec) (j : Nat), wfAux p j rs → n ≤ j →
+    wfAux p (j + n) (rs.map (shiftRec n))
+  | [], j, _, _ => by simp [wfAux]
+  | (u, b) :: rs, j, h, hj => by
+    obtain ⟨h1, h2, h3⟩ := h
+    simp only [List.map_cons, wfAux, shiftRec]
+    refine ⟨fun x hx => ?_, h2, ?_⟩
+    · cases u with
+      | none => simp at hx
+      | some u =>
+        simp only [Option.map_some, Option.some.injEq] at hx
+        have := h1 u rfl
+        by_cases hu : u < n
+        · simp only [hu, if_true] at hx; omega
+        · simp only [hu, if_false] at hx; omega
+    · rw [show j + n + 1 = (j + 1) + n by omega]
+      exact wfAux_shift p n rs (j + 1) h3 (by omega)
+
+theorem wf_pad (p n : Nat) (hp : 0 < p) (recs : List Rec) (hN : n ≤ recs.length)
+    (h : wfAux p 0 recs) : wfAux p 0 (padRecs n recs) := by
+  have h' : wfAux p 0 (recs.take n ++ recs.drop n) := by rw [List.take_append_drop]; exact h
+  rw [wfAux_append] at h'
+  obtain ⟨h1, h2⟩ := h'
+  have hl : (recs.take n).length = n := by simp; omega
+  rw [hl, Nat.zero_add] at h2
+  unfold padRecs
+  rw [wfAux_append, wfAux_append]
+  simp only [List.length_append, List.length_replicate, hl, Nat.zero_add]
+  exact ⟨⟨h1, wfAux_none p hp n n⟩, wfAux_shift p n _ n h2 (Nat.le_refl _)⟩
+
+theorem mem_allRecs (p : Nat) : ∀ (k j : Nat) (recs : List Rec),
+    recs ∈ allRecs p k j ↔ recs.length = k ∧ wfAux p j recs
+  | 0, j, recs => by
+    cases recs with
+    | nil => simp [allRecs, wfAux]
+    | cons r rs => simp [allRecs]
+  | k + 1, j, recs => by
+    cases recs with
+    | nil => simp [allRecs]
+    | cons r rs =>
+      obtain ⟨u, b⟩ := r
+      simp only [allRecs, List.mem_flatMap, List.mem_map, List.length_cons, wfAux, Nat.add_right_cancel_iff]
+      constructor
+      · rintro ⟨r', hr', rs', hrs', heq⟩
+        obtain ⟨rfl, rfl⟩ := List.cons.inj heq
+        obtain ⟨hl, hw⟩ := (mem_allRecs p k (j + 1) rs').1 hrs'
+        refine ⟨hl, ?_, ?_, hw⟩
+        · intro x hx
+          unfold recChoices at hr'
+          simp only [List.mem_append, List.mem_map, List.mem_flatMap, List.mem_range] at hr'
+          rcases hr' with ⟨b', hb', e⟩ | ⟨u', hu', b', hb', e⟩
+          · simp at e; rw [← e.1] at hx; cases hx
+          · simp at e; rw [← e.1] at hx; simp at hx; omega
+        · unfold recChoices at hr'
+          simp only [List.mem_append, List.mem_map, List.mem_flatMap, List.mem_range] at hr'
+          rcases hr' with ⟨b', hb', e⟩ | ⟨u', hu', b', hb', e⟩
+          · simp at e; omega
+          · simp at e; omega
+      · rintro ⟨hl, h1, h2, hw⟩
+        refine ⟨(u, b), ?_, rs, (mem_allRecs p k (j + 1) rs).2 ⟨hl, hw⟩, rfl⟩
+        unfold recChoices
+        simp only [List.mem_append, List.mem_map, List.mem_flatMap, List.mem_range]
+        cases u with
+        | none => exact Or.inl ⟨b, h2, rfl⟩
+        | some x => exact Or.inr ⟨x, h1 x rfl, b, h2, rfl⟩
+
+theorem hasCircuit_iff (pr : Nat → Nat) (c n : Nat) :
+    hasCircuit pr c n = true ↔ ∃ recs : List Rec, recs.length = c * n ∧ wfAux (pr n) 0 recs ∧
+      evalC n (pr n) recs = true := by
+  unfold hasCircuit
+  rw [List.any_eq_true]
+  constructor
+  · rintro ⟨recs, hm, he⟩
+    obtain ⟨hl, hw⟩ := (mem_allRecs _ _ _ _).1 hm
+    exact ⟨recs, hl, hw, he⟩
+  · rintro ⟨recs, hl, hw, he⟩
+    exact ⟨recs, (mem_allRecs _ _ _ _).2 ⟨hl, hw⟩, he⟩
+
+/-- Padding: one more round of records preserves the existence of a circuit. -/
+theorem hasCircuit_pad (pr : Nat → Nat) (c n : Nat) (hc : 2 ≤ c) (hn : 1 ≤ n) (hp : 0 < pr n)
+    (h : hasCircuit pr c n = true) : hasCircuit pr (c + 1) n = true := by
+  obtain ⟨recs, hl, hw, he⟩ := (hasCircuit_iff pr c n).1 h
+  have h2n : 2 * n ≤ recs.length := by rw [hl]; exact Nat.mul_le_mul_right n hc
+  refine (hasCircuit_iff pr (c + 1) n).2 ⟨padRecs n recs, ?_, wf_pad _ n hp recs (by omega) hw, ?_⟩
+  · rw [padRecs_length n recs (by omega), hl]; rw [Nat.add_mul]; simp
+  · rw [evalC_pad n _ hp hn recs h2n]; exact he
+
 end ZP

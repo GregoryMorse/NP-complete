@@ -41,4 +41,18 @@ def evalPass (n p : Nat) (recs : List Rec) (t : Nat) (E : List Nat) : Option (Li
 def evalC (n p : Nat) (recs : List Rec) : Bool :=
   ((List.range n).foldl (fun st t => st.bind fun E => evalPass n p recs t E) (some (List.replicate n 1))).isSome
 
+/-- The choices for the record at index `j`. -/
+def recChoices (j p : Nat) : List Rec :=
+  (List.range p).map (fun b => ((none : Option Nat), b)) ++
+    (List.range j).flatMap fun u => (List.range p).map fun b => (some u, b)
+
+/-- All record lists of length `k` starting at index `j`. -/
+def allRecs (p : Nat) : Nat → Nat → List (List Rec)
+  | 0, _ => [[]]
+  | k + 1, j => (recChoices j p).flatMap fun r => (allRecs p k (j + 1)).map (r :: ·)
+
+/-- `pr n` is the prime used for `n`. -/
+def hasCircuit (pr : Nat → Nat) (c n : Nat) : Bool :=
+  (allRecs (pr n) (c * n) 0).any (evalC n (pr n))
+
 end ZP
