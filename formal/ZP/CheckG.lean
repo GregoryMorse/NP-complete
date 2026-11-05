@@ -1048,4 +1048,56 @@ theorem hSkip (P cb mb c' Rest : List Nat) (ws xs pasT : List (List Nat))
   exact (hA.of_eq rfl rfl).trans ((hB.of_eq rfl rfl).trans ((hC.of_eq rfl rfl).trans ((hD.of_eq rfl rfl).trans
     ((hE.of_eq rfl rfl).trans (hF.of_eq rfl rfl)))))
 
+/-- Unpassed `H` entries: first cell unmarked. -/
+def MU : List (List Nat) → List Nat
+  | [] => []
+  | t :: ts => 3 :: (t ++ 1 :: MU ts)
+
+theorem MU_sym4 : ∀ ts : List (List Nat), (∀ t ∈ ts, Bits t) → Sym4 (MU ts)
+  | [], _ => Sym4.nil
+  | t :: ts, h => by
+    have := MU_sym4 ts (fun u hu => h u (List.mem_cons_of_mem _ hu))
+    have ht := h t (List.mem_cons_self ..)
+    simp [MU, ALL, ht.sym4, this]
+
+/-- The inner loop: `n + 1` unmarked cells remain in the target; `n` entries of `H` are passed. -/
+theorem innerLoop (ms : List Nat) (ws xs : List (List Nat)) (mb Rt : List Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hmb : Bits mb)
+    (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ []) (hR : Sym4 Rt) :
+    ∀ (n i : Nat) (pasT HU : List (List Nat)), (∀ t ∈ pasT, Bits t) → (∀ t ∈ HU, Bits t) → n ≤ HU.length →
+    zgiLogic.Reach
+      (hdR QG.gIL1b [0] (MEnc ms ++ List.replicate i 2 ++ List.replicate (n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))))
+      (hdR QG.gD1 (MEnc ms ++ List.replicate (i + n) 2 ++ [3])
+        (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP (pasT ++ HU.take n) ++ MU (HU.drop n) ++ Rt)))))) := by
+  intro n
+  induction n with
+  | zero =>
+    intro i pasT HU hp hh hn
+    have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+    have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+    have sP := MP_sym4 pasT hp
+    have sU := MU_sym4 HU hh
+    have hS : zgiLogic.Reach
+        (hdR QG.gIL1b [0] (MEnc ms ++ List.replicate i 2 ++ List.replicate (0 + 1) 3 ++ 1 ::
+          (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))))
+        (hdR QG.gIL1b ([0] ++ MEnc ms) (List.replicate i 2 ++ List.replicate (0 + 1) 3 ++ 1 ::
+          (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt)))))) := by
+      have := ilSkipList (List.replicate i 2 ++ List.replicate (0 + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt)))))
+        (by simp [ALL, sW, hmb.sym4, sX, sP, sU, hR]) ms [0] hms (by simp [ALL])
+      simpa [List.append_assoc] using this
+    have hM := ilMark ([0] ++ MEnc ms) (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))) i
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sP, sU, hR])
+    have hE := ilpEnd ([0] ++ MEnc ms ++ List.replicate (i + 1) 2) (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sP, sU, hR])
+    have hU := iluStep ([0] ++ MEnc ms ++ List.replicate i 2) (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt)))))
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sP, sU, hR])
+    have hAll := hS.trans ((hM.of_eq (by simp [List.replicate_succ]) rfl).trans
+      ((hE.of_eq (by simp [List.append_assoc]) rfl).trans (hU.of_eq (by simp [List.replicate_succ', List.append_assoc]) rfl)))
+    refine hAll.of_eq rfl ?_
+    simp only [List.append_assoc, List.singleton_append, List.cons_append]
+    rw [hdR_z0]
+    simp [List.append_assoc]
+  | succ n ih => sorry
+
 end ZP.G
