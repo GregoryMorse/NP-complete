@@ -591,4 +591,139 @@ theorem rcuEnd (A X : List Nat) (hA : NoB A) (hX : NoB X) (c : Nat) :
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
   exact this.of_eq (by simp [List.append_assoc]) (by simp [List.append_assoc])
 
+theorem recsL_append (s : Nat) : ∀ l1 l2 : List (Nat × Nat), recsL s (l1 ++ l2) = recsL s l1 ++ recsL s l2
+  | [], l2 => by simp [recsL]
+  | (o, u) :: l1, l2 => by simp [recsL, recsL_append s l1 l2, List.append_assoc]
+
+/-- Records behind `Nn`: none, or `MM ..`. -/
+theorem recsL_cases (s : Nat) (l : List (Nat × Nat)) (hl : ∀ x ∈ l, x.1 = 2 ∨ x.1 = 3) :
+    recsL s l = [] ∨ ∃ Y, recsL s l = [1, 1] ++ Y ∧ NoB Y := by
+  cases l with
+  | nil => left; rfl
+  | cons x l =>
+    right
+    obtain ⟨o, u⟩ := x
+    refine ⟨[2, o, 2] ++ Fld s ++ Fld s ++ Fld s ++ Fld u ++ recsL s l, ?_, ?_⟩
+    · simp [recsL, Rec3, List.append_assoc]
+    · have h1 := noB_Fld s
+      have h2 := noB_Fld u
+      have ho := hl (o, u) (List.mem_cons_self ..)
+      have ho' : o = 2 ∨ o = 3 := ho
+      have h3 := noB_recsL s l (fun x hx => hl x (List.mem_cons_of_mem _ hx))
+      noB_tac
+
+theorem rnFindMg (a0 w p cA cM a b : Nat) (Rs : List Nat)
+    (hR : Rs = [] ∨ ∃ Y, Rs = [1, 1] ++ Y ∧ NoB Y) :
+    znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3)
+        (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate cA 3 ++ [2] ++ List.replicate cM 2)
+          ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2) ++ Rs))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3]
+          ++ 1 :: (List.replicate cA 3 ++ [2] ++ List.replicate cM 2)
+          ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2))) Rs) := by
+  rcases hR with rfl | ⟨Y, rfl, hY⟩
+  · cases cA with
+    | zero => exact (rnFindzMe a0 w p cM b a).of_eq (by simp) (by simp)
+    | succ ca => exact (rnFindsMe a0 w p cM b ca a).of_eq (by simp) (by simp)
+  · cases cA with
+    | zero => exact (rnFindzMr a0 w p cM b a Y hY).of_eq (by simp) (by simp)
+    | succ ca => exact (rnFindsMr a0 w p cM b ca a Y hY).of_eq (by simp) (by simp)
+
+theorem rnFindDg (a0 w p cA cM b : Nat) (Y : List Nat) (hY : NoB Y) :
+    znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3)
+        (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate cA 3 ++ [2] ++ List.replicate cM 2)
+          ++ 1 :: List.replicate (b + 1) 2 ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3]
+          ++ 1 :: (List.replicate cA 3 ++ [2] ++ List.replicate cM 2)
+          ++ 1 :: List.replicate (b + 1) 2)) ([1, 1] ++ Y)) := by
+  cases cA with
+  | zero => exact (rnFindzDr a0 w p cM b Y hY).of_eq (by simp) (by simp)
+  | succ ca => exact (rnFindsDr a0 w p cM b ca Y hY).of_eq (by simp) (by simp)
+
+def newRecs : Nat → Nat → List (Nat × Nat)
+  | _, 0 => []
+  | u, d + 1 => (3, u) :: newRecs (u + 1) d
+
+theorem newRecs_flags : ∀ d u, ∀ x ∈ newRecs u d, x.1 = 2 ∨ x.1 = 3
+  | 0, u, x, hx => by simp [newRecs] at hx
+  | d + 1, u, x, hx => by
+    simp only [newRecs, List.mem_cons] at hx
+    rcases hx with rfl | hx
+    · right; rfl
+    · exact newRecs_flags d (u + 1) x hx
+
+theorem recsL_ne (s : Nat) (l : List (Nat × Nat)) (hl : ∀ x ∈ l, x.1 = 2 ∨ x.1 = 3) (hne : l ≠ []) :
+    ∃ Y, recsL s l = [1, 1] ++ Y ∧ NoB Y := by
+  rcases recsL_cases s l hl with h | h
+  · cases l with
+    | nil => exact absurd rfl hne
+    | cons x l => obtain ⟨o, u⟩ := x; simp [recsL, Rec3] at h
+  · exact h
+
+theorem rep_split (a0 w m : Nat) (h : a0 + w = m) (X : List Nat) :
+    List.replicate a0 3 ++ (List.replicate w 3 ++ X) = List.replicate m 3 ++ X := by
+  subst h; rw [← List.append_assoc, List.replicate_append_replicate]
+
+theorem cons_rep (a k : Nat) : a :: List.replicate k a = List.replicate k a ++ [a] := by
+  rw [← List.replicate_succ, List.replicate_succ']
+
+theorem nLoop (s cA cM : Nat) : ∀ (d b u a0 w : Nat) (l : List (Nat × Nat)), a0 + w = u + 2 →
+    (∀ x ∈ l, x.1 = 2 ∨ x.1 = 3) →
+    znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3)
+        (List.replicate w 3 ++ 1 :: List.replicate (s + 2) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate cA 3 ++ [2] ++ List.replicate cM 2)
+          ++ 1 :: (List.replicate (d + 1) 3 ++ List.replicate b 2) ++ recsL s l))
+      (hd QN.RC1 (List.replicate (u + d + 3) 3 ++ 1 :: List.replicate (s + 2) 3 ++ 1 :: [3, 3, 3]
+          ++ 1 :: (List.replicate cA 3 ++ [2] ++ List.replicate cM 2))
+        (1 :: List.replicate (d + 1 + b) 3 ++ recsL s (l ++ newRecs u (d + 1)))) := by
+  intro d
+  induction d with
+  | zero =>
+    intro b u a0 w l hW hl
+    have hRs := recsL_cases s l hl
+    have h1 := rnFindMg a0 w (s + 1) cA cM 0 b (recsL s l) hRs
+    have h2 := recBuild u s cA (cM + 1) 0 b (recsL s l) (noB_recsL s l hl)
+    have st := reach_trans_eq h1 h2 (hd_eq (by
+      simp only [List.append_assoc]
+      rw [rep_split a0 w (u + 2) hW]
+      simp [List.replicate_succ, List.append_assoc]) rfl)
+    have hl' : ∀ x ∈ l ++ [(3, u)], x.1 = 2 ∨ x.1 = 3 := fun x hx => by
+      rcases List.mem_append.1 hx with h | h
+      · exact hl x h
+      · simp at h; subst h; right; rfl
+    obtain ⟨Y, hY, hYn⟩ := recsL_ne s (l ++ [(3, u)]) hl' (by simp)
+    have hY' : recsL s l ++ Rec3 3 s u = [1, 1] ++ Y := by
+      have := hY; rw [recsL_append] at this; simpa [recsL] using this
+    have h3 := rnFindDg 1 (u + 2) (s + 1) cA cM b Y hYn
+    have h4 := roundEnd (List.replicate 1 3 ++ (List.replicate (u + 2) 3 ++ 1 :: List.replicate (s + 2) 3 ++ [1, 3, 3, 3]))
+      (1 :: Y) (by noB_tac) (noB_cons' (by simp [NB]) hYn) cA cM b
+    have s1 := reach_trans_eq st h3 (by
+      simp [List.replicate_succ, List.append_assoc, hY'])
+    have s2 := reach_trans_eq s1 h4 (by
+      simp [List.replicate_succ, List.append_assoc])
+    refine s2.of_eq (by simp [List.replicate_succ, List.append_assoc]) ?_
+    simp [newRecs, hY, List.replicate_succ, List.append_assoc, Nat.add_comm]
+  | succ d ih =>
+    intro b u a0 w l hW hl
+    have hRs := recsL_cases s l hl
+    have h1 := rnFindMg a0 w (s + 1) cA cM (d + 1) b (recsL s l) hRs
+    have h2 := recBuild u s cA (cM + 1) (d + 1) b (recsL s l) (noB_recsL s l hl)
+    have st := reach_trans_eq h1 h2 (hd_eq (by
+      simp only [List.append_assoc]
+      rw [rep_split a0 w (u + 2) hW]
+      simp [List.replicate_succ', cons_rep, List.append_assoc]) rfl)
+    have hl' : ∀ x ∈ l ++ [(3, u)], x.1 = 2 ∨ x.1 = 3 := fun x hx => by
+      rcases List.mem_append.1 hx with h | h
+      · exact hl x h
+      · simp at h; subst h; right; rfl
+    have h3 := ih (b + 1) (u + 1) 1 (u + 2) (l ++ [(3, u)]) (by omega) hl'
+    have s1 := reach_trans_eq st h3 (by
+      simp [List.replicate_succ', cons_rep, List.append_assoc, recsL_append, recsL])
+    refine s1.of_eq rfl ?_
+    have e1 : u + 1 + d + 3 = u + (d + 1) + 3 := by omega
+    have e2 : d + 1 + (b + 1) = d + 1 + 1 + b := by omega
+    rw [e1, e2]
+    simp [newRecs, List.append_assoc]
+
 end ZP.N
