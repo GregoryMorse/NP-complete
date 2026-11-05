@@ -137,3 +137,13 @@ So plan 08 reduces to ONE lemma: PairDataA znttLogic (nttProg primeN), i.e. the 
 ZP/PairN.lean (no sorry, imported by ZP.lean): layN c n (pair start), znttConf_k0 (zconf 20 = layN 1 1, by rfl), P += n (pa0Sweep, paMark, paDone, paLoop), copy of P into D (dcRound, dcLoop), decrement of d (xsDec2/xsDecN/xs2Dec*), divisibility loop by marking (xIterA/B, xLoop, xEnd, xComposite, xdMarked), divisor loop primeTest, primeStage, rulerLoop and rulerAll: from layN c n the machine reaches WX with P = 1 + n i* cells (i* least index with isPrimeN). Helpers hd_zero, hdR_trail, isPrimeN_iff.
 
 Still to do for PairDataA znttLogic (nttProg primeN): from WX the record build (RC1..RCU, KS/SP/CL copy loops), witness init (WI*), the evaluation passes (pass start/advance/dispatch/compare/broadcast/column/pass end), the odometer (OD*), the success/beep reset (SU*, BX*) back to layN c (n+1) / layN (c+1) n, then PairDataA and the Challenge/Solution entries (statement carrying PrimeEx).
+
+### Status update 3 (scope of what remains, from traces)
+
+Traced `native/zntt.py` from `WX` (see `native/trace_ntt.py`). Facts needed for the remaining proof:
+- `WX..WC0`: W becomes `33` (the old D cell plus a new cell at the left edge), head ends on the last cell of C (`RC1`).
+- A round = one cell of C (marked right-to-left), then one record per cell of Nn (marked right-to-left). `RO0..RO3` sets the middle header cell of all existing records to 0.
+- A record is `MM 0 1 0 (M P-copy)^3 (M W-copy)`: header `0 1 0`, three copies of the ruler P and one of W (the last copy makes W grow by one cell). The copies run through nested loops `KS/KX` (cells of K) and `SP/SW/CL/CR` (cells of the field copied), so one record needs an induction nest of depth 4.
+- Everything after that (witness init, the F-advance/dispatch/compare/broadcast column loop with mod-p counters, pass end with the power-sum check, odometer over all (z,b,u) in exactly the `allRecs` order, success/beep reset) is untouched; each part is about the size of the record build, and the evaluation must be related to `valsAux`/`evalPass` through the pointer-capture encoding.
+
+Estimated remaining size: several thousand lines of Lean in about 25 subroutine lemmas plus the semantic bridge. Nothing is stuck; it is volume.
