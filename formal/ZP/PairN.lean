@@ -598,4 +598,60 @@ theorem primeStage (p : Nat) (hp : 2 ≤ p) (Y Z : List Nat) (hY : NoB Y) (hZ : 
         exact hnp' fun e he1 he2 hz => hh ⟨e, he1, he2, hz⟩
       exact h4.trans (t2 ⟨e, he.1, by omega, he.2.2⟩)
 
+/-! ## The ruler: `P := 1`, then `P += n` until prime -/
+
+/-- The part of the tape right of `P`: `M K M C M Nn`. -/
+def Yc (c n : Nat) : List Nat := [3, 3, 3] ++ 1 :: List.replicate c 3 ++ 1 :: List.replicate n 3
+
+theorem noB_Yc (c n : Nat) : NoB (Yc c n) := by simp [Yc, NB]
+
+/-- Content of the tape, head at the left edge, before another round of `P += n`. -/
+def Cont (c n p : Nat) (Z : List Nat) : ZC :=
+  hdR QN.PA0 [] (List.replicate p 3 ++ 1 :: (Yc c n ++ 0 :: Z))
+
+/-- One round: `P += n` (the head anywhere in the content) ends in the primality stage. -/
+theorem rulerRound (c n p : Nat) (A X Z : List Nat) (hA : NoB A) (hX : NoB X) (hZ : Sym4 Z)
+    (hAX : A ++ X = List.replicate p 3 ++ 1 :: Yc c n) :
+    znttLogic.Reach (hdR QN.PA0 A (X ++ 0 :: Z))
+      (hd QN.PT0 (List.replicate (p + n) 3 ++ 1 :: Yc c n) (0 :: Z)) := by
+  have h1 := pa0Sweep A X Z hA hX hZ
+  rw [hAX] at h1
+  have h2 := paLoop c p Z hZ n n 0 (by omega)
+  refine (h1.of_eq rfl rfl).trans (h2.of_eq ?_ ?_)
+  · simp [Hd0, Yc, List.append_assoc]
+  · simp [Hd0, Yc, List.append_assoc]
+
+/-- From the content for `p = 1 + n i` to the content for the prime `1 + n (i + g + 1)`. -/
+theorem rulerLoop (c n : Nat) (hn : 1 ≤ n) (Z : List Nat) (hZ : Sym4 Z) : ∀ g i,
+    (∀ j, i < j → j ≤ i + g → isPrimeN (1 + n * j) = false) →
+    isPrimeN (1 + n * (i + g + 1)) = true →
+    znttLogic.Reach (Cont c n (1 + n * i) Z)
+      (hd QN.WX [0, 3] (1 :: List.replicate (1 + n * (i + g + 1)) 3 ++ 1 :: (Yc c n ++ 0 :: Z))) := by
+  intro g
+  induction g with
+  | zero =>
+    intro i _ hpr
+    have hm : n * (i + 0 + 1) = n * i + n := by simp [Nat.mul_add]
+    have hp2 : 2 ≤ 1 + n * i + n := by omega
+    have h1 := rulerRound c n (1 + n * i) [] (List.replicate (1 + n * i) 3 ++ 1 :: Yc c n) Z (by simp)
+      (by simp [NB, noB_Yc]) hZ (by simp)
+    obtain ⟨t1, -⟩ := primeStage (1 + n * i + n) hp2 (Yc c n) Z (noB_Yc c n) hZ
+    have e : 1 + n * i + n = 1 + n * (i + 0 + 1) := by omega
+    rw [e] at h1 t1
+    exact (h1.of_eq (by simp [Cont]) rfl).trans (t1 hpr)
+  | succ g ih =>
+    intro i hcomp hpr
+    have hm : n * (i + 1) = n * i + n := by simp [Nat.mul_add]
+    have hp : 2 ≤ 1 + n * (i + 1) := by omega
+    have h1 := rulerRound c n (1 + n * i) [] (List.replicate (1 + n * i) 3 ++ 1 :: Yc c n) Z (by simp)
+      (by simp [NB, noB_Yc]) hZ (by simp)
+    have e : 1 + n * i + n = 1 + n * (i + 1) := by omega
+    rw [e] at h1
+    obtain ⟨-, t2⟩ := primeStage (1 + n * (i + 1)) hp (Yc c n) Z (noB_Yc c n) hZ
+    have hc := hcomp (i + 1) (by omega) (by omega)
+    have h3 := ih (i + 1) (fun j hj1 hj2 => hcomp j (by omega) (by omega)) (by
+      rw [show i + 1 + g + 1 = i + (g + 1) + 1 by omega]; exact hpr)
+    rw [show i + 1 + g + 1 = i + (g + 1) + 1 by omega] at h3
+    exact ((h1.of_eq (by simp [Cont]) rfl).trans (t2 hc)).trans h3
+
 end ZP.N
