@@ -1331,4 +1331,74 @@ theorem gap2 (P : List Nat) (G : List Nat) (hP : ∀ a ∈ P, a ∈ T3) (hG : �
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+
+/-! ## The comparison loop -/
+
+theorem cmpLoop (P G K : List Nat) (hP : ∀ a ∈ P, a ∈ T3) (hG : ∀ a ∈ G, a ∈ T3) (hK : Sym4 K) :
+    ∀ (a b i : Nat),
+    (a = b → zdlLogic.Reach
+        (hdR QD.Q1 [] (List.replicate i 2 ++ (List.replicate a 3 ++ 1 :: (P ++ 1 :: (G ++ 1 ::
+          (List.replicate i 2 ++ (List.replicate b 3 ++ 1 :: K)))))))
+        (hdR QF.FR1 (List.replicate (i + a) 2 ++ 1 :: (P ++ 1 :: (G ++ 1 :: (List.replicate (i + a) 2 ++ [1])))) K)) ∧
+    (b < a → zdlLogic.Reach
+        (hdR QD.Q1 [] (List.replicate i 2 ++ (List.replicate a 3 ++ 1 :: (P ++ 1 :: (G ++ 1 ::
+          (List.replicate i 2 ++ (List.replicate b 3 ++ 1 :: K)))))))
+        (hdR QD.KD (List.replicate (i + b + 1) 2 ++ (List.replicate (a - b - 1) 3 ++ 1 :: (P ++ 1 :: (G ++ 1 ::
+          (List.replicate (i + b) 2 ++ [1]))))) K)) ∧
+    (a < b → zdlLogic.Reach
+        (hdR QD.Q1 [] (List.replicate i 2 ++ (List.replicate a 3 ++ 1 :: (P ++ 1 :: (G ++ 1 ::
+          (List.replicate i 2 ++ (List.replicate b 3 ++ 1 :: K)))))))
+        (hdR QD.KD (List.replicate (i + a) 2 ++ 1 :: (P ++ 1 :: (G ++ 1 ::
+          (List.replicate (i + a) 2 ++ (List.replicate (b - a) 3 ++ [1]))))) K)) := by
+  intro a
+  induction a with
+  | zero =>
+    intro b i
+    refine ⟨fun h => ?_, fun h => absurd h (by omega), fun h => ?_⟩
+    · subst h
+      have := cmpEq (List.replicate i 2) P G (List.replicate i 2) K (rep_z2 i) hP hG (rep_z2 i) hK
+      simpa using this
+    · obtain ⟨c, rfl⟩ : ∃ c, b = c + 1 := ⟨b - 1, by omega⟩
+      have := cmpHlong (List.replicate i 2) P G (List.replicate i 2) (List.replicate c 3) K (rep_z2 i)
+        hP hG (rep_z2 i) (rep_t3 c) hK
+      simpa [List.replicate_succ] using this
+  | succ a ih =>
+    intro b i
+    cases b with
+    | zero =>
+      refine ⟨fun h => absurd h (by omega), fun _ => ?_, fun h => absurd h (by omega)⟩
+      have := cmpYlong (List.replicate i 2) (List.replicate a 3) P G (List.replicate i 2) (List.replicate 0 3) K
+        (rep_z2 i) (rep_t3 a) hP hG (rep_z2 i) (rep_t3 0) hK
+      refine this.of_eq (by simp [List.replicate_succ]) ?_
+      simp [List.replicate_succ']
+    | succ b =>
+      have hit := cmpIter (List.replicate i 2) (List.replicate a 3) P G (List.replicate i 2) (List.replicate b 3) K
+        (rep_z2 i) (rep_t3 a) hP hG (rep_z2 i) (rep_t3 b) hK
+      have hit' : zdlLogic.Reach
+          (hdR QD.Q1 [] (List.replicate i 2 ++ (List.replicate (a + 1) 3 ++ 1 :: (P ++ 1 :: (G ++ 1 ::
+            (List.replicate i 2 ++ (List.replicate (b + 1) 3 ++ 1 :: K)))))))
+          (hdR QD.Q1 [] (List.replicate (i + 1) 2 ++ (List.replicate a 3 ++ 1 :: (P ++ 1 :: (G ++ 1 ::
+            (List.replicate (i + 1) 2 ++ (List.replicate b 3 ++ 1 :: K))))))) := by
+        refine hit.of_eq (by simp [List.replicate_succ]) ?_
+        simp [List.replicate_succ']
+      obtain ⟨h1, h2, h3⟩ := ih b (i + 1)
+      refine ⟨fun h => ?_, fun h => ?_, fun h => ?_⟩
+      · have hab : a = b := by omega
+        have := h1 hab
+        subst hab
+        refine hit'.trans (this.of_eq rfl ?_)
+        have e : i + 1 + a = i + (a + 1) := by omega
+        rw [e]
+      · have hba : b < a := by omega
+        refine hit'.trans ((h2 hba).of_eq rfl ?_)
+        have e1 : i + 1 + b + 1 = i + (b + 1) + 1 := by omega
+        have e2 : i + 1 + b = i + (b + 1) := by omega
+        have e3 : a - b - 1 = a + 1 - (b + 1) - 1 := by omega
+        rw [e1, e2, e3]
+      · have hab : a < b := by omega
+        refine hit'.trans ((h3 hab).of_eq rfl ?_)
+        have e1 : i + 1 + a = i + (a + 1) := by omega
+        have e3 : b - a = b + 1 - (a + 1) := by omega
+        rw [e1, e3]
+
 end ZP.D
