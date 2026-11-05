@@ -899,23 +899,25 @@ theorem il0Walk (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- Mark the next unmarked cell of the target. -/
-theorem ilMark (P R : List Nat) (i : Nat) (hP : Sym4 P) (hR : Sym4 R) :
-    zgiLogic.Reach (hdR QG.gIL1b P (List.replicate i 2 ++ 3 :: R))
+theorem ilMark (q : Nat) (hq : q = QG.gIL1b ∨ q = QG.gIL1) (P R : List Nat) (i : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR q P (List.replicate i 2 ++ 3 :: R))
       (hdR QG.gILp (P ++ List.replicate (i + 1) 2) R) := by
   cases i with
   | zero =>
     have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
-    have : zgiLogic.Reach (hdR QG.gIL1b P (3 :: R)) (hdR QG.gILp (P ++ [2]) R) :=
-      checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    have : zgiLogic.Reach (hdR q P (3 :: R)) (hdR QG.gILp (P ++ [2]) R) := by
+      rcases hq with rfl | rfl <;>
+      exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
         (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
         (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
     exact this.of_eq (by simp) (by simp)
   | succ i =>
     have hV : Valid [ALL, Mk, ALL] [P, List.replicate i 2, R] :=
       Valid.cons hP (Valid.cons (rep2_mk i) (Valid.cons hR (Valid.nil _)))
-    have : zgiLogic.Reach (hdR QG.gIL1b P (2 :: (List.replicate i 2 ++ 3 :: R)))
-        (hdR QG.gILp (P ++ 2 :: (List.replicate i 2 ++ [2])) R) :=
-      checkFF (env := [P, List.replicate i 2, R]) (E := []) (k := 6) hV trivial
+    have : zgiLogic.Reach (hdR q P (2 :: (List.replicate i 2 ++ 3 :: R)))
+        (hdR QG.gILp (P ++ 2 :: (List.replicate i 2 ++ [2])) R) := by
+      rcases hq with rfl | rfl <;>
+      exact checkFF (env := [P, List.replicate i 2, R]) (E := []) (k := 6) hV trivial
         (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 3, .blk 2 .id])
         (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 2]) (rs' := [.blk 2 .id])
         (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
@@ -1079,24 +1081,24 @@ theorem il0Walk' (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
   exact this
 
 /-- Inner loop started after the `m` entries were skipped. -/
-theorem innerLoopP (ms : List Nat) (ws xs : List (List Nat)) (mb Rt : List Nat)
+theorem innerLoopP (q : Nat) (hq : q = QG.gIL1b ∨ q = QG.gIL1) (ms : List Nat) (ws xs : List (List Nat)) (mb Rt : List Nat)
     (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hmb : Bits mb)
     (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ []) (hR : Sym4 Rt) :
     ∀ (n i : Nat) (pasT HU : List (List Nat)), (∀ t ∈ pasT, Bits t) → (∀ t ∈ HU, Bits t) → n ≤ HU.length →
     zgiLogic.Reach
-      (hdR QG.gIL1b (MEnc ms) (List.replicate i 2 ++ List.replicate (n + 1) 3 ++ 1 ::
+      (hdR q (MEnc ms) (List.replicate i 2 ++ List.replicate (n + 1) 3 ++ 1 ::
         (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))))
       (hdR QG.gD1 (MEnc ms ++ List.replicate (i + n) 2 ++ [3])
         (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP (pasT ++ HU.take n) ++ MU (HU.drop n) ++ Rt)))))) := by
   intro n
-  induction n with
+  induction n generalizing q with
   | zero =>
     intro i pasT HU hp hh hn
     have sW := MEs_sym4 ws (fun e he => (hws e he).1)
     have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
     have sP := MP_sym4 pasT hp
     have sU := MU_sym4 HU hh
-    have hM := ilMark (MEnc ms) (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))) i
+    have hM := ilMark q hq (MEnc ms) (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))) i
       (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sP, sU, hR])
     have hE := ilpEnd (MEnc ms ++ List.replicate (i + 1) 2) (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt))))
       (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sP, sU, hR])
@@ -1127,7 +1129,7 @@ theorem innerLoopP (ms : List Nat) (ws xs : List (List Nat)) (mb Rt : List Nat)
     have sMU : Sym4 (MU (c' :: HU')) := by simp [MU, ALL, hc'.sym4, sU]
     have sA : Sym4 (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU (c' :: HU') ++ Rt)))) := by
       simp [ALL, sW, hmb.sym4, sX, sP, sMU, hR]
-    have hM := ilMark (MEnc ms) (List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU (c' :: HU') ++ Rt))))) i
+    have hM := ilMark q hq (MEnc ms) (List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU (c' :: HU') ++ Rt))))) i
       (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sP, sMU, hR])
     have hMore := ilpMore (MEnc ms ++ List.replicate (i + 1) 2) (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU (c' :: HU') ++ Rt)))))
       (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sP, sMU, hR])
@@ -1143,7 +1145,7 @@ theorem innerLoopP (ms : List Nat) (ws xs : List (List Nat)) (mb Rt : List Nat)
       (by simp [ALL, hc'.sym4, sU, hR])
     have hS2 := ilSkipList (List.replicate (i + 1) 2 ++ List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP (pasT ++ [c']) ++ MU HU' ++ Rt)))))
       (by simp [ALL, MEs_sym4 ws (fun e he => (hws e he).1), hmb.sym4, MEs_sym4 xs (fun e he => (hxs e he).1), MP_sym4 _ hp', sU, hR]) ms [] hms (by simp [ALL])
-    have hI := hS2.trans (ih (i + 1) (pasT ++ [c']) HU' hp' hh' hn')
+    have hI := hS2.trans (ih QG.gIL1b (Or.inl rfl) (i + 1) (pasT ++ [c']) HU' hp' hh' hn')
     refine ((hM.of_eq (by simp [List.replicate_succ]) rfl).trans ((hMore.of_eq (by simp [List.replicate_succ]) rfl).trans
       ((hSk.of_eq (by simp [MU, List.append_assoc]) rfl).trans ((hW.of_eq rfl rfl).trans (hI.of_eq ?_ ?_)))))
     · simp [MP_append, MP, MU, List.replicate_succ, List.append_assoc]
@@ -1161,8 +1163,137 @@ theorem innerLoop (ms : List Nat) (ws xs : List (List Nat)) (mb Rt : List Nat)
         (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP (pasT ++ HU.take n) ++ MU (HU.drop n) ++ Rt)))))) := by
   have := ilSkipList (List.replicate i 2 ++ List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (MP pasT ++ MU HU ++ Rt)))))
     (by simp [ALL, MEs_sym4 ws (fun e he => (hws e he).1), hmb.sym4, MEs_sym4 xs (fun e he => (hxs e he).1), MP_sym4 _ hp, MU_sym4 _ hh, hR]) ms [] hms (by simp [ALL])
-  have h2 := innerLoopP ms ws xs mb Rt hms hws hmb hxs hR n i pasT HU hp hh hn
+  have h2 := innerLoopP QG.gIL1b (Or.inl rfl) ms ws xs mb Rt hms hws hmb hxs hR n i pasT HU hp hh hn
   simp only [List.nil_append] at this
   exact (this.of_eq (by simp [List.append_assoc]) rfl).trans h2
+
+theorem trLeft (A R : List Nat) (hA : NoB A) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gTR1 A R) (hdR QG.gTR2b [0] (A ++ R)) := by
+  have hV : Valid [NB, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id]) (ls' := [.sym 0]) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem trSkip (P R : List Nat) (e : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gTR2b P (List.replicate (e + 1) 2 ++ 1 :: R))
+      (hdR QG.gTR2b (P ++ (List.replicate (e + 1) 2 ++ [1])) R) := by
+  have hV : Valid [ALL, Mk, ALL] [P, List.replicate e 2, R] :=
+    Valid.cons hP (Valid.cons (rep2_mk e) (Valid.cons hR (Valid.nil _)))
+  have : zgiLogic.Reach (hdR QG.gTR2b P (2 :: (List.replicate e 2 ++ 1 :: R)))
+      (hdR QG.gTR2b (P ++ 2 :: (List.replicate e 2 ++ [1])) R) :=
+    checkFF (env := [P, List.replicate e 2, R]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id, .sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ]) (by simp [List.replicate_succ])
+
+
+theorem trSkipList (R : List Nat) (hR : Sym4 R) : ∀ (ms : List Nat) (P : List Nat),
+    (∀ e ∈ ms, 1 ≤ e) → Sym4 P →
+    zgiLogic.Reach (hdR QG.gTR2b P (MEnc ms ++ R)) (hdR QG.gTR2b (P ++ MEnc ms) R)
+  | [], P, _, _ => by simp only [MEnc, List.nil_append, List.append_nil]; exact LTM.Reach.refl _ _
+  | e :: ms, P, h, hP => by
+    obtain ⟨k, rfl⟩ : ∃ k, e = k + 1 := ⟨e - 1, by have := h e (List.mem_cons_self ..); omega⟩
+    have hm : ∀ x ∈ ms, 1 ≤ x := fun x hx => h x (List.mem_cons_of_mem _ hx)
+    have hM : Sym4 (MEnc ms ++ R) := by simp [hR]
+    have h1 := trSkip P (MEnc ms ++ R) k hP hM
+    have hP' : Sym4 (P ++ (List.replicate (k + 1) 2 ++ [1])) := by simp [ALL, hP]
+    have h2 := trSkipList R hR ms _ hm hP'
+    exact (h1.of_eq (by simp [MEnc]) rfl).trans (h2.of_eq rfl (by simp [MEnc, List.append_assoc]))
+
+
+
+theorem trStop0 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gTR2b P (3 :: R)) (hd QG.gTR3 P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem trSkipM (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gTR2b P (2 :: R)) (hdR QG.gTR2 (P ++ [2]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem trSkip2 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gTR2 P (2 :: R)) (hdR QG.gTR2 (P ++ [2]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem trStop2 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gTR2 P (3 :: R)) (hd QG.gTR3 P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Skip the marks of the target up to its first unmarked cell; the head turns back. -/
+theorem trStop (P R : List Nat) (i : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gTR2b P (List.replicate i 2 ++ 3 :: R)) (hd QG.gTR3 (P ++ List.replicate i 2) (3 :: R)) := by
+  cases i with
+  | zero => simpa using trStop0 P R hP hR
+  | succ i =>
+    have h1 := trSkipM P (List.replicate i 2 ++ 3 :: R) hP (by simp [ALL, hR])
+    have key : ∀ (j : Nat) (P : List Nat), Sym4 P →
+        zgiLogic.Reach (hdR QG.gTR2 P (List.replicate j 2 ++ 3 :: R)) (hd QG.gTR3 (P ++ List.replicate j 2) (3 :: R)) := by
+      intro j
+      induction j with
+      | zero => intro P hP; simpa using trStop2 P R hP hR
+      | succ j ih =>
+        intro P hP
+        have h1 := trSkip2 P (List.replicate j 2 ++ 3 :: R) hP (by simp [ALL, hR])
+        have h2 := ih (P ++ [2]) (by simp [ALL, hP])
+        exact (h1.of_eq (by simp [List.replicate_succ]) rfl).trans (h2.of_eq rfl (by simp [List.replicate_succ, List.append_assoc]))
+    have h2 := key i (P ++ [2]) (by simp [ALL, hP])
+    exact h1.trans (h2.of_eq rfl (by simp [List.replicate_succ, List.append_assoc]))
+
+theorem trUnm1 (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gTR3 (P ++ [2]) R) (hd QG.gTR3 P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem trUnmM (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gTR3 (P ++ [1]) R) (hdR QG.gIL1 (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem trUnmB (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gTR3 (P ++ [0]) R) (hdR QG.gIL1 (P ++ [0]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 0]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 0]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Unmark the marks left of the head up to the entry boundary. -/
+theorem trUnm (P : List Nat) (hP : Sym4 P) (c : Nat) (hc : c = 0 ∨ c = 1) :
+    ∀ (i : Nat) (R : List Nat), Sym4 R → zgiLogic.Reach (hd QG.gTR3 (P ++ [c] ++ List.replicate i 2) R)
+      (hdR QG.gIL1 (P ++ [c]) (List.replicate i 3 ++ R)) := by
+  intro i
+  induction i with
+  | zero =>
+    intro R hR
+    rcases hc with rfl | rfl
+    · simpa using trUnmB P R hP hR
+    · simpa using trUnmM P R hP hR
+  | succ i ih =>
+    intro R hR
+    have hPc : Sym4 (P ++ [c] ++ List.replicate i 2) := by rcases hc with rfl | rfl <;> simp [ALL, hP]
+    have h1 := trUnm1 (P ++ [c] ++ List.replicate i 2) R hPc hR
+    have h2 := ih (3 :: R) (by simp [ALL, hR])
+    exact (h1.of_eq (by simp [List.replicate_succ', List.append_assoc]) rfl).trans
+      (h2.of_eq rfl (by
+        have hrep : ∀ k : Nat, List.replicate k 3 ++ 3 :: R = 3 :: (List.replicate k 3 ++ R) := by
+          intro k; induction k with
+          | zero => rfl
+          | succ k ihk => simp [List.replicate_succ, ihk]
+        simp [List.replicate_succ, hrep]))
 
 end ZP.G
