@@ -409,4 +409,78 @@ theorem huWalk (R : List Nat) (hR : Sym4 R) : ∀ (ts : List (List Nat)) (P : Li
     have h3 := huWalk R hR ts _ hts hP2
     exact (h1.of_eq (by simp [MP]) rfl).trans ((h2.of_eq rfl rfl).trans (h3.of_eq rfl (by simp [MU, List.append_assoc])))
 
+theorem MU_append (a b : List (List Nat)) : MU (a ++ b) = MU a ++ MU b := by
+  induction a with
+  | nil => rfl
+  | cons t a ih => simp [MU, ih, List.append_assoc]
+
+/-- The column part: from the start of the target, up to the deletion of entry `k`. -/
+theorem colPart (ms : List Nat) (ws : List (List Nat)) (x0 : List Nat) (xs' : List (List Nat)) (r R2 : List Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ [])
+    (hx0 : Bits x0 ∧ x0 ≠ []) (hxs : ∀ e ∈ xs', Bits e ∧ e ≠ [])
+    (hr : Sym4 r) (hR2 : Sym4 R2) (m n : Nat) (pasT HUs : List (List Nat))
+    (hp : ∀ t ∈ pasT, Bits t) (hh : ∀ t ∈ HUs, Bits t) (hlen : HUs.length = n) :
+    zgiLogic.Reach
+      (hdR QG.gIL1b [] (MEnc ms ++ List.replicate 0 2 ++ List.replicate (n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: (List.replicate m 3 ++ 1 :: (MEs (x0 :: xs') ++ 1 ::
+          (MP pasT ++ MU HUs ++ (3 :: 3 :: (r ++ R2))))))))
+      (hd QG.gGL (MEnc ms ++ List.replicate n 2 ++ 3 :: 1 :: (MEs ws ++ 1 :: (List.replicate m 3 ++ 1 ::
+          (MEs (x0 :: xs') ++ 1 :: (MU pasT ++ MU HUs ++ [3]))))) (2 :: (r ++ R2))) := by
+  have hxs0 : ∀ e ∈ x0 :: xs', Bits e ∧ e ≠ [] := by
+    intro e he
+    rcases List.mem_cons.1 he with rfl | he
+    · exact hx0
+    · exact hxs e he
+  have hRt : Sym4 (3 :: 3 :: (r ++ R2)) := by simp [ALL, hr, hR2]
+  have h1 := innerLoop ms ws (x0 :: xs') (List.replicate m 3) (3 :: 3 :: (r ++ R2)) hms hws (bits_rep3 m) hxs0 hRt
+    n 0 pasT HUs hp hh (by omega)
+  have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+  have sX := MEs_sym4 (x0 :: xs') (fun e he => (hxs0 e he).1)
+  have hPH : ∀ t ∈ pasT ++ HUs, Bits t := by
+    intro t ht
+    rcases List.mem_append.1 ht with h | h
+    · exact hp t h
+    · exact hh t h
+  have sH : Sym4 (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2))) := (MP_sym4 _ hPH).app hRt
+  have sR3 : Sym4 (MEs (x0 :: xs') ++ 1 :: (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2)))) :=
+    sX.app (Sym4.cons (by simp [ALL]) sH)
+  have sR4 : Sym4 (List.replicate m 3 ++ 1 :: (MEs (x0 :: xs') ++ 1 :: (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2))))) :=
+    (Sym4.rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) sR3)
+  have sP0 : Sym4 (MEnc ms ++ List.replicate (0 + n) 2 ++ [3]) :=
+    ((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])
+  have hT : HUs.take n = HUs := by rw [← hlen]; exact List.take_length
+  have hD : HUs.drop n = [] := by rw [← hlen]; exact List.drop_length
+  rw [hT, hD] at h1
+  simp only [MU, List.append_nil] at h1
+  have h2 := wd1EndIn (MEnc ms ++ List.replicate (0 + n) 2 ++ [3]) (MEs ws ++ 1 :: (List.replicate m 3 ++ 1 ::
+    (MEs (x0 :: xs') ++ 1 :: (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2))))))
+    sP0 (sW.app (Sym4.cons (by simp [ALL]) sR4))
+  have h3 := wd1Walk _ sR4 ws (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1]) hws (sP0.app (by simp [ALL]))
+  have sP1 : Sym4 (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1]) :=
+    ((sP0.app (by simp [ALL])).app sW).app (by simp [ALL])
+  have h4 := gd2Skips (1 :: (MEs (x0 :: xs') ++ 1 :: (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2)))))
+    (Sym4.cons (by simp [ALL]) sR3) m _ sP1
+  have sP2 : Sym4 (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3) :=
+    sP1.app (Sym4.rep _ _ (by simp [ALL]))
+  have h5 := gd2Col _ (MEs (x0 :: xs') ++ 1 :: (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2)))) sP2 sR3
+  have sQ : Sym4 (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2))) := sH
+  have sXs : Sym4 (MEs xs' ++ 1 :: (MP (pasT ++ HUs) ++ (3 :: 3 :: (r ++ R2)))) :=
+    (MEs_sym4 xs' (fun e he => (hxs e he).1)).app (Sym4.cons (by simp [ALL]) sQ)
+  have sP3 : Sym4 (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3 ++ [1]) :=
+    sP2.app (by simp [ALL])
+  have h6 := n2Cells _ sXs x0 _ hx0.1 sP3
+  have sP4 : Sym4 (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3 ++ [1] ++ x0 ++ [1]) :=
+    (sP3.app hx0.1.sym4).app (by simp [ALL])
+  have h7 := n2Walk _ sQ xs' _ hxs sP4
+  have sP5 : Sym4 (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3 ++ [1] ++ x0 ++ [1] ++ MEs xs' ++ [1]) :=
+    (sP4.app (MEs_sym4 xs' (fun e he => (hxs e he).1))).app (by simp [ALL])
+  have h8 := huWalk (3 :: 3 :: (r ++ R2)) hRt (pasT ++ HUs) _ hPH sP5
+  have sP6 : Sym4 (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3 ++ [1] ++ x0 ++ [1] ++ MEs xs' ++ [1] ++ MU (pasT ++ HUs)) :=
+    sP5.app (MU_sym4 _ hPH)
+  have h9 := huFound (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3 ++ [1] ++ x0 ++ [1] ++ MEs xs' ++ [1] ++ MU (pasT ++ HUs)) (3 :: (r ++ R2)) sP6 (by simp [ALL, hr, hR2])
+  have h10 := hcMark (MEnc ms ++ List.replicate (0 + n) 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3 ++ [1] ++ x0 ++ [1] ++ MEs xs' ++ [1] ++ MU (pasT ++ HUs) ++ [3]) (r ++ R2) (sP6.app (by simp [ALL])) (hr.app hR2)
+  simp only [MEs, ME, List.append_assoc, List.cons_append, List.singleton_append, List.nil_append,
+    Nat.zero_add, List.replicate_zero, MU_append, MU] at h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 ⊢
+  exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans (h7.trans (h8.trans (h9.trans h10))))))))
+
 end ZP.G
