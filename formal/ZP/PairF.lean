@@ -1069,4 +1069,79 @@ theorem roundNdiv (Pre G : List Nat) (hPre : Sym4 Pre) (hLE : LeftEnd Pre) (hG :
   rw [e, hjj]
   simp [List.replicate_succ]
 
+
+/-- `∃ d', 2 ≤ d' ≤ d` dividing `a`. -/
+def divRes (a d : Nat) : Bool := (List.range (d + 1)).any fun d' => decide (2 ≤ d') && a % d' == 0
+
+theorem divRes_succ (a n : Nat) :
+    divRes a (n + 1) = (divRes a n || (decide (2 ≤ n + 1) && a % (n + 1) == 0)) := by
+  unfold divRes
+  rw [List.range_succ (n := n + 1)]
+  simp [List.any_append]
+
+theorem divRes_small (a d : Nat) (hd : d < 2) : divRes a d = false := by
+  unfold divRes
+  rw [Bool.eq_false_iff]
+  intro h
+  simp only [List.any_eq_true, List.mem_range, Bool.and_eq_true, decide_eq_true_eq] at h
+  obtain ⟨x, hx, h1, -⟩ := h
+  omega
+
+theorem divLoop (Pre : List Nat) (hPre : Sym4 Pre) (hLE : LeftEnd Pre) (a : Nat) :
+    ∀ (d : Nat) (Kw : List Nat), Bits Kw → Kw.length = d → ∀ G : List Nat, Sym4 G →
+    ∃ L Mr, NoB L ∧ NoB Mr ∧
+      zfacLogic.Reach (hd QF.RS1 (Pre ++ (List.replicate a 3 ++ 1 :: Kw)) (1 :: G))
+        (hdR (if divRes a d then QF.FR1 else QF.FR0) (Pre ++ L) (Mr ++ G)) := by
+  intro d
+  induction d with
+  | zero =>
+    intro Kw hK hl G hG
+    have hKw : Kw = [] := List.eq_nil_of_length_eq_zero hl
+    subst hKw
+    have h := fr0K0 Pre (List.replicate a 3) G hPre (rep_t3 a) hG
+    refine ⟨List.replicate a 3 ++ [1], [1], (t3_noB (rep_t3 a)).app (NoB.cons one_nb NoB.nil),
+      NoB.cons one_nb NoB.nil, ?_⟩
+    simp only [divRes_small a 0 (by omega), Bool.false_eq_true, ↓reduceIte]
+    simpa using h
+  | succ n ih =>
+    intro Kw hK hl G hG
+    by_cases h1 : n + 1 < 2
+    · -- `|K| = 1`
+      have hn : n = 0 := by omega
+      subst hn
+      obtain ⟨c, rfl⟩ : ∃ c, Kw = [c] := by
+        match Kw, hl with
+        | [c], _ => exact ⟨c, rfl⟩
+      have hc : c ∈ bits := hK c (by simp)
+      have h := fr0K1 Pre (List.replicate a 3) G c hPre (rep_t3 a) hG hc
+      refine ⟨List.replicate a 3 ++ [1], [3, 1], (t3_noB (rep_t3 a)).app (NoB.cons one_nb NoB.nil),
+        NoB.cons (by simp [NB]) (NoB.cons one_nb NoB.nil), ?_⟩
+      simp only [divRes_small a 1 (by omega), Bool.false_eq_true, ↓reduceIte]
+      simpa using h
+    · have hd2 : 2 ≤ n + 1 := by omega
+      by_cases hdiv : a % (n + 1) = 0
+      · have h := roundDiv Pre G hPre hLE hG a (n + 1) hd2 Kw hK hl hdiv
+        refine ⟨List.replicate a 3 ++ 1 :: (List.replicate (n + 1) 3 ++ [1]), [],
+          (t3_noB (rep_t3 a)).app (NoB.cons one_nb ((t3_noB (rep_t3 _)).app (NoB.cons one_nb NoB.nil))),
+          NoB.nil, ?_⟩
+        have : divRes a (n + 1) = true := by
+          rw [divRes_succ]; simp [hdiv, hd2]
+        simp only [this, ↓reduceIte]
+        simpa using h
+      · have h := roundNdiv Pre G hPre hLE hG a (n + 1) hd2 Kw hK hl hdiv
+        have hj : a % (n + 1) < n + 1 := Nat.mod_lt _ (by omega)
+        have hK' : Bits (List.replicate (a % (n + 1)) 2 ++ List.replicate (n + 1 - a % (n + 1) - 1) 3) := by
+          intro x hx
+          simp only [List.mem_append, List.mem_replicate] at hx
+          rcases hx with ⟨-, rfl⟩ | ⟨-, rfl⟩ <;> simp [bits]
+        have hl' : (List.replicate (a % (n + 1)) 2 ++ List.replicate (n + 1 - a % (n + 1) - 1) 3).length = n := by
+          simp; omega
+        obtain ⟨L, Mr, hL, hMr, hR⟩ := ih _ hK' hl' (1 :: G) (Sym4.cons (by simp [ALL]) hG)
+        refine ⟨L, Mr ++ [1], hL, hMr.app (NoB.cons one_nb NoB.nil), ?_⟩
+        have : divRes a (n + 1) = divRes a n := by
+          rw [divRes_succ]; simp [hdiv]
+        rw [this]
+        refine h.trans (hR.of_eq rfl ?_)
+        simp
+
 end ZP.F
