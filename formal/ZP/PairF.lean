@@ -794,27 +794,27 @@ theorem convLoop (Rt : List Nat) (hRt : Sym4 Rt) : ∀ (f : Nat) (r : List Bool)
 /-! ## Divisibility segments (generated) -/
 
 /-- Divisibility: mark one cell of `A`, then one of `K` (not full). -/
-theorem aIter1 (X : List Nat) (A1 : List Nat) (A2 : List Nat) (K1 : List Nat) (K2 : List Nat) (G : List Nat) (hX : NoB X) (hA1 : ∀ a ∈ A1, a ∈ T3) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
-    zfacLogic.Reach (hd QF.SA (X ++ (1 :: (A1 ++ (3 :: (A2))))) (1 :: (K1 ++ (3 :: (3 :: (K2 ++ (1 :: (G))))))))
-      (hd QF.SA (X ++ (1 :: (A1 ++ (2 :: (A2))))) (1 :: (K1 ++ (2 :: (3 :: (K2 ++ (1 :: (G)))))))) := by
-  have hV : Valid [NB, T3, Z2, Z2, T3, ALL] [X, A1, A2, K1, K2, G] := Valid.cons hX (Valid.cons hA1 (Valid.cons hA2 (Valid.cons hK1 (Valid.cons hK2 (Valid.cons hG (Valid.nil _))))))
-  exact checkTT (env := [X, A1, A2, K1, K2, G]) (E := []) (k := 10) hV trivial
-    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3, .blk 2 .id]) (rs := [.sym 1, .blk 3 .id, .sym 3, .sym 3, .blk 4 .id, .sym 1, .blk 5 .id])
-    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2, .blk 2 .id]) (rs' := [.sym 1, .blk 3 .id, .sym 2, .sym 3, .blk 4 .id, .sym 1, .blk 5 .id])
+theorem aIter1 (Pre : List Nat) (A1 : List Nat) (A2 : List Nat) (K1 : List Nat) (K2 : List Nat) (G : List Nat) (hPre : Sym4 Pre) (hA1 : ∀ a ∈ A1, a ∈ T3) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
+    zfacLogic.Reach (hd QF.SA (Pre ++ (A1 ++ (3 :: (A2)))) (1 :: (K1 ++ (3 :: (3 :: (K2 ++ (1 :: (G))))))))
+      (hd QF.SA (Pre ++ (A1 ++ (2 :: (A2)))) (1 :: (K1 ++ (2 :: (3 :: (K2 ++ (1 :: (G)))))))) := by
+  have hV : Valid [ALL, T3, Z2, Z2, T3, ALL] [Pre, A1, A2, K1, K2, G] := Valid.cons hPre (Valid.cons hA1 (Valid.cons hA2 (Valid.cons hK1 (Valid.cons hK2 (Valid.cons hG (Valid.nil _))))))
+  exact checkTT (env := [Pre, A1, A2, K1, K2, G]) (E := []) (k := 10) hV trivial
+    (ls := [.blk 0 .id, .blk 1 .id, .sym 3, .blk 2 .id]) (rs := [.sym 1, .blk 3 .id, .sym 3, .sym 3, .blk 4 .id, .sym 1, .blk 5 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 2, .blk 2 .id]) (rs' := [.sym 1, .blk 3 .id, .sym 2, .sym 3, .blk 4 .id, .sym 1, .blk 5 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- Divisibility: mark one cell of `A`, then the last of `K`: `K` is full, reset it. -/
-theorem aIter2 (X : List Nat) (A1 : List Nat) (A2 : List Nat) (K1 : List Nat) (G : List Nat) (hX : NoB X) (hA1 : ∀ a ∈ A1, a ∈ T3) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hG : Sym4 G) :
-    zfacLogic.Reach (hd QF.SA (X ++ (1 :: (A1 ++ (3 :: (A2))))) (1 :: (K1 ++ (3 :: (1 :: (G))))))
-      (hd QF.SA (X ++ (1 :: (A1 ++ (2 :: (A2))))) (1 :: (List.replicate K1.length 3 ++ (3 :: (1 :: (G)))))) := by
-  have hV : Valid [NB, T3, Z2, Z2, ALL] [X, A1, A2, K1, G] := Valid.cons hX (Valid.cons hA1 (Valid.cons hA2 (Valid.cons hK1 (Valid.cons hG (Valid.nil _)))))
-  exact checkTT (env := [X, A1, A2, K1, G]) (E := []) (k := 10) hV trivial
-    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3, .blk 2 .id]) (rs := [.sym 1, .blk 3 .id, .sym 3, .sym 1, .blk 4 .id])
-    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2, .blk 2 .id]) (rs' := [.sym 1, .blk 3 (.const 3), .sym 3, .sym 1, .blk 4 .id])
+theorem aIter2 (Pre : List Nat) (A1 : List Nat) (A2 : List Nat) (K1 : List Nat) (G : List Nat) (hPre : Sym4 Pre) (hA1 : ∀ a ∈ A1, a ∈ T3) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hG : Sym4 G) :
+    zfacLogic.Reach (hd QF.SA (Pre ++ (A1 ++ (3 :: (A2)))) (1 :: (K1 ++ (3 :: (1 :: (G))))))
+      (hd QF.SA (Pre ++ (A1 ++ (2 :: (A2)))) (1 :: (List.replicate K1.length 3 ++ (3 :: (1 :: (G)))))) := by
+  have hV : Valid [ALL, T3, Z2, Z2, ALL] [Pre, A1, A2, K1, G] := Valid.cons hPre (Valid.cons hA1 (Valid.cons hA2 (Valid.cons hK1 (Valid.cons hG (Valid.nil _)))))
+  exact checkTT (env := [Pre, A1, A2, K1, G]) (E := []) (k := 10) hV trivial
+    (ls := [.blk 0 .id, .blk 1 .id, .sym 3, .blk 2 .id]) (rs := [.sym 1, .blk 3 .id, .sym 3, .sym 1, .blk 4 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 2, .blk 2 .id]) (rs' := [.sym 1, .blk 3 (.const 3), .sym 3, .sym 1, .blk 4 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- `A` used up, `K` untouched: it divides. -/
-theorem endDiv (X : List Nat) (A2 : List Nat) (K2 : List Nat) (G : List Nat) (hX : NoB X) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
+theorem endDivM (X : List Nat) (A2 : List Nat) (K2 : List Nat) (G : List Nat) (hX : NoB X) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
     zfacLogic.Reach (hd QF.SA (X ++ (1 :: (A2))) (1 :: (K2 ++ (1 :: (G)))))
       (hdR QF.FR1 (X ++ (1 :: (List.replicate A2.length 3 ++ (1 :: (K2 ++ ([1])))))) (G)) := by
   have hV : Valid [NB, Z2, T3, ALL] [X, A2, K2, G] := Valid.cons hX (Valid.cons hA2 (Valid.cons hK2 (Valid.cons hG (Valid.nil _))))
@@ -824,7 +824,7 @@ theorem endDiv (X : List Nat) (A2 : List Nat) (K2 : List Nat) (G : List Nat) (hX
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- `A` used up, `K` touched: shrink `K` and try again. -/
-theorem endNdiv (X : List Nat) (A2 : List Nat) (K1 : List Nat) (K2 : List Nat) (G : List Nat) (hX : NoB X) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
+theorem endNdivM (X : List Nat) (A2 : List Nat) (K1 : List Nat) (K2 : List Nat) (G : List Nat) (hX : NoB X) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
     zfacLogic.Reach (hd QF.SA (X ++ (1 :: (A2))) (1 :: (2 :: (K1 ++ (K2 ++ (3 :: (1 :: (G))))))))
       (hd QF.RS1 (X ++ (1 :: (List.replicate A2.length 3 ++ (1 :: (2 :: (K1 ++ (K2))))))) (1 :: (1 :: (G)))) := by
   have hV : Valid [NB, Z2, Z2, T3, ALL] [X, A2, K1, K2, G] := Valid.cons hX (Valid.cons hA2 (Valid.cons hK1 (Valid.cons hK2 (Valid.cons hG (Valid.nil _)))))
@@ -833,52 +833,72 @@ theorem endNdiv (X : List Nat) (A2 : List Nat) (K1 : List Nat) (K2 : List Nat) (
     (ls' := [.blk 0 .id, .sym 1, .blk 1 (.const 3), .sym 1, .sym 2, .blk 2 .id, .blk 3 .id]) (rs' := [.sym 1, .sym 1, .blk 4 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+/-- `A` used up, `K` untouched: it divides. -/
+theorem endDivB (A2 : List Nat) (K2 : List Nat) (G : List Nat) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
+    zfacLogic.Reach (hd QF.SA (A2) (1 :: (K2 ++ (1 :: (G)))))
+      (hdR QF.FR1 (List.replicate A2.length 3 ++ (1 :: (K2 ++ ([1])))) (G)) := by
+  have hV : Valid [Z2, T3, ALL] [A2, K2, G] := Valid.cons hA2 (Valid.cons hK2 (Valid.cons hG (Valid.nil _)))
+  exact checkTF (env := [A2, K2, G]) (E := []) (k := 6) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 (.const 3), .sym 1, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `A` used up, `K` touched: shrink `K` and try again. -/
+theorem endNdivB (A2 : List Nat) (K1 : List Nat) (K2 : List Nat) (G : List Nat) (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
+    zfacLogic.Reach (hd QF.SA (A2) (1 :: (2 :: (K1 ++ (K2 ++ (3 :: (1 :: (G))))))))
+      (hd QF.RS1 (List.replicate A2.length 3 ++ (1 :: (2 :: (K1 ++ (K2))))) (1 :: (1 :: (G)))) := by
+  have hV : Valid [Z2, Z2, T3, ALL] [A2, K1, K2, G] := Valid.cons hA2 (Valid.cons hK1 (Valid.cons hK2 (Valid.cons hG (Valid.nil _))))
+  exact checkTT (env := [A2, K1, K2, G]) (E := []) (k := 10) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .sym 2, .blk 1 .id, .blk 2 .id, .sym 3, .sym 1, .blk 3 .id])
+    (ls' := [.blk 0 (.const 3), .sym 1, .sym 2, .blk 1 .id, .blk 2 .id]) (rs' := [.sym 1, .sym 1, .blk 3 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 /-- Restore `K`, check `|K| ≥ 2`, go to `A`. -/
-theorem rsStart (X : List Nat) (Ac : List Nat) (Kb : List Nat) (G : List Nat) (c1 : Nat) (c2 : Nat) (hX : NoB X) (hAc : ∀ a ∈ Ac, a ∈ T3) (hKb : Bits Kb) (hG : Sym4 G) (hc1 : c1 ∈ bits) (hc2 : c2 ∈ bits) :
-    zfacLogic.Reach (hd QF.RS1 (X ++ (1 :: (Ac ++ (1 :: (Kb ++ (c1 :: ([c2]))))))) (1 :: (G)))
-      (hd QF.SA (X ++ (1 :: (Ac))) (1 :: (List.replicate Kb.length 3 ++ (3 :: (3 :: (1 :: (G))))))) := by
-  have hV : Valid [NB, T3, bits, ALL] [X, Ac, Kb, G] := Valid.cons hX (Valid.cons hAc (Valid.cons hKb (Valid.cons hG (Valid.nil _))))
+theorem rsStart (Pre : List Nat) (Ac : List Nat) (Kb : List Nat) (G : List Nat) (c1 : Nat) (c2 : Nat) (hPre : Sym4 Pre) (hAc : ∀ a ∈ Ac, a ∈ T3) (hKb : Bits Kb) (hG : Sym4 G) (hc1 : c1 ∈ bits) (hc2 : c2 ∈ bits) :
+    zfacLogic.Reach (hd QF.RS1 (Pre ++ (Ac ++ (1 :: (Kb ++ (c1 :: ([c2])))))) (1 :: (G)))
+      (hd QF.SA (Pre ++ (Ac)) (1 :: (List.replicate Kb.length 3 ++ (3 :: (3 :: (1 :: (G))))))) := by
+  have hV : Valid [ALL, T3, bits, ALL] [Pre, Ac, Kb, G] := Valid.cons hPre (Valid.cons hAc (Valid.cons hKb (Valid.cons hG (Valid.nil _))))
   rcases mem_bits hc1 with rfl | rfl <;> rcases mem_bits hc2 with rfl | rfl
-  · exact checkTT (env := [X, Ac, Kb, G]) (E := []) (k := 4) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 2, .sym 2]) (rs := [.sym 1, .blk 3 .id])
-      (ls' := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
+  · exact checkTT (env := [Pre, Ac, Kb, G]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id, .blk 1 .id, .sym 1, .blk 2 .id, .sym 2, .sym 2]) (rs := [.sym 1, .blk 3 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
-  · exact checkTT (env := [X, Ac, Kb, G]) (E := []) (k := 4) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 2, .sym 3]) (rs := [.sym 1, .blk 3 .id])
-      (ls' := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
+  · exact checkTT (env := [Pre, Ac, Kb, G]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id, .blk 1 .id, .sym 1, .blk 2 .id, .sym 2, .sym 3]) (rs := [.sym 1, .blk 3 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
-  · exact checkTT (env := [X, Ac, Kb, G]) (E := []) (k := 4) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 3, .sym 2]) (rs := [.sym 1, .blk 3 .id])
-      (ls' := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
+  · exact checkTT (env := [Pre, Ac, Kb, G]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id, .blk 1 .id, .sym 1, .blk 2 .id, .sym 3, .sym 2]) (rs := [.sym 1, .blk 3 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
-  · exact checkTT (env := [X, Ac, Kb, G]) (E := []) (k := 4) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 3, .sym 3]) (rs := [.sym 1, .blk 3 .id])
-      (ls' := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
+  · exact checkTT (env := [Pre, Ac, Kb, G]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id, .blk 1 .id, .sym 1, .blk 2 .id, .sym 3, .sym 3]) (rs := [.sym 1, .blk 3 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 3, .sym 3, .sym 1, .blk 3 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- `|K| = 1`: no divisor. -/
-theorem fr0K1 (X : List Nat) (Ac : List Nat) (G : List Nat) (c : Nat) (hX : NoB X) (hAc : ∀ a ∈ Ac, a ∈ T3) (hG : Sym4 G) (hc : c ∈ bits) :
-    zfacLogic.Reach (hd QF.RS1 (X ++ (1 :: (Ac ++ (1 :: ([c]))))) (1 :: (G)))
-      (hdR QF.FR0 (X ++ (1 :: (Ac ++ ([1])))) (3 :: (1 :: (G)))) := by
-  have hV : Valid [NB, T3, ALL] [X, Ac, G] := Valid.cons hX (Valid.cons hAc (Valid.cons hG (Valid.nil _)))
+theorem fr0K1 (Pre : List Nat) (Ac : List Nat) (G : List Nat) (c : Nat) (hPre : Sym4 Pre) (hAc : ∀ a ∈ Ac, a ∈ T3) (hG : Sym4 G) (hc : c ∈ bits) :
+    zfacLogic.Reach (hd QF.RS1 (Pre ++ (Ac ++ (1 :: ([c])))) (1 :: (G)))
+      (hdR QF.FR0 (Pre ++ (Ac ++ ([1]))) (3 :: (1 :: (G)))) := by
+  have hV : Valid [ALL, T3, ALL] [Pre, Ac, G] := Valid.cons hPre (Valid.cons hAc (Valid.cons hG (Valid.nil _)))
   rcases mem_bits hc with rfl | rfl
-  · exact checkTF (env := [X, Ac, G]) (E := []) (k := 2) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2]) (rs := [.sym 1, .blk 2 .id])
-      (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 3, .sym 1, .blk 2 .id])
+  · exact checkTF (env := [Pre, Ac, G]) (E := []) (k := 2) hV trivial
+      (ls := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 2]) (rs := [.sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.sym 3, .sym 1, .blk 2 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
-  · exact checkTF (env := [X, Ac, G]) (E := []) (k := 2) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 3]) (rs := [.sym 1, .blk 2 .id])
-      (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 3, .sym 1, .blk 2 .id])
+  · exact checkTF (env := [Pre, Ac, G]) (E := []) (k := 2) hV trivial
+      (ls := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3]) (rs := [.sym 1, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.sym 3, .sym 1, .blk 2 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- `|K| = 0`: no divisor. -/
-theorem fr0K0 (X : List Nat) (Ac : List Nat) (G : List Nat) (hX : NoB X) (hAc : ∀ a ∈ Ac, a ∈ T3) (hG : Sym4 G) :
-    zfacLogic.Reach (hd QF.RS1 (X ++ (1 :: (Ac ++ ([1])))) (1 :: (G)))
-      (hdR QF.FR0 (X ++ (1 :: (Ac ++ ([1])))) (1 :: (G))) := by
-  have hV : Valid [NB, T3, ALL] [X, Ac, G] := Valid.cons hX (Valid.cons hAc (Valid.cons hG (Valid.nil _)))
-  exact checkTF (env := [X, Ac, G]) (E := []) (k := 1) hV trivial
-    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs := [.sym 1, .blk 2 .id])
-    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 1, .blk 2 .id])
+theorem fr0K0 (Pre : List Nat) (Ac : List Nat) (G : List Nat) (hPre : Sym4 Pre) (hAc : ∀ a ∈ Ac, a ∈ T3) (hG : Sym4 G) :
+    zfacLogic.Reach (hd QF.RS1 (Pre ++ (Ac ++ ([1]))) (1 :: (G)))
+      (hdR QF.FR0 (Pre ++ (Ac ++ ([1]))) (1 :: (G))) := by
+  have hV : Valid [ALL, T3, ALL] [Pre, Ac, G] := Valid.cons hPre (Valid.cons hAc (Valid.cons hG (Valid.nil _)))
+  exact checkTF (env := [Pre, Ac, G]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs := [.sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.sym 1, .blk 2 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- One number, `k = 0`. -/
@@ -911,5 +931,67 @@ theorem fr0N2 (K : List Nat) (G : List Nat) (hK : ∀ a ∈ K, a ∈ T3) (hG : S
     (ls' := []) (rs' := [.blk 0 .id, .sym 3, .sym 3, .sym 1, .blk 1 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+
+
+theorem succ_mod (i d : Nat) (hd2 : 2 ≤ d) :
+    (i + 1) % d = if i % d + 1 < d then i % d + 1 else 0 := by
+  have h1 : 1 % d = 1 := Nat.mod_eq_of_lt (by omega)
+  have h2 : (i + 1) % d = (i % d + 1) % d := by
+    rw [Nat.add_mod, h1]
+  have h3 : i % d < d := Nat.mod_lt _ (by omega)
+  split
+  · rw [h2]; exact Nat.mod_eq_of_lt (by assumption)
+  · have : i % d + 1 = d := by omega
+    rw [h2, this, Nat.mod_self]
+
+theorem aLoop (Pre G : List Nat) (hPre : Sym4 Pre) (hG : Sym4 G) (d : Nat) (hd2 : 2 ≤ d) :
+    ∀ u i : Nat,
+    zfacLogic.Reach
+      (hd QF.SA (Pre ++ (List.replicate u 3 ++ List.replicate i 2))
+        (1 :: (List.replicate (i % d) 2 ++ (List.replicate (d - i % d) 3 ++ 1 :: G))))
+      (hd QF.SA (Pre ++ List.replicate (i + u) 2)
+        (1 :: (List.replicate ((i + u) % d) 2 ++ (List.replicate (d - (i + u) % d) 3 ++ 1 :: G))))
+  | 0, i => by simpa using LTM.Reach.refl _ _
+  | u + 1, i => by
+    have hj : i % d < d := Nat.mod_lt _ (by omega)
+    have ih := fun i' => aLoop Pre G hPre hG d hd2 u i'
+    have hsm := succ_mod i d hd2
+    have e : i + 1 + u = i + (u + 1) := by omega
+    have hmid := ih (i + 1)
+    rw [e] at hmid
+    by_cases hlt : i % d + 1 < d
+    · simp only [hlt, ↓reduceIte] at hsm
+      have h1 := aIter1 Pre (List.replicate u 3) (List.replicate i 2) (List.replicate (i % d) 2)
+        (List.replicate (d - i % d - 2) 3) G hPre (rep_t3 u) (rep_z2 i) (rep_z2 _) (rep_t3 _) hG
+      have hrep : List.replicate (d - i % d) 3 = 3 :: 3 :: List.replicate (d - i % d - 2) 3 := by
+        obtain ⟨k, hk⟩ : ∃ k, d - i % d = k + 2 := ⟨d - i % d - 2, by omega⟩
+        rw [hk]; simp [List.replicate_succ]
+      have hrep2 : List.replicate (d - (i + 1) % d) 3 = 3 :: List.replicate (d - i % d - 2) 3 := by
+        rw [hsm]
+        obtain ⟨k, hk⟩ : ∃ k, d - i % d = k + 2 := ⟨d - i % d - 2, by omega⟩
+        have : d - (i % d + 1) = k + 1 := by omega
+        rw [this, show d - i % d - 2 = k by omega]
+        simp [List.replicate_succ]
+      refine LTM.Reach.trans (c' := hd QF.SA (Pre ++ (List.replicate u 3 ++ List.replicate (i + 1) 2))
+        (1 :: (List.replicate ((i + 1) % d) 2 ++ (List.replicate (d - (i + 1) % d) 3 ++ 1 :: G))))
+        (h1.of_eq ?_ ?_) hmid
+      · rw [hrep]; simp [List.replicate_succ']
+      · have hA : List.replicate (i + 1) 2 = 2 :: List.replicate i 2 := rfl
+        have hK : List.replicate (i % d + 1) 2 = List.replicate (i % d) 2 ++ [2] := List.replicate_succ' ..
+        rw [hA, hrep2, hsm, hK]; simp
+    · simp only [hlt, ↓reduceIte] at hsm
+      have e3 : d - i % d = 1 := by omega
+      have h1 := aIter2 Pre (List.replicate u 3) (List.replicate i 2) (List.replicate (i % d) 2) G hPre
+        (rep_t3 u) (rep_z2 i) (rep_z2 _) hG
+      refine LTM.Reach.trans (c' := hd QF.SA (Pre ++ (List.replicate u 3 ++ List.replicate (i + 1) 2))
+        (1 :: (List.replicate ((i + 1) % d) 2 ++ (List.replicate (d - (i + 1) % d) 3 ++ 1 :: G))))
+        (h1.of_eq ?_ ?_) hmid
+      · rw [e3]; simp [List.replicate_succ']
+      · have hA : List.replicate (i + 1) 2 = 2 :: List.replicate i 2 := rfl
+        have hd' : List.replicate d 3 = List.replicate (i % d) 3 ++ [3] := by
+          rw [← List.replicate_succ']; congr 1; omega
+        rw [hA, hsm]
+        simp only [List.length_replicate, Nat.sub_zero, List.replicate_zero, List.nil_append, hd']
+        simp
 
 end ZP.F
