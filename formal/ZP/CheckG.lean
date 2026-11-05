@@ -383,4 +383,53 @@ theorem cxWalk (R : List Nat) (hR : Sym4 R) : ∀ (cs : List (List Nat)) (P : Li
     exact (h1.of_eq (by simp [MEs, ME, List.append_assoc]) rfl).trans
       (h2.of_eq rfl (by simp [MEs, ME, List.append_assoc]))
 
+/-- `gY1e` / `gY1o` by parity. -/
+def Y1 (b : Bool) : Nat := if b then QG.gY1o else QG.gY1e
+def LP (b : Bool) : Nat := if b then QG.gLPo else QG.gLPe
+
+theorem lblSkipB (b : Bool) (P R : List Nat) (e : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR (Y1 b) P (List.replicate (e + 1) 2 ++ 1 :: R))
+      (hdR (Y1 (!b)) (P ++ (List.replicate (e + 1) 2 ++ [1])) R) := by
+  cases b
+  · exact lblSkipE P R e hP hR
+  · exact lblSkipO P R e hP hR
+
+theorem lblMarkB (b : Bool) (P R : List Nat) (j : Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR (Y1 b) P (List.replicate j 2 ++ 3 :: R))
+      (hdR (LP b) (P ++ List.replicate (j + 1) 2) R) := by
+  cases b
+  · exact lblMarkE P R j hP hR
+  · exact lblMarkO P R j hP hR
+
+theorem lpMoreB (b : Bool) (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR (LP b) P (3 :: R)) (hd QG.gLW1 P (3 :: R)) := by
+  cases b
+  · exact lpMore QG.gLPe (Or.inl rfl) P R hP hR
+  · exact lpMore QG.gLPo (Or.inr rfl) P R hP hR
+
+/-- Consumed labels are skipped; the parity flips for each. -/
+theorem lblWalk (R : List Nat) (hR : Sym4 R) : ∀ (d : List Nat) (b : Bool) (P : List Nat),
+    (∀ e ∈ d, 1 ≤ e) → Sym4 P →
+    zgiLogic.Reach (hdR (Y1 b) P (MEnc d ++ R))
+      (hdR (Y1 (xor b (decide (d.length % 2 = 1)))) (P ++ MEnc d) R)
+  | [], b, P, _, _ => by
+    simp only [MEnc, List.nil_append, List.append_nil, List.length_nil]
+    cases b <;> exact (LTM.Reach.refl _ _)
+  | e :: d, b, P, h, hP => by
+    obtain ⟨k, rfl⟩ : ∃ k, e = k + 1 := ⟨e - 1, by have := h e (List.mem_cons_self ..); omega⟩
+    have hd : ∀ x ∈ d, 1 ≤ x := fun x hx => h x (List.mem_cons_of_mem _ hx)
+    have hM : Sym4 (MEnc d ++ R) := by simp [hR]
+    have h1 := lblSkipB b P (MEnc d ++ R) k hP hM
+    have hP' : Sym4 (P ++ (List.replicate (k + 1) 2 ++ [1])) := by simp [ALL, hP]
+    have h2 := lblWalk R hR d (!b) _ hd hP'
+    refine (h1.of_eq (by simp [MEnc]) rfl).trans (h2.of_eq rfl ?_)
+    have : xor (!b) (decide (d.length % 2 = 1)) = xor b (decide (((k + 1) :: d).length % 2 = 1)) := by
+      simp only [List.length_cons]
+      by_cases hn : d.length % 2 = 1
+      · have : ¬ ((d.length + 1) % 2 = 1) := by omega
+        cases b <;> simp [hn, this]
+      · have : (d.length + 1) % 2 = 1 := by omega
+        cases b <;> simp [hn, this]
+    simp [MEnc, List.append_assoc, this]
+
 end ZP.G
