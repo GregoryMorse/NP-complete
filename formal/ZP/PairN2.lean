@@ -359,4 +359,96 @@ theorem recBuild (u s cA cM nA nM : Nat) (Rs : List Nat) (hRs : NoB Rs) :
     |>.of_eq ?_ ?_
   all_goals simp [Fld, Rec3, List.replicate_succ, List.append_assoc]
 
+/-! ## Finding the last cell of `Nn` (`RN0`) and the flags of old records (`RO0`) -/
+
+theorem rnFindsMr (a0 w p cM b ca a : Nat) (Y : List Nat) (hY : NoB Y) :
+    znttLogic.Reach (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate (ca + 1) 3 ++ [2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate (ca + 1) 3 ++ [2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2))) ([1, 1] ++ Y)) := by
+  have hV : Valid [T3, T3, T3, T3, Mk, T3, Mk, NB] [List.replicate a0 3, List.replicate w 3, List.replicate p 3, List.replicate ca 3, List.replicate cM 2, List.replicate a 3, List.replicate b 2, Y] := (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep2_mk _) (Valid.cons (rep_t3 _) (Valid.cons (rep2_mk _) (Valid.cons hY (Valid.nil _)))))))))
+  have : znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ [1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([3] ++ List.replicate ca 3 ++ [2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ ([1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([3] ++ List.replicate ca 3 ++ [2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2)))) ([1, 1] ++ Y)) :=
+    checkFT (env := [List.replicate a0 3, List.replicate w 3, List.replicate p 3, List.replicate ca 3, List.replicate cM 2, List.replicate a 3, List.replicate b 2, Y]) (E := []) (k := 2000) hV trivial
+      (ls := [.blk 0 .id])
+      (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 3, .blk 3 .id, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id, .sym 1, .sym 1, .blk 7 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 3, .blk 3 .id, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id])
+      (rs' := [.sym 1, .sym 1, .blk 7 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ, List.append_assoc]) (by simp [List.replicate_succ, List.append_assoc])
+
+theorem rnFindsMe (a0 w p cM b ca a : Nat) :
+    znttLogic.Reach (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate (ca + 1) 3 ++ [2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2)))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate (ca + 1) 3 ++ [2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2))) []) := by
+  have hV : Valid [T3, T3, T3, T3, Mk, T3, Mk] [List.replicate a0 3, List.replicate w 3, List.replicate p 3, List.replicate ca 3, List.replicate cM 2, List.replicate a 3, List.replicate b 2] := (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep2_mk _) (Valid.cons (rep_t3 _) (Valid.cons (rep2_mk _) (Valid.nil _))))))))
+  have : znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ [1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([3] ++ List.replicate ca 3 ++ [2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2)))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ ([1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([3] ++ List.replicate ca 3 ++ [2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2)))) []) :=
+    checkFT (env := [List.replicate a0 3, List.replicate w 3, List.replicate p 3, List.replicate ca 3, List.replicate cM 2, List.replicate a 3, List.replicate b 2]) (E := []) (k := 2000) hV trivial
+      (ls := [.blk 0 .id])
+      (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 3, .blk 3 .id, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 3, .blk 3 .id, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id])
+      (rs' := [])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ, List.append_assoc]) (by simp [List.replicate_succ, List.append_assoc])
+
+theorem rnFindsDr (a0 w p cM b ca : Nat) (Y : List Nat) (hY : NoB Y) :
+    znttLogic.Reach (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate (ca + 1) 3 ++ [2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (b + 1) 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: (List.replicate (ca + 1) 3 ++ [2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (b + 1) 2))) ([1, 1] ++ Y)) := by
+  have hV : Valid [T3, T3, T3, T3, Mk, T3, Mk, NB] [List.replicate a0 3, List.replicate w 3, List.replicate p 3, List.replicate ca 3, List.replicate cM 2, [], List.replicate b 2, Y] := (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep2_mk _) (Valid.cons (fun x hx => by simp at hx) (Valid.cons (rep2_mk _) (Valid.cons hY (Valid.nil _)))))))))
+  have : znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ [1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([3] ++ List.replicate ca 3 ++ [2] ++ List.replicate cM 2) ++ [1] ++ ([2] ++ List.replicate b 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ ([1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([3] ++ List.replicate ca 3 ++ [2] ++ List.replicate cM 2) ++ [1] ++ ([2] ++ List.replicate b 2)))) ([1, 1] ++ Y)) :=
+    checkFT (env := [List.replicate a0 3, List.replicate w 3, List.replicate p 3, List.replicate ca 3, List.replicate cM 2, [], List.replicate b 2, Y]) (E := []) (k := 2000) hV trivial
+      (ls := [.blk 0 .id])
+      (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 3, .blk 3 .id, .sym 2, .blk 4 .id, .sym 1, .sym 2, .blk 6 .id, .sym 1, .sym 1, .blk 7 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 3, .blk 3 .id, .sym 2, .blk 4 .id, .sym 1, .sym 2, .blk 6 .id])
+      (rs' := [.sym 1, .sym 1, .blk 7 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ, List.append_assoc]) (by simp [List.replicate_succ, List.append_assoc])
+
+theorem rnFindzMr (a0 w p cM b a : Nat) (Y : List Nat) (hY : NoB Y) :
+    znttLogic.Reach (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: ([2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: ([2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2))) ([1, 1] ++ Y)) := by
+  have hV : Valid [T3, T3, T3, T3, Mk, T3, Mk, NB] [List.replicate a0 3, List.replicate w 3, List.replicate p 3, [], List.replicate cM 2, List.replicate a 3, List.replicate b 2, Y] := (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (fun x hx => by simp at hx) (Valid.cons (rep2_mk _) (Valid.cons (rep_t3 _) (Valid.cons (rep2_mk _) (Valid.cons hY (Valid.nil _)))))))))
+  have : znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ [1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ ([1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2)))) ([1, 1] ++ Y)) :=
+    checkFT (env := [List.replicate a0 3, List.replicate w 3, List.replicate p 3, [], List.replicate cM 2, List.replicate a 3, List.replicate b 2, Y]) (E := []) (k := 2000) hV trivial
+      (ls := [.blk 0 .id])
+      (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id, .sym 1, .sym 1, .blk 7 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id])
+      (rs' := [.sym 1, .sym 1, .blk 7 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ, List.append_assoc]) (by simp [List.replicate_succ, List.append_assoc])
+
+theorem rnFindzMe (a0 w p cM b a : Nat) :
+    znttLogic.Reach (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: ([2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2)))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: ([2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (a + 1) 3 ++ List.replicate b 2))) []) := by
+  have hV : Valid [T3, T3, T3, T3, Mk, T3, Mk] [List.replicate a0 3, List.replicate w 3, List.replicate p 3, [], List.replicate cM 2, List.replicate a 3, List.replicate b 2] := (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (fun x hx => by simp at hx) (Valid.cons (rep2_mk _) (Valid.cons (rep_t3 _) (Valid.cons (rep2_mk _) (Valid.nil _))))))))
+  have : znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ [1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2)))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ ([1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([2] ++ List.replicate cM 2) ++ [1] ++ ([3] ++ List.replicate a 3 ++ List.replicate b 2)))) []) :=
+    checkFT (env := [List.replicate a0 3, List.replicate w 3, List.replicate p 3, [], List.replicate cM 2, List.replicate a 3, List.replicate b 2]) (E := []) (k := 2000) hV trivial
+      (ls := [.blk 0 .id])
+      (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 2, .blk 4 .id, .sym 1, .sym 3, .blk 5 .id, .blk 6 .id])
+      (rs' := [])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ, List.append_assoc]) (by simp [List.replicate_succ, List.append_assoc])
+
+theorem rnFindzDr (a0 w p cM b : Nat) (Y : List Nat) (hY : NoB Y) :
+    znttLogic.Reach (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: ([2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (b + 1) 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ 1 :: List.replicate (p + 1) 3 ++ 1 :: [3, 3, 3] ++ 1 :: ([2] ++ List.replicate cM 2) ++ 1 :: (List.replicate (b + 1) 2))) ([1, 1] ++ Y)) := by
+  have hV : Valid [T3, T3, T3, T3, Mk, T3, Mk, NB] [List.replicate a0 3, List.replicate w 3, List.replicate p 3, [], List.replicate cM 2, [], List.replicate b 2, Y] := (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (rep_t3 _) (Valid.cons (fun x hx => by simp at hx) (Valid.cons (rep2_mk _) (Valid.cons (fun x hx => by simp at hx) (Valid.cons (rep2_mk _) (Valid.cons hY (Valid.nil _)))))))))
+  have : znttLogic.Reach
+      (hdR QN.RN0 (List.replicate a0 3) (List.replicate w 3 ++ [1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([2] ++ List.replicate cM 2) ++ [1] ++ ([2] ++ List.replicate b 2) ++ [1, 1] ++ Y))
+      (hd QN.RN2 (List.replicate a0 3 ++ (List.replicate w 3 ++ ([1, 3] ++ List.replicate p 3 ++ [1, 3, 3, 3, 1] ++ ([2] ++ List.replicate cM 2) ++ [1] ++ ([2] ++ List.replicate b 2)))) ([1, 1] ++ Y)) :=
+    checkFT (env := [List.replicate a0 3, List.replicate w 3, List.replicate p 3, [], List.replicate cM 2, [], List.replicate b 2, Y]) (E := []) (k := 2000) hV trivial
+      (ls := [.blk 0 .id])
+      (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 2, .blk 4 .id, .sym 1, .sym 2, .blk 6 .id, .sym 1, .sym 1, .blk 7 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 3, .sym 3, .sym 3, .sym 1, .sym 2, .blk 4 .id, .sym 1, .sym 2, .blk 6 .id])
+      (rs' := [.sym 1, .sym 1, .blk 7 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact this.of_eq (by simp [List.replicate_succ, List.append_assoc]) (by simp [List.replicate_succ, List.append_assoc])
+
 end ZP.N
