@@ -1858,8 +1858,54 @@ theorem truthD (Sb : List Bool) (Rt : List Nat) (hRt : Sym4 Rt) :
         simp [lyt, hGsplit]
       | cons h fr2 =>
         cases fr2 with
-        | nil => sorry
-        | cons k fr3 => sorry
+        | nil =>
+          have noB2 : ∀ k, NoB (List.replicate k 2) := fun k => (Bits_rep2 k).noB
+          have noB3 : ∀ k, NoB (List.replicate k 3) := fun k => t3_noB (rep_t3 k)
+          obtain ⟨c1, c2, c3⟩ := cmpLoop (List.replicate c 3) (List.replicate g 3)
+            (List.replicate (Sb.length + 1) 0 ++ Rt) (rep_t3 c) (rep_t3 g) hG0 1 h 0
+          have hstart : hdR QD.Q1 [] ([3] ++ 1 :: (List.replicate c 3 ++ 1 :: (lyt [g, h] ++
+              (List.replicate (Sb.length + 1) 0 ++ Rt)))) =
+              hdR QD.Q1 [] (List.replicate 0 2 ++ (List.replicate 1 3 ++ 1 :: (List.replicate c 3 ++ 1 ::
+              (List.replicate g 3 ++ 1 :: (List.replicate 0 2 ++ (List.replicate h 3 ++ 1 ::
+              (List.replicate (Sb.length + 1) 0 ++ Rt))))))) := by simp [lyt]
+          by_cases hh : 1 = h
+          · subst hh
+            have hinP : inLD Sb = true := by unfold inLD; rw [hnum']; simp [hp, dlogLoop]
+            refine Or.inl ⟨List.replicate (0 + 1) 2 ++ 1 :: (List.replicate c 3 ++ 1 :: (List.replicate g 3 ++
+              1 :: (List.replicate (0 + 1) 2 ++ [1]))), [],
+              (noB2 _).app (NoB.cons one_nb ((noB3 _).app (NoB.cons one_nb ((noB3 _).app (NoB.cons one_nb
+                ((noB2 _).app (NoB.cons one_nb NoB.nil))))))), NoB.nil, ?_⟩
+            rw [hinP]
+            simp only [↓reduceIte]
+            exact (hmain.of_eq rfl (by simp [lyt])).trans ((hstart ▸ (c1 rfl)).of_eq rfl (by simp))
+          · have hinP : inLD Sb = false := by
+              unfold inLD; rw [hnum']; simp [hp, dlogLoop, hh]
+            have fin : ∀ LL, NoB LL → zdlLogic.Reach (hdR QD.KD LL (List.replicate (Sb.length + 1) 0 ++ Rt))
+                (hd QF.FE LL (2 :: (List.replicate Sb.length 0 ++ Rt))) := fun LL hLL => by
+              rw [hGsplit]; exact (kGap LL _ hLL hGp)
+            have nb : ∀ LL : List Nat, (∀ a ∈ LL, a = 1 ∨ a = 2 ∨ a = 3) → NoB LL := fun LL h a ha => by
+              have := h a ha; simp [NB]; omega
+            rcases Nat.lt_or_gt_of_ne hh with hlt | hgt
+            · have h3 := c3 hlt
+              refine Or.inr ⟨_, nb _ ?_, hinP, (hmain.of_eq rfl (by simp [lyt])).trans
+                ((hstart ▸ h3).trans (fin _ (nb _ ?_)))⟩
+              all_goals (intro a ha; simp [List.mem_append, List.mem_replicate] at ha; omega)
+            · have h2 := c2 hgt
+              refine Or.inr ⟨_, nb _ ?_, hinP, (hmain.of_eq rfl (by simp [lyt])).trans
+                ((hstart ▸ h2).trans (fin _ (nb _ ?_)))⟩
+              all_goals (intro a ha; simp [List.mem_append, List.mem_replicate] at ha; omega)
+        | cons k fr3 =>
+          have hc1 : 1 ≤ c := by have := ((isPrime_iff c).mp hp).1; omega
+          have hR3 : Sym4 (lyt fr3 ++ (List.replicate (Sb.length + 1) 0 ++ Rt)) :=
+            (NoB.sym4 (lyt_noB fr3)).app hG0
+          obtain ⟨L, Mr, hL, hMr, hD⟩ := dlogMain c g h hc1 _ hR3 k 0 1
+          have hinP : inLD Sb = dlogLoop (k + 1) 1 g h c := by
+            unfold inLD; rw [hnum']; simp [hp]
+          refine Or.inl ⟨L, Mr ++ lyt fr3, hL, hMr.app (lyt_noB fr3), ?_⟩
+          rw [hinP]
+          refine hmain.trans (hD.of_eq ?_ ?_)
+          · simp [lyt]
+          · simp
   · have hp' : isPrime c = false := by simpa using hp
     obtain ⟨L, Mr, hL, hMr, hR⟩ := hnp hp'
     have hin : inLD Sb = false := by
