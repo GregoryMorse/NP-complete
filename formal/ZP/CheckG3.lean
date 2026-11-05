@@ -129,4 +129,45 @@ theorem hSkipFail (P cb mb tl Z : List Nat) (ws xs pasT : List (List Nat))
   exact (hA.of_eq rfl rfl).trans ((hB.of_eq rfl rfl).trans ((hC.of_eq rfl rfl).trans ((hD.of_eq rfl rfl).trans
     ((hE.of_eq rfl rfl).trans ((hF.of_eq rfl rfl).trans ((hG.of_eq rfl rfl).trans (hH.of_eq rfl rfl)))))))
 
+/-- A family of tapes of the `H` region (nonzero part `Hc c`, then the blank and `Zt`),
+indexed by the number `c` of passed entries. -/
+structure HFam where
+  Hc : Nat → List Nat
+  N : Nat
+  Zt : List Nat
+  Hu : List Nat
+  hZ : Sym4 Zt
+  nb : ∀ c, c ≤ N → NoB (Hc c)
+  un : ∀ c, c ≤ N → unm (Hc c) = Hu
+  step : ∀ c, c < N → ∃ (pasT : List (List Nat)) (Rest0 : List Nat), (∀ t ∈ pasT, Bits t) ∧
+    Hc c = MP pasT ++ 3 :: Rest0 ∧ Hc (c + 1) = MP pasT ++ 2 :: Rest0
+  last : ∃ (pasT : List (List Nat)) (tl : List Nat), (∀ t ∈ pasT, Bits t) ∧ Bits tl ∧ Hc N = MP pasT ++ 2 :: tl
+
+/-- Failure: the machine reaches the failure state on a marking of `U`. -/
+def FailsTo (c : ZC) (U Z : List Nat) : Prop :=
+  ∃ A R1 : List Nat, NoB A ∧ NoB R1 ∧ unm (A ++ R1) = U ∧ zgiLogic.Reach c (hdR QG.gFG A (R1 ++ 0 :: Z))
+
+theorem gfgR (A0 : List Nat) (a : Nat) (R : List Nat) (ha : a ∈ NB) (hA : NoB A0) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gFG (A0 ++ [a]) R) (hdR QG.gFG (A0 ++ [a]) R) := by
+  have hV : Valid [ALL, ALL] [A0, R] := Valid.cons hA.sym4 (Valid.cons hR (Valid.nil _))
+  simp [NB] at ha
+  rcases ha with rfl | rfl | rfl
+  · exact checkTF (env := [A0, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTF (env := [A0, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTF (env := [A0, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- From the head on the last cell: step right. -/
+theorem gfgR' (A R : List Nat) (hA : NoB A) (hne : A ≠ []) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gFG A R) (hdR QG.gFG A R) := by
+  obtain ⟨A0, a, hA0⟩ := List.eq_nil_or_concat A |>.resolve_left hne
+  rw [List.concat_eq_append] at hA0
+  subst hA0
+  exact gfgR A0 a R (hA a (by simp)) (fun x hx => hA x (by simp [hx])) hR
+
 end ZP.G
