@@ -994,4 +994,79 @@ theorem aLoop (Pre G : List Nat) (hPre : Sym4 Pre) (hG : Sym4 G) (d : Nat) (hd2 
         simp only [List.length_replicate, Nat.sub_zero, List.replicate_zero, List.nil_append, hd']
         simp
 
+
+/-- The cell left of `A` is a separator `M` (or blank). -/
+def LeftEnd (Pre : List Nat) : Prop := Pre = [] ∨ ∃ X, NoB X ∧ Pre = X ++ [1]
+
+theorem endDivG (Pre : List Nat) (hLE : LeftEnd Pre) (A2 K2 G : List Nat)
+    (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
+    zfacLogic.Reach (hd QF.SA (Pre ++ A2) (1 :: (K2 ++ 1 :: G)))
+      (hdR QF.FR1 (Pre ++ (List.replicate A2.length 3 ++ 1 :: (K2 ++ [1]))) G) := by
+  rcases hLE with rfl | ⟨X, hX, rfl⟩
+  · simpa using endDivB A2 K2 G hA2 hK2 hG
+  · simpa using endDivM X A2 K2 G hX hA2 hK2 hG
+
+theorem endNdivG (Pre : List Nat) (hLE : LeftEnd Pre) (A2 K1 K2 G : List Nat)
+    (hA2 : ∀ a ∈ A2, a ∈ Z2) (hK1 : ∀ a ∈ K1, a ∈ Z2) (hK2 : ∀ a ∈ K2, a ∈ T3) (hG : Sym4 G) :
+    zfacLogic.Reach (hd QF.SA (Pre ++ A2) (1 :: (2 :: (K1 ++ (K2 ++ 3 :: 1 :: G)))))
+      (hd QF.RS1 (Pre ++ (List.replicate A2.length 3 ++ 1 :: (2 :: (K1 ++ K2)))) (1 :: 1 :: G)) := by
+  rcases hLE with rfl | ⟨X, hX, rfl⟩
+  · simpa using endNdivB A2 K1 K2 G hA2 hK1 hK2 hG
+  · simpa using endNdivM X A2 K1 K2 G hX hA2 hK1 hK2 hG
+
+
+/-- RS1 → SA: `K` is reset to `1^d` (`d ≥ 2`). -/
+theorem rsG (Pre G : List Nat) (hPre : Sym4 Pre) (hG : Sym4 G) (a d : Nat) (hd2 : 2 ≤ d)
+    (Kw : List Nat) (hK : Bits Kw) (hl : Kw.length = d) :
+    zfacLogic.Reach (hd QF.RS1 (Pre ++ (List.replicate a 3 ++ 1 :: Kw)) (1 :: G))
+      (hd QF.SA (Pre ++ List.replicate a 3) (1 :: (List.replicate d 3 ++ 1 :: G))) := by
+  rcases List.eq_nil_or_concat Kw with rfl | ⟨K1, c2, rfl⟩
+  · simp at hl; omega
+  rcases List.eq_nil_or_concat K1 with rfl | ⟨Kb, c1, rfl⟩
+  · simp at hl; omega
+  have hc2 : c2 ∈ bits := hK c2 (by simp)
+  have hc1 : c1 ∈ bits := hK c1 (by simp)
+  have hKb : Bits Kb := fun a ha => hK a (by simp [ha])
+  have h := rsStart Pre (List.replicate a 3) Kb G c1 c2 hPre (rep_t3 a) hKb hG hc1 hc2
+  refine h.of_eq (by simp) ?_
+  have : d = Kb.length + 2 := by simp at hl; omega
+  rw [this, ← List.replicate_append_replicate]
+  simp
+
+theorem roundDiv (Pre G : List Nat) (hPre : Sym4 Pre) (hLE : LeftEnd Pre) (hG : Sym4 G) (a d : Nat)
+    (hd2 : 2 ≤ d) (Kw : List Nat) (hK : Bits Kw) (hl : Kw.length = d) (hdiv : a % d = 0) :
+    zfacLogic.Reach (hd QF.RS1 (Pre ++ (List.replicate a 3 ++ 1 :: Kw)) (1 :: G))
+      (hdR QF.FR1 (Pre ++ (List.replicate a 3 ++ 1 :: (List.replicate d 3 ++ [1]))) G) := by
+  have h1 := rsG Pre G hPre hG a d hd2 Kw hK hl
+  have h2 := aLoop Pre G hPre hG d hd2 a 0
+  have h2' : zfacLogic.Reach (hd QF.SA (Pre ++ List.replicate a 3) (1 :: (List.replicate d 3 ++ 1 :: G)))
+      (hd QF.SA (Pre ++ List.replicate a 2) (1 :: (List.replicate d 3 ++ 1 :: G))) :=
+    h2.of_eq (by simp) (by simp [hdiv])
+  have h3 := endDivG Pre hLE (List.replicate a 2) (List.replicate d 3) G (rep_z2 a) (rep_t3 d) hG
+  exact h1.trans (h2'.trans (by simpa using h3))
+
+theorem roundNdiv (Pre G : List Nat) (hPre : Sym4 Pre) (hLE : LeftEnd Pre) (hG : Sym4 G) (a d : Nat)
+    (hd2 : 2 ≤ d) (Kw : List Nat) (hK : Bits Kw) (hl : Kw.length = d) (hdiv : a % d ≠ 0) :
+    zfacLogic.Reach (hd QF.RS1 (Pre ++ (List.replicate a 3 ++ 1 :: Kw)) (1 :: G))
+      (hd QF.RS1 (Pre ++ (List.replicate a 3 ++ 1 :: (List.replicate (a % d) 2 ++
+        List.replicate (d - a % d - 1) 3))) (1 :: 1 :: G)) := by
+  have h1 := rsG Pre G hPre hG a d hd2 Kw hK hl
+  have h2 := aLoop Pre G hPre hG d hd2 a 0
+  have hj : a % d < d := Nat.mod_lt _ (by omega)
+  obtain ⟨j, hjj⟩ : ∃ j, a % d = j + 1 := ⟨a % d - 1, by omega⟩
+  obtain ⟨k, hk⟩ : ∃ k, d - a % d = k + 1 := ⟨d - a % d - 1, by omega⟩
+  have h2' : zfacLogic.Reach (hd QF.SA (Pre ++ List.replicate a 3) (1 :: (List.replicate d 3 ++ 1 :: G)))
+      (hd QF.SA (Pre ++ List.replicate a 2)
+        (1 :: (2 :: (List.replicate j 2 ++ (List.replicate k 3 ++ 3 :: 1 :: G))))) := by
+    refine h2.of_eq (by simp) ?_
+    have hk' : d - (j + 1) = k + 1 := by rw [← hjj]; exact hk
+    rw [Nat.zero_add, hjj, hk']
+    simp [List.replicate_succ, rep_cons_comm]
+  have h3 := endNdivG Pre hLE (List.replicate a 2) (List.replicate j 2) (List.replicate k 3) G
+    (rep_z2 a) (rep_z2 j) (rep_t3 k) hG
+  refine h1.trans (h2'.trans (h3.of_eq rfl ?_))
+  have e : d - a % d - 1 = k := by omega
+  rw [e, hjj]
+  simp [List.replicate_succ]
+
 end ZP.F
