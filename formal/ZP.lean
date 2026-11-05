@@ -45,6 +45,7 @@ public import ZP.MainPS
 public import ZP.DefsF
 public import ZP.ChecksF
 public import ZP.CompileF
+public import ZP.PairF
 public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile
