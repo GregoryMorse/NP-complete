@@ -136,4 +136,54 @@ theorem valsAux_shift (t p n L : Nat) (ht : t < n) :
     exact valsAux_shift t p n L ht rs (j + 1) (X ++ [_]) (by omega) (by simp [hX]) (by
       rw [List.take_append_of_le_length (by omega)]; exact hL)
 
+theorem valsAux_lt (t p : Nat) (hp : 0 < p) : ∀ (rs : List Rec) (j : Nat) (vs : List Nat),
+    (∀ x ∈ vs, x < p) → ∀ x ∈ valsAux t p j rs vs, x < p
+  | [], j, vs, h => by simpa [valsAux] using h
+  | (u, b) :: rs, j, vs, h => by
+    simp only [valsAux]
+    refine valsAux_lt t p hp rs (j + 1) _ ?_
+    intro x hx
+    rcases List.mem_append.1 hx with hx | hx
+    · exact h x hx
+    · simp at hx; subst hx; exact Nat.mod_lt _ hp
+
+def padRecs (n : Nat) (recs : List Rec) : List Rec :=
+  recs.take n ++ List.replicate n ((none : Option Nat), 0) ++ (recs.drop n).map (shiftRec n)
+
+theorem padVals (t p n : Nat) (hp : 0 < p) (hn : 1 ≤ n) (ht : t < n) (recs : List Rec) (hN : n ≤ recs.length) :
+    valsAux t p 0 (padRecs n recs) [] =
+      insN n ((valsAux t p 0 (recs.take n) []).getLastD 0) (valsAux t p 0 recs []) := by
+  generalize hV0 : valsAux t p 0 (recs.take n) [] = V0
+  have hlen0 : V0.length = n := by
+    rw [← hV0, valsAux_len]; simp; omega
+  have hlt0 : ∀ x ∈ V0, x < p := hV0 ▸ valsAux_lt t p hp _ 0 [] (by simp)
+  have hL : V0.getLastD 0 < p := by
+    have hne : V0 ≠ [] := by intro h; rw [h] at hlen0; simp at hlen0; omega
+    rw [List.getLastD_eq_getLast?]
+    obtain ⟨y, hy⟩ : ∃ y, V0.getLast? = some y := by
+      cases h : V0.getLast? with
+      | none => exact absurd (List.getLast?_eq_none_iff.1 h) hne
+      | some y => exact ⟨y, rfl⟩
+    rw [hy]; exact hlt0 y (List.mem_of_getLast? hy)
+  have h1 : valsAux t p 0 (padRecs n recs) [] =
+      valsAux t p (n + n) ((recs.drop n).map (shiftRec n)) (V0 ++ List.replicate n (V0.getLastD 0)) := by
+    unfold padRecs
+    rw [valsAux_append, valsAux_append]
+    simp only [List.length_append, List.length_take, List.length_replicate]
+    have e : min n recs.length = n := by omega
+    simp only [e, Nat.zero_add, hV0]
+    rw [valsAux_none t p _ hL n n V0 (by omega) rfl]
+  have h2 : valsAux t p 0 recs [] = valsAux t p n (recs.drop n) V0 := by
+    rw [show valsAux t p 0 recs [] = valsAux t p 0 (recs.take n ++ recs.drop n) [] by rw [List.take_append_drop]]
+    rw [valsAux_append]
+    simp only [List.length_take, Nat.zero_add]
+    rw [show min n recs.length = n by omega, hV0]
+  have hins : V0 ++ List.replicate n (V0.getLastD 0) = insN n (V0.getLastD 0) V0 := by
+    unfold insN
+    rw [List.take_of_length_le (by omega), List.drop_of_length_le (by omega)]
+    simp
+  rw [h1, hins, h2]
+  exact valsAux_shift t p n _ ht (recs.drop n) n V0 (Nat.le_refl _) hlen0 (by
+    rw [List.take_of_length_le (by omega)])
+
 end ZP
