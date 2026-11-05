@@ -305,4 +305,103 @@ theorem xLoop (d p : Nat) (hd : 2 ≤ d) (R : List Nat) (hR : Sym4 R) : ∀ g a,
       rw [eB]
       exact h2
 
+/-- `P` is used up: unmark it and look at `D`. -/
+theorem xEnd (r s p : Nat) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QN.X4 ([0] ++ List.replicate r 2 ++ List.replicate s 3 ++ [1]) (List.replicate p 2 ++ 1 :: R))
+      (hd QN.XD ([0] ++ List.replicate r 2 ++ List.replicate s 3) (1 :: List.replicate p 3 ++ 1 :: R)) := by
+  have hV : Valid [Mk, T3, Mk, ALL] [List.replicate r 2, List.replicate s 3, List.replicate p 2, R] :=
+    Valid.cons (rep2_mk r) (Valid.cons (rep_t3 s) (Valid.cons (rep2_mk p) (Valid.cons hR (Valid.nil _))))
+  exact checkFT (env := [List.replicate r 2, List.replicate s 3, List.replicate p 2, R]) (E := []) (k := 200) hV trivial
+    (ls := [.sym 0, .blk 0 .id, .blk 1 .id, .sym 1]) (rs := [.blk 2 .id, .sym 1, .blk 3 .id])
+    (ls' := [.sym 0, .blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .blk 2 (.const 3), .sym 1, .blk 3 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- No mark in `D`: `d` divides `p`, the candidate is composite; erase `D` and its separator. -/
+theorem xComposite (s p : Nat) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hd QN.XD ([0] ++ List.replicate s 3) (1 :: List.replicate p 3 ++ 1 :: R))
+      (hdR QN.PA0 (0 :: List.replicate s 0 ++ [0]) (List.replicate p 3 ++ 1 :: R)) := by
+  have hV : Valid [T3, T3, ALL] [List.replicate s 3, List.replicate p 3, R] :=
+    Valid.cons (rep_t3 s) (Valid.cons (rep_t3 p) (Valid.cons hR (Valid.nil _)))
+  exact checkTF (env := [List.replicate s 3, List.replicate p 3, R]) (E := []) (k := 200) hV trivial
+    (ls := [.sym 0, .blk 0 .id]) (rs := [.sym 1, .blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.sym 0, .blk 0 (.const 0), .sym 0]) (rs' := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-! ## The decrement of `d`, entered from `XD` -/
+
+theorem xs2Dec2 (a b : Nat) (R : List Nat) (ha : a ∈ bits) (hb : b ∈ bits) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QN.XS2 [0] ([a, b] ++ 1 :: R)) (hd QN.WX [0, 0, 3] (1 :: R)) := by
+  have hV : Valid [ALL] [R] := Valid.cons hR (Valid.nil _)
+  rcases mem_bits ha with rfl | rfl <;> rcases mem_bits hb with rfl | rfl
+  · exact checkFT (env := [R]) (E := []) (k := 12) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 2, .sym 2, .sym 1, .blk 0 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3]) (rs' := [.sym 1, .blk 0 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFT (env := [R]) (E := []) (k := 12) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 2, .sym 3, .sym 1, .blk 0 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3]) (rs' := [.sym 1, .blk 0 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFT (env := [R]) (E := []) (k := 12) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 3, .sym 2, .sym 1, .blk 0 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3]) (rs' := [.sym 1, .blk 0 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFT (env := [R]) (E := []) (k := 12) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 3, .sym 3, .sym 1, .blk 0 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3]) (rs' := [.sym 1, .blk 0 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem xs2DecN (a b c : Nat) (Dt R : List Nat) (ha : a ∈ bits) (hb : b ∈ bits) (hc : c ∈ bits)
+    (hD : Bits Dt) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QN.XS2 [0] (a :: b :: c :: Dt ++ 1 :: R))
+      (hdR QN.X4 ([0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) R) := by
+  have hV : Valid [bits, ALL] [Dt, R] := Valid.cons hD (Valid.cons hR (Valid.nil _))
+  rcases mem_bits ha with rfl | rfl <;> rcases mem_bits hb with rfl | rfl <;> rcases mem_bits hc with rfl | rfl
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 2, .sym 2, .sym 2, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 2, .sym 2, .sym 3, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 2, .sym 3, .sym 2, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 2, .sym 3, .sym 3, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 3, .sym 2, .sym 2, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 3, .sym 2, .sym 3, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 3, .sym 3, .sym 2, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [Dt, R]) (E := []) (k := 20) (q' := QN.X4) (A' := [0, 0, 3, 3] ++ List.replicate Dt.length 3 ++ [1]) (R' := R) hV trivial
+      (ls := [.sym 0]) (rs := [.sym 3, .sym 3, .sym 3, .blk 0 .id, .sym 1, .blk 1 .id])
+      (ls' := [.sym 0, .sym 0, .sym 3, .sym 3, .blk 0 (.const 3), .sym 1]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- A mark in `D`: `d` does not divide `p`; go to the first cell of `D` and decrement. -/
+theorem xdMarked (r s p : Nat) (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hd QN.XD ([0] ++ List.replicate (r + 1) 2 ++ List.replicate s 3) (1 :: List.replicate p 3 ++ 1 :: R))
+      (hdR QN.XS2 [0] (List.replicate (r + 1) 2 ++ List.replicate s 3 ++ 1 :: (List.replicate p 3 ++ 1 :: R))) := by
+  have hV : Valid [Mk, T3, T3, ALL] [List.replicate r 2, List.replicate s 3, List.replicate p 3, R] :=
+    Valid.cons (rep2_mk r) (Valid.cons (rep_t3 s) (Valid.cons (rep_t3 p) (Valid.cons hR (Valid.nil _))))
+  have : znttLogic.Reach (hd QN.XD ([0] ++ List.replicate r 2 ++ 2 :: List.replicate s 3) (1 :: List.replicate p 3 ++ 1 :: R))
+      (hdR QN.XS2 [0] (List.replicate r 2 ++ 2 :: List.replicate s 3 ++ 1 :: (List.replicate p 3 ++ 1 :: R))) :=
+    checkTF (env := [List.replicate r 2, List.replicate s 3, List.replicate p 3, R]) (E := []) (k := 200) hV trivial
+      (ls := [.sym 0, .blk 0 .id, .sym 2, .blk 1 .id]) (rs := [.sym 1, .blk 2 .id, .sym 1, .blk 3 .id])
+      (ls' := [.sym 0]) (rs' := [.blk 0 .id, .sym 2, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .blk 3 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  refine this.of_eq (by simp [List.replicate_succ', List.append_assoc]) ?_
+  simp [List.replicate_succ', List.append_assoc]
+
 end ZP.N
