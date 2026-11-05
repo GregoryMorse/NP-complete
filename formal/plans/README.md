@@ -60,7 +60,7 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [x] 02 Z_PP (`ZP.zppQuasihalts_iff_sentence`, `zpp_quasihalts_iff_InP`; comparator-checked)
 - [x] 06 Z_PSPACE (`ZP.zpsQuasihalts_iff_sentence`, `zps_quasihalts_iff_InP`; comparator-checked)
 - [x] 03 Z_FACTOR (`ZP.zfacQuasihalts_iff_sentence`, `zfac_quasihalts_iff_InP`; comparator-checked)
-- [ ] 04 Z_DLOG
+- [x] 04 Z_DLOG (`ZP.zdlQuasihalts_iff_sentence`, `zdl_quasihalts_iff_InP`; comparator-checked)
 - [ ] 05 Z_GI
 - [ ] 07 Z_MUL
 - [ ] 08 Z_NTT (prime-existence question settled with the user first)

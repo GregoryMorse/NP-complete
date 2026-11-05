@@ -1924,4 +1924,129 @@ theorem truthD (Sb : List Bool) (Rt : List Nat) (hRt : Sym4 Rt) :
     refine hconv'.trans (hcp.trans (hR.of_eq rfl ?_))
     simp
 
+
+/-! ## New instance and one pair -/
+
+/-- New instance: `M_2`, `H`, walk to the start of `s`. -/
+theorem ni0 (j : List Nat) (s : List Nat) (hj : Bits j) (hs : Bits s) :
+    zdlLogic.Reach (hdR QF.NI (1 :: (j ++ (1 :: (s)))) ([]))
+      (hdR Q.GC (1 :: (1 :: (j ++ ([1])))) (s ++ ([1]))) := by
+  have hV : Valid [bits, bits] [j, s] := Valid.cons hj (Valid.cons hs (Valid.nil _))
+  exact checkFF (env := [j, s]) (E := []) (k := 9) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id]) (rs := [])
+    (ls' := [.sym 1, .sym 1, .blk 0 .id, .sym 1]) (rs' := [.blk 1 .id, .sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The copy is done: the truth routine starts. -/
+theorem ni2 (Xr : List Nat) (j : List Nat) (s : List Nat) (hXr : Bits Xr) (hj : Bits j) (hs : Bits s) :
+    zdlLogic.Reach (hdR Q.GC (Xr ++ (1 :: (1 :: (j ++ (1 :: (s)))))) ([1]))
+      (hd QF.HPF (1 :: (Xr)) (0 :: (1 :: (j ++ (1 :: (s ++ ([1]))))))) := by
+  have hV : Valid [bits, bits, bits] [Xr, j, s] := Valid.cons hXr (Valid.cons hj (Valid.cons hs (Valid.nil _)))
+  exact checkFT (env := [Xr, j, s]) (E := []) (k := 12) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id]) (rs := [.sym 1])
+    (ls' := [.sym 1, .blk 0 .id]) (rs' := [.sym 0, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+theorem newInstD (J S : Nat) :
+    zdlLogic.Reach1 (F.layF J S) (TR (bitsOf (str J)) (str S) (inLD (str S))) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  rw [F.layF_hdR]
+  have h0 := ni0 (bitsOf (str J)) (bitsOf (str S)) hj hs
+  have h1 := gcLoop [1] (bitsOf (str J)) [] (NoB.cons one_nb NoB.nil) hj Sym4.nil (bitsOf (str S)) []
+    Bits.nil hs
+  have h2 := ni2 (bitsOf (str S)).reverse (bitsOf (str J)) (bitsOf (str S)) (Bits.ofB _).rev hj hs
+  have hRt : Sym4 (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ [1]))) :=
+    Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL]) ((Bits.ofB _).sym4.app
+      (Sym4.cons (by simp [ALL]) Sym4.nil))))
+  have hGp : ∀ a ∈ List.replicate (str S).length 0, a ∈ B0 := fun a ha => by
+    rw [List.eq_of_mem_replicate ha]; simp [B0]
+  have hpre := (h0.trans ((h1.of_eq (by simp) rfl).trans (h2.of_eq (by simp) rfl)))
+  have hfin : zdlLogic.Reach (hd QF.HPF (1 :: crev (str S)) (0 :: (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ [1])))))
+      (TR (bitsOf (str J)) (str S) (inLD (str S))) := by
+    rcases truthD (str S) _ hRt with ⟨L, Mr, hL, hMr, h3⟩ | ⟨L, hL, hin, h3⟩
+    · cases hv : inLD (str S)
+      · rw [hv] at h3
+        simp only [Bool.false_eq_true, ↓reduceIte] at h3
+        have h := frPath0 L Mr (List.replicate (str S).length 0) (bitsOf (str J)) (bitsOf (str S)) hL hMr hGp hj hs
+        refine h3.trans (h.of_eq (by simp [List.replicate_succ]) ?_)
+        rw [F.hdR_zeros _ _ _ _ hGp]
+        simp [TR, tflag]
+      · rw [hv] at h3
+        simp only [↓reduceIte] at h3
+        have h := frPath1 L Mr (List.replicate (str S).length 0) (bitsOf (str J)) (bitsOf (str S)) hL hMr hGp hj hs
+        refine h3.trans (h.of_eq (by simp [List.replicate_succ]) ?_)
+        rw [F.hdR_zeros _ _ _ _ hGp]
+        simp [TR, tflag]
+    · rw [hin]
+      have h := frFE0 L (List.replicate (str S).length 0) (bitsOf (str J)) (bitsOf (str S)) hL hGp hj hs
+      refine h3.trans (h.of_eq rfl ?_)
+      rw [F.hdR_zeros _ _ _ _ hGp]
+      simp [TR, tflag]
+  have hall := hpre.trans (hfin.of_eq (by simp [crev]) rfl)
+  refine F.Reach_pos hall ?_
+  show ((atR QF.NI).den _).q ≠ ((atR Q.GRB).den _).q
+  rw [SC.den_q, SC.den_q]
+  show QF.NI ≠ Q.GRB
+  decide
+
+theorem pair_mainD (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
+    ∃ n, 0 < n ∧
+      ((¬ ¬ CorrectD J S → zdlLogic.zrun n (F.layF J S) = some (F.layF (absStepC CorrectD (J, S)).1 (absStepC CorrectD (J, S)).2)) ∧
+       (¬ CorrectD J S → ∃ a c1 c2, a < n ∧ zdlLogic.zrun a (F.layF J S) = some c1 ∧ c1.q = zdlLogic.beep ∧
+          zdlLogic.zstep c1 = some c2 ∧
+          zdlLogic.zrun (n - a - 1) c2 = some (F.layF (absStepC CorrectD (J, S)).1 (absStepC CorrectD (J, S)).2))) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  obtain ⟨Fu, hFu, hD⟩ := dPhase (str J) (str S) (inLD (str S))
+  have hA := (newInstD J S).trans hD
+  obtain ⟨rS, hrS⟩ := numR_surj S hS
+  obtain ⟨rJ, hrJ⟩ := numR_surj J hJ
+  have eS : str S = rS.reverse := by rw [← hrS, str_numR]
+  have eS1 : str (S + 1) = (incR rS).reverse := by rw [← hrS, ← numR_inc, str_numR]
+  have eJ : str J = rJ.reverse := by rw [← hrJ, str_numR]
+  have eJ1 : str (J + 1) = (incR rJ).reverse := by rw [← hrJ, ← numR_inc, str_numR]
+  by_cases hc : CorrectD J S
+  · have e : absStepC CorrectD (J, S) = (J, S + 1) := absStepC_pos hc
+    rw [e]
+    have ho : run (str J) (str S) (clock (str J) (str S)) = inLD (str S) := hc
+    rw [ho] at hA
+    have hok : zdlLogic.Reach
+        (hdR (dpOf (bn (inLD (str S)))) [1]
+          (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (1 :: (tflag (inLD (str S)) ++ 1 :: Fu)))))
+        (hd Q.SINC (1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))) []) := by
+      cases inLD (str S)
+      · exact (dOk0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
+      · exact (dOk1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
+    have hinc := sincL (1 :: bitsOf (str J)) (NoB.cons one_nb hj.noB) rS 0
+    obtain ⟨n, hn⟩ := hA.trans (hok.trans (hinc.of_eq (c4 := F.layF J (S + 1)) (by rw [eS]; rfl) (by rw [F.layF_hdR, eS1]; simp)))
+    exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
+  · have e : absStepC CorrectD (J, S) = (J + 1, 1) := absStepC_neg hc
+    rw [e]
+    have ho : run (str J) (str S) (clock (str J) (str S)) = !inLD (str S) := by
+      have h' : run (str J) (str S) (clock (str J) (str S)) ≠ inLD (str S) := hc
+      revert h'
+      cases run (str J) (str S) (clock (str J) (str S)) <;> cases inLD (str S) <;> decide
+    rw [ho] at hA
+    obtain ⟨Y, h1, h3⟩ : ∃ Y, zdlLogic.Reach
+        (hdR (dpOf (bn (!inLD (str S)))) [1]
+          (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (1 :: (tflag (inLD (str S)) ++ 1 :: Fu)))))
+        (hd Q.BEEP (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [1]))) Y) ∧
+        zdlLogic.Reach (hdR Q.EAs (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [2]))) Y)
+          (hd Q.JINC (1 :: bitsOf (str J)) [1]) := by
+      cases inLD (str S)
+      · exact ⟨1 :: Fu, (dBad1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
+          dBad1E _ _ Fu hj hs hFu⟩
+      · exact ⟨3 :: 1 :: Fu, (dBad0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
+          dBad0E _ _ Fu hj hs hFu⟩
+    obtain ⟨n1, hn1⟩ := hA.trans h1
+    obtain ⟨n2, hn2⟩ := h3.trans ((jincL rJ 0).of_eq (c4 := F.layF (J + 1) 1) (by rw [eJ]; rfl) (by rw [F.layF_hdR, eJ1, str_one]; rfl))
+    refine ⟨n1 + 1 + 1 + n2, by omega, fun h => absurd hc h,
+      fun _ => ⟨n1 + 1, _, _, by omega, hn1, rfl, beepStep _ _ Y, ?_⟩⟩
+    rw [show n1 + 1 + 1 + n2 - (n1 + 1) - 1 = n2 by omega]
+    exact hn2
+
+
+
 end ZP.D

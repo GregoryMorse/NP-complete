@@ -95,22 +95,9 @@ P") would need primality in P (AKS). That is out of scope, and **the formal targ
 ~2500–3500 lines. The multiply-mod-p double loop is the main risk; design its invariant
 on the Python trace before writing Lean.
 
-## Status: in progress
+## Status: DONE
 
-Done (all in `ZP/PairD.lean`, namespace `ZP.D`, built green, no sorry):
-- `DefsD ChecksD TableD LogicD CompileD` (certificate `zdlCert_ok`).
-- The shared front: everything of `PairF.lean` up to the conversion (`convLoop` with its end
-  state now `E0`: `hd QD.E0 (lay1 c fr) (1 :: …)`), `dPhase`, `sinc*/jinc*`, `ni0/ni2`'s analogues
-  still to be copied (`layF` etc. live in `ZP.F`).
-- Primality (spec `isPrime`): `e0` (separator), `cpIter/cpEnd/cpLoop` (copy `P` into `D`),
-  `pIter1/pIter2/pEndDiv/pEndNdiv/pLoop`, `xs1sweep`, `shr0..shr3`, `pRoundDiv/pRoundNdiv`,
-  `scanXS` (`scanOK p m` ⇔ the rounds end in `QL`, else `hdR QF.FR0 L (Mr ++ Q)`).
-
-To do:
-1. `primePhase` = `e0` + `cpLoop` + `cpEnd` + `scanXS` (with `m = p`): from `hd E0 (lay1 …)` to
-   `hd QL [3] (1 :: (P ++ 1 :: Q))` iff `isPrime p`, else `FR0` outcome. Needs the layout of
-   `lay1` for `t ≥ 3` numbers `P=n_t, G=n_{t-1}, H=n_{t-2}, K=n_{t-3}` (or `k = 0`); fewer numbers:
-   the `gap q` transitions → `FR0`.
-2. Compare (`QL Q1 Q2 Q3 Q4 Q5 QY1..QY3 KD KB QU1..QU4`) and multiply (`O1..O3 I1..I3B LE W IU
-   RB1..RB3 T0..T3`): generate segments, loop inductions (`rep`-counting like `aLoop`), spec `dlogLoop`.
-3. `newInstD` (copy `newInstF`, replace the truth phase), `pair_mainD`, `MainD`, Challenge entry.
+`ZP/PairD.lean` (~2000 lines): primality (`cpLoop pLoop scanXS primePhase`), comparison (`cmpLoop`),
+discrete-log loop (`dlogStep dlogMain`), multiplication mod p (`iLoop oLoop tLoop mulPhase`),
+layout cases for 1, 2, 3, ≥4 numbers (`truthD`), `newInstD`, `pair_mainD`; `MainD`.
+Recipe unchanged from plan 03 (generate segments with `symexec.py`, then `rep`-induction loops).

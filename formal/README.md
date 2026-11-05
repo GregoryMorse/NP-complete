@@ -65,7 +65,7 @@ Plans for the rest are in `plans/`.
 | Z_PP (295 states) | `ZP.zppQuasihalts_iff_sentence`, `ZP.zpp_quasihalts_iff_InP` | `DefsPP ChecksPP TablePP LogicPP CompilePP PairPP MainPP`, `Count` |
 | Z_PSPACE (291) | `ZP.zpsQuasihalts_iff_sentence`, `ZP.zps_quasihalts_iff_InP` | `DefsPS ChecksPS TablePS LogicPS CompilePS PairPS MainPS` |
 | Z_FACTOR (324) | `ZP.zfacQuasihalts_iff_sentence`, `ZP.zfac_quasihalts_iff_InP` | `DefsF ChecksF TableF LogicF CompileF PairF MainF` |
-| Z_DLOG (400) | in progress (definitions, certificate, conversion done) | `DefsD ChecksD TableD LogicD CompileD PairD` |
+| Z_DLOG (400) | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
 
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
 transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair
