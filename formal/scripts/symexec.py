@@ -7,21 +7,24 @@ f = 'id' or an int (constant).  SC = (q, l, r, dirL) with l nearest first.
 import os, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = open(os.path.join(HERE, '..', 'ZP', 'Logic.lean')).read()
+LOGIC = os.environ.get('LOGIC', 'Logic')   # e.g. LOGIC=LogicPP LOGICID=zpp
+IDENT = os.environ.get('LOGICID', 'zp')
+SRC = open(os.path.join(HERE, '..', 'ZP', LOGIC + '.lean')).read()
 
 
 def _rows():
     rows = []
-    for k in range(5):
-        m = re.search(r'def zpLogicRows%d : List \(List Nat\) :=\s*\[(.*?)\]\n' % k, SRC, re.S)
+    for k in range(len(re.findall(r'def %sLogicRows\d+ ' % IDENT, SRC))):
+        m = re.search(r'def %sLogicRows%d : List \(List Nat\) :=\s*\[(.*?)\]\n' % (IDENT, k), SRC, re.S)
         body = m.group(1)
         rows += [list(map(int, x.split(','))) for x in re.findall(r'\[([0-9, ]+)\]', body)]
     return rows
 
 
 TABLE = _rows()
-BEEP = int(re.search(r'def zpLogic : LTM := ⟨zpLogicRows, (\d+)⟩', SRC).group(1))
-Q = {n: int(v) for n, v in re.findall(r'def (\w+) : Nat := (\d+)', SRC)}
+BEEP = int(re.search(r'def %sLogic : LTM := ⟨%sLogicRows, (\d+)⟩' % (IDENT, IDENT), SRC).group(1))
+_BASE = open(os.path.join(HERE, '..', 'ZP', 'Logic.lean')).read()
+Q = {n: int(v) for n, v in re.findall(r'def (\w+) : Nat := (\d+)', _BASE + SRC)}
 QN = {v: n for n, v in Q.items()}
 
 
