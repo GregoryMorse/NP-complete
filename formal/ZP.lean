@@ -89,3 +89,4 @@ public import ZP.TableN
 public import ZP.LogicN
 public import ZP.CompileN
 public import ZP.MainN
+public import ZP.PairN
