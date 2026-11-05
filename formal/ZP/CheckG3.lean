@@ -170,4 +170,69 @@ theorem gfgR' (A R : List Nat) (hA : NoB A) (hne : A ≠ []) (hR : Sym4 R) :
   subst hA0
   exact gfgR A0 a R (hA a (by simp)) (fun x hx => hA x (by simp [hx])) hR
 
+theorem HFam.sym (F : HFam) (c : Nat) (hc : c ≤ F.N) : Sym4 (F.Hc c ++ 0 :: F.Zt) :=
+  (F.nb c hc).sym4.app (Sym4.cons (by simp [ALL]) F.hZ)
+
+/-- The inner loop over a family of `H` tapes: `n` passes starting from `c` passed entries. -/
+theorem innerLoopU (F : HFam) (q : Nat) (hq : q = QG.gIL1b ∨ q = QG.gIL1) (ms : List Nat) (ws xs : List (List Nat))
+    (mb : List Nat) (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hmb : Bits mb)
+    (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ []) :
+    ∀ (n i c : Nat), c + n ≤ F.N →
+    zgiLogic.Reach
+      (hdR q (MEnc ms) (List.replicate i 2 ++ List.replicate (n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))))
+      (hdR QG.gD1 (MEnc ms ++ List.replicate (i + n) 2 ++ [3])
+        (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc (c + n) ++ 0 :: F.Zt)))))) := by
+  intro n
+  induction n generalizing q with
+  | zero =>
+    intro i c hc
+    have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+    have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+    have sH := F.sym c (by omega)
+    have hM := ilMark q hq (MEnc ms) (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))) i
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sH])
+    have hE := ilpEnd (MEnc ms ++ List.replicate (i + 1) 2) (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sH])
+    have hU := iluStep (MEnc ms ++ List.replicate i 2) (1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sH])
+    have e1 : MEnc ms ++ List.replicate (i + 1) 2 = MEnc ms ++ List.replicate i 2 ++ [2] := by
+      simp [List.replicate_succ', List.append_assoc]
+    rw [← e1] at hU
+    simpa [List.append_assoc] using hM.trans (hE.trans hU)
+  | succ n ih =>
+    intro i c hc
+    obtain ⟨pasT, Rest0, hp, h1, h2⟩ := F.step c (by omega)
+    have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+    have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+    have sP := MP_sym4 pasT hp
+    have sH := F.sym c (by omega)
+    have sH1 := F.sym (c + 1) (by omega)
+    have sR0 : Sym4 (Rest0 ++ 0 :: F.Zt) := by
+      have := sH
+      rw [h1] at this
+      simp [ALL] at this
+      simp [ALL, this.2.1, this.2.2]
+    have hM := ilMark q hq (MEnc ms) (List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))) i
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sH])
+    have hMore := ilpMore (MEnc ms ++ List.replicate (i + 1) 2) (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+      (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sH])
+    have hSk := hSkipG (MEnc ms ++ List.replicate (i + 1) 2 ++ [3]) (List.replicate n 3) mb (Rest0 ++ 0 :: F.Zt) ws xs pasT
+      (bits_rep3 n) hws hmb hxs hp (by simp [ALL]) sR0
+    have hW := il0Walk' (MEnc ms ++ List.replicate (i + 1) 2 ++ [3] ++ List.replicate n 3 ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1] ++ MEs xs ++ [1] ++ MP pasT)
+      (2 :: (Rest0 ++ 0 :: F.Zt))
+      (by
+        have := MEs_noB ws (fun e he => (hws e he).1)
+        have := MEs_noB xs (fun e he => (hxs e he).1)
+        have := MP_noB pasT hp
+        simp [NB, *, hmb.noB])
+      (by simp [ALL, sR0])
+    have hS2 := ilSkipList (List.replicate (i + 1) 2 ++ List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc (c + 1) ++ 0 :: F.Zt)))))
+      (by simp [ALL, sW, hmb.sym4, sX, sH1]) ms [] hms (by simp [ALL])
+    have hI := hS2.trans (ih QG.gIL1b (Or.inl rfl) (i + 1) (c + 1) (by omega))
+    refine ((hM.of_eq (by simp [List.replicate_succ, h1]) rfl).trans ((hMore.of_eq (by simp [List.replicate_succ, h1]) rfl).trans
+      ((hSk.of_eq (by simp [h1, List.append_assoc]) rfl).trans ((hW.of_eq rfl rfl).trans (hI.of_eq ?_ ?_)))))
+    · simp [h2, List.replicate_succ, List.append_assoc]
+    · simp [Nat.add_assoc, Nat.add_comm 1 n]
+
 end ZP.G
