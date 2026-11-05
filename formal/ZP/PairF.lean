@@ -1144,4 +1144,111 @@ theorem divLoop (Pre : List Nat) (hPre : Sym4 Pre) (hLE : LeftEnd Pre) (a : Nat)
         refine h.trans (hR.of_eq rfl ?_)
         simp
 
+
+theorem numbers_eq : ∀ (f : Nat) (r : List Bool) (cur : Nat) (fr : List Nat),
+    fr.reverse ++ numsAux f r cur =
+      (parseState f r cur fr).2.reverse ++ [(parseState f r cur fr).1]
+  | 0, r, cur, fr => by simp [numsAux, parseState]
+  | f + 1, [], cur, fr => by simp [numsAux, parseState]
+  | f + 1, [true], cur, fr => by simp [numsAux, parseState]
+  | f + 1, true :: b :: r, cur, fr => by
+    have := numbers_eq f r (2 * cur + if b then 1 else 0) fr
+    simp only [numsAux, parseState]
+    rw [this]
+    cases b <;> simp [bitN, Nat.add_comm]
+  | f + 1, false :: r, cur, fr => by
+    have := numbers_eq f r 0 (cur :: fr)
+    simp only [numsAux, parseState]
+    rw [← this]
+    simp
+
+theorem lay1_last2 : ∀ (fr : List Nat) (c k a : Nat) (rest : List Nat),
+    fr.reverse ++ [c] = k :: a :: rest →
+    ∃ Pre, lay1 c fr = Pre ++ (List.replicate a 3 ++ 1 :: List.replicate k 3) ∧ LeftEnd Pre ∧ Sym4 Pre
+  | [], c, k, a, rest, h => by simp at h
+  | [n], c, k, a, rest, h => by
+    simp at h
+    obtain ⟨rfl, rfl, -⟩ := h
+    exact ⟨[], by simp [lay1], Or.inl rfl, Sym4.nil⟩
+  | n :: n' :: fr, c, k, a, rest, h => by
+    have h2 : (n' :: fr).reverse ++ [n] ++ [c] = k :: a :: rest := by simpa using h
+    have hlen : 2 ≤ ((n' :: fr).reverse ++ [n]).length := by simp
+    obtain ⟨rest', hL1⟩ : ∃ rest', (n' :: fr).reverse ++ [n] = k :: a :: rest' := by
+      generalize (n' :: fr).reverse ++ [n] = L at h2 hlen
+      match L, hlen, h2 with
+      | x :: y :: L'', _, h2 =>
+        simp only [List.cons_append, List.cons.injEq] at h2
+        obtain ⟨rfl, rfl, -⟩ := h2
+        exact ⟨L'', rfl⟩
+    obtain ⟨Pre, hP, hLE, hS⟩ := lay1_last2 (n' :: fr) n k a rest' hL1
+    refine ⟨List.replicate c 3 ++ 1 :: Pre, ?_, ?_, ?_⟩
+    · rw [show lay1 c (n :: n' :: fr) = List.replicate c 3 ++ 1 :: lay1 n (n' :: fr) from rfl, hP]
+      simp
+    · rcases hLE with rfl | ⟨X, hX, rfl⟩
+      · exact Or.inr ⟨List.replicate c 3, t3_noB (rep_t3 c), by simp⟩
+      · exact Or.inr ⟨List.replicate c 3 ++ 1 :: X, (t3_noB (rep_t3 c)).app (NoB.cons one_nb hX), by simp⟩
+    · exact (Sym4.rep c 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hS)
+
+
+theorem truthPhase (Sb : List Bool) (Rt : List Nat) (hRt : Sym4 Rt) :
+    ∃ L Mr, NoB L ∧ NoB Mr ∧
+      zfacLogic.Reach (hd QF.HPF (1 :: crev Sb) (0 :: Rt))
+        (hdR (if inLF Sb then QF.FR1 else QF.FR0) L
+          (Mr ++ (List.replicate (Sb.length + 1) 0 ++ Rt))) := by
+  have hconv := convLoop Rt hRt Sb.length Sb 0 [] 1 (Nat.le_refl _) (Nat.le_refl _)
+  have hnum := numbers_eq Sb.length Sb 0 []
+  have hG : Sym4 (List.replicate (1 + Sb.length) 0 ++ Rt) := (zeros4 _).app hRt
+  simp only [List.reverse_nil, List.nil_append] at hnum
+  have hnum' : numbers Sb = (parseState Sb.length Sb 0 []).2.reverse ++ [(parseState Sb.length Sb 0 []).1] := hnum
+  generalize parseState Sb.length Sb 0 [] = p at hconv hnum'
+  obtain ⟨c, fr⟩ := p
+  simp only at hconv hnum'
+  have hconv' : zfacLogic.Reach (hd QF.HPF (1 :: crev Sb) (0 :: Rt))
+      (hd QF.RS1 (lay1 c fr) (1 :: (List.replicate (1 + Sb.length) 0 ++ Rt))) := by
+    refine hconv.of_eq ?_ rfl
+    simp [lyt]
+  have e : 1 + Sb.length = Sb.length + 1 := by omega
+  rw [e] at hconv' hG
+  cases fr with
+  | nil =>
+    refine ⟨[], List.replicate c 3 ++ [1], NoB.nil, (t3_noB (rep_t3 c)).app (NoB.cons one_nb NoB.nil), ?_⟩
+    have hin : inLF Sb = false := by
+      unfold inLF; rw [hnum']; simp
+    rw [hin]
+    simp only [Bool.false_eq_true, ↓reduceIte]
+    refine hconv'.trans ?_
+    match c with
+    | 0 => simpa [lay1] using fr0N0 _ hG
+    | 1 => simpa [lay1] using fr0N1 _ hG
+    | k + 2 =>
+      have h := fr0N2 (List.replicate k 3) _ (rep_t3 k) hG
+      refine h.of_eq ?_ ?_
+      · have e2 : List.replicate (k + 2) 3 = List.replicate k 3 ++ [3, 3] := by
+          rw [← List.replicate_append_replicate]; rfl
+        simp [lay1, e2]
+      · simp [List.replicate_succ, rep_cons_comm]
+  | cons n fr' =>
+    obtain ⟨k, a, rest, hkar⟩ : ∃ k a rest, (n :: fr').reverse ++ [c] = k :: a :: rest := by
+      have hlen : 2 ≤ ((n :: fr').reverse ++ [c]).length := by simp
+      generalize (n :: fr').reverse ++ [c] = L at hlen
+      match L, hlen with
+      | k :: a :: rest, _ => exact ⟨k, a, rest, rfl⟩
+    obtain ⟨Pre, hP, hLE, hS⟩ := lay1_last2 (n :: fr') c k a rest hkar
+    have hin : inLF Sb = divRes a k := by
+      unfold inLF
+      rw [hnum', hkar]
+      rfl
+    obtain ⟨L, Mr, hL, hMr, hR⟩ := divLoop Pre hS hLE a k (List.replicate k 3)
+      (fun x hx => by rw [List.eq_of_mem_replicate hx]; simp [bits]) (by simp) _ hG
+    refine ⟨Pre ++ L, Mr, ?_, hMr, ?_⟩
+    · have hPreN : NoB Pre := by
+        rcases hLE with rfl | ⟨X, hX, rfl⟩
+        · exact NoB.nil
+        · exact hX.app (NoB.cons one_nb NoB.nil)
+      exact hPreN.app hL
+    · rw [hin]
+      refine hconv'.trans ?_
+      rw [hP]
+      exact hR
+
 end ZP.F
