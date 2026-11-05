@@ -97,10 +97,20 @@ on the Python trace before writing Lean.
 
 ## Status: in progress
 
-Done: `ZP/DefsD`, `ChecksD`, `TableD`, `LogicD` (generated), `CompileD` (`zdlCert_ok`, `zdlMacroSimC`).
-Not started: `PairD` (copy `PairF.lean` into `namespace ZP.D` with `zfacLogic → zdlLogic`, drop
-the divisibility part, refit with the script described in plan 03, then the new routines:
-`E0` (conversion end), primality (`CP*`, `XS*`, `X*`, `XC/XD`), compare (`QL/Q*/QY*/KD/KB/QU*`),
-multiply mod p (`I*`, `O*`, `W`, `LE`, `RB*`, `T*`)). Reuse from plan 03: `ni0 ni2 layF newInstF`
-shape, `convLoop`, `frPath0/1`, `hdR_zeros`, `dPhase`/`pair_main` text.
-Spec reminder: `inLD` = `isPrime p && dlogLoop (k+1) 1 g h p` on `(numbers s).reverse`.
+Done (all in `ZP/PairD.lean`, namespace `ZP.D`, built green, no sorry):
+- `DefsD ChecksD TableD LogicD CompileD` (certificate `zdlCert_ok`).
+- The shared front: everything of `PairF.lean` up to the conversion (`convLoop` with its end
+  state now `E0`: `hd QD.E0 (lay1 c fr) (1 :: …)`), `dPhase`, `sinc*/jinc*`, `ni0/ni2`'s analogues
+  still to be copied (`layF` etc. live in `ZP.F`).
+- Primality (spec `isPrime`): `e0` (separator), `cpIter/cpEnd/cpLoop` (copy `P` into `D`),
+  `pIter1/pIter2/pEndDiv/pEndNdiv/pLoop`, `xs1sweep`, `shr0..shr3`, `pRoundDiv/pRoundNdiv`,
+  `scanXS` (`scanOK p m` ⇔ the rounds end in `QL`, else `hdR QF.FR0 L (Mr ++ Q)`).
+
+To do:
+1. `primePhase` = `e0` + `cpLoop` + `cpEnd` + `scanXS` (with `m = p`): from `hd E0 (lay1 …)` to
+   `hd QL [3] (1 :: (P ++ 1 :: Q))` iff `isPrime p`, else `FR0` outcome. Needs the layout of
+   `lay1` for `t ≥ 3` numbers `P=n_t, G=n_{t-1}, H=n_{t-2}, K=n_{t-3}` (or `k = 0`); fewer numbers:
+   the `gap q` transitions → `FR0`.
+2. Compare (`QL Q1 Q2 Q3 Q4 Q5 QY1..QY3 KD KB QU1..QU4`) and multiply (`O1..O3 I1..I3B LE W IU
+   RB1..RB3 T0..T3`): generate segments, loop inductions (`rep`-counting like `aLoop`), spec `dlogLoop`.
+3. `newInstD` (copy `newInstF`, replace the truth phase), `pair_mainD`, `MainD`, Challenge entry.

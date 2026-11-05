@@ -1043,4 +1043,138 @@ theorem pLoop (Q : List Nat) (hQ : Sym4 Q) (d : Nat) (hd2 : 2 ≤ d) : ∀ u i :
         simp only [List.length_replicate, Nat.sub_zero, List.replicate_zero, List.nil_append, hd']
         simp
 
+
+theorem Bits_rep2 (j : Nat) : Bits (List.replicate j 2) := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [bits]
+
+/-- One division test of the primality loop. -/
+theorem pRoundDiv (p d : Nat) (Q : List Nat) (hQ : Sym4 Q) (hd2 : 2 ≤ d) (hdiv : p % d = 0) :
+    ∃ L Mr, NoB L ∧ NoB Mr ∧
+      zdlLogic.Reach (hdR QD.X4 (List.replicate d 3 ++ [1]) (List.replicate p 3 ++ 1 :: Q))
+        (hdR QF.FR0 L (Mr ++ Q)) := by
+  have h1 := pLoop Q hQ d hd2 p 0
+  have h1' : zdlLogic.Reach (hdR QD.X4 (List.replicate d 3 ++ [1]) (List.replicate p 3 ++ 1 :: Q))
+      (hdR QD.X4 (List.replicate d 3 ++ [1]) (List.replicate p 2 ++ 1 :: Q)) :=
+    h1.of_eq (by simp) (by simp [hdiv])
+  have h2 := pEndDiv (List.replicate d 3) (List.replicate p 2) Q (rep_t3 d) (rep_z2 p) hQ
+  have h2' : zdlLogic.Reach (hdR QD.X4 (List.replicate d 3 ++ [1]) (List.replicate p 2 ++ 1 :: Q))
+      (hdR QF.FR0 [] (List.replicate d 3 ++ 1 :: (List.replicate p 3 ++ 1 :: Q))) := by
+    simpa using h2
+  refine ⟨[], List.replicate d 3 ++ 1 :: (List.replicate p 3 ++ [1]), NoB.nil,
+    (t3_noB (rep_t3 d)).app (NoB.cons one_nb ((t3_noB (rep_t3 p)).app (NoB.cons one_nb NoB.nil))), ?_⟩
+  refine (h1'.trans h2').of_eq rfl ?_
+  simp
+
+theorem pRoundNdiv (p d : Nat) (Q : List Nat) (hQ : Sym4 Q) (hd2 : 2 ≤ d) (hdiv : p % d ≠ 0) :
+    zdlLogic.Reach (hdR QD.X4 (List.replicate d 3 ++ [1]) (List.replicate p 3 ++ 1 :: Q))
+      (hdR QD.XS2 [] ((List.replicate (p % d) 2 ++ List.replicate (d - p % d) 3) ++
+        1 :: (List.replicate p 3 ++ 1 :: Q))) := by
+  have h1 := pLoop Q hQ d hd2 p 0
+  have hj : p % d < d := Nat.mod_lt _ (by omega)
+  obtain ⟨j, hjj⟩ : ∃ j, p % d = j + 1 := ⟨p % d - 1, by omega⟩
+  have h1' : zdlLogic.Reach (hdR QD.X4 (List.replicate d 3 ++ [1]) (List.replicate p 3 ++ 1 :: Q))
+      (hdR QD.X4 (List.replicate j 2 ++ (2 :: (List.replicate (d - p % d) 3 ++ [1])))
+        (List.replicate p 2 ++ 1 :: Q)) :=
+    h1.of_eq (by simp) (by simp [hjj, List.replicate_succ'])
+  have h2 := pEndNdiv (List.replicate j 2) (List.replicate (d - p % d) 3) (List.replicate p 2) Q
+    (rep_z2 j) (rep_t3 _) (rep_z2 p) hQ
+  have h2' : zdlLogic.Reach (hdR QD.X4 (List.replicate j 2 ++ (2 :: (List.replicate (d - p % d) 3 ++ [1])))
+        (List.replicate p 2 ++ 1 :: Q))
+      (hd QD.XS1 (List.replicate j 2) (2 :: (List.replicate (d - p % d) 3 ++
+        1 :: (List.replicate p 3 ++ 1 :: Q)))) := by
+    simpa using h2
+  have h3 := xs1sweep (List.replicate j 2) (2 :: (List.replicate (d - p % d) 3 ++
+    1 :: (List.replicate p 3 ++ 1 :: Q))) (Bits_rep2 j)
+    (Sym4.cons (by simp [ALL]) (((Sym4.rep _ 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL])
+      ((Sym4.rep p 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hQ))))))
+  refine (h1'.trans h2').trans (h3.of_eq rfl ?_)
+  simp [hjj, List.replicate_succ']
+
+def scanOK (p m : Nat) : Prop := 2 ≤ m ∧ ∀ d', 2 ≤ d' → d' ≤ m - 1 → p % d' ≠ 0
+
+/-- The rounds of the primality test, from `XS2` at the left edge of `D` (`|D| = m`). -/
+theorem scanXS (p : Nat) (Q : List Nat) (hQ : Sym4 Q) : ∀ (m : Nat) (Dw : List Nat), Bits Dw →
+    Dw.length = m →
+    (scanOK p m → zdlLogic.Reach (hdR QD.XS2 [] (Dw ++ 1 :: (List.replicate p 3 ++ 1 :: Q)))
+        (hd QD.QL [3] (1 :: (List.replicate p 3 ++ 1 :: Q)))) ∧
+    (¬ scanOK p m → ∃ L Mr, NoB L ∧ NoB Mr ∧
+        zdlLogic.Reach (hdR QD.XS2 [] (Dw ++ 1 :: (List.replicate p 3 ++ 1 :: Q)))
+          (hdR QF.FR0 L (Mr ++ Q))) := by
+  intro m
+  induction m with
+  | zero =>
+    intro Dw hD hl
+    have hDw : Dw = [] := List.eq_nil_of_length_eq_zero hl
+    subst hDw
+    refine ⟨fun h => absurd h.1 (by omega), fun _ => ?_⟩
+    have h := shr0 (List.replicate p 3 ++ 1 :: Q) (Sym4.app (Sym4.rep p 3 (by simp [ALL]))
+      (Sym4.cons (by simp [ALL]) hQ))
+    refine ⟨[1], List.replicate p 3 ++ [1], NoB.cons one_nb NoB.nil,
+      (t3_noB (rep_t3 p)).app (NoB.cons one_nb NoB.nil), ?_⟩
+    simpa using h
+  | succ m ih =>
+    intro Dw hD hl
+    have hPQ : Sym4 (List.replicate p 3 ++ 1 :: Q) :=
+      (Sym4.rep p 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hQ)
+    have hMr : NoB (List.replicate p 3 ++ [1]) := (t3_noB (rep_t3 p)).app (NoB.cons one_nb NoB.nil)
+    have hm : m = 0 ∨ m = 1 ∨ ∃ m', m = m' + 2 := by
+      rcases m with _ | _ | m
+      · exact Or.inl rfl
+      · exact Or.inr (Or.inl rfl)
+      · exact Or.inr (Or.inr ⟨m, rfl⟩)
+    rcases hm with rfl | rfl | ⟨m, rfl⟩
+    · obtain ⟨c0, rfl⟩ : ∃ c0, Dw = [c0] := by
+        match Dw, hl with
+        | [c0], _ => exact ⟨c0, rfl⟩
+      have hc0 : c0 ∈ bits := hD c0 (by simp)
+      refine ⟨fun h => absurd h.1 (by omega), fun _ => ?_⟩
+      have h := shr1 (List.replicate p 3 ++ 1 :: Q) c0 hPQ hc0
+      exact ⟨[1], List.replicate p 3 ++ [1], NoB.cons one_nb NoB.nil, hMr, by simpa using h⟩
+    · obtain ⟨c0, c1, rfl⟩ : ∃ c0 c1, Dw = [c0, c1] := by
+        match Dw, hl with
+        | [c0, c1], _ => exact ⟨c0, c1, rfl⟩
+      have hc0 : c0 ∈ bits := hD c0 (by simp)
+      have hc1 : c1 ∈ bits := hD c1 (by simp)
+      have hok : scanOK p 2 := ⟨by omega, fun d' h1 h2 => by omega⟩
+      refine ⟨fun _ => ?_, fun h => absurd hok h⟩
+      have h := shr2 (List.replicate p 3 ++ 1 :: Q) c0 c1 hPQ hc0 hc1
+      simpa using h
+    · obtain ⟨c0, c1, c2, Dr, rfl⟩ : ∃ c0 c1 c2 Dr, Dw = c0 :: c1 :: c2 :: Dr := by
+        match Dw, hl with
+        | c0 :: c1 :: c2 :: Dr, _ => exact ⟨c0, c1, c2, Dr, rfl⟩
+      have hDr : Bits Dr := fun a ha => hD a (by simp [ha])
+      have hc0 : c0 ∈ bits := hD c0 (by simp)
+      have hc1 : c1 ∈ bits := hD c1 (by simp)
+      have hc2 : c2 ∈ bits := hD c2 (by simp)
+      have hDrl : Dr.length = m := by simpa using hl
+      have hd2 : 2 ≤ m + 2 := by omega
+      have hsh := shr3 Dr (List.replicate p 3 ++ 1 :: Q) c0 c1 c2 hDr hPQ hc0 hc1 hc2
+      have hsh' : zdlLogic.Reach (hdR QD.XS2 [] ((c0 :: c1 :: c2 :: Dr) ++ 1 :: (List.replicate p 3 ++ 1 :: Q)))
+          (hdR QD.X4 (List.replicate (m + 2) 3 ++ [1]) (List.replicate p 3 ++ 1 :: Q)) := by
+        refine hsh.of_eq (by simp) ?_
+        have : m + 2 = Dr.length + 2 := by omega
+        rw [this]
+        simp [List.replicate_succ]
+      by_cases hdiv : p % (m + 2) = 0
+      · obtain ⟨L, Mr, hL, hMr', hR⟩ := pRoundDiv p (m + 2) Q hQ hd2 hdiv
+        refine ⟨fun h => absurd hdiv (h.2 (m + 2) hd2 (by omega)), fun _ => ⟨L, Mr, hL, hMr', hsh'.trans hR⟩⟩
+      · have hR := pRoundNdiv p (m + 2) Q hQ hd2 hdiv
+        have hj : p % (m + 2) < m + 2 := Nat.mod_lt _ (by omega)
+        have hKb : Bits (List.replicate (p % (m + 2)) 2 ++ List.replicate (m + 2 - p % (m + 2)) 3) := by
+          intro x hx
+          simp only [List.mem_append, List.mem_replicate] at hx
+          rcases hx with ⟨-, rfl⟩ | ⟨-, rfl⟩ <;> simp [bits]
+        have hKl : (List.replicate (p % (m + 2)) 2 ++ List.replicate (m + 2 - p % (m + 2)) 3).length = m + 1 + 1 := by
+          simp; omega
+        obtain ⟨hI1, hI2⟩ := ih _ hKb hKl
+        refine ⟨fun hok => ?_, fun hnok => ?_⟩
+        · have hok' : scanOK p (m + 2) := ⟨by omega, fun d' h1 h2 => hok.2 d' h1 (by omega)⟩
+          exact hsh'.trans (hR.trans (hI1 hok'))
+        · have hnok' : ¬ scanOK p (m + 2) := fun hok' => hnok ⟨by omega, fun d' h1 h2 => by
+            by_cases he : d' = m + 2
+            · rw [he]; exact hdiv
+            · exact hok'.2 d' h1 (by omega)⟩
+          obtain ⟨L, Mr, hL, hMr', hRf⟩ := hI2 hnok'
+          exact ⟨L, Mr, hL, hMr', hsh'.trans (hR.trans hRf)⟩
+
 end ZP.D
