@@ -387,6 +387,8 @@ theorem cxWalk (R : List Nat) (hR : Sym4 R) : ∀ (cs : List (List Nat)) (P : Li
 def Y1 (b : Bool) : Nat := if b then QG.gY1o else QG.gY1e
 def LP (b : Bool) : Nat := if b then QG.gLPo else QG.gLPe
 
+@[simp] theorem Y1_false : Y1 false = QG.gY1e := rfl
+
 theorem lblSkipB (b : Bool) (P R : List Nat) (e : Nat) (hP : Sym4 P) (hR : Sym4 R) :
     zgiLogic.Reach (hdR (Y1 b) P (List.replicate (e + 1) 2 ++ 1 :: R))
       (hdR (Y1 (!b)) (P ++ (List.replicate (e + 1) 2 ++ [1])) R) := by
@@ -506,5 +508,60 @@ theorem labelIter (b : Bool) (ms ws' : List Nat) (v m : Nat) (d : List Nat) (j r
     0 :: (MEnc (ms ++ [v + 1]) ++ Enc ws' ++ [1] ++ (List.replicate m 3 ++ [1])) by
       simp [MEnc_append, MEnc, List.append_assoc]]
   rw [hdR_z0]
+
+/-- The state after the label is complete: `a` is found (parity even) or `b` is found (odd). -/
+def LDone (b : Bool) : Nat := if b then QG.gIL0 else QG.gM1
+
+theorem lpEndB (b : Bool) (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR (LP b) P (1 :: R)) (hd (LDone b) P (1 :: R)) := by
+  cases b
+  · exact lpEndE P R hP hR
+  · exact lpEndO P R hP hR
+
+theorem labelFind (m : Nat) (d : List Nat) (Xrest : List Nat) (hdd : ∀ e ∈ d, 1 ≤ e) (hX : Sym4 Xrest) :
+    ∀ (r : Nat) (ms ws : List Nat) (j : Nat), (∀ e ∈ ms, 1 ≤ e) → (∀ e ∈ ws, 1 ≤ e) → r ≤ ws.length →
+    zgiLogic.Reach
+      (hdR QG.gY1e (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1]))
+        (MEnc d ++ List.replicate j 2 ++ List.replicate (r + 1) 3 ++ 1 :: Xrest))
+      (hd (LDone (decide (d.length % 2 = 1)))
+        (MEnc (ms ++ ws.take r) ++ Enc (ws.drop r) ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++
+          List.replicate (j + r + 1) 2) (1 :: Xrest)) := by
+  intro r
+  induction r with
+  | zero =>
+    intro ms ws j hms hws hr
+    have hL := lblWalk (List.replicate j 2 ++ List.replicate (0 + 1) 3 ++ 1 :: Xrest) (by simp [ALL, hX]) d false
+      (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1])) hdd (by simp [ALL])
+    have hM := lblMarkB (decide (d.length % 2 = 1)) (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d)
+      (1 :: Xrest) j (by simp [ALL]) (by simp [ALL, hX])
+    have hE := lpEndB (decide (d.length % 2 = 1)) (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++
+      List.replicate (j + 1) 2) Xrest (by simp [ALL]) hX
+    simp only [Bool.false_xor] at hL
+    refine (hL.of_eq (by simp [List.append_assoc]) rfl).trans ((hM.of_eq (by simp [List.append_assoc]) rfl).trans
+      (hE.of_eq rfl ?_))
+    simp [List.append_assoc]
+  | succ r ih =>
+    intro ms ws j hms hws hr
+    obtain ⟨w1, ws', hw⟩ : ∃ w1 ws', ws = w1 :: ws' := by
+      cases ws with
+      | nil => simp at hr
+      | cons a l => exact ⟨a, l, rfl⟩
+    subst hw
+    obtain ⟨v, rfl⟩ : ∃ v, w1 = v + 1 := ⟨w1 - 1, by have := hws w1 (List.mem_cons_self ..); omega⟩
+    have hws' : ∀ e ∈ ws', 1 ≤ e := fun e he => hws e (List.mem_cons_of_mem _ he)
+    have hL := lblWalk (List.replicate j 2 ++ List.replicate (r + 1 + 1) 3 ++ 1 :: Xrest) (by simp [ALL, hX]) d false
+      (MEnc ms ++ Enc ((v + 1) :: ws') ++ [1] ++ (List.replicate m 3 ++ [1])) hdd (by simp [ALL])
+    have hM := lblMarkB (decide (d.length % 2 = 1)) (MEnc ms ++ Enc ((v + 1) :: ws') ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d)
+      (List.replicate (r + 1) 3 ++ 1 :: Xrest) j (by simp [ALL]) (by simp [ALL, hX])
+    have hI := labelIter (decide (d.length % 2 = 1)) ms ws' v m d j r Xrest hms hws' hX
+    have hF := ih (ms ++ [v + 1]) ws' (j + 1) (by
+        intro e he
+        rcases List.mem_append.1 he with he | he
+        · exact hms e he
+        · simp at he; omega) hws' (by simp at hr; omega)
+    simp only [Bool.false_xor] at hL
+    refine (hL.of_eq (by simp [List.append_assoc]) rfl).trans ((hM.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans
+      ((hI.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans (hF.of_eq (by simp [List.replicate_succ, List.append_assoc]) ?_)))
+    simp [List.append_assoc, MEnc_append, Nat.add_assoc, Nat.add_comm 1 r]
 
 end ZP.G
