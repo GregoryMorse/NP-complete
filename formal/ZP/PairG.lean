@@ -1224,4 +1224,301 @@ theorem gke1End (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
     (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+/-- Comparing the top (`k` marked, `a` unmarked cells left) with an entry (`k` marked, `b` left). -/
+def KC (fm rest : List Nat) (k a b : Nat) : ZC :=
+  hdR QG.gKE1 (List.replicate k 2 ++ List.replicate a 3 ++ [1])
+    (MEnc fm ++ (List.replicate k 2 ++ List.replicate b 3 ++ [1]) ++ rest)
+
+theorem noB_marked (k a : Nat) : NoB (List.replicate k 2 ++ List.replicate a 3 ++ [1]) :=
+  ((mk_noB (rep2_mk k)).app (o13_noB (rep3_o13 a))).app (NoB.cons one_nb NoB.nil)
+
+theorem sym4_marked (k a : Nat) : Sym4 (List.replicate k 2 ++ List.replicate a 3 ++ [1]) :=
+  (noB_marked k a).sym4
+
+theorem noB_mk_rep (k : Nat) : NoB (List.replicate k 2) := mk_noB (rep2_mk k)
+
+/-- The prefix of a comparison step: the next cell of the entry is marked. -/
+theorem cmpPre (fm rest : List Nat) (hfm : ∀ v ∈ fm, 1 ≤ v) (hrest : Sym4 rest) (k a b : Nat) :
+    zgiLogic.Reach (KC fm rest k a (b + 1))
+      (hdR QG.gKP (List.replicate k 2 ++ List.replicate a 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+        (List.replicate b 3 ++ 1 :: rest)) := by
+  have hE : Sym4 ((List.replicate k 2 ++ List.replicate (b + 1) 3 ++ [1]) ++ rest) :=
+    (sym4_marked k (b + 1)).app hrest
+  have h1 := gke1Walk _ hE fm hfm _ (sym4_marked k a)
+  have hP : Sym4 (List.replicate k 2 ++ List.replicate a 3 ++ [1] ++ MEnc fm) :=
+    (sym4_marked k a).app (o12_sym4 (MEnc_o12 fm))
+  have hR : Sym4 (List.replicate b 3 ++ 1 :: rest) :=
+    (sym4_rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hrest)
+  have h2 := gkeMark (List.replicate k 2 ++ List.replicate a 3 ++ [1] ++ MEnc fm) (List.replicate b 3 ++ 1 :: rest) k hP hR
+  refine (h1.of_eq ?_ rfl).trans (h2.of_eq ?_ rfl)
+  · simp [KC, List.append_assoc]
+  · simp [List.replicate_succ, List.append_assoc]
+
+@[simp] theorem Sym4_app_iff {u v : List Nat} : Sym4 (u ++ v) ↔ Sym4 u ∧ Sym4 v := by
+  constructor
+  · intro h; exact ⟨fun a ha => h a (List.mem_append_left _ ha), fun a ha => h a (List.mem_append_right _ ha)⟩
+  · rintro ⟨h1, h2⟩; exact h1.app h2
+
+@[simp] theorem Sym4_cons_iff {a : Nat} {v : List Nat} : Sym4 (a :: v) ↔ a ∈ ALL ∧ Sym4 v := by
+  constructor
+  · intro h; exact ⟨h a (List.mem_cons_self ..), fun b hb => h b (List.mem_cons_of_mem _ hb)⟩
+  · rintro ⟨h1, h2⟩; exact Sym4.cons h1 h2
+
+@[simp] theorem Sym4_nil_iff : Sym4 [] ↔ True := ⟨fun _ => trivial, fun _ => Sym4.nil⟩
+
+@[simp] theorem Sym4_rep_iff {k c : Nat} : Sym4 (List.replicate k c) ↔ (k = 0 ∨ c ∈ ALL) := by
+  constructor
+  · intro h
+    cases k with
+    | zero => exact Or.inl rfl
+    | succ k => exact Or.inr (h c (by simp))
+  · rintro (rfl | h)
+    · exact Sym4.nil
+    · exact Sym4.rep k c h
+
+@[simp] theorem Sym4_MEnc {fm : List Nat} : Sym4 (MEnc fm) := o12_sym4 (MEnc_o12 fm)
+@[simp] theorem Sym4_Enc {fm : List Nat} : Sym4 (Enc fm) := o13_sym4 (Enc_o13 fm)
+
+@[simp] theorem NoB_app_iff {u v : List Nat} : NoB (u ++ v) ↔ NoB u ∧ NoB v := by
+  constructor
+  · intro h; exact ⟨fun a ha => h a (List.mem_append_left _ ha), fun a ha => h a (List.mem_append_right _ ha)⟩
+  · rintro ⟨h1, h2⟩; exact h1.app h2
+
+@[simp] theorem NoB_cons_iff {a : Nat} {v : List Nat} : NoB (a :: v) ↔ a ∈ NB ∧ NoB v := by
+  constructor
+  · intro h; exact ⟨h a (List.mem_cons_self ..), fun b hb => h b (List.mem_cons_of_mem _ hb)⟩
+  · rintro ⟨h1, h2⟩; exact NoB.cons h1 h2
+
+@[simp] theorem NoB_nil_iff : NoB [] ↔ True := ⟨fun _ => trivial, fun _ => NoB.nil⟩
+
+@[simp] theorem NoB_rep_iff {k c : Nat} : NoB (List.replicate k c) ↔ (k = 0 ∨ c ∈ NB) := by
+  constructor
+  · intro h
+    cases k with
+    | zero => exact Or.inl rfl
+    | succ k => exact Or.inr (h c (by simp))
+  · rintro (rfl | h)
+    · exact NoB.nil
+    · intro a ha; rw [List.eq_of_mem_replicate ha]; exact h
+
+@[simp] theorem NoB_MEnc {fm : List Nat} : NoB (MEnc fm) := o12_noB (MEnc_o12 fm)
+@[simp] theorem NoB_Enc {fm : List Nat} : NoB (Enc fm) := o13_noB (Enc_o13 fm)
+
+/-- Both have more cells: the comparison continues. -/
+theorem cmpCont (fm rest : List Nat) (hfm : ∀ v ∈ fm, 1 ≤ v) (hrest : Sym4 rest) (k a b : Nat) :
+    zgiLogic.Reach (KC fm rest k (a + 2) (b + 2)) (KC fm rest (k + 1) (a + 1) (b + 1)) := by
+  have h1 := cmpPre fm rest hfm hrest k (a + 2) (b + 1)
+  have hA : NoB (List.replicate k 2 ++ List.replicate (a + 2) 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2) := by simp [NB]
+  have hX : Sym4 (List.replicate b 3 ++ 1 :: rest) := by simp [ALL, hrest]
+  have h2 := gkp3 (List.replicate k 2 ++ List.replicate (a + 2) 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    (List.replicate b 3 ++ 1 :: rest) hA.sym4 hX
+  have h3 := gkbm (List.replicate k 2 ++ List.replicate (a + 2) 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    (3 :: (List.replicate b 3 ++ 1 :: rest)) hA (by simp [ALL, hrest])
+  have h4 := gkvm k (List.replicate (a + 1) 3 ++ 1 :: (MEnc fm ++ List.replicate (k + 1) 2 ++ 3 :: (List.replicate b 3 ++ 1 :: rest))) (by simp [ALL, hrest])
+  have h5 := gkqm3 (List.replicate (k + 1) 2) (List.replicate a 3 ++ 1 :: (MEnc fm ++ List.replicate (k + 1) 2 ++ 3 :: (List.replicate b 3 ++ 1 :: rest))) (by simp [ALL, hrest]) (by simp [ALL, hrest])
+  have h6 := gkeTop (List.replicate (k + 1) 2 ++ [3]) (List.replicate a 3) (MEnc fm ++ List.replicate (k + 1) 2 ++ 3 :: (List.replicate b 3 ++ 1 :: rest)) (by simp [ALL, hrest]) (bits_rep3 a) (by simp [ALL, hrest])
+  have hh := h1.trans ((h2.of_eq (by simp [List.replicate_succ]) rfl).trans (h3.trans
+    ((h4.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans
+      ((h5.of_eq (by simp [List.replicate_succ]) rfl).trans h6))))
+  refine hh.of_eq rfl ?_
+  simp [KC, List.replicate_succ, List.append_assoc]
+
+/-- The top is exhausted first: the entry is marked completely. -/
+theorem cmpVlt (fm rest : List Nat) (hfm : ∀ v ∈ fm, 1 ≤ v) (hrest : Sym4 rest) (k b : Nat) :
+    zgiLogic.Reach (KC fm rest k 1 (b + 2))
+      (hdR QG.gKE1 (List.replicate (k + 1) 3 ++ [1]) (MEnc fm ++ List.replicate (k + b + 2) 2 ++ 1 :: rest)) := by
+  have h1 := cmpPre fm rest hfm hrest k 1 (b + 1)
+  have hA : NoB (List.replicate k 2 ++ List.replicate 1 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2) := by simp [NB]
+  have h2 := gkp3 (List.replicate k 2 ++ List.replicate 1 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    (List.replicate b 3 ++ 1 :: rest) hA.sym4 (by simp [ALL, hrest])
+  have h3 := gkbm (List.replicate k 2 ++ List.replicate 1 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    (3 :: (List.replicate b 3 ++ 1 :: rest)) hA (by simp [ALL, hrest])
+  have h4 := gkvm k (1 :: (MEnc fm ++ List.replicate (k + 1) 2 ++ 3 :: (List.replicate b 3 ++ 1 :: rest))) (by simp [ALL, hrest])
+  have h5 := gkqm1 (List.replicate (k + 1) 2) (MEnc fm ++ List.replicate (k + 1) 2 ++ 3 :: (List.replicate b 3 ++ 1 :: rest)) (by simp [ALL]) (by simp [ALL, hrest])
+  have h6 := gkr (List.replicate (k + 1) 2 ++ [1]) (MEnc fm ++ List.replicate (k + 1) 2) rest b (by simp [ALL]) (by
+    intro a ha
+    rcases List.mem_append.1 ha with ha | ha
+    · exact MEnc_o12 fm a ha
+    · exact rep2_o12 _ a ha) hrest
+  have hB : NoB (List.replicate (k + 1) 2 ++ [1] ++ (MEnc fm ++ List.replicate (k + 1) 2) ++ 2 :: List.replicate b 2) := by simp [NB]
+  have h7 := gkuv _ (1 :: rest) hB (by simp [ALL, hrest])
+  have h8 := gku2 (k + 1) 0 (MEnc fm ++ List.replicate (k + 1) 2 ++ 2 :: List.replicate b 2 ++ 1 :: rest) (by simp [ALL, hrest])
+  have hh := h1.trans ((h2.of_eq (by simp [List.replicate_succ]) rfl).trans (h3.trans
+    ((h4.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans
+      ((h5.of_eq rfl rfl).trans ((h6.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans (h7.trans
+        (h8.of_eq (by simp [List.append_assoc]) rfl)))))))
+  refine hh.of_eq rfl ?_
+  have e : List.replicate (k + b + 2) 2 = List.replicate (k + 1) 2 ++ 2 :: List.replicate b 2 := by
+    rw [show k + b + 2 = (k + 1) + (b + 1) by omega, ← List.replicate_append_replicate]
+    simp [List.replicate_succ]
+  rw [e]
+  simp [List.append_assoc, List.replicate_succ]
+
+/-- The entry is exhausted first: it is marked completely, the top is unmarked. -/
+theorem cmpElt (fm rest : List Nat) (hfm : ∀ v ∈ fm, 1 ≤ v) (hrest : Sym4 rest) (k a : Nat) :
+    zgiLogic.Reach (KC fm rest k (a + 2) 1)
+      (hdR QG.gKE1 (List.replicate (k + a + 2) 3 ++ [1]) (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest)) := by
+  have h1 := cmpPre fm rest hfm hrest k (a + 2) 0
+  have hA : NoB (List.replicate k 2 ++ List.replicate (a + 2) 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2) := by simp [NB]
+  have h2 := gkp1 (List.replicate k 2 ++ List.replicate (a + 2) 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    rest hA.sym4 hrest
+  have h3 := gkbd (List.replicate k 2 ++ List.replicate (a + 2) 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    (1 :: rest) hA (by simp [ALL, hrest])
+  have h4 := gkvd k (List.replicate (a + 1) 3 ++ 1 :: (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest)) (by simp [ALL, hrest])
+  have h5 := gkqd3 (List.replicate (k + 1) 2) (List.replicate a 3 ++ 1 :: (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest)) (by simp [ALL]) (by simp [ALL, hrest])
+  have h6 := gkuv (List.replicate (k + 1) 2) (3 :: (List.replicate a 3 ++ 1 :: (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest))) (by simp [NB]) (by simp [ALL, hrest])
+  have h7 := gku2 (k + 1) (a + 1) (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest) (by simp [ALL, hrest])
+  have hh := h1.trans ((h2.of_eq (by simp) rfl).trans (h3.trans
+    ((h4.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans
+      ((h5.of_eq (by simp [List.replicate_succ]) rfl).trans (h6.trans
+        (h7.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl))))))
+  refine hh.of_eq rfl ?_
+  have e : k + 1 + (a + 1) = k + a + 2 := by omega
+  rw [e]
+
+/-- Both are exhausted together: collision. -/
+theorem cmpEq (fm rest : List Nat) (hfm : ∀ v ∈ fm, 1 ≤ v) (hrest : Sym4 rest) (k : Nat) :
+    zgiLogic.Reach (KC fm rest k 1 1)
+      (hdR QG.gFG (List.replicate (k + 1) 2 ++ [1]) (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest)) := by
+  have h1 := cmpPre fm rest hfm hrest k 1 0
+  have hA : NoB (List.replicate k 2 ++ List.replicate 1 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2) := by simp [NB]
+  have h2 := gkp1 (List.replicate k 2 ++ List.replicate 1 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    rest hA.sym4 hrest
+  have h3 := gkbd (List.replicate k 2 ++ List.replicate 1 3 ++ [1] ++ MEnc fm ++ List.replicate (k + 1) 2)
+    (1 :: rest) hA (by simp [ALL, hrest])
+  have h4 := gkvd k (1 :: (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest)) (by simp [ALL, hrest])
+  have h5 := gkqd1 (List.replicate (k + 1) 2) (MEnc fm ++ List.replicate (k + 1) 2 ++ 1 :: rest) (by simp [ALL]) (by simp [ALL, hrest])
+  have hh := h1.trans ((h2.of_eq (by simp) rfl).trans (h3.trans
+    ((h4.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans h5)))
+  exact hh
+
+theorem cmpAll (fm rest : List Nat) (hfm : ∀ v ∈ fm, 1 ≤ v) (hrest : Sym4 rest) :
+    ∀ n k a b, min a b = n + 1 →
+      (a = b → zgiLogic.Reach (KC fm rest k a b)
+        (hdR QG.gFG (List.replicate (k + a) 2 ++ [1]) (MEnc fm ++ List.replicate (k + a) 2 ++ 1 :: rest))) ∧
+      (a ≠ b → zgiLogic.Reach (KC fm rest k a b)
+        (hdR QG.gKE1 (List.replicate (k + a) 3 ++ [1]) (MEnc fm ++ List.replicate (k + b) 2 ++ 1 :: rest))) := by
+  intro n
+  induction n with
+  | zero =>
+    intro k a b hm
+    rcases Nat.lt_trichotomy a b with hab | hab | hab
+    · have ha : a = 1 := by omega
+      obtain ⟨b', rfl⟩ : ∃ b', b = b' + 2 := ⟨b - 2, by omega⟩
+      subst ha
+      exact ⟨fun h => by omega, fun _ => cmpVlt fm rest hfm hrest k b'⟩
+    · have ha : a = 1 := by omega
+      subst hab; subst ha
+      exact ⟨fun _ => cmpEq fm rest hfm hrest k, fun h => absurd rfl h⟩
+    · have hb : b = 1 := by omega
+      obtain ⟨a', rfl⟩ : ∃ a', a = a' + 2 := ⟨a - 2, by omega⟩
+      subst hb
+      exact ⟨fun h => by omega, fun _ => cmpElt fm rest hfm hrest k a'⟩
+  | succ n ih =>
+    intro k a b hm
+    obtain ⟨a', rfl⟩ : ∃ a', a = a' + 2 := ⟨a - 2, by omega⟩
+    obtain ⟨b', rfl⟩ : ∃ b', b = b' + 2 := ⟨b - 2, by omega⟩
+    have h1 := cmpCont fm rest hfm hrest k a' b'
+    obtain ⟨hF, hO⟩ := ih (k + 1) (a' + 1) (b' + 1) (by omega)
+    have e1 : k + 1 + (a' + 1) = k + (a' + 2) := by omega
+    have e2 : k + 1 + (b' + 1) = k + (b' + 2) := by omega
+    rw [e1] at hF hO
+    rw [e2] at hO
+    exact ⟨fun h => h1.trans (hF (by omega)), fun h => h1.trans (hO (by omega))⟩
+
+theorem MEnc_append (a b : List Nat) : MEnc (a ++ b) = MEnc a ++ MEnc b := by
+  induction a with
+  | nil => rfl
+  | cons v a ih => simp [MEnc, ih, List.append_assoc]
+
+theorem Enc_append (a b : List Nat) : Enc (a ++ b) = Enc a ++ Enc b := by
+  induction a with
+  | nil => rfl
+  | cons v a ih => simp [Enc, ih, List.append_assoc]
+
+@[simp] theorem unm_cons (a : Nat) (l : List Nat) : unm (a :: l) = unm1 a :: unm l := rfl
+@[simp] theorem unm_nil : unm [] = [] := rfl
+attribute [simp] unm_append unm_rep2 unm_rep3
+
+theorem unm_MEnc : ∀ fm : List Nat, unm (MEnc fm) = Enc fm
+  | [] => rfl
+  | v :: fm => by simp [MEnc, Enc, U, unm_MEnc fm, unm1]
+
+/-- Failure: unmark everything and return to the top of the stack. -/
+theorem failPath (P R1 Z : List Nat) (hP : NoB P) (hR : NoB R1) (hZ : Sym4 Z) :
+    zgiLogic.Reach (hdR QG.gFG P (R1 ++ 0 :: Z)) (hdR QG.gDC [] (unm (P ++ R1) ++ 0 :: Z)) := by
+  have hV : Valid [NB, NB, ALL] [P, R1, Z] := Valid.cons hP (Valid.cons hR (Valid.cons hZ (Valid.nil _)))
+  have h1 : zgiLogic.Reach (hdR QG.gFG P (R1 ++ 0 :: Z)) (hd QG.gFL (P ++ R1) (0 :: Z)) :=
+    checkFT (env := [P, R1, Z]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 0, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 0, .blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  exact h1.trans (gflWalk (P ++ R1) (0 :: Z) (hP.app hR) (by simp [ALL, hZ]))
+
+theorem unm_o13 {W : List Nat} (h : ∀ a ∈ W, a ∈ O13) : unm W = W := by
+  induction W with
+  | nil => rfl
+  | cons a W ih =>
+    have ha := h a (List.mem_cons_self ..)
+    have hW : ∀ b ∈ W, b ∈ O13 := fun b hb => h b (List.mem_cons_of_mem _ hb)
+    simp [O13] at ha
+    rcases ha with rfl | rfl <;> simp [unm1, ih hW]
+
+theorem unm_Enc (l : List Nat) : unm (Enc l) = Enc l := unm_o13 (Enc_o13 l)
+
+theorem scanLoop (v : Nat) (Tc Z : List Nat) (hTc : ∀ a ∈ Tc, a ∈ O13) (hZ : Sym4 Z) :
+    ∀ ents fm, (∀ e ∈ ents, 1 ≤ e) → (∀ e ∈ fm, 1 ≤ e) → 1 ≤ v →
+    (v ∉ ents → zgiLogic.Reach
+      (hdR QG.gKE1 (List.replicate v 3 ++ [1]) (MEnc fm ++ Enc ents ++ 1 :: (Tc ++ 0 :: Z)))
+      (hd QG.gUP (List.replicate v 3 ++ [1] ++ MEnc (fm ++ ents)) (1 :: (Tc ++ 0 :: Z)))) ∧
+    (v ∈ ents → zgiLogic.Reach
+      (hdR QG.gKE1 (List.replicate v 3 ++ [1]) (MEnc fm ++ Enc ents ++ 1 :: (Tc ++ 0 :: Z)))
+      (hdR QG.gDC [] (List.replicate v 3 ++ 1 :: (Enc fm ++ Enc ents ++ 1 :: Tc) ++ 0 :: Z))) := by
+  intro ents
+  induction ents with
+  | nil =>
+    intro fm _ hfm _
+    refine ⟨fun _ => ?_, fun h => absurd h (by simp)⟩
+    have hR : Sym4 (1 :: (Tc ++ 0 :: Z)) := by simp [ALL, (o13_sym4 hTc), hZ]
+    have h1 := gke1Walk (1 :: (Tc ++ 0 :: Z)) hR fm hfm (List.replicate v 3 ++ [1]) (by simp [ALL])
+    have h2 := gke1End (List.replicate v 3 ++ [1] ++ MEnc fm) (Tc ++ 0 :: Z) (by simp [ALL]) (by simp [ALL, (o13_sym4 hTc), hZ])
+    exact (h1.of_eq (by simp [Enc]) rfl).trans (h2.of_eq rfl (by simp))
+  | cons e ents ih =>
+    intro fm hents hfm hv
+    have he : 1 ≤ e := hents e (List.mem_cons_self ..)
+    have hents' : ∀ x ∈ ents, 1 ≤ x := fun x hx => hents x (List.mem_cons_of_mem _ hx)
+    have hrest : Sym4 (Enc ents ++ 1 :: (Tc ++ 0 :: Z)) := by simp [ALL, (o13_sym4 hTc), hZ]
+    obtain ⟨hF, hO⟩ := cmpAll fm (Enc ents ++ 1 :: (Tc ++ 0 :: Z)) hfm hrest (min v e - 1) 0 v e (by omega)
+    have hstart : hdR QG.gKE1 (List.replicate v 3 ++ [1]) (MEnc fm ++ Enc (e :: ents) ++ 1 :: (Tc ++ 0 :: Z))
+        = KC fm (Enc ents ++ 1 :: (Tc ++ 0 :: Z)) 0 v e := by
+      simp [KC, Enc, U, List.append_assoc]
+    by_cases hve : v = e
+    · subst hve
+      have hf := hF rfl
+      refine ⟨fun h => absurd (List.mem_cons_self ..) h, fun _ => ?_⟩
+      rw [hstart]
+      have h2 := failPath (List.replicate (0 + v) 2 ++ [1])
+        (MEnc fm ++ List.replicate (0 + v) 2 ++ 1 :: (Enc ents ++ 1 :: Tc)) Z (by simp [NB]) (by simp [NB, o13_noB hTc]) hZ
+      refine hf.trans (h2.of_eq (by simp [List.append_assoc]) ?_)
+      simp [unm_MEnc, unm_Enc, unm_o13 hTc, Enc, U, unm1, List.append_assoc]
+    · have ho := hO hve
+      have hfm' : ∀ x ∈ fm ++ [e], 1 ≤ x := by
+        intro x hx
+        rcases List.mem_append.1 hx with hx | hx
+        · exact hfm x hx
+        · simp at hx; omega
+      obtain ⟨ih1, ih2⟩ := ih (fm ++ [e]) hents' hfm' hv
+      have hmid : zgiLogic.Reach (hdR QG.gKE1 (List.replicate v 3 ++ [1]) (MEnc fm ++ Enc (e :: ents) ++ 1 :: (Tc ++ 0 :: Z)))
+          (hdR QG.gKE1 (List.replicate v 3 ++ [1]) (MEnc (fm ++ [e]) ++ Enc ents ++ 1 :: (Tc ++ 0 :: Z))) := by
+        rw [hstart]
+        exact ho.of_eq rfl (by simp [MEnc, List.append_assoc, MEnc_append])
+      refine ⟨fun h => ?_, fun h => ?_⟩
+      · have hn : v ∉ ents := fun hh => h (List.mem_cons_of_mem _ hh)
+        exact hmid.trans ((ih1 hn).of_eq rfl (by simp [List.append_assoc]))
+      · have hm : v ∈ ents := by
+          rcases List.mem_cons.1 h with h | h
+          · exact absurd h hve
+          · exact h
+        exact hmid.trans ((ih2 hm).of_eq rfl (by simp [Enc_append, Enc, U, List.append_assoc]))
+
 end ZP.G
