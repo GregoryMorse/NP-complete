@@ -126,4 +126,11 @@ and the Challenge/Solution entries (the headline theorem carries the hypothesis 
 
 Update: `DefsNTT`, `PadNTT`, `AbstractNTT` are now imported by `ZP.lean` (full build green, no `sorry`).
 The machine proof (§3: rulers, record build, odometer, evaluation passes, power sums, merge, pair lemma,
-generalized bridge, `Challenge`/`Solution` entries) has not been started; it is the estimated 7000–10000 lines.
+generalized bridge, `Challenge`/`Solution` entries) has been started (estimated 7000–10000 lines in all).
+
+Machine-proof progress: the NTT machine is generated and certified (`TableNTT`, `LogicNTT`, `CompileNTT`:
+469 table states, 254 logical states, certificate `znttCert_ok`). `RulerNTT` proves the `P += n` ruler
+(`pa0Scan`, `pa1Walk`, `pa1Mark`, `pa2Scan`, `pa1M`, `pauSweep`, `pt0Scan`, `paLoop`, `paEnd`, and the
+composite `padd`: from `PA0` on `P M Mid M 1^n` to `DC1` with `P` advanced by `n` and the separator `M`
+written). Next: the primality test (`DC*`, `XS*`, `X*`, `XR`, `XC`, `XD`, `CE`), with spec `P = primeN n`
+under `PrimeEx`.
