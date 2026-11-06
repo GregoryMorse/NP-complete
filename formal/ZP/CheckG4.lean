@@ -638,4 +638,62 @@ theorem loopOdd (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List N
       · simp [cfgE, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega]
     exact FailsTo.pre hs2 (FailsTo.cast (by simp [List.append_assoc]) ih)
 
+/-- The whole check for a tape with a nonempty `H`: accepts iff `checkG`, else fails on the unmarked tape. -/
+theorem checkAFull (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Nat) (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e)
+    (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) (X : List Nat) (hX : ∀ e ∈ X, 1 ≤ e) :
+    (checkG W (p + 1) X H = true → ∃ c', AccS c' ∧ zgiLogic.Reach (cfgE W p H J Zt [] X []) c') ∧
+    (checkG W (p + 1) X H = false →
+      FailsTo (cfgE W p H J Zt [] X []) (Ufull W (p + 1) X (unm (HP (Hs H []) 0 ++ J))) Zt) := by
+  have hd0 : ∀ e ∈ ([] : List Nat), 1 ≤ e := by simp
+  constructor
+  · intro hg
+    simp only [checkG, Bool.and_eq_true, decide_eq_true_eq] at hg
+    obtain ⟨hev, hg⟩ := hg
+    cases hce : checkEdges W (p + 1) H (pairsOf X) [] with
+    | none => rw [hce] at hg; simp at hg
+    | some used' =>
+      rw [hce] at hg
+      have hall : ∀ k < H.length, H.getD k 0 < 2 ∨ k + 1 ∈ used' := by
+        intro k hk
+        have := (List.all_eq_true.1 hg) k (List.mem_range.2 hk)
+        simpa using this
+      have hl := loopOk W hW p H hne hHv J Zt hJ hZ X [] [] used' hX hd0 (by simp) hev hce
+      obtain ⟨c', hc, hr⟩ := finalAcc W p H hne J Zt hJ hZ ([] ++ X) used'
+        (by simpa using hX) (by simpa using hev) hall
+      exact ⟨c', hc, hl.trans hr⟩
+  · intro hg
+    by_cases hev : X.length % 2 = 0
+    · cases hce : checkEdges W (p + 1) H (pairsOf X) [] with
+      | none =>
+        have := loopFail W hW p H hne hHv J Zt hJ hZ X [] [] hX hd0 (by simp) hce
+        simpa using this
+      | some used' =>
+        have hl := loopOk W hW p H hne hHv J Zt hJ hZ X [] [] used' hX hd0 (by simp) hev hce
+        have hbad : ∃ k, k < H.length ∧ 2 ≤ H.getD k 0 ∧ k + 1 ∉ used' := by
+          refine Classical.byContradiction fun hno => ?_
+          have hall : ∀ k < H.length, H.getD k 0 < 2 ∨ k + 1 ∈ used' := by
+            intro k hk
+            by_cases h2 : 2 ≤ H.getD k 0
+            · right; exact Classical.byContradiction fun hu => hno ⟨k, hk, h2, hu⟩
+            · left; omega
+          have : checkG W (p + 1) X H = true := by
+            simp only [checkG, hev, hce]
+            simp only [decide_true, Bool.true_and, List.all_eq_true, List.mem_range, Bool.or_eq_true, decide_eq_true_eq]
+            intro k hk
+            rcases hall k hk with h | h
+            · left; exact h
+            · right; exact h
+          rw [this] at hg; cases hg
+        have hf := finalFail W p H hne J Zt hJ hZ ([] ++ X) used' (by simpa using hX) (by simpa using hev) hbad
+        refine FailsTo.pre hl (FailsTo.cast ?_ hf)
+        simp [Hu_used H used' []]
+    · have hodd : X.length % 2 = 1 := by omega
+      cases hce : checkEdges W (p + 1) H (pairsOf X) [] with
+      | none =>
+        have := loopFail W hW p H hne hHv J Zt hJ hZ X [] [] hX hd0 (by simp) hce
+        simpa using this
+      | some used' =>
+        have := loopOdd W hW p H hne hHv J Zt hJ hZ X [] [] used' hX hd0 (by simp) hodd hce
+        simpa using this
+
 end ZP.G
