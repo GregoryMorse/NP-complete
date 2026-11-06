@@ -1540,26 +1540,70 @@ theorem entryBad (r P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) (hr : Sym4 r) :
   have h2 := fn2_3 (P ++ [3]) (r ++ R) (hP.app (by simp [ALL])) (hr.app hR)
   exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
 
-theorem finalOk (Zt : List Nat) (hZ : Sym4 Zt) : ∀ (hs : List (List Nat)), hs ≠ [] →
+theorem fn1_B (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gFN1 P (0 :: R)) (hd QG.FE P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 0, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fn1_M (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gFN1 P (1 :: R)) (hdR QG.FR1 (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The accepting configurations of the check. -/
+def AccS (c : ZC) : Prop := ∃ L R, c = hd QG.FE L R ∨ c = hdR QG.FR1 L R
+
+theorem entryLastJ (t : List Nat) (ht : t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') (J : List Nat) (hJ : JShape J)
+    (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    ∃ c', AccS c' ∧ zgiLogic.Reach (hdR QG.gFN1 P (3 :: (t ++ (J ++ 0 :: R)))) c' := by
+  rcases hJ.2 with rfl | rfl | ⟨J', rfl⟩
+  · exact ⟨_, ⟨_, _, Or.inl rfl⟩, (entryLast t ht P R hP hR).of_eq (by simp) rfl⟩
+  · have h1 := entryOk t ht P (0 :: R) hP (Sym4.cons (by simp [ALL]) hR)
+    have hs : Sym4 (P ++ 3 :: (t ++ [1])) := by
+      rcases ht with rfl | ⟨t', ht', rfl⟩
+      · simp [ALL, hP]
+      · simp [ALL, hP, ht'.sym4]
+    have h2 := fn1_B (P ++ 3 :: (t ++ [1])) R hs hR
+    exact ⟨_, ⟨_, _, Or.inl rfl⟩, (h1.of_eq (by simp) rfl).trans h2⟩
+  · have hJ' : NoB J' := by
+      have := hJ.1
+      simp only [NoB_cons_iff] at this
+      exact this.2.2
+    have sR : Sym4 (1 :: (J' ++ 0 :: R)) := Sym4.cons (by simp [ALL]) (hJ'.sym4.app (Sym4.cons (by simp [ALL]) hR))
+    have sR2 : Sym4 (J' ++ 0 :: R) := hJ'.sym4.app (Sym4.cons (by simp [ALL]) hR)
+    have h1 := entryOk t ht P (1 :: (J' ++ 0 :: R)) hP sR
+    have hs : Sym4 (P ++ 3 :: (t ++ [1])) := by
+      rcases ht with rfl | ⟨t', ht', rfl⟩
+      · simp [ALL, hP]
+      · simp [ALL, hP, ht'.sym4]
+    have h2 := fn1_M (P ++ 3 :: (t ++ [1])) (J' ++ 0 :: R) hs sR2
+    exact ⟨_, ⟨_, _, Or.inr rfl⟩, (h1.of_eq (by simp) rfl).trans h2⟩
+
+theorem finalOk (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) : ∀ (hs : List (List Nat)), hs ≠ [] →
     (∀ t ∈ hs, Bits t) → (∀ t ∈ hs, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') → ∀ P, Sym4 P →
-    ∃ L R, zgiLogic.Reach (hdR QG.gFN1 P (HP hs 0 ++ 0 :: Zt)) (hd QG.FE L R)
+    ∃ c', AccS c' ∧ zgiLogic.Reach (hdR QG.gFN1 P (HP hs 0 ++ J ++ 0 :: Zt)) c'
   | [], h, _, _, _, _ => absurd rfl h
   | [t], _, _, hok, P, hP => by
-    have := entryLast t (hok t (by simp)) P Zt hP hZ
-    exact ⟨_, _, this.of_eq (by simp [HP]) rfl⟩
+    obtain ⟨c', hc, h⟩ := entryLastJ t (hok t (by simp)) J hJ P Zt hP hZ
+    exact ⟨c', hc, h.of_eq (by simp [HP]) rfl⟩
   | t :: u :: ts, _, hb, hok, P, hP => by
     have hbs : ∀ s ∈ u :: ts, Bits s := fun s hs => hb s (List.mem_cons_of_mem _ hs)
     have hoks : ∀ s ∈ u :: ts, s = [] ∨ ∃ t', Bits t' ∧ s = 2 :: t' := fun s hs => hok s (List.mem_cons_of_mem _ hs)
-    have sH : Sym4 (HP (u :: ts) 0 ++ 0 :: Zt) := (HP_sym4 _ _ hbs).app (Sym4.cons (by simp [ALL]) hZ)
-    have h1 := entryOk t (hok t (by simp)) P (HP (u :: ts) 0 ++ 0 :: Zt) hP sH
+    have sH : Sym4 (HP (u :: ts) 0 ++ J ++ 0 :: Zt) :=
+      ((HP_sym4 _ _ hbs).app hJ.1.sym4).app (Sym4.cons (by simp [ALL]) hZ)
+    have h1 := entryOk t (hok t (by simp)) P (HP (u :: ts) 0 ++ J ++ 0 :: Zt) hP sH
     have hP' : Sym4 (P ++ 3 :: (t ++ [1])) := hP.app (Sym4.cons (by simp [ALL]) ((hb t (by simp)).sym4.app (by simp [ALL])))
-    obtain ⟨L, R, h2⟩ := finalOk Zt hZ (u :: ts) (by simp) hbs hoks _ hP'
-    exact ⟨L, R, (h1.of_eq (by simp [HP]) rfl).trans h2⟩
+    obtain ⟨c', hc, h2⟩ := finalOk J Zt hJ hZ (u :: ts) (by simp) hbs hoks _ hP'
+    exact ⟨c', hc, (h1.of_eq (by simp [HP]) rfl).trans h2⟩
 
-theorem finalBad (Zt : List Nat) (hZ : Sym4 Zt) (r : List Nat) (hr : Bits r) (B : List (List Nat))
+theorem finalBad (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) (r : List Nat) (hr : Bits r) (B : List (List Nat))
     (hB : ∀ t ∈ B, Bits t) : ∀ (A : List (List Nat)), (∀ t ∈ A, Bits t) →
     (∀ t ∈ A, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') → ∀ P, NoB P →
-    FailsTo (hdR QG.gFN1 P (HP (A ++ (3 :: r) :: B) 0 ++ 0 :: Zt)) (unm (P ++ HP (A ++ (3 :: r) :: B) 0)) Zt
+    FailsTo (hdR QG.gFN1 P (HP (A ++ (3 :: r) :: B) 0 ++ J ++ 0 :: Zt)) (unm (P ++ (HP (A ++ (3 :: r) :: B) 0 ++ J))) Zt
   | [], _, _, P, hP => by
     have hq : Sym4 (Qof B) := by
       cases B with
@@ -1570,12 +1614,13 @@ theorem finalBad (Zt : List Nat) (hZ : Sym4 Zt) (r : List Nat) (hr : Bits r) (B 
       | nil => exact NoB.nil
       | cons u ts =>
         exact (NoB_cons_iff).2 ⟨by simp [NB], HP_noB _ _ hB⟩
-    have h1 := entryBad r P (Qof B ++ 0 :: Zt) hP.sym4 (hq.app (Sym4.cons (by simp [ALL]) hZ)) hr.sym4
+    have h1 := entryBad r P (Qof B ++ (J ++ 0 :: Zt)) hP.sym4
+      (hq.app (hJ.1.sym4.app (Sym4.cons (by simp [ALL]) hZ))) hr.sym4
     have hc := (HP_cut (3 :: r) B []).2
     simp only [List.nil_append, MU] at hc
-    refine FailsTo.mk' (A := P ++ [3, 3]) (R1 := r ++ Qof B) (L := P ++ HP ((3 :: r) :: B) 0) ?_ ?_ ?_ ?_
+    refine FailsTo.mk' (A := P ++ [3, 3]) (R1 := r ++ (Qof B ++ J)) (L := P ++ (HP ((3 :: r) :: B) 0 ++ J)) ?_ ?_ ?_ ?_
     · simp only [NoB_app_iff]; simp [NB, hP]
-    · exact (NoB_app_iff).2 ⟨hr.noB, hnq⟩
+    · exact (NoB_app_iff).2 ⟨hr.noB, (NoB_app_iff).2 ⟨hnq, hJ.1⟩⟩
     · rw [hc]; simp
     · refine (h1.of_eq ?_ ?_)
       · simp only [List.nil_append]; rw [hc]; simp
@@ -1592,11 +1637,12 @@ theorem finalBad (Zt : List Nat) (hZ : Sym4 Zt) (r : List Nat) (hr : Bits r) (B 
         · intro x hx; rcases List.mem_cons.1 hx with rfl | hx; · simp [bits]
           · exact hr x hx
         · exact hB t ht
-    have sH : Sym4 (HP (A ++ (3 :: r) :: B) 0 ++ 0 :: Zt) := (HP_sym4 _ _ hBr).app (Sym4.cons (by simp [ALL]) hZ)
-    have h1 := entryOk a (hok a (by simp)) P (HP (A ++ (3 :: r) :: B) 0 ++ 0 :: Zt) hP.sym4 sH
+    have sH : Sym4 (HP (A ++ (3 :: r) :: B) 0 ++ J ++ 0 :: Zt) :=
+      ((HP_sym4 _ _ hBr).app hJ.1.sym4).app (Sym4.cons (by simp [ALL]) hZ)
+    have h1 := entryOk a (hok a (by simp)) P (HP (A ++ (3 :: r) :: B) 0 ++ J ++ 0 :: Zt) hP.sym4 sH
     have hP' : NoB (P ++ 3 :: (a ++ [1])) := by
       simp only [NoB_app_iff, NoB_cons_iff]; simp [NB, hP, (hb a (by simp)).noB]
-    have ih := finalBad Zt hZ r hr B hB A hbs hoks _ hP'
+    have ih := finalBad J Zt hJ hZ r hr B hB A hbs hoks _ hP'
     refine FailsTo.pre (h1.of_eq (by rw [List.cons_append, HP_cons _ _ _ hne]; simp) rfl) (FailsTo.cast ?_ ih)
     rw [List.cons_append, HP_cons _ _ _ hne]; simp
 
@@ -1654,17 +1700,17 @@ theorem HP_Enc : ∀ (H : List Nat), H ≠ [] → (∀ e ∈ H, 1 ≤ e) →
 /-! ### The edge loop (success) -/
 
 /-- The configuration at the start of an edge: `d` consumed labels, `Xr` remaining labels. -/
-def cfgE (W : List Nat) (p : Nat) (H : List Nat) (Zt : List Nat) (d Xr used : List Nat) : ZC :=
+def cfgE (W : List Nat) (p : Nat) (H J : List Nat) (Zt : List Nat) (d Xr used : List Nat) : ZC :=
   hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
-    (MEnc d ++ Enc Xr ++ 1 :: (HP (Hs H used) 0 ++ 0 :: Zt))
+    (MEnc d ++ Enc Xr ++ 1 :: (HP (Hs H used) 0 ++ J ++ 0 :: Zt))
 
 theorem JShape_nil : JShape [] := ⟨NoB.nil, Or.inl rfl⟩
 
 theorem loopOk (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Nat) (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e)
-    (Zt : List Nat) (hZ : Sym4 Zt) :
+    (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) :
     ∀ (X d used used' : List Nat), (∀ e ∈ X, 1 ≤ e) → (∀ e ∈ d, 1 ≤ e) → d.length % 2 = 0 → X.length % 2 = 0 →
     checkEdges W (p + 1) H (pairsOf X) used = some used' →
-    zgiLogic.Reach (cfgE W p H Zt d X used) (cfgE W p H Zt (d ++ X) [] used')
+    zgiLogic.Reach (cfgE W p H J Zt d X used) (cfgE W p H J Zt (d ++ X) [] used')
   | [], d, used, used', _, _, _, _, h => by
     simp only [pairsOf, checkEdges, Option.some.injEq] at h
     subst h
@@ -1686,17 +1732,17 @@ theorem loopOk (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Na
     have hx1 : 1 ≤ x := hX x (by simp)
     have hy1 : 1 ≤ y := hX y (by simp)
     have hrest : ∀ e ∈ rest, 1 ≤ e := fun e he => hX e (by simp [he])
-    have hstep := edgeStep W hW p H used [] Zt JShape_nil hZ hne hHv d rest (x - 1) (y - 1) hdd hrest hdl
+    have hstep := edgeStep W hW p H used J Zt hJ hZ hne hHv d rest (x - 1) (y - 1) hdd hrest hdl
       (by omega) (by omega) _ rfl (by omega) (by omega) hu
     have hdd' : ∀ e ∈ d ++ [x, y], 1 ≤ e := by
       intro e he
       rcases List.mem_append.1 he with he | he
       · exact hdd e he
       · simp at he; rcases he with rfl | rfl <;> omega
-    have ih := loopOk W hW p H hne hHv Zt hZ rest (d ++ [x, y]) _ used' hrest hdd'
+    have ih := loopOk W hW p H hne hHv J Zt hJ hZ rest (d ++ [x, y]) _ used' hrest hdd'
       (by simp; omega) (by simp at hl; omega) h
-    have hs2 : zgiLogic.Reach (cfgE W p H Zt d (x :: y :: rest) used)
-        (cfgE W p H Zt (d ++ [x, y]) rest (((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) :: used)) := by
+    have hs2 : zgiLogic.Reach (cfgE W p H J Zt d (x :: y :: rest) used)
+        (cfgE W p H J Zt (d ++ [x, y]) rest (((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) :: used)) := by
       refine hstep.of_eq ?_ ?_
       · simp [cfgE, Enc, U, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega, List.append_assoc]
       · simp [cfgE, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega]
