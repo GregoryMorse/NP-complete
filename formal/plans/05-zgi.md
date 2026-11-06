@@ -127,3 +127,24 @@ The H tape of the machine is NOT terminated by an `M` in general, so the success
 Still to do: `labelFail` (x or y > |w|), odd `X`, the glue `labelFind -> gIL0 -> colPartU -> toY1g`, the edge-loop
 induction against `checkEdges` (H state `HP (Hs H used) 0 ++ J`), the final check `gFN*`, `CheckSpec` (via `failPath`), the link
 `Rch` <-> `inLG`, the truth-phase wrapper, `pair_mainG`, `MainG`, entries, import in `ZP.lean`.
+
+
+### Status update (CheckG3/4/5, all building, no `sorry`, not yet imported by `ZP.lean`)
+
+Check phase for a **nonempty `H`** is complete end to end:
+- `CheckG3`: success path for every edge (`edgeStep`, `loopOk`), final check (`finalOk`/`finalBad`), failure
+  families `labelFindF`, `rowFail`, `rowNoTarget`, `colNoTarget`, `colPartF1/F2`.
+- `CheckG4`: `firstFail`, `secondFail`, `edgeFailF`, `hsBad` (the `R0` shapes at the target), `edgeFail`,
+  `loopFail` (any `X`), `oddFail`/`loopOdd` (lone last label, gadget `y1oEnd`), `finalAcc`, `finalFail`,
+  and `checkAFull`: accepts iff `checkG`, else `FailsTo` the unmarked tape.
+- `CheckG5`: `popE` (popped stack -> start of the edge loop, via `gglStart`/`phaseU`) and `checkSpecA`:
+  `E.CheckSpec (fun w => checkG w (p+1) X H) AccS` whenever
+  `E.Tc = rep (p+1) 3 ++ 1 :: (Enc X ++ 1 :: (HP (Hs H []) 0 ++ J))` with `JShape J`.
+
+Still to do:
+1. Degenerate tapes (`H = []`; `X` unterminated; `T = [m]`). `HFam` needs a nonempty `H`, so `H = []` needs an
+   `N = 0` variant of the skip-failure walk (`hSkipFail0`, dispatch on `J0 ∈ {[], [1], 1::1::_}`).
+   For `X = []` the machine accepts via `gY1e` on blank (`FE`), `gFN1` on blank/`M`. Plain `checkG` is true iff `X = []`.
+2. The link `Rch [] m b <-> inLG` (via `Expl`, `injL`), including the parse/`Tc` shape lemma
+   (`J` from the tail of `T`; `HP_Enc` gives `HP (Hs H []) 0 = (Enc H).dropLast`).
+3. Truth-phase wrapper (`gUP` -> `FR0/FE/FR1`), `newInstG`, `pair_mainG`, `MainG`, entries; import in `ZP.lean`.
