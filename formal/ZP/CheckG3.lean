@@ -1098,4 +1098,69 @@ theorem labelFindF (m : Nat) (d : List Nat) (X0 Zt : List Nat) (hdd : ∀ e ∈ 
       · simp [List.replicate_succ, List.append_assoc]
       · simp [unm_append, unm_rep2, unm_rep3, unm1, MEnc_append, Enc, MEnc, U, ME, List.replicate_succ, rep3_cons, List.append_assoc]
 
+/-! ### The row half-step as a whole: from the start of `X` (label `x` unmarked) to the start of the next label -/
+
+theorem rowHalf (F : HFam) (W Wr d X' : List Nat) (r n p c : Nat)
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX' : ∀ e ∈ X', 1 ≤ e) (hdl : d.length % 2 = 0)
+    (hr : W.drop r = (n + 1) :: Wr) (hc : c ≤ F.N) (hcn : c + (p + 1) * n ≤ F.N) :
+    zgiLogic.Reach
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc d ++ List.replicate (r + 1) 3 ++ 1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc (d ++ [r + 1]) ++ Enc X' ++ 1 :: (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt))) := by
+  have hrl : r ≤ W.length := by
+    have := congrArg List.length hr
+    simp at this; omega
+  have hWr : ∀ e ∈ Wr, 1 ≤ e := by
+    intro e he
+    have : e ∈ W.drop r := by rw [hr]; exact List.mem_cons_of_mem _ he
+    exact hW e (List.mem_of_mem_drop this)
+  have hms : ∀ e ∈ W.take r, 1 ≤ e := fun e he => hW e (List.mem_of_mem_take he)
+  have hZ0 : Sym4 (0 :: F.Zt) := Sym4.cons (by simp [ALL]) F.hZ
+  have hXs : Sym4 (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) := by
+    refine Sym4.app (fun a ha => ?_) (Sym4.cons (by simp [ALL]) (F.sym c hc))
+    have := Enc_o13 X' a ha; simp [O13, ALL] at this ⊢; omega
+  have hL := labelFind (p + 1) d (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) hdd hXs r [] W 0
+    (by simp) hW hrl
+  have hdf : decide (d.length % 2 = 1) = false := by simp [hdl]
+  rw [hdf] at hL
+  have hE := edgeRow F (W.take r) Wr d X' n (r + 1) p c hms hWr hdd hX' (by omega) hc hcn
+  have hWL : ∀ e ∈ (W.take r).map (fun e => List.replicate e 2) ++ (List.replicate n 2 ++ [3]) :: Wr.map (fun e => List.replicate e 3),
+      Bits e ∧ e ≠ [] := by
+    intro e he
+    simp only [List.mem_append, List.mem_cons, List.mem_map] at he
+    rcases he with ⟨v, hv, rfl⟩ | rfl | ⟨v, hv, rfl⟩
+    · exact ⟨bits_rep2 v, by have := hms v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+    · refine ⟨fun a ha => ?_, by simp⟩
+      rcases List.mem_append.1 ha with ha | ha
+      · rw [List.eq_of_mem_replicate ha]; simp [bits]
+      · simp at ha; subst ha; simp [bits]
+    · exact ⟨bits_rep3 v, by have := hWr v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+  have hRr : Sym4 (MEs ((d.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3) ++ 1 ::
+      (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt)) := by
+    refine Sym4.app (MEs_sym4 _ ?_) (Sym4.cons (by simp [ALL]) (F.sym _ hcn))
+    intro e he
+    simp only [List.mem_append, List.mem_cons, List.mem_map] at he
+    rcases he with ⟨v, hv, rfl⟩ | rfl | ⟨v, hv, rfl⟩
+    · exact bits_rep2 v
+    · exact bits_rep2 _
+    · exact bits_rep3 v
+  have hT := toY1 _ (List.replicate (p + 1) 2) _ hWL (bits_rep2 _) hRr
+  have hLd : (LDone false) = QG.gM1 := rfl
+  rw [hLd, hr] at hL
+  refine (hL.of_eq (by simp [MEnc]) rfl).trans ((hE.of_eq (by simp [Enc, MEnc, List.append_assoc]) rfl).trans (hT.of_eq ?_ ?_))
+  · simp [MEnc_MEs, MEs_append, MEs, ME, List.append_assoc, List.replicate_succ]
+  · have e1 : MEs ((W.take r).map (fun e => List.replicate e 2) ++ (List.replicate n 2 ++ [3]) :: Wr.map (fun e => List.replicate e 3)) =
+        MEnc (W.take r) ++ List.replicate n 2 ++ 3 :: 1 :: MEs (Wr.map fun e => List.replicate e 3) := by
+      simp [MEnc_MEs, MEs_append, MEs, ME, List.append_assoc]
+    have e2 : MEs ((d.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3) =
+        MEnc d ++ List.replicate (r + 1) 2 ++ 1 :: Enc X' := by
+      simp [MEnc_MEs, Enc_MEs, MEs_append, MEs, ME, List.append_assoc]
+    rw [e1, e2, show Enc W = Enc (W.take r) ++ Enc ((n + 1) :: Wr) from by rw [← Enc_append, ← hr, List.take_append_drop]]
+    have u3 : unm (MEs (Wr.map fun e => List.replicate e 3)) = MEs (Wr.map fun e => List.replicate e 3) := by
+      rw [← Enc_MEs, unm_Enc]
+    simp [unm_append, unm_rep2, unm_rep3, unm1, unm_MEnc, u3, Enc_MEs, rep3_cons, MEs, ME, MEnc, MEnc_append, Enc, U,
+      List.replicate_succ, List.append_assoc]
+    done
+
 end ZP.G
