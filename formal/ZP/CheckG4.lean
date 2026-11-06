@@ -282,4 +282,72 @@ theorem hsBad (hs : List (List Nat)) (hb : ∀ t ∈ hs, Bits t) (hne : hs ≠ [
           | cons u ts => exact NoB.cons (by simp [NB]) (HP_noB _ _ hBb)
         exact ⟨Q ++ Qof B ++ J, NoB.app (NoB.app hbQ.noB nQ) hJ.1, rfl⟩
 
+/-- One edge fails in the reference semantics: the machine fails on the unmarked tape. -/
+theorem edgeFail (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H used J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt)
+    (hne : H ≠ []) (d X'' : List Nat) (x y : Nat)
+    (hdd : ∀ e ∈ d, 1 ≤ e) (hX'' : ∀ e ∈ X'', 1 ≤ e) (hdl : d.length % 2 = 0) (hx : 1 ≤ x) (hy : 1 ≤ y)
+    (hfail : x > W.length ∨ y > W.length ∨
+      ((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0 > H.length ∨
+        H.getD ((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0 - 1) 0 < 2 ∨
+        ((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) ∈ used)) (hHv : ∀ e ∈ W, 1 ≤ e) :
+    FailsTo
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc d ++ List.replicate x 3 ++ 1 :: (Enc (y :: X'') ++ 1 :: (HP (Hs H used) 0 ++ J ++ 0 :: Zt))))
+      (Ufull W (p + 1) (d ++ x :: y :: X'') (unm (HP (Hs H used) 0 ++ J))) Zt := by
+  have hhne : Hs H used ≠ [] := by
+    intro h; have := Hs_length H used; rw [h] at this; simp at this; exact hne (List.length_eq_zero_iff.1 this.symm)
+  let F := HFam.ofHP (Hs H used) hhne (Hs_bits H used) J hJ Zt hZ
+  have hFN : F.N = H.length := by simp [F, HFam.ofHP, Hs_length]
+  have hFc : ∀ c, F.Hc c = HP (Hs H used) c ++ J := fun c => rfl
+  have hFH : F.Hu = unm (HP (Hs H used) 0 ++ J) := rfl
+  have key : FailsTo
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc d ++ List.replicate x 3 ++ 1 :: (Enc (y :: X'') ++ 1 :: (F.Hc 0 ++ 0 :: F.Zt))))
+      (Ufull W (p + 1) (d ++ x :: y :: X'') F.Hu) F.Zt := by
+    refine edgeFailF F W d X'' p x y 0 hW hdd hX'' hdl hx hy (Nat.zero_le _) ?_
+    by_cases hxW : x ≤ W.length
+    · obtain ⟨n, Wr, hr, hgr⟩ := W_split W hW (x - 1) (by omega)
+      by_cases hov : H.length < (p + 1) * n
+      · exact Or.inl (Or.inr ⟨n, Wr, hr, by rw [hFN]; omega⟩)
+      · refine Or.inr ⟨n, Wr, hr, by rw [hFN]; omega, ?_⟩
+        by_cases hyW : y ≤ W.length
+        · obtain ⟨n', Wr', hr', hgr'⟩ := W_split W hW (y - 1) (by omega)
+          have hkn : (W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0 = n * (p + 1) + n' + 1 := by
+            rw [hgr, hgr']; simp [Nat.add_assoc]
+          rw [hkn] at hfail
+          simp only [Nat.add_sub_cancel] at hfail
+          have hmul : (p + 1) * n = n * (p + 1) := Nat.mul_comm _ _
+          refine Or.inr ⟨n', Wr', hr', ?_⟩
+          by_cases hbig : H.length < 0 + (p + 1) * n + n'
+          · exact Or.inl (by rw [hFN]; exact hbig)
+          · refine Or.inr ?_
+            have hcn : 0 + (p + 1) * n + n' ≤ H.length := by omega
+            have hsh := hsBad (Hs H used) (Hs_bits H used) hhne J hJ Zt (0 + (p + 1) * n + n')
+              (by rw [Hs_length]; exact hcn) ?_
+            · obtain ⟨T, R0, hT, he, hR⟩ := hsh
+              exact ⟨T, R0, by rw [hFN]; exact hcn, hT, by rw [hFc]; exact he, hR⟩
+            · by_cases heq : 0 + (p + 1) * n + n' = H.length
+              · exact Or.inl (by rw [Hs_length]; exact heq)
+              · have hlt : 0 + (p + 1) * n + n' < H.length := by omega
+                refine Or.inr ⟨by rw [Hs_length]; exact hlt, ?_⟩
+                rw [Hs_get _ _ _ hlt]
+                have hi : 0 + (p + 1) * n + n' = n * (p + 1) + n' := by omega
+                rw [hi]
+                rcases hfail with h | h | h | h | h
+                · omega
+                · omega
+                · omega
+                · left; simp [tl]; rw [List.getD_eq_getElem?_getD] at h; omega
+                · by_cases hv : H.getD (n * (p + 1) + n') 0 ≤ 1
+                  · left; simp [tl]; rw [List.getD_eq_getElem?_getD] at hv; omega
+                  · right
+                    refine ⟨List.replicate (H.getD (n * (p + 1) + n') 0 - 2) 3, ?_⟩
+                    have hm : decide (n * (p + 1) + n' + 1 ∈ used) = true := by
+                      simpa using h
+                    rw [List.getD_eq_getElem?_getD] at hv
+                    simp [tl, hm]; omega
+        · exact Or.inl (by omega)
+    · exact Or.inl (Or.inl (by omega))
+  exact key
+
 end ZP.G
