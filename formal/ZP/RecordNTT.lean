@@ -841,4 +841,130 @@ theorem roAll (j kk : Nat) :
       List.nil_append, List.map_map] at h1 h2 h3 ⊢
     exact h1.trans (h2.trans h3)
 
+/-- The tape word before the records: `W M P M K M C M`. -/
+def PreT (w j k1 : Nat) (Cf : List Nat) : List Nat :=
+  List.replicate w 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (k1 + 1) 3 ++ 1 :: (Cf ++ [1])))
+
+theorem rnWalkS (A : List Nat) (w j k1 : Nat) (c0 : Nat) (cr : List Nat) (n0 : Nat) (nr Tl : List Nat)
+    (hA : Sym4 A) (hC : BitsD (c0 :: cr)) (hN : BitsD (n0 :: nr))
+    (hT : Tl = [] ∨ ∃ rest, Tl = 1 :: 1 :: rest ∧ Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RN0 A (PreT w j k1 (c0 :: cr) ++ (n0 :: nr) ++ Tl))
+      (hd QNTT.RN2 (A ++ PreT w j k1 (c0 :: cr) ++ (n0 :: nr)) Tl) := by
+  have hc0 := hC c0 (by simp)
+  have hn0 := hN n0 (by simp)
+  have hcr : BitsD cr := fun x hx => hC x (by simp [hx])
+  have hnr : BitsD nr := fun x hx => hN x (by simp [hx])
+  have e1 : PreT w j k1 (c0 :: cr) ++ (n0 :: nr) ++ Tl =
+      List.replicate w 3 ++ 1 :: 3 :: (List.replicate j 3 ++ 1 :: 3 :: (List.replicate k1 3 ++ 1 :: c0 ::
+        (cr ++ 1 :: n0 :: (nr ++ Tl)))) := by
+    simp [PreT, List.replicate_succ, List.append_assoc]
+  rcases hT with rfl | ⟨rest, rfl, hr⟩
+  · have := rnWalkEnd A (List.replicate w 3) (List.replicate j 3) (List.replicate k1 3) cr nr 3 3 c0 n0 hA
+      (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)) hcr hnr (by simp) (by simp) hc0 hn0
+    simp only [List.append_nil] at e1 ⊢
+    rw [e1]
+    simpa [PreT, List.replicate_succ, List.append_assoc] using this
+  · have := rnWalkMM A (List.replicate w 3) (List.replicate j 3) (List.replicate k1 3) cr nr rest 3 3 c0 n0 hA
+      (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)) hcr hnr (by simp) (by simp) hc0 hn0 hr
+    rw [e1]
+    simpa [PreT, List.replicate_succ, List.append_assoc] using this
+
+theorem rnWalkS' (A : List Nat) (w j k1 : Nat) (Cf Nn Tl : List Nat)
+    (hA : Sym4 A) (hC : BitsD Cf) (hCne : Cf ≠ []) (hN : BitsD Nn) (hNne : Nn ≠ [])
+    (hT : Tl = [] ∨ ∃ rest, Tl = 1 :: 1 :: rest ∧ Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RN0 A (PreT w j k1 Cf ++ Nn ++ Tl))
+      (hd QNTT.RN2 (A ++ PreT w j k1 Cf ++ Nn) Tl) := by
+  obtain ⟨c0, cr, rfl⟩ := List.exists_cons_of_ne_nil hCne
+  obtain ⟨n0, nr, rfl⟩ := List.exists_cons_of_ne_nil hNne
+  exact rnWalkS A w j k1 c0 cr n0 nr Tl hA hC hN hT
+
+/-- The new records of a round: header `(3, j')` for `W` sizes `j' + 1, j' + 2, ...`. -/
+def newRecs : Nat → Nat → List (Nat × Nat)
+  | _, 0 => []
+  | w, u + 1 => (3, w) :: newRecs (w + 1) u
+
+theorem recsFlat_cases (j kk : Nat) (ps : List (Nat × Nat)) (hq : ∀ q ∈ ps, q.1 ∈ [2, 3]) :
+    recsFlat j kk ps = [] ∨ ∃ rest, recsFlat j kk ps = 1 :: 1 :: rest ∧ Sym4 rest := by
+  cases ps with
+  | nil => exact Or.inl rfl
+  | cons q ps =>
+    have hs := (recsFlat_noB j kk (q :: ps) hq).sym4
+    refine Or.inr ⟨2 :: q.1 :: 2 :: ((List.replicate kk (Dcopy j)).flatten ++ Dcopy q.2 ++ recsFlat j kk ps), ?_, ?_⟩
+    · simp [recsFlat, recH, List.append_assoc]
+    · have e : recsFlat j kk (q :: ps) =
+          1 :: 1 :: (2 :: q.1 :: 2 :: ((List.replicate kk (Dcopy j)).flatten ++ Dcopy q.2 ++ recsFlat j kk ps)) := by
+        simp [recsFlat, recH, List.append_assoc]
+      rw [e] at hs
+      intro x hx; exact hs x (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hx))
+
+theorem preT_noB (w j k1 : Nat) (Cf : List Nat) (hC : NoB Cf) : NoB (PreT w j k1 Cf) := by
+  simp only [PreT, NoB_app_iff, NoB_cons_iff, NoB_rep_iff, NoB_nil_iff]; simp [NB, hC]
+
+theorem PreT_cons (w j k1 : Nat) (Cf : List Nat) : 3 :: PreT w j k1 Cf = PreT (w + 1) j k1 Cf := by
+  simp [PreT, List.replicate_succ]
+
+theorem recsFlat_append (j kk : Nat) (ps qs : List (Nat × Nat)) :
+    recsFlat j kk (ps ++ qs) = recsFlat j kk ps ++ recsFlat j kk qs := by
+  simp [recsFlat]
+
+theorem recsFlat_single (j kk j' : Nat) : recsFlat j kk [(3, j')] = recTail j j' kk := by
+  simp [recsFlat, recTail_eq]
+
+theorem nnLoop (j k1 : Nat) (Cf : List Nat) (hC : BitsD Cf) (hCne : Cf ≠ []) :
+    ∀ (u m w' : Nat) (ps : List (Nat × Nat)), (∀ q ∈ ps, q.1 ∈ [2, 3]) →
+    znttLogic.Reach
+      (hd QNTT.RN2 (PreT (w' + 1) j k1 Cf ++ (List.replicate u 3 ++ List.replicate m 2)) (recsFlat j (k1 + 1) ps))
+      (hd QNTT.RN2 (PreT (w' + 1 + u) j k1 Cf ++ List.replicate (m + u) 2)
+        (recsFlat j (k1 + 1) (ps ++ newRecs w' u))) := by
+  intro u
+  induction u with
+  | zero => intro m w' ps _; simpa [newRecs] using LTM.Reach.refl znttLogic _
+  | succ u ih =>
+    intro m w' ps hq
+    have hqs : ∀ q ∈ ps ++ [(3, w')], q.1 ∈ [2, 3] := by
+      intro q hq'; simp at hq'; rcases hq' with h | h
+      · exact hq q h
+      · subst h; simp
+    have sC : Sym4 Cf := hC.sym4
+    have nC : NoB Cf := hC.noB
+    have sTl : Sym4 (recsFlat j (k1 + 1) ps) := (recsFlat_noB j (k1 + 1) ps hq).sym4
+    have sPre : Sym4 (PreT (w' + 1) j k1 Cf ++ List.replicate u 3) :=
+      (NoB.app (preT_noB _ _ _ _ nC) (noBrep u 3 (by simp [NB]))).sym4
+    have h1 := rn2Mark (PreT (w' + 1) j k1 Cf ++ List.replicate u 3) m (recsFlat j (k1 + 1) ps) sPre sTl
+    have nM1 : NoB (Cf ++ 1 :: (List.replicate u 3 ++ [2])) := by
+      simp only [NoB_app_iff, NoB_cons_iff, NoB_rep_iff, NoB_nil_iff]; simp [NB, nC]
+    have nM2 : NoB (List.replicate m 2 ++ recsFlat j (k1 + 1) ps) := by
+      simp only [NoB_app_iff, NoB_rep_iff]; simp [NB, recsFlat_noB j (k1 + 1) ps hq]
+    have h2 := recordOne w' j (k1 + 1) (Cf ++ 1 :: (List.replicate u 3 ++ [2])) _ nM1 nM2
+    have e12 : PreT (w' + 1) j k1 Cf ++ List.replicate u 3 ++ [2] =
+        List.replicate (w' + 1) 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (k1 + 1) 3 ++ 1 ::
+          (Cf ++ 1 :: (List.replicate u 3 ++ [2])))) := by
+      simp [PreT, List.append_assoc]
+    rw [e12] at h1
+    have hNe : List.replicate u 3 ++ List.replicate (m + 1) 2 ≠ [] := by
+      simp [List.replicate_succ']
+    have hNb : BitsD (List.replicate u 3 ++ List.replicate (m + 1) 2) := by
+      intro x hx; simp [List.mem_replicate] at hx; rcases hx with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;> simp
+    have hT := recsFlat_cases j (k1 + 1) (ps ++ [(3, w')]) hqs
+    rw [recsFlat_append, recsFlat_single] at hT
+    have h3 := rnWalkS' [3] (w' + 1) j k1 Cf (List.replicate u 3 ++ List.replicate (m + 1) 2)
+      (recsFlat j (k1 + 1) ps ++ recTail j w' (k1 + 1)) (Sym4.cons (by simp [ALL]) Sym4.nil) hC hCne hNb hNe hT
+    have h4 := ih (m + 1) (w' + 1) (ps ++ [(3, w')]) hqs
+    have e34 : [3] ++ PreT (w' + 1) j k1 Cf = PreT (w' + 1 + 1) j k1 Cf := PreT_cons ..
+    rw [e34] at h3
+    have e1 : w' + 1 + 1 + u = w' + 1 + (u + 1) := by omega
+    have e2 : m + 1 + u = m + (u + 1) := by omega
+    rw [e1, e2] at h4
+    have e5 : ps ++ [(3, w')] ++ newRecs (w' + 1) u = ps ++ newRecs w' (u + 1) := by
+      simp [newRecs]
+    rw [e5] at h4
+    simp only [recsFlat_append, recsFlat_single] at h4 ⊢
+    have e0 : hd QNTT.RN2 (PreT (w' + 1) j k1 Cf ++ (List.replicate (u + 1) 3 ++ List.replicate m 2)) (recsFlat j (k1 + 1) ps) =
+        hd QNTT.RN2 (PreT (w' + 1) j k1 Cf ++ List.replicate u 3 ++ [3] ++ List.replicate m 2) (recsFlat j (k1 + 1) ps) := by
+      simp [List.replicate_succ', List.append_assoc]
+    rw [e0]
+    refine h1.trans (h2.trans ((h3.of_eq (by simp [PreT, List.replicate_succ, List.append_assoc]) rfl).trans (h4.of_eq ?_ rfl)))
+    simp [List.append_assoc]
+
+
 end ZP.NTT

@@ -78,6 +78,7 @@ public import ZP.TableNTT
 public import ZP.LogicNTT
 public import ZP.CompileNTT
 public import ZP.RulerNTT
+public import ZP.RecordNTT
 public import ZP.PrimeNTT
 public import ZP.Complexity
 public import ZP.GuestTM
