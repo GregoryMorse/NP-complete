@@ -720,4 +720,125 @@ theorem rnWalkEnd (A f1 r2 r3 r4 r5 : List Nat) (a2 a3 a4 a5 : Nat) (hA : Sym4 A
   simp only [List.append_assoc, List.cons_append, List.nil_append] at g1 g2 g3 g4 g5 ⊢
   exact g1.trans (g2.trans (g3.trans (g4.trans g5)))
 
+/-- Words that `RO0` crosses completely (isolated separators `M`, each followed by a bit). -/
+inductive GoodW : List Nat → Prop
+  | nil : GoodW []
+  | bit {b : Nat} {u : List Nat} : b ∈ [2, 3] → GoodW u → GoodW (b :: u)
+  | mb {b : Nat} {u : List Nat} : b ∈ [2, 3] → GoodW u → GoodW (1 :: b :: u)
+
+theorem GoodW.app {u v : List Nat} (hu : GoodW u) (hv : GoodW v) : GoodW (u ++ v) := by
+  induction hu with
+  | nil => simpa using hv
+  | bit hb _ ih => exact GoodW.bit hb ih
+  | mb hb _ ih => exact GoodW.mb hb ih
+
+theorem GoodW.rep (j c : Nat) (hc : c ∈ [2, 3]) : GoodW (List.replicate j c) := by
+  induction j with
+  | zero => exact GoodW.nil
+  | succ j ih => exact GoodW.bit hc ih
+
+theorem GoodW.bits {u : List Nat} (h : BitsD u) : GoodW u := by
+  induction u with
+  | nil => exact GoodW.nil
+  | cons a u ih => exact GoodW.bit (h a (by simp)) (ih (fun x hx => h x (by simp [hx])))
+
+theorem GoodW.sym4 {u : List Nat} (h : GoodW u) : Sym4 u := by
+  induction h with
+  | nil => exact Sym4.nil
+  | bit hb _ ih =>
+    exact Sym4.cons (by simp at hb; rcases hb with rfl | rfl <;> simp [ALL]) ih
+  | mb hb _ ih =>
+    exact Sym4.cons (by simp [ALL]) (Sym4.cons (by simp at hb; rcases hb with rfl | rfl <;> simp [ALL]) ih)
+
+theorem roGood {u : List Nat} (hu : GoodW u) :
+    ∀ (A rest : List Nat), Sym4 A → Sym4 rest →
+    znttLogic.Reach (hdR QNTT.RO0 A (u ++ rest)) (hdR QNTT.RO0 (A ++ u) rest) := by
+  induction hu with
+  | nil => intro A rest _ _; simpa using LTM.Reach.refl znttLogic _
+  | @bit b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [b] := by
+      intro y hy; simp at hy; subst hy; simp at hb; rcases hb with rfl | rfl <;> simp [ALL]
+    have h1 := roBlock A [b] (u ++ rest) hA (by intro x hx; simp at hx; subst hx; exact hb)
+      (hu'.sym4.app hr)
+    have h2 := ih (A ++ [b]) rest (hA.app sb) hr
+    simpa using h1.trans h2
+  | @mb b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [1, b] := by
+      intro y hy; simp at hy; simp at hb; rcases hy with rfl | rfl <;> (try rcases hb with rfl | rfl) <;> simp [ALL]
+    have h1 := roField A [] b (u ++ rest) hA (by intro x hx; simp at hx) hb (hu'.sym4.app hr)
+    have h2 := ih (A ++ [] ++ [1, b]) rest (by simpa using hA.app sb) hr
+    simpa using h1.trans h2
+
+/-- A record with header second cell `h1`. -/
+def recH (h1 j j' kk : Nat) : List Nat :=
+  [1, 1, 2, h1, 2] ++ (List.replicate kk (Dcopy j)).flatten ++ Dcopy j'
+
+theorem recTail_eq (j j' kk : Nat) : recTail j j' kk = recH 3 j j' kk := rfl
+
+/-- The record list `(h1, j')` as a tape word. -/
+def recsFlat (j kk : Nat) (ps : List (Nat × Nat)) : List Nat :=
+  (ps.map fun q => recH q.1 j q.2 kk).flatten
+
+/-- The `RO` pass resets every header's second cell. -/
+def resetO (ps : List (Nat × Nat)) : List (Nat × Nat) := ps.map fun q => (2, q.2)
+
+theorem goodW_Dcopy (j : Nat) : GoodW (Dcopy j) :=
+  GoodW.mb (by simp) (GoodW.rep _ _ (by simp))
+
+theorem goodW_flat (j : Nat) : ∀ kk, GoodW (List.replicate kk (Dcopy j)).flatten := by
+  intro kk
+  induction kk with
+  | zero => exact GoodW.nil
+  | succ kk ih => simp only [List.replicate_succ, List.flatten_cons]; exact (goodW_Dcopy j).app ih
+
+theorem goodW_body (j j' kk : Nat) : GoodW (2 :: ((List.replicate kk (Dcopy j)).flatten ++ Dcopy j')) :=
+  GoodW.bit (by simp) ((goodW_flat j kk).app (goodW_Dcopy j'))
+
+theorem recsFlat_noB (j kk : Nat) : ∀ ps : List (Nat × Nat), (∀ q ∈ ps, q.1 ∈ [2, 3]) → NoB (recsFlat j kk ps) := by
+  intro ps
+  induction ps with
+  | nil => intro _; exact NoB.nil
+  | cons q ps ih =>
+    intro h
+    simp only [recsFlat, List.map_cons, List.flatten_cons] at ih ⊢
+    refine NoB.app ?_ (ih (fun x hx => h x (by simp [hx])))
+    have hq := h q (by simp)
+    simp only [recH, List.append_assoc, List.cons_append, List.nil_append]
+    refine NoB.cons (by simp [NB]) (NoB.cons (by simp [NB]) (NoB.cons (by simp [NB]) (NoB.cons ?_ (NoB.cons (by simp [NB]) (NoB.app (noB_flat j kk) (Dcopy_noB q.2))))))
+    simp at hq; rcases hq with h | h <;> simp [NB, h]
+
+/-- The `RO` pass: from the start of a `GoodW` word followed by the records, to the end of the tape. -/
+theorem roAll (j kk : Nat) :
+    ∀ (ps : List (Nat × Nat)) (A u : List Nat), (∀ q ∈ ps, q.1 ∈ [2, 3]) → Sym4 A → GoodW u →
+    znttLogic.Reach (hdR QNTT.RO0 A (u ++ recsFlat j kk ps))
+      (hd QNTT.RNL (A ++ u ++ recsFlat j kk (resetO ps)) []) := by
+  intro ps
+  induction ps with
+  | nil =>
+    intro A u _ hA hu
+    have h1 := roGood hu A [] hA Sym4.nil
+    have h2 := roEnd (A ++ u) [] (hA.app hu.sym4) (by intro x hx; simp at hx)
+    simpa [recsFlat, resetO] using h1.trans h2
+  | cons q ps ih =>
+    intro A u hq hA hu
+    have hq1 := hq q (by simp)
+    have hq' : ∀ x ∈ ps, x.1 ∈ [2, 3] := fun x hx => hq x (by simp [hx])
+    have sB := (goodW_body j q.2 kk).sym4
+    have sPs := (recsFlat_noB j kk ps hq').sym4
+    have sRest : Sym4 ((2 :: ((List.replicate kk (Dcopy j)).flatten ++ Dcopy q.2)) ++ recsFlat j kk ps) := sB.app sPs
+    have sAll : Sym4 (recsFlat j kk (q :: ps)) := (recsFlat_noB j kk (q :: ps) hq).sym4
+    have sA' : Sym4 (A ++ u) := hA.app hu.sym4
+    have h1 := roGood hu A (recsFlat j kk (q :: ps)) hA sAll
+    have h2 := roRec (A ++ u) [] 2 q.1 ((List.replicate kk (Dcopy j)).flatten ++ Dcopy q.2 ++ recsFlat j kk ps |> fun r => 2 :: r)
+      sA' (by intro x hx; simp at hx) (by simp) hq1 sRest
+    have sA'' : Sym4 (A ++ u ++ [] ++ [1, 1, 2, 2]) := by
+      simpa using sA'.app (show Sym4 [1, 1, 2, 2] by intro y hy; simp at hy; rcases hy with rfl | rfl <;> simp [ALL])
+    have h3 := ih (A ++ u ++ [] ++ [1, 1, 2, 2]) (2 :: ((List.replicate kk (Dcopy j)).flatten ++ Dcopy q.2)) hq' sA''
+      (goodW_body j q.2 kk)
+    simp only [recsFlat, resetO, List.map_cons, List.flatten_cons, recH, List.append_assoc, List.cons_append,
+      List.nil_append, List.map_map] at h1 h2 h3 ⊢
+    exact h1.trans (h2.trans h3)
+
 end ZP.NTT
