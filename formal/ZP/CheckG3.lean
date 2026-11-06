@@ -416,39 +416,44 @@ def HFam.ofHP (hs : List (List Nat)) (hne : hs ≠ []) (hb : ∀ t ∈ hs, Bits 
     refine ⟨hs.dropLast, tl, J, fun t ht => hb t (List.dropLast_subset _ ht), hb tl (List.mem_of_getLast? h2), hJ, by simp [h1]⟩
 
 
+theorem HFam.hu_unm (F : HFam) : unm F.Hu = F.Hu := by
+  rw [← F.un 0 (Nat.zero_le _), unm_unm]
+
+/-- The unmarked content of the check tape (the target `nn+1` cells, `m` cells of `m`). -/
+def UG (ms : List Nat) (ws xs : List (List Nat)) (nn m : Nat) (Hu : List Nat) : List Nat :=
+  Enc ms ++ List.replicate (nn + 1) 3 ++ 1 :: (unm (MEs ws) ++ 1 :: (List.replicate m 3 ++ 1 :: (unm (MEs xs) ++ 1 :: Hu)))
+
 /-- A row iteration that runs out of `H`. -/
-theorem rowIterF (ms : List Nat) (ws xs : List (List Nat)) (Zt : List Nat) (hs : List (List Nat))
-    (hne : hs ≠ []) (hb : ∀ t ∈ hs, Bits t) (J : List Nat) (hJ : JShape J) (hZ : Sym4 Zt)
+theorem rowIterF (F : HFam) (ms : List Nat) (ws xs : List (List Nat))
     (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ [])
-    (i n p q c : Nat) (hc : c ≤ hs.length) (hn : hs.length < c + (i + n)) :
+    (i n p q c : Nat) (hc : c ≤ F.N) (hn : F.N < c + (i + n)) :
     FailsTo
       (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)))
-        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ J ++ 0 :: Zt)))))
-      (unm (MEnc ms ++ List.replicate 0 2 ++ List.replicate (i + n + 1) 3 ++ 1 :: (MEs ws ++ 1 ::
-        ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 :: unm (HP hs 0 ++ J))))))
-      Zt := by
-  let F := HFam.ofHP hs hne hb J hJ Zt hZ
+        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+      (UG ms ws xs (i + n) (p + q + 1) F.Hu) F.Zt := by
   have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
   have sH := F.sym c hc
   have hQ : NoB (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)) := by
     have := MEs_noB ws (fun e he => (hws e he).1)
     simp [NB, this]
-  have hR' : Sym4 (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ J ++ 0 :: Zt))) := by
-    have := rep_sym4 q 2 (by simp [ALL])
-    simp [ALL, sX, this, hZ]
-    exact ⟨(HP_noB hs c hb).sym4, hJ.1.sym4⟩
+  have hR' : Sym4 (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) :=
+    (rep_sym4 q 2 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) (sX.app (Sym4.cons (by simp [ALL]) sH)))
   have h1 := rowReset ms hms i _ _ hQ hR'
   have hmb : Bits (List.replicate p 3 ++ List.replicate (q + 1) 2) := bits_app (bits_rep3 p) (bits_rep2 (q + 1))
   have h2 := innerLoopF F QG.gIL1 (Or.inr rfl) ms ws xs _ hms hws hmb hxs (i + n) 0 c hc hn
-  have e1 : List.replicate i 3 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3) ++ 2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ J ++ 0 :: Zt))))
+  have e1 : List.replicate i 3 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3) ++ 2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
       = List.replicate 0 2 ++ List.replicate (i + n + 1) 3 ++ 1 ::
-        (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 :: (HP hs c ++ J ++ 0 :: Zt)))) := by
+        (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) := by
     have : List.replicate (i + n + 1) 3 = List.replicate i 3 ++ 3 :: List.replicate n 3 := by
       rw [show i + n + 1 = i + (n + 1) from rfl, ← List.replicate_append_replicate, List.replicate_succ]
     rw [this]
     simp [List.replicate_succ, List.append_assoc]
-  exact FailsTo.pre (h1.of_eq rfl (by rw [e1])) (by simpa [F, HFam.ofHP] using h2)
-
+  refine FailsTo.pre (h1.of_eq rfl (by rw [e1])) (FailsTo.cast ?_ h2)
+  have e2 : List.replicate (p + q + 1) 3 = List.replicate p 3 ++ List.replicate (q + 1) 3 := by
+    rw [show p + q + 1 = p + (q + 1) from by omega, ← List.replicate_append_replicate]
+  simp only [UG, e2, unm_append, unm_rep2, unm_rep3, unm_MEnc, unm_cons, unm1, List.replicate_zero, List.nil_append,
+    List.append_assoc, List.cons_append]
+  simp [unm1, F.hu_unm]
 
 /-- One row iteration over an `H`-family (success). -/
 theorem rowIterU (F : HFam) (ms : List Nat) (ws xs : List (List Nat))
@@ -631,5 +636,43 @@ theorem colPartU (F : HFam) (ms : List Nat) (ws : List (List Nat)) (x0 : List Na
     Nat.zero_add, List.replicate_zero, MU_append, MU] at h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 ⊢
   exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans (h7.trans (h8.trans (h9.trans h10))))))))
 
+
+
+/-- The row part fails: `H` runs out. -/
+theorem rowLoopF (F : HFam) (ms : List Nat) (ws xs : List (List Nat))
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ [])
+    (nn : Nat) : ∀ (p i n q c : Nat), i + n = nn → c ≤ F.N → F.N < c + (p + 1) * nn →
+    FailsTo
+      (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+      (UG ms ws xs nn (p + q + 1) F.Hu) F.Zt := by
+  intro p
+  induction p with
+  | zero =>
+    intro i n q c hin hc hf
+    subst hin
+    exact rowIterF F ms ws xs hms hws hxs i n 0 q c hc (by simpa using hf)
+  | succ p ih =>
+    intro i n q c hin hc hf
+    subst hin
+    by_cases hs : c + (i + n) ≤ F.N
+    · have h1 := rowIterU F ms ws xs hms hws hxs i n (p + 1) q c hs
+      have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+      have sH' := F.sym (c + (i + n)) hs
+      have hS : Sym4 (MEs xs ++ 1 :: (F.Hc (c + (i + n)) ++ 0 :: F.Zt)) :=
+        sX.app (Sym4.cons (by simp [ALL]) sH')
+      have hP : Sym4 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: (MEs ws ++ [1])) := by
+        have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+        exact (((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])).app
+          (Sym4.cons (by simp [ALL]) (sW.app (by simp [ALL])))
+      have h2 := (gd2Row _ hS q (p + 1) _ hP).1 p rfl
+      have h3 := ih (i + n) 0 (q + 1) (c + (i + n)) (by omega) hs (by
+        have : (p + 1 + 1) * (i + n) = (p + 1) * (i + n) + (i + n) := by rw [Nat.succ_mul]
+        omega)
+      refine FailsTo.pre (h1.trans h2) (FailsTo.ofCfg ?_ (FailsTo.cast ?_ h3))
+      · simp [List.append_assoc]
+      · have e5 : p + (q + 1) + 1 = p + 1 + q + 1 := by omega
+        simp [e5]
+    · exact FailsTo.cast (by simp [UG]) (rowIterF F ms ws xs hms hws hxs i n (p + 1) q c hc (by omega))
 
 end ZP.G
