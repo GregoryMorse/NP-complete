@@ -1651,4 +1651,55 @@ theorem HP_Enc : ∀ (H : List Nat), H ≠ [] → (∀ e ∈ H, 1 ≤ e) →
     | succ k =>
       simp [tl, Enc, U, List.replicate_succ, List.dropLast_cons_of_ne_nil, List.dropLast_append_of_ne_nil, show k + 1 + 1 - 2 = k by omega]
 
+/-! ### The edge loop (success) -/
+
+/-- The configuration at the start of an edge: `d` consumed labels, `Xr` remaining labels. -/
+def cfgE (W : List Nat) (p : Nat) (H : List Nat) (Zt : List Nat) (d Xr used : List Nat) : ZC :=
+  hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+    (MEnc d ++ Enc Xr ++ 1 :: (HP (Hs H used) 0 ++ 0 :: Zt))
+
+theorem JShape_nil : JShape [] := ⟨NoB.nil, Or.inl rfl⟩
+
+theorem loopOk (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Nat) (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e)
+    (Zt : List Nat) (hZ : Sym4 Zt) :
+    ∀ (X d used used' : List Nat), (∀ e ∈ X, 1 ≤ e) → (∀ e ∈ d, 1 ≤ e) → d.length % 2 = 0 → X.length % 2 = 0 →
+    checkEdges W (p + 1) H (pairsOf X) used = some used' →
+    zgiLogic.Reach (cfgE W p H Zt d X used) (cfgE W p H Zt (d ++ X) [] used')
+  | [], d, used, used', _, _, _, _, h => by
+    simp only [pairsOf, checkEdges, Option.some.injEq] at h
+    subst h
+    simpa [cfgE] using (LTM.Reach.refl _ _)
+  | [x], d, used, used', _, _, _, hl, _ => by simp at hl
+  | x :: y :: rest, d, used, used', hX, hdd, hdl, hl, h => by
+    simp only [pairsOf, checkEdges] at h
+    by_cases h1 : x > W.length ∨ y > W.length
+    · simp [h1] at h
+    rw [if_neg h1] at h
+    by_cases h2 : ((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) > H.length ∨
+        H.getD (((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) - 1) 0 < 2 ∨
+        ((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) ∈ used
+    · rw [if_pos h2] at h; simp at h
+    rw [if_neg h2] at h
+    simp only [not_or] at h1 h2
+    obtain ⟨hx, hy⟩ := h1
+    obtain ⟨hk, hv, hu⟩ := h2
+    have hx1 : 1 ≤ x := hX x (by simp)
+    have hy1 : 1 ≤ y := hX y (by simp)
+    have hrest : ∀ e ∈ rest, 1 ≤ e := fun e he => hX e (by simp [he])
+    have hstep := edgeStep W hW p H used [] Zt JShape_nil hZ hne hHv d rest (x - 1) (y - 1) hdd hrest hdl
+      (by omega) (by omega) _ rfl (by omega) (by omega) hu
+    have hdd' : ∀ e ∈ d ++ [x, y], 1 ≤ e := by
+      intro e he
+      rcases List.mem_append.1 he with he | he
+      · exact hdd e he
+      · simp at he; rcases he with rfl | rfl <;> omega
+    have ih := loopOk W hW p H hne hHv Zt hZ rest (d ++ [x, y]) _ used' hrest hdd'
+      (by simp; omega) (by simp at hl; omega) h
+    have hs2 : zgiLogic.Reach (cfgE W p H Zt d (x :: y :: rest) used)
+        (cfgE W p H Zt (d ++ [x, y]) rest (((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) :: used)) := by
+      refine hstep.of_eq ?_ ?_
+      · simp [cfgE, Enc, U, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega, List.append_assoc]
+      · simp [cfgE, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega]
+    exact hs2.trans (ih.of_eq rfl (by simp [cfgE, List.append_assoc]))
+
 end ZP.G
