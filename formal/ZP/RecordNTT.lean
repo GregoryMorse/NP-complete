@@ -652,4 +652,72 @@ theorem rnlScan (L : List Nat) (hL : NoB L) :
     (ls := [.blk 0 .id]) (rs := []) (ls' := []) (rs' := [.blk 0 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+/-- `RN0` across the five fields `W M P M K M C M Nn`, up to the record separator `MM`. -/
+theorem rnWalkMM (A f1 r2 r3 r4 r5 rest : List Nat) (a2 a3 a4 a5 : Nat) (hA : Sym4 A)
+    (h1 : BitsD f1) (h2 : BitsD r2) (h3 : BitsD r3) (h4 : BitsD r4) (h5 : BitsD r5)
+    (b2 : a2 ∈ [2, 3]) (b3 : a3 ∈ [2, 3]) (b4 : a4 ∈ [2, 3]) (b5 : a5 ∈ [2, 3]) (hr : Sym4 rest) :
+    znttLogic.Reach
+      (hdR QNTT.RN0 A (f1 ++ 1 :: a2 :: (r2 ++ 1 :: a3 :: (r3 ++ 1 :: a4 :: (r4 ++ 1 :: a5 :: (r5 ++ 1 :: 1 :: rest))))))
+      (hd QNTT.RN2 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3] ++ r3 ++ [1, a4] ++ r4 ++ [1, a5] ++ r5)
+        (1 :: 1 :: rest)) := by
+  have sr : ∀ {l : List Nat}, BitsD l → Sym4 l := fun h => h.sym4
+  have sb : ∀ {a : Nat}, a ∈ [2, 3] → Sym4 [a] := by
+    intro a ha y hy; simp at hy; subst hy; simp at ha; rcases ha with rfl | rfl <;> simp [ALL]
+  have s5 : Sym4 (1 :: 1 :: rest) := Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) hr)
+  have t5 : Sym4 (r5 ++ 1 :: 1 :: rest) := (sr h5).app s5
+  have t4 : Sym4 (r4 ++ 1 :: a5 :: (r5 ++ 1 :: 1 :: rest)) :=
+    (sr h4).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp at b5; rcases b5 with rfl | rfl <;> simp [ALL]) t5))
+  have t3 : Sym4 (r3 ++ 1 :: a4 :: (r4 ++ 1 :: a5 :: (r5 ++ 1 :: 1 :: rest))) :=
+    (sr h3).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp at b4; rcases b4 with rfl | rfl <;> simp [ALL]) t4))
+  have t2 : Sym4 (r2 ++ 1 :: a3 :: (r3 ++ 1 :: a4 :: (r4 ++ 1 :: a5 :: (r5 ++ 1 :: 1 :: rest)))) :=
+    (sr h2).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp at b3; rcases b3 with rfl | rfl <;> simp [ALL]) t3))
+  have sA1 : Sym4 (A ++ f1 ++ [1, a2]) :=
+    (hA.app (sr h1)).app (Sym4.cons (by simp [ALL]) (sb b2))
+  have sA2 : Sym4 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3]) :=
+    (sA1.app (sr h2)).app (Sym4.cons (by simp [ALL]) (sb b3))
+  have sA3 : Sym4 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3] ++ r3 ++ [1, a4]) :=
+    (sA2.app (sr h3)).app (Sym4.cons (by simp [ALL]) (sb b4))
+  have sA4 : Sym4 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3] ++ r3 ++ [1, a4] ++ r4 ++ [1, a5]) :=
+    (sA3.app (sr h4)).app (Sym4.cons (by simp [ALL]) (sb b5))
+  have g1 := rnField A f1 a2 _ hA h1 b2 t2
+  have g2 := rnField _ r2 a3 _ sA1 h2 b3 t3
+  have g3 := rnField _ r3 a4 _ sA2 h3 b4 t4
+  have g4 := rnField _ r4 a5 _ sA3 h4 b5 t5
+  have g5 := rnMM _ r5 rest sA4 h5 hr
+  simp only [List.append_assoc, List.cons_append, List.nil_append] at g1 g2 g3 g4 g5 ⊢
+  exact g1.trans (g2.trans (g3.trans (g4.trans g5)))
+
+/-- Same, when there is no record yet (the tape ends after `Nn`). -/
+theorem rnWalkEnd (A f1 r2 r3 r4 r5 : List Nat) (a2 a3 a4 a5 : Nat) (hA : Sym4 A)
+    (h1 : BitsD f1) (h2 : BitsD r2) (h3 : BitsD r3) (h4 : BitsD r4) (h5 : BitsD r5)
+    (b2 : a2 ∈ [2, 3]) (b3 : a3 ∈ [2, 3]) (b4 : a4 ∈ [2, 3]) (b5 : a5 ∈ [2, 3]) :
+    znttLogic.Reach
+      (hdR QNTT.RN0 A (f1 ++ 1 :: a2 :: (r2 ++ 1 :: a3 :: (r3 ++ 1 :: a4 :: (r4 ++ 1 :: a5 :: r5)))))
+      (hd QNTT.RN2 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3] ++ r3 ++ [1, a4] ++ r4 ++ [1, a5] ++ r5) []) := by
+  have sr : ∀ {l : List Nat}, BitsD l → Sym4 l := fun h => h.sym4
+  have sb : ∀ {a : Nat}, a ∈ [2, 3] → Sym4 [a] := by
+    intro a ha y hy; simp at hy; subst hy; simp at ha; rcases ha with rfl | rfl <;> simp [ALL]
+  have t5 : Sym4 r5 := sr h5
+  have t4 : Sym4 (r4 ++ 1 :: a5 :: r5) :=
+    (sr h4).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp at b5; rcases b5 with rfl | rfl <;> simp [ALL]) t5))
+  have t3 : Sym4 (r3 ++ 1 :: a4 :: (r4 ++ 1 :: a5 :: r5)) :=
+    (sr h3).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp at b4; rcases b4 with rfl | rfl <;> simp [ALL]) t4))
+  have t2 : Sym4 (r2 ++ 1 :: a3 :: (r3 ++ 1 :: a4 :: (r4 ++ 1 :: a5 :: r5))) :=
+    (sr h2).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp at b3; rcases b3 with rfl | rfl <;> simp [ALL]) t3))
+  have sA1 : Sym4 (A ++ f1 ++ [1, a2]) :=
+    (hA.app (sr h1)).app (Sym4.cons (by simp [ALL]) (sb b2))
+  have sA2 : Sym4 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3]) :=
+    (sA1.app (sr h2)).app (Sym4.cons (by simp [ALL]) (sb b3))
+  have sA3 : Sym4 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3] ++ r3 ++ [1, a4]) :=
+    (sA2.app (sr h3)).app (Sym4.cons (by simp [ALL]) (sb b4))
+  have sA4 : Sym4 (A ++ f1 ++ [1, a2] ++ r2 ++ [1, a3] ++ r3 ++ [1, a4] ++ r4 ++ [1, a5]) :=
+    (sA3.app (sr h4)).app (Sym4.cons (by simp [ALL]) (sb b5))
+  have g1 := rnField A f1 a2 _ hA h1 b2 t2
+  have g2 := rnField _ r2 a3 _ sA1 h2 b3 t3
+  have g3 := rnField _ r3 a4 _ sA2 h3 b4 t4
+  have g4 := rnField _ r4 a5 _ sA3 h4 b5 t5
+  have g5 := rnEnd _ r5 sA4 h5
+  simp only [List.append_assoc, List.cons_append, List.nil_append] at g1 g2 g3 g4 g5 ⊢
+  exact g1.trans (g2.trans (g3.trans (g4.trans g5)))
+
 end ZP.NTT
