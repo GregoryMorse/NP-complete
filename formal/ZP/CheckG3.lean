@@ -408,4 +408,107 @@ theorem rowIterF (ms : List Nat) (ws xs : List (List Nat)) (Zt : List Nat) (hs :
     simp [List.replicate_succ, List.append_assoc]
   exact FailsTo.pre (h1.of_eq rfl (by rw [e1])) (by simpa [F, HFam.ofHP] using h2)
 
+
+/-- One row iteration over an `H`-family (success). -/
+theorem rowIterU (F : HFam) (ms : List Nat) (ws xs : List (List Nat))
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ [])
+    (i n p q c : Nat) (hn : c + (i + n) ≤ F.N) :
+    zgiLogic.Reach
+      (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+      (hdR QG.gD2 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: (MEs ws ++ [1]))
+        (List.replicate p 3 ++ (List.replicate (q + 1) 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc (c + (i + n)) ++ 0 :: F.Zt))))) := by
+  have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+  have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+  have sH := F.sym c (by omega)
+  have sH' := F.sym (c + (i + n)) hn
+  have hQ : NoB (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)) := by
+    have := MEs_noB ws (fun e he => (hws e he).1)
+    simp [NB, this]
+  have hR' : Sym4 (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) := by
+    simp [ALL, sX, sH, rep_sym4 q 2 (by simp [ALL])]
+  have h1 := rowReset ms hms i _ _ hQ hR'
+  have hmb : Bits (List.replicate p 3 ++ List.replicate (q + 1) 2) := bits_app (bits_rep3 p) (bits_rep2 (q + 1))
+  have h2 := innerLoopU F QG.gIL1 (Or.inr rfl) ms ws xs _ hms hws hmb hxs (i + n) 0 c hn
+  have sMb : Sym4 (List.replicate p 3 ++ List.replicate (q + 1) 2) := hmb.sym4
+  have sR2 : Sym4 ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 ::
+      (F.Hc (c + (i + n)) ++ 0 :: F.Zt))) :=
+    sMb.app (Sym4.cons (by simp [ALL]) (sX.app (Sym4.cons (by simp [ALL]) sH')))
+  have sP0 : Sym4 (MEnc ms ++ List.replicate (0 + (i + n)) 2 ++ [3]) :=
+    ((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])
+  have sRh : Sym4 (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 ::
+      (F.Hc (c + (i + n)) ++ 0 :: F.Zt)))) :=
+    sW.app (Sym4.cons (by simp [ALL]) sR2)
+  have h3 := wd1EndIn (MEnc ms ++ List.replicate (0 + (i + n)) 2 ++ [3])
+    (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 ::
+      (F.Hc (c + (i + n)) ++ 0 :: F.Zt)))) sP0 sRh
+  have h4 := wd1Walk _ sR2 ws (MEnc ms ++ List.replicate (0 + (i + n)) 2 ++ [3] ++ [1]) hws (sP0.app (by simp [ALL]))
+  have e1 : List.replicate i 3 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3) ++ 2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      = List.replicate 0 2 ++ List.replicate (i + n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: ((List.replicate p 3 ++ List.replicate (q + 1) 2) ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) := by
+    have : List.replicate (i + n + 1) 3 = List.replicate i 3 ++ 3 :: List.replicate n 3 := by
+      rw [show i + n + 1 = i + (n + 1) from rfl, ← List.replicate_append_replicate, List.replicate_succ]
+    rw [this]
+    simp [List.replicate_succ, List.append_assoc]
+  exact (((h1.of_eq rfl (by rw [e1])).trans h2).trans h3).trans (h4.of_eq rfl (by simp [List.append_assoc]))
+
+
+/-- The whole row part over an `H`-family. -/
+theorem rowLoopU (F : HFam) (ms : List Nat) (ws xs : List (List Nat))
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ [])
+    (nn : Nat) : ∀ (p i n q c : Nat), i + n = nn → c + (p + 1) * nn ≤ F.N →
+    zgiLogic.Reach
+      (hd QG.gTR1 (MEnc ms ++ List.replicate i 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate q 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+      (hd QG.gGL (MEnc ms ++ List.replicate nn 2 ++ 3 :: 1 :: MEs ws)
+        (1 :: (List.replicate (p + q + 1) 2 ++ 1 :: (MEs xs ++ 1 :: (F.Hc (c + (p + 1) * nn) ++ 0 :: F.Zt))))) := by
+  intro p
+  induction p with
+  | zero =>
+    intro i n q c hin hc
+    subst hin
+    have h1 := rowIterU F ms ws xs hms hws hxs i n 0 q c (by simpa using hc)
+    have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+    have sH' := F.sym (c + (i + n)) (by simpa using hc)
+    have hS : Sym4 (MEs xs ++ 1 :: (F.Hc (c + (i + n)) ++ 0 :: F.Zt)) :=
+      sX.app (Sym4.cons (by simp [ALL]) sH')
+    have hP : Sym4 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: (MEs ws ++ [1])) := by
+      have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+      exact (((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])).app
+        (Sym4.cons (by simp [ALL]) (sW.app (by simp [ALL])))
+    have h2 := (gd2Row _ hS q 0 _ hP).2 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: MEs ws) rfl (by simp)
+    simp only [List.replicate, List.nil_append] at h1
+    have := h1.trans h2
+    simpa [Nat.zero_add, Nat.one_mul, List.append_assoc] using this
+  | succ p ih =>
+    intro i n q c hin hc
+    subst hin
+    have h1 := rowIterU F ms ws xs hms hws hxs i n (p + 1) q c (by
+      have : i + n ≤ (p + 1 + 1) * (i + n) := Nat.le_mul_of_pos_left _ (by omega)
+      omega)
+    have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+    have hcc : c + (i + n) ≤ F.N := by
+      have : i + n ≤ (p + 1 + 1) * (i + n) := Nat.le_mul_of_pos_left _ (by omega)
+      omega
+    have sH' := F.sym (c + (i + n)) hcc
+    have hS : Sym4 (MEs xs ++ 1 :: (F.Hc (c + (i + n)) ++ 0 :: F.Zt)) :=
+      sX.app (Sym4.cons (by simp [ALL]) sH')
+    have hP : Sym4 (MEnc ms ++ List.replicate (i + n) 2 ++ [3] ++ 1 :: (MEs ws ++ [1])) := by
+      have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+      exact (((MEnc_sym4 ms).app (Sym4.rep _ _ (by simp [ALL]))).app (by simp [ALL])).app
+        (Sym4.cons (by simp [ALL]) (sW.app (by simp [ALL])))
+    have h2 := (gd2Row _ hS q (p + 1) _ hP).1 p rfl
+    have h3 := ih (i + n) 0 (q + 1) (c + (i + n)) (by omega) (by
+      have : (p + 1 + 1) * (i + n) = (p + 1) * (i + n) + (i + n) := by rw [Nat.succ_mul]
+      omega)
+    have e1 : (p + 1 + 1) * (i + n) = (i + n) + (p + 1) * (i + n) := by
+      rw [Nat.succ_mul, Nat.add_comm]
+    have e2 : p + 1 + q + 1 = p + (q + 1) + 1 := by omega
+    rw [e1, e2, ← Nat.add_assoc]
+    refine ((h1.trans h2).trans (h3.of_eq (by simp [List.append_assoc]) rfl)).of_eq rfl ?_
+    have e3 : 1 + (p + (q + 1)) = 1 + (p + q + 1) := by omega
+    have e4 : c + (i + n) + (p + 1) * (i + n) = c + (i + n + (p + 1) * (i + n)) := by omega
+    have e5 : p + (q + 1) + 1 = p + q + 1 + 1 := by omega
+    simp [List.append_assoc, e4, e5]
+
 end ZP.G
