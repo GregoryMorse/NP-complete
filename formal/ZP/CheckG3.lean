@@ -114,7 +114,8 @@ structure HFam where
   un : ∀ c, c ≤ N → unm (Hc c) = Hu
   step : ∀ c, c < N → ∃ (pasT : List (List Nat)) (Rest0 : List Nat), (∀ t ∈ pasT, Bits t) ∧
     Hc c = MP pasT ++ 3 :: Rest0 ∧ Hc (c + 1) = MP pasT ++ 2 :: Rest0
-  last : ∃ (pasT : List (List Nat)) (tl J : List Nat), (∀ t ∈ pasT, Bits t) ∧ Bits tl ∧ JShape J ∧ Hc N = MP pasT ++ 2 :: (tl ++ J)
+  last : (∃ (pasT : List (List Nat)) (tl J : List Nat), (∀ t ∈ pasT, Bits t) ∧ Bits tl ∧ JShape J ∧ Hc N = MP pasT ++ 2 :: (tl ++ J)) ∨
+    (N = 0 ∧ (Hc 0 = [] ∨ ∃ J', NoB J' ∧ Hc 0 = 1 :: J'))
 
 /-- Failure: the machine reaches the failure state on a marking of `U`. -/
 def FailsTo (c : ZC) (U Z : List Nat) : Prop :=
@@ -299,6 +300,42 @@ theorem hSkipFail (P cb mb tl J Z : List Nat) (ws xs pasT : List (List Nat))
     refine FailsTo.mk' nb2 hJn (by simp [List.append_assoc]) ?_
     exact (hpre.trans h1).trans h2
 
+/-- A skip when `H` is empty: the head meets the end of `X` directly. -/
+theorem hSkipFail0 (P cb mb R0 Z : List Nat) (ws xs : List (List Nat))
+    (hcb : Bits cb) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hmb : Bits mb) (hxs : ∀ e ∈ xs, Bits e ∧ e ≠ [])
+    (hR0 : R0 = [] ∨ ∃ J', NoB J' ∧ R0 = 1 :: J') (hP : Sym4 P) (hPn : NoB P) (hZ : Sym4 Z) :
+    FailsTo
+      (hdR QG.gN1 P (cb ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (R0 ++ 0 :: Z))))))
+      (unm (P ++ cb ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: R0))))) Z := by
+  have sW := MEs_sym4 ws (fun e he => (hws e he).1)
+  have sX := MEs_sym4 xs (fun e he => (hxs e he).1)
+  have s0 : Sym4 (R0 ++ 0 :: Z) := by
+    rcases hR0 with rfl | ⟨J', hJ', rfl⟩
+    · exact Sym4.cons (by simp [ALL]) hZ
+    · exact Sym4.cons (by simp [ALL]) (hJ'.sym4.app (Sym4.cons (by simp [ALL]) hZ))
+  have s2 : Sym4 (MEs xs ++ 1 :: (R0 ++ 0 :: Z)) := sX.app (Sym4.cons (by simp [ALL]) s0)
+  have s3 : Sym4 (mb ++ 1 :: (MEs xs ++ 1 :: (R0 ++ 0 :: Z))) := hmb.sym4.app (Sym4.cons (by simp [ALL]) s2)
+  have s4 : Sym4 (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (R0 ++ 0 :: Z)))) := sW.app (Sym4.cons (by simp [ALL]) s3)
+  have hA := wn1Cells _ s4 cb P hcb hP
+  have hB := wn1Walk _ s3 ws (P ++ cb ++ [1]) hws (by simp [ALL, hP, hcb.sym4])
+  have hC := wn2Cells _ s2 mb (P ++ cb ++ [1] ++ MEs ws ++ [1]) hmb (by simp [ALL, hP, hcb.sym4, sW])
+  have hD := wn2Walk _ s0 xs (P ++ cb ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1]) hxs (by simp [ALL, hP, hcb.sym4, sW, hmb.sym4])
+  have hpre := (hA.of_eq rfl rfl).trans ((hB.of_eq rfl rfl).trans ((hC.of_eq rfl rfl).trans (hD.of_eq rfl rfl)))
+  have nbL : NoB (P ++ cb ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1] ++ MEs xs ++ [1]) := by
+    have h1 := MEs_noB ws (fun e he => (hws e he).1)
+    have h2 := MEs_noB xs (fun e he => (hxs e he).1)
+    simp [NB, hPn, hcb.noB, h1, hmb.noB, h2]
+  have hne : (P ++ cb ++ [1] ++ MEs ws ++ [1] ++ mb ++ [1] ++ MEs xs ++ [1]) ≠ [] := by simp
+  rcases hR0 with rfl | ⟨J', hJ', rfl⟩
+  · have h2 := s3FailB _ Z nbL.sym4 hZ
+    refine FailsTo.mk' nbL NoB.nil (by simp [List.append_assoc]) ?_
+    exact (hpre.of_eq rfl (by simp [List.append_assoc])).trans (h2.trans (gfgR' _ _ nbL hne (Sym4.cons (by simp [ALL]) hZ)))
+  · have sR : Sym4 (J' ++ 0 :: Z) := hJ'.sym4.app (Sym4.cons (by simp [ALL]) hZ)
+    have nb1 := nbL.app (show NoB [1] by simp [NB])
+    have h2 := s3Fail _ (J' ++ 0 :: Z) nbL.sym4 sR
+    refine FailsTo.mk' nb1 hJ' (by simp [List.append_assoc]) ?_
+    exact (hpre.of_eq rfl (by simp [List.append_assoc])).trans h2
+
 /-- Failure of the inner loop: not enough entries in `H`. -/
 theorem innerLoopF (F : HFam) (q : Nat) (hq : q = QG.gIL1b ∨ q = QG.gIL1) (ms : List Nat) (ws xs : List (List Nat))
     (mb : List Nat) (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ []) (hmb : Bits mb)
@@ -350,7 +387,28 @@ theorem innerLoopF (F : HFam) (q : Nat) (hq : q = QG.gIL1b ∨ q = QG.gIL1) (ms 
             (by simp [h2, List.replicate_succ, List.append_assoc])).trans hS2
       · simp [unm_append, unm_rep2, unm_rep3, unm1, List.replicate_succ', List.append_assoc, rep_cons_comm]
     · have hcN : c = F.N := by omega
-      obtain ⟨pasT, tl, J, hp, htl, hJ, hN0⟩ := F.last
+      have hEmp : (F.N = 0 ∧ (F.Hc 0 = [] ∨ ∃ J', NoB J' ∧ F.Hc 0 = 1 :: J')) → FailsTo
+        (hdR q (MEnc ms) (List.replicate i 2 ++ List.replicate (n + 1 + 1) 3 ++ 1 ::
+          (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))))
+        (unm (MEnc ms ++ List.replicate i 2 ++ List.replicate (n + 1 + 1) 3 ++ 1 ::
+          (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: F.Hu))))) F.Zt := by
+        rintro ⟨hN00, hH0⟩
+        have hZ := F.hZ
+        have hc0 : c = 0 := by omega
+        have hM := ilMark q hq (MEnc ms) (List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))) i
+          (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sH])
+        have hMore := ilpMore (MEnc ms ++ List.replicate (i + 1) 2) (List.replicate n 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+          (by simp [ALL]) (by simp [ALL, sW, hmb.sym4, sX, sH])
+        have hSk := hSkipFail0 (MEnc ms ++ List.replicate (i + 1) 2 ++ [3]) (List.replicate n 3) mb (F.Hc c) F.Zt ws xs
+          (bits_rep3 n) hws hmb hxs (by rw [hc0]; exact hH0) (by simp [ALL, MEnc_sym4]) (by simp [MEnc_nb, NB]) hZ
+        have hun := F.un c hc1
+        refine FailsTo.pre ((hM.of_eq (by simp [List.replicate_succ]) rfl).trans (hMore.of_eq (by simp [List.replicate_succ]) rfl))
+          (FailsTo.ofCfg ?_ (FailsTo.cast ?_ hSk))
+        · simp [List.append_assoc]
+        · rw [← hun]
+          simp [unm_append, unm_rep2, unm_rep3, unm1, List.replicate_succ', List.append_assoc, rep_cons_comm, unm_unm]
+      refine F.last.elim (fun h => ?_) hEmp
+      obtain ⟨pasT, tl, J, hp, htl, hJ, hN0⟩ := h
       have hN : F.Hc c = MP pasT ++ 2 :: (tl ++ J) := by rw [hcN]; exact hN0
       have hZ := F.hZ
       have hM := ilMark q hq (MEnc ms) (List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (mb ++ 1 :: (MEs xs ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))) i
@@ -411,9 +469,9 @@ def HFam.ofHP (hs : List (List Nat)) (hne : hs ≠ []) (hb : ∀ t ∈ hs, Bits 
   step := fun c hc => by
     obtain ⟨R0, h1, h2⟩ := HP_split hs c hc
     refine ⟨hs.take c, R0 ++ J, fun t ht => hb t (List.mem_of_mem_take ht), by simp [h1], by simp [h2]⟩
-  last := by
+  last := Or.inl (by
     obtain ⟨tl, h1, h2⟩ := HP_full hs hne
-    refine ⟨hs.dropLast, tl, J, fun t ht => hb t (List.dropLast_subset _ ht), hb tl (List.mem_of_getLast? h2), hJ, by simp [h1]⟩
+    refine ⟨hs.dropLast, tl, J, fun t ht => hb t (List.dropLast_subset _ ht), hb tl (List.mem_of_getLast? h2), hJ, by simp [h1]⟩)
 
 
 theorem HFam.hu_unm (F : HFam) : unm F.Hu = F.Hu := by
