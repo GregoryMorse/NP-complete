@@ -928,4 +928,62 @@ theorem gm1Walk (Q : List Nat) (hQ : Sym4 Q) : ∀ (n : Nat) (Z R : List Nat), Z
     have h2 := ih Z0 (a :: R) (by simpa using hl) hZ0 sR
     exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
 
+
+theorem MEs_append (a b : List (List Nat)) : MEs (a ++ b) = MEs a ++ MEs b := by
+  induction a with
+  | nil => rfl
+  | cons c a ih => simp [MEs, ih, List.append_assoc]
+
+theorem MEnc_MEs : ∀ l : List Nat, MEnc l = MEs (l.map fun e => List.replicate e 2)
+  | [] => rfl
+  | e :: l => by simp [MEnc, MEs, ME, MEnc_MEs l]
+
+/-- The row part of an edge, from the found label `x` to the end of the row loop. -/
+theorem edgeRow (F : HFam) (ms Wr d X' : List Nat) (n x p c : Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hWr : ∀ e ∈ Wr, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX' : ∀ e ∈ X', 1 ≤ e) (hx : 1 ≤ x)
+    (hc : c ≤ F.N) (hcn : c + (p + 1) * n ≤ F.N) :
+    zgiLogic.Reach
+      (hd QG.gM1 (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate x 2)
+        (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (hd QG.gGL (MEnc ms ++ List.replicate n 2 ++ 3 :: 1 :: MEs (Wr.map fun e => List.replicate e 3))
+        (1 :: (List.replicate (p + 0 + 1) 2 ++ 1 ::
+          (MEs ((d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3) ++ 1 ::
+            (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt))))) := by
+  have hws := Enc_entries Wr hWr
+  have hxs : ∀ e ∈ (d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3,
+      Bits e ∧ e ≠ [] := by
+    intro e he
+    simp only [List.mem_append, List.mem_cons, List.mem_map] at he
+    rcases he with ⟨v, hv, rfl⟩ | rfl | ⟨v, hv, rfl⟩
+    · exact ⟨bits_rep2 v, by have := hdd v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+    · exact ⟨bits_rep2 x, by intro h; have := congrArg List.length h; simp at this; omega⟩
+    · exact ⟨bits_rep3 v, by have := hX' v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+  have sX' : Sym4 (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) := by
+    have := Enc_o13 X'
+    refine Sym4.app (fun a ha => ?_) (Sym4.cons (by simp [ALL]) (F.sym c hc))
+    have := Enc_o13 X' a ha; simp [O13, ALL] at this ⊢; omega
+  have sQ : Sym4 (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ List.replicate p 3) := by
+    refine (((MEnc_sym4 ms).app (fun a ha => ?_)).app (by simp [ALL])).app (Sym4.rep _ _ (by simp [ALL]))
+    have := Enc_o13 ((n + 1) :: Wr) a ha; simp [O13, ALL] at this ⊢; omega
+  have hZ : ∀ a ∈ [1] ++ MEnc d ++ List.replicate x 2, a = 1 ∨ a = 2 := by
+    intro a ha
+    simp only [List.mem_append, List.mem_singleton, List.mem_replicate] at ha
+    rcases ha with (rfl | ha) | ⟨_, rfl⟩
+    · left; rfl
+    · have := MEnc_o12 d a ha; simp [O12] at this; omega
+    · right; rfl
+  have h1 := gm1Walk (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ List.replicate p 3) sQ _ ([1] ++ MEnc d ++ List.replicate x 2)
+    (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) rfl hZ (Sym4.cons (by simp [ALL]) sX')
+  have h2 := rowLoopU F ms (Wr.map fun e => List.replicate e 3)
+    ((d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3)
+    hms hws hxs n p 0 n 0 c (by omega) hcn
+  have h1' : zgiLogic.Reach
+      (hd QG.gM1 (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate x 2)
+        (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (hd QG.gTR1 (MEnc ms ++ List.replicate 0 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs (Wr.map fun e => List.replicate e 3) ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate 0 2 ++ 1 :: (MEs ((d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3) ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))) := by
+    refine h1.of_eq (by simp [List.replicate_succ', List.append_assoc]) ?_
+    simp [Enc_MEs, MEnc_MEs, MEs_append, MEs, ME, List.append_assoc, List.replicate_succ]
+  exact h1'.trans h2
+
 end ZP.G
