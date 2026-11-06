@@ -149,8 +149,16 @@ Still to do:
    (`J` from the tail of `T`; `HP_Enc` gives `HP (Hs H []) 0 = (Enc H).dropLast`).
 3. Truth-phase wrapper (`gUP` -> `FR0/FE/FR1`), `newInstG`, `pair_mainG`, `MainG`, entries; import in `ZP.lean`.
 
-## Status update (CheckG6)
+## Status update (CheckG6, after the separator refactor)
 
-Check phase proved (CheckG3–CheckG6, no sorry, builds clean): nonempty `H`, `H = []` with separator (incl. accept for `X = []`), and `T = [m]` (`checkSpecS0`).
+`HFam.Hc` now includes the separator `1` (so `Hc = []` means "no separator, no `H`"). The check phase is proved (CheckG3–CheckG6, no `sorry`, builds clean) for:
+- non-empty `H`;
+- `H = []` with a separator (including accept for `X = []`);
+- `H` absent with no separator (S2, `Tc = rep m 3 ++ 1 :: Enc X`): `checkEmpty`/`checkSpecE` take `H0 = [] ∨ [1] ∨ 1::1::J'`, new `colPartF3`, `n2WalkNS`, `wn2WalkNS`, `y1oFail`, `y1eEndB`;
+- `T = [m]` (`checkSpecS0`).
 
-Open: degenerate tapes with `H = []` and no separator (S2: `T = m :: X ++ [0]`; S3: unterminated `X`). Attempted a "Tl" refactor of `HFam` (separator moved into `Hc`); it touched ~80 sites across CheckG3/4 and was reverted. A cleaner route is a dedicated walk for these two shapes. Still to do: shape case-split into `CheckSpec`, parse/`Tc` lemma, `Rch [] m b ↔ inLG`, truth-phase wrapper, `newInstG`/`MainG`, Challenge/Solution entries, import into `ZP.lean`. Plan 08 not started on `lean-n3-p08`; plan 07 skipped by instruction.
+Open: S3, the unterminated tail (`Tc = rep m 3 ++ 1 :: (Enc X).dropLast`, `X ≠ []`, no `H`; must fail).
+- `|X| >= 3`: the last entry fits `HFam` as an alternative `Hc 0 = rep k 3`.
+- `|X| ∈ {1,2}`: the current label is the unterminated last one. Plan: generalise the label-level lemmas (`labelIterF`, `labelFindF`, `labelIter`, `labelFind`) from `1 :: (X0 ++ 0 :: Zt)` to a tail `Y ++ 0 :: Zt` so that `Y = []` is allowed, then add NS variants of `firstFail`/`secondFail`/`rowHalf` for that case.
+
+Still to do after S3: shape case-split into `CheckSpec`, parse/`Tc` lemma, `Rch [] m b ↔ inLG`, truth-phase wrapper, `newInstG`/`MainG`, Challenge/Solution entries, import into `ZP.lean`. Plan 08 not started on `lean-n3-p08`; plan 07 skipped by instruction.
