@@ -823,4 +823,63 @@ theorem huFail (P : List Nat) (T : List (List Nat)) (R0 Zt : List Nat) (hP : Sym
     simp [unm_append, unm_MP_MU, unm1]
 
 
+
+/-- The column part fails because `H` runs out during the passes. -/
+theorem colPartF1 (F : HFam) (ms : List Nat) (ws : List (List Nat)) (x0 : List Nat) (xs' : List (List Nat))
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ [])
+    (hx0 : Bits x0 ∧ x0 ≠ []) (hxs : ∀ e ∈ xs', Bits e ∧ e ≠ [])
+    (m n c : Nat) (hc : c ≤ F.N) (hn : F.N < c + n) :
+    FailsTo
+      (hdR QG.gIL1b [] (MEnc ms ++ List.replicate 0 2 ++ List.replicate (n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: (List.replicate m 3 ++ 1 :: (MEs (x0 :: xs') ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))))
+      (UG ms ws (x0 :: xs') n m F.Hu) F.Zt := by
+  have hxs0 : ∀ e ∈ x0 :: xs', Bits e ∧ e ≠ [] := by
+    intro e he
+    rcases List.mem_cons.1 he with rfl | he
+    · exact hx0
+    · exact hxs e he
+  have := ilSkipList (List.replicate 0 2 ++ List.replicate (n + 1) 3 ++ 1 :: (MEs ws ++ 1 :: (List.replicate m 3 ++ 1 :: (MEs (x0 :: xs') ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))))
+    (by simp [ALL, MEs_sym4 ws (fun e he => (hws e he).1), (bits_rep3 m).sym4, MEs_sym4 (x0 :: xs') (fun e he => (hxs0 e he).1), F.sym c hc]) ms [] hms (by simp [ALL])
+  have h2 := innerLoopF F QG.gIL1b (Or.inl rfl) ms ws (x0 :: xs') (List.replicate m 3) hms hws (bits_rep3 m) hxs0 n 0 c hc hn
+  simp only [List.nil_append] at this
+  refine FailsTo.pre (this.of_eq (by simp [List.append_assoc]) rfl) (FailsTo.cast ?_ h2)
+  simp [UG, unm_append, unm_rep3, unm_MEnc, F.hu_unm, unm1]
+
+/-- The column part fails after the passes: no target, a short target, or a used target. -/
+theorem colPartF2 (F : HFam) (ms : List Nat) (ws : List (List Nat)) (x0 : List Nat) (xs' : List (List Nat))
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hws : ∀ e ∈ ws, Bits e ∧ e ≠ [])
+    (hx0 : Bits x0 ∧ x0 ≠ []) (hxs : ∀ e ∈ xs', Bits e ∧ e ≠ [])
+    (m n c : Nat) (hc : c + n ≤ F.N) (T : List (List Nat)) (R0 : List Nat) (hTb : ∀ t ∈ T, Bits t)
+    (hT : F.Hc (c + n) ++ 0 :: F.Zt = MP T ++ (R0 ++ 0 :: F.Zt))
+    (hR : R0 = [] ∨ (∃ R1, NoB R1 ∧ R0 = 1 :: R1) ∨ (∃ tl, Bits tl ∧ R0 = 2 :: tl) ∨
+      (∃ R1, NoB R1 ∧ R0 = 3 :: 1 :: R1) ∨ R0 = [3] ∨ (∃ Q, NoB Q ∧ R0 = 3 :: 2 :: Q)) :
+    FailsTo
+      (hdR QG.gIL1b [] (MEnc ms ++ List.replicate 0 2 ++ List.replicate (n + 1) 3 ++ 1 ::
+        (MEs ws ++ 1 :: (List.replicate m 3 ++ 1 :: (MEs (x0 :: xs') ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))))
+      (UG ms ws (x0 :: xs') n m F.Hu) F.Zt := by
+  have hxs0 : ∀ e ∈ x0 :: xs', Bits e ∧ e ≠ [] := by
+    intro e he
+    rcases List.mem_cons.1 he with rfl | he
+    · exact hx0
+    · exact hxs e he
+  have hR0 : Sym4 (R0 ++ 0 :: F.Zt) := by
+    have := F.sym (c + n) hc
+    rw [hT] at this
+    exact fun a ha => this a (List.mem_append_right _ ha)
+  have h1 := colPre F ms ws x0 xs' hms hws hx0 hxs m n c hc T (R0 ++ 0 :: F.Zt) hTb hR0 hT
+  have nW := MEs_noB ws (fun e he => (hws e he).1)
+  have nX := MEs_noB xs' (fun e he => (hxs e he).1)
+  have nPP : NoB (MEnc ms ++ List.replicate n 2 ++ [3] ++ [1] ++ MEs ws ++ [1] ++ List.replicate m 3 ++ [1] ++ x0 ++ [1] ++
+        MEs xs' ++ [1]) := by
+    simp [NB, MEnc_nb, nW, nX, hx0.1.noB]
+  have h2 := huFail _ T R0 F.Zt nPP.sym4 nPP (by simp) hTb F.hZ hR
+  refine FailsTo.pre h1 (FailsTo.cast ?_ h2)
+  have hH : MP T ++ R0 = F.Hc (c + n) := by
+    have := hT
+    rw [← List.append_assoc] at this
+    exact (List.append_cancel_right this).symm
+  rw [hH]
+  have hun := F.un (c + n) hc
+  simp [UG, unm_append, unm_rep3, unm_MEnc, unm_rep2, hun, unm1, List.append_assoc, MEs, ME, List.replicate_succ']
+
 end ZP.G
