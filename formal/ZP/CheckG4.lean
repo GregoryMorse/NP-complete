@@ -403,4 +403,128 @@ theorem loopFail (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List 
       · simp [cfgE, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega]
     exact FailsTo.pre hs2 (FailsTo.cast (by simp [List.append_assoc]) ih)
 
+theorem Hs_ok (H used : List Nat) (hall : ∀ k < H.length, H.getD k 0 < 2 ∨ k + 1 ∈ used) :
+    ∀ t ∈ Hs H used, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t' := by
+  intro t ht
+  obtain ⟨i, hi, rfl⟩ := List.mem_map.1 ht
+  have hi' : i < H.length := by simpa using hi
+  have hall' := hall i hi'
+  simp only [List.getD_eq_getElem?_getD] at hall' ⊢
+  rcases hall' with h | h
+  · left; simp [tl]; omega
+  · by_cases hv : H[i]?.getD 0 ≤ 1
+    · left; simp [tl, hv]
+    · right
+      refine ⟨List.replicate (H[i]?.getD 0 - 2) 3, ?_, ?_⟩
+      · intro a ha; rw [List.eq_of_mem_replicate ha]; simp [bits]
+      · simp [tl, hv, h]
+
+/-- After all edges: the final check accepts when every entry `≥ 2` is used. -/
+theorem finalAcc (W : List Nat) (p : Nat) (H : List Nat) (hne : H ≠ []) (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt)
+    (d used : List Nat) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 0)
+    (hall : ∀ k < H.length, H.getD k 0 < 2 ∨ k + 1 ∈ used) :
+    ∃ c', AccS c' ∧ zgiLogic.Reach (cfgE W p H J Zt d [] used) c' := by
+  have hhne : Hs H used ≠ [] := by
+    intro h; have := Hs_length H used; rw [h] at this; simp at this; exact hne (List.length_eq_zero_iff.1 this.symm)
+  have sH : Sym4 (HP (Hs H used) 0 ++ J ++ 0 :: Zt) :=
+    ((HP_sym4 _ _ (Hs_bits H used)).app hJ.1.sym4).app (Sym4.cons (by simp [ALL]) hZ)
+  have sP : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) := by
+    refine ((Sym4.app (fun a ha => ?_) (by simp [ALL])).app (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (by simp [ALL])))
+    have := Enc_o13 W a ha; simp [O13, ALL] at this ⊢; omega
+  have h1 := lblWalk (1 :: (HP (Hs H used) 0 ++ J ++ 0 :: Zt)) (Sym4.cons (by simp [ALL]) sH) d false _ hdd sP
+  have hdf : decide (d.length % 2 = 1) = false := by simp [hdl]
+  rw [hdf] at h1
+  simp only [Bool.xor_false] at h1
+  have sP2 : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d) := sP.app (MEnc_sym4 d)
+  have h2 := y1eEnd _ _ sP2 sH
+  obtain ⟨c', hc, h3⟩ := finalOk J Zt hJ hZ (Hs H used) hhne (Hs_bits H used) (Hs_ok H used hall) _ (sP2.app (show Sym4 [1] from Sym4.cons (by simp [ALL]) Sym4.nil))
+  exact ⟨c', hc, ((h1.of_eq (by simp [cfgE, Enc]) rfl).trans h2).trans h3⟩
+
+theorem exists_min (P : Nat → Prop) (h : ∃ k, P k) : ∃ i, P i ∧ ∀ j < i, ¬ P j := by
+  classical
+  obtain ⟨k, hk⟩ := h
+  have : ∀ n k, k ≤ n → P k → ∃ i, P i ∧ ∀ j < i, ¬ P j := by
+    intro n
+    induction n with
+    | zero => intro k hk0 hPk; exact ⟨k, hPk, fun j hj => by omega⟩
+    | succ n ih =>
+      intro k hkn hPk
+      by_cases hc : ∃ j < k, P j
+      · obtain ⟨j, hj, hPj⟩ := hc
+        exact ih j (by omega) hPj
+      · exact ⟨k, hPk, fun j hj hP => hc ⟨j, hj, hP⟩⟩
+  exact this k k (Nat.le_refl _) hk
+
+theorem tl_ok (v : Nat) (b : Bool) (h : v < 2 ∨ b = true) : tl v b = [] ∨ ∃ t', Bits t' ∧ tl v b = 2 :: t' := by
+  by_cases hv : v ≤ 1
+  · left; simp [tl, hv]
+  · right
+    have hb : b = true := by
+      rcases h with h | h
+      · omega
+      · exact h
+    refine ⟨List.replicate (v - 2) 3, ?_, ?_⟩
+    · intro a ha; rw [List.eq_of_mem_replicate ha]; simp [bits]
+    · simp [tl, hv, hb]
+
+theorem finalFail (W : List Nat) (p : Nat) (H : List Nat) (hne : H ≠ []) (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt)
+    (d used : List Nat) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 0)
+    (hbad : ∃ k, k < H.length ∧ 2 ≤ H.getD k 0 ∧ k + 1 ∉ used) :
+    FailsTo (cfgE W p H J Zt d [] used) (Ufull W (p + 1) d (unm (HP (Hs H used) 0 ++ J))) Zt := by
+  classical
+  have hhne : Hs H used ≠ [] := by
+    intro h; have := Hs_length H used; rw [h] at this; simp at this; exact hne (List.length_eq_zero_iff.1 this.symm)
+  have hex : ∃ k, k < H.length ∧ 2 ≤ H.getD k 0 ∧ k + 1 ∉ used := hbad
+  obtain ⟨i, ⟨hi, hv, hu⟩, hmin⟩ := exists_min (fun k => k < H.length ∧ 2 ≤ H.getD k 0 ∧ k + 1 ∉ used) hex
+  have hlt : i < (Hs H used).length := by rw [Hs_length]; exact hi
+  have hget : (Hs H used)[i] = 3 :: List.replicate (H.getD i 0 - 2) 3 := by
+    rw [Hs_get _ _ _ hi]
+    have hv1 : ¬ (H.getD i 0 ≤ 1) := by omega
+    have hd : decide (i + 1 ∈ used) = false := by simpa using hu
+    rw [hd]
+    simp only [tl, if_neg hv1, Bool.false_eq_true, if_false]
+  have e0 := List.take_append_drop i (Hs H used)
+  have h1 : (Hs H used).drop i = (Hs H used)[i] :: (Hs H used).drop (i + 1) := List.drop_eq_getElem_cons hlt
+  rw [h1, hget] at e0
+  obtain ⟨A, hA⟩ : ∃ A, A = (Hs H used).take i := ⟨_, rfl⟩
+  obtain ⟨B, hB⟩ : ∃ B, B = (Hs H used).drop (i + 1) := ⟨_, rfl⟩
+  rw [← hA, ← hB] at e0
+  have hAb : ∀ t ∈ A, Bits t := fun t ht => Hs_bits H used t (List.mem_of_mem_take (hA ▸ ht))
+  have hBb : ∀ t ∈ B, Bits t := fun t ht => Hs_bits H used t (List.mem_of_mem_drop (hB ▸ ht))
+  have hAok : ∀ t ∈ A, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t' := by
+    intro t ht
+    rw [hA] at ht
+    obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem ht
+    have hj' : j < i := by have := hj; simp [Hs_length] at this; omega
+    have hjH : j < H.length := by omega
+    simp only [List.getElem_take]
+    rw [Hs_get _ _ _ hjH]
+    apply tl_ok
+    have := hmin j hj'
+    by_cases h2 : 2 ≤ H.getD j 0
+    · right; exact Classical.byContradiction fun hb => this ⟨hjH, h2, by simpa using hb⟩
+    · left; omega
+  have hr : Bits (List.replicate (H.getD i 0 - 2) 3) := by
+    intro a ha; rw [List.eq_of_mem_replicate ha]; simp [bits]
+  have sP : NoB (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ [1]) := by
+    have := Enc_o13 W
+    simp only [NoB_app_iff]
+    refine ⟨⟨⟨⟨fun a ha => ?_, by simp [NB]⟩, by simp [NB]⟩, (fun a ha => by have := MEnc_o12 d a ha; simp [O12, NB] at this ⊢; omega)⟩, by simp [NB]⟩
+    have := Enc_o13 W a ha; simp [O13, NB] at this ⊢; omega
+  have hfin := finalBad J Zt hJ hZ _ hr B hBb A hAb hAok _ sP
+  rw [e0] at hfin
+  have sH : Sym4 (HP (Hs H used) 0 ++ J ++ 0 :: Zt) :=
+    ((HP_sym4 _ _ (Hs_bits H used)).app hJ.1.sym4).app (Sym4.cons (by simp [ALL]) hZ)
+  have sP' : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) := by
+    refine ((Sym4.app (fun a ha => ?_) (by simp [ALL])).app (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (by simp [ALL])))
+    have := Enc_o13 W a ha; simp [O13, ALL] at this ⊢; omega
+  have hw := lblWalk (1 :: (HP (Hs H used) 0 ++ J ++ 0 :: Zt)) (Sym4.cons (by simp [ALL]) sH) d false _ hdd sP'
+  have hdf : decide (d.length % 2 = 1) = false := by simp [hdl]
+  rw [hdf] at hw
+  simp only [Bool.xor_false] at hw
+  have sP2 : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d) := sP'.app (MEnc_sym4 d)
+  have h2 := y1eEnd _ _ sP2 sH
+  refine FailsTo.pre ((hw.of_eq (by simp [cfgE, Enc]) rfl).trans h2) (FailsTo.cast ?_ hfin)
+  simp [Ufull, unm_append, unm_MEnc, unm_Enc, unm_rep3, unm1, Enc, List.append_assoc]
+
 end ZP.G
