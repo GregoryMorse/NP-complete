@@ -1491,4 +1491,113 @@ theorem fn3_B (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
     (ls := [.blk 0 .id]) (rs := [.sym 0, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+theorem fn3Cells (R : List Nat) (hR : Sym4 R) : ∀ (c P : List Nat), Bits c → Sym4 P →
+    zgiLogic.Reach (hdR QG.gFN3 P (c ++ R)) (hdR QG.gFN3 (P ++ c) R)
+  | [], P, _, _ => by simpa using (LTM.Reach.refl _ _)
+  | b :: c, P, hc, hP => by
+    have hb := hc b (List.mem_cons_self ..)
+    have hc' : Bits c := fun a ha => hc a (List.mem_cons_of_mem _ ha)
+    have h1 := fn3_bit P (c ++ R) b hb hP (by simp [ALL, hR, hc'.sym4])
+    have hP' : Sym4 (P ++ [b]) := by
+      rcases mem_bits hb with rfl | rfl <;> simp [ALL, hP]
+    have h2 := fn3Cells R hR c (P ++ [b]) hc' hP'
+    exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp))
+
+/-- An entry that is a non-edge (`[]`) or a used edge (`2 :: _`) passes the final check. -/
+theorem entryOk (t : List Nat) (ht : t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gFN1 P (3 :: (t ++ 1 :: R))) (hdR QG.gFN1 (P ++ 3 :: (t ++ [1])) R) := by
+  rcases ht with rfl | ⟨t', ht', rfl⟩
+  · have h1 := fn1_3 P (1 :: R) hP (Sym4.cons (by simp [ALL]) hR)
+    have h2 := fn2_1 (P ++ [3]) R (hP.app (by simp [ALL])) hR
+    exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
+  · have s2 : Sym4 (t' ++ 1 :: R) := ht'.sym4.app (Sym4.cons (by simp [ALL]) hR)
+    have h1 := fn1_3 P (2 :: (t' ++ 1 :: R)) hP (Sym4.cons (by simp [ALL]) s2)
+    have h2 := fn2_2 (P ++ [3]) (t' ++ 1 :: R) (hP.app (by simp [ALL])) s2
+    have h3 := fn3Cells (1 :: R) (Sym4.cons (by simp [ALL]) hR) t' (P ++ [3] ++ [2]) ht'
+      ((hP.app (by simp [ALL])).app (by simp [ALL]))
+    have h4 := fn3_1 (P ++ [3] ++ [2] ++ t') R (((hP.app (by simp [ALL])).app (by simp [ALL])).app ht'.sym4) hR
+    refine (h1.of_eq (by simp) rfl).trans ((h2.of_eq rfl rfl).trans ((h3.of_eq (by simp) rfl).trans (h4.of_eq (by simp) (by simp))))
+
+/-- The last entry: accept. -/
+theorem entryLast (t : List Nat) (ht : t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gFN1 P (3 :: (t ++ 0 :: R))) (hd QG.FE (P ++ 3 :: t) (3 :: R)) := by
+  rcases ht with rfl | ⟨t', ht', rfl⟩
+  · have h1 := fn1_3 P (0 :: R) hP (Sym4.cons (by simp [ALL]) hR)
+    have h2 := fn2_B (P ++ [3]) R (hP.app (by simp [ALL])) hR
+    exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
+  · have s2 : Sym4 (t' ++ 0 :: R) := ht'.sym4.app (Sym4.cons (by simp [ALL]) hR)
+    have h1 := fn1_3 P (2 :: (t' ++ 0 :: R)) hP (Sym4.cons (by simp [ALL]) s2)
+    have h2 := fn2_2 (P ++ [3]) (t' ++ 0 :: R) (hP.app (by simp [ALL])) s2
+    have h3 := fn3Cells (0 :: R) (Sym4.cons (by simp [ALL]) hR) t' (P ++ [3] ++ [2]) ht'
+      ((hP.app (by simp [ALL])).app (by simp [ALL]))
+    have h4 := fn3_B (P ++ [3] ++ [2] ++ t') R (((hP.app (by simp [ALL])).app (by simp [ALL])).app ht'.sym4) hR
+    refine (h1.of_eq (by simp) rfl).trans ((h2.of_eq rfl rfl).trans ((h3.of_eq (by simp) rfl).trans (h4.of_eq (by simp) (by simp))))
+
+/-- An unused edge fails the final check. -/
+theorem entryBad (r P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) (hr : Sym4 r) :
+    zgiLogic.Reach (hdR QG.gFN1 P (3 :: (3 :: r ++ R))) (hdR QG.gFG (P ++ [3, 3]) (r ++ R)) := by
+  have h1 := fn1_3 P (3 :: r ++ R) hP (Sym4.cons (by simp [ALL]) (hr.app hR))
+  have h2 := fn2_3 (P ++ [3]) (r ++ R) (hP.app (by simp [ALL])) (hr.app hR)
+  exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
+
+theorem finalOk (Zt : List Nat) (hZ : Sym4 Zt) : ∀ (hs : List (List Nat)), hs ≠ [] →
+    (∀ t ∈ hs, Bits t) → (∀ t ∈ hs, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') → ∀ P, Sym4 P →
+    ∃ L R, zgiLogic.Reach (hdR QG.gFN1 P (HP hs 0 ++ 0 :: Zt)) (hd QG.FE L R)
+  | [], h, _, _, _, _ => absurd rfl h
+  | [t], _, _, hok, P, hP => by
+    have := entryLast t (hok t (by simp)) P Zt hP hZ
+    exact ⟨_, _, this.of_eq (by simp [HP]) rfl⟩
+  | t :: u :: ts, _, hb, hok, P, hP => by
+    have hbs : ∀ s ∈ u :: ts, Bits s := fun s hs => hb s (List.mem_cons_of_mem _ hs)
+    have hoks : ∀ s ∈ u :: ts, s = [] ∨ ∃ t', Bits t' ∧ s = 2 :: t' := fun s hs => hok s (List.mem_cons_of_mem _ hs)
+    have sH : Sym4 (HP (u :: ts) 0 ++ 0 :: Zt) := (HP_sym4 _ _ hbs).app (Sym4.cons (by simp [ALL]) hZ)
+    have h1 := entryOk t (hok t (by simp)) P (HP (u :: ts) 0 ++ 0 :: Zt) hP sH
+    have hP' : Sym4 (P ++ 3 :: (t ++ [1])) := hP.app (Sym4.cons (by simp [ALL]) ((hb t (by simp)).sym4.app (by simp [ALL])))
+    obtain ⟨L, R, h2⟩ := finalOk Zt hZ (u :: ts) (by simp) hbs hoks _ hP'
+    exact ⟨L, R, (h1.of_eq (by simp [HP]) rfl).trans h2⟩
+
+theorem finalBad (Zt : List Nat) (hZ : Sym4 Zt) (r : List Nat) (hr : Bits r) (B : List (List Nat))
+    (hB : ∀ t ∈ B, Bits t) : ∀ (A : List (List Nat)), (∀ t ∈ A, Bits t) →
+    (∀ t ∈ A, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') → ∀ P, NoB P →
+    FailsTo (hdR QG.gFN1 P (HP (A ++ (3 :: r) :: B) 0 ++ 0 :: Zt)) (unm (P ++ HP (A ++ (3 :: r) :: B) 0)) Zt
+  | [], _, _, P, hP => by
+    have hq : Sym4 (Qof B) := by
+      cases B with
+      | nil => simp [Qof, ALL]
+      | cons u ts => exact Sym4.cons (by simp [ALL]) (HP_sym4 _ _ hB)
+    have hnq : NoB (Qof B) := by
+      cases B with
+      | nil => exact NoB.nil
+      | cons u ts =>
+        exact (NoB_cons_iff).2 ⟨by simp [NB], HP_noB _ _ hB⟩
+    have h1 := entryBad r P (Qof B ++ 0 :: Zt) hP.sym4 (hq.app (Sym4.cons (by simp [ALL]) hZ)) hr.sym4
+    have hc := (HP_cut (3 :: r) B []).2
+    simp only [List.nil_append, MU] at hc
+    refine FailsTo.mk' (A := P ++ [3, 3]) (R1 := r ++ Qof B) (L := P ++ HP ((3 :: r) :: B) 0) ?_ ?_ ?_ ?_
+    · simp only [NoB_app_iff]; simp [NB, hP]
+    · exact (NoB_app_iff).2 ⟨hr.noB, hnq⟩
+    · rw [hc]; simp
+    · refine (h1.of_eq ?_ ?_)
+      · simp only [List.nil_append]; rw [hc]; simp
+      · simp
+  | a :: A, hb, hok, P, hP => by
+    have hne : A ++ (3 :: r) :: B ≠ [] := by simp
+    have hbs : ∀ t ∈ A, Bits t := fun t ht => hb t (List.mem_cons_of_mem _ ht)
+    have hoks : ∀ t ∈ A, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t' := fun t ht => hok t (List.mem_cons_of_mem _ ht)
+    have hBr : ∀ t ∈ A ++ (3 :: r) :: B, Bits t := by
+      intro t ht
+      rcases List.mem_append.1 ht with ht | ht
+      · exact hbs t ht
+      · rcases List.mem_cons.1 ht with rfl | ht
+        · intro x hx; rcases List.mem_cons.1 hx with rfl | hx; · simp [bits]
+          · exact hr x hx
+        · exact hB t ht
+    have sH : Sym4 (HP (A ++ (3 :: r) :: B) 0 ++ 0 :: Zt) := (HP_sym4 _ _ hBr).app (Sym4.cons (by simp [ALL]) hZ)
+    have h1 := entryOk a (hok a (by simp)) P (HP (A ++ (3 :: r) :: B) 0 ++ 0 :: Zt) hP.sym4 sH
+    have hP' : NoB (P ++ 3 :: (a ++ [1])) := by
+      simp only [NoB_app_iff, NoB_cons_iff]; simp [NB, hP, (hb a (by simp)).noB]
+    have ih := finalBad Zt hZ r hr B hB A hbs hoks _ hP'
+    refine FailsTo.pre (h1.of_eq (by rw [List.cons_append, HP_cons _ _ _ hne]; simp) rfl) (FailsTo.cast ?_ ih)
+    rw [List.cons_append, HP_cons _ _ _ hne]; simp
+
 end ZP.G
