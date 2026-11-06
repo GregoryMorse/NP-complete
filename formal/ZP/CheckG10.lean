@@ -1,4 +1,8 @@
-import ZP.CheckG9
+module
+
+public import ZP.CheckG9
+
+@[expose] public section
 
 /-! # The check phase of the GI machine (part 10): `m = 0` -/
 

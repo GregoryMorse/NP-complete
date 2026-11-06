@@ -1,4 +1,8 @@
-import ZP.CheckG12
+module
+
+public import ZP.CheckG12
+
+@[expose] public section
 
 /-! # The pair lemma for the GI machine -/
 

@@ -1,4 +1,8 @@
-import ZP.CheckG10
+module
+
+public import ZP.CheckG10
+
+@[expose] public section
 
 /-! # The check phase of the GI machine (part 11): the tape `Tc` of an instance -/
 

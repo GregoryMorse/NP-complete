@@ -1,4 +1,8 @@
-import ZP.CheckG11
+module
+
+public import ZP.CheckG11
+
+@[expose] public section
 
 /-! # The GI machine: the truth phase (setup, search, check, report) -/
 

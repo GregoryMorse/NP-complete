@@ -1,4 +1,8 @@
-import ZP.CheckG6
+module
+
+public import ZP.CheckG6
+
+@[expose] public section
 
 namespace ZP.G
 

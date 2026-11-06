@@ -1,4 +1,8 @@
-import ZP.CheckG4
+module
+
+public import ZP.CheckG4
+
+@[expose] public section
 
 /-! # The check phase of the GI machine (part 5): the `CheckSpec` for a nonempty `H` -/
 

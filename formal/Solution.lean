@@ -25,3 +25,6 @@ theorem ZP.zfac_quasihalts_iff_sentence : ZP.Quasihalts ZP.zfacMachine ↔ ZP.Se
 
 theorem ZP.zdl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zdlMachine ↔ ZP.SentenceD :=
   ZP.zdlQuasihalts_iff_sentence
+
+theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.SentenceG :=
+  ZP.zgiQuasihalts_iff_sentence

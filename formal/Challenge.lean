@@ -6,6 +6,7 @@ public import ZP.DefsPP
 public import ZP.DefsPS
 public import ZP.DefsF
 public import ZP.DefsD
+public import ZP.DefsG
 
 public section
 
@@ -37,4 +38,7 @@ theorem ZP.zfac_quasihalts_iff_sentence : ZP.Quasihalts ZP.zfacMachine ↔ ZP.Se
   sorry
 
 theorem ZP.zdl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zdlMachine ↔ ZP.SentenceD := by
+  sorry
+
+theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.SentenceG := by
   sorry

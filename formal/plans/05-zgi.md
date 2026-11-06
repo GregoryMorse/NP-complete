@@ -175,3 +175,11 @@ Still to do after S3: shape case-split into `CheckSpec`, parse/`Tc` lemma, `Rch 
 - Still to do: `m = 0` lemma, parse/`Tc` lemma (`Tc = tcOfList (runsAux s 0).reverse`), shape case-split into
   `E.CheckSpec (fun w => checkG w (parseG s).1 ..) (AccS E.Z)`, truth-phase wrapper (`newInstG`), `layG`/`pair_mainG`,
   `MainG`, Challenge/Solution/comparator entries, imports in `ZP.lean` (files need module headers first).
+
+## Status: done
+`ZP.zgi_quasihalts_iff_sentence` (`Challenge.lean`/`Solution.lean`/`comparator.json`) and
+`ZP.zgi_quasihalts_iff_InP` (`MainG.lean`) are proved with no `sorry`; they depend only on
+`propext`, `Classical.choice`, `Quot.sound`. New in the last stretch: `CheckG10` (`m = 0`, via
+`popM`, `finalAccM/FailM`, `firstFailM0T/U`, `checkSpecM0*`), `CheckG11` (`tcOfList`, `tc_runs`,
+`csForm1..4`, `csList`, `csParse`), `CheckG12` (`genv_of`, `truthPhaseG`), `PairMainG`
+(`newInstG`, `pair_mainG`), `MainG`. All files are `module` files and imported by `ZP.lean`.

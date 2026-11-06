@@ -1,6 +1,10 @@
-import ZP.PairMainG
-import ZP.GenericP
-import ZP.LogicalG
+module
+
+public import ZP.PairMainG
+public import ZP.GenericP
+public import ZP.LogicalG
+
+@[expose] public section
 
 /-!
 # The P = GI machine quasihalts iff `SentenceG`, iff `L_GI ∈ P`
