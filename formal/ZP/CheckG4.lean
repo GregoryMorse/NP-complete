@@ -527,4 +527,53 @@ theorem finalFail (W : List Nat) (p : Nat) (H : List Nat) (hne : H ≠ []) (J Zt
   refine FailsTo.pre ((hw.of_eq (by simp [cfgE, Enc]) rfl).trans h2) (FailsTo.cast ?_ hfin)
   simp [Ufull, unm_append, unm_MEnc, unm_Enc, unm_rep3, unm1, Enc, List.append_assoc]
 
+theorem y1oEnd (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gY1o P (1 :: R)) (hdR QG.gFG (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- A lone last label: the second label is missing, so the check fails. -/
+theorem oddFailF (F : HFam) (W d : List Nat) (p x c : Nat)
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 0) (hx : 1 ≤ x) (hc : c ≤ F.N) :
+    FailsTo
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc d ++ List.replicate x 3 ++ 1 :: (Enc [] ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (Ufull W (p + 1) (d ++ [x]) F.Hu) F.Zt := by
+  by_cases hb : RowBad F W p x c
+  · exact firstFail F W d [] p x c hW hdd (by simp) hdl hx hc hb
+  · obtain ⟨r, rfl⟩ : ∃ r, x = r + 1 := ⟨x - 1, by omega⟩
+    have hrl : r < W.length := by
+      exact Classical.byContradiction fun h => hb (Or.inl (by omega))
+    obtain ⟨n, Wr, hr, _⟩ := W_split W hW r hrl
+    have hcn : c + (p + 1) * n ≤ F.N := by
+      exact Classical.byContradiction fun h => hb (Or.inr ⟨n, Wr, by simpa using hr, by omega⟩)
+    have hrow := rowHalf F W Wr d [] r n p c hW hdd (by simp) hdl hr hc hcn
+    have hdd' : ∀ e ∈ d ++ [r + 1], 1 ≤ e := by
+      intro e he
+      rcases List.mem_append.1 he with he | he
+      · exact hdd e he
+      · simp at he; omega
+    have sP : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) := by
+      refine ((Sym4.app (fun a ha => ?_) (by simp [ALL])).app (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (by simp [ALL])))
+      have := Enc_o13 W a ha; simp [O13, ALL] at this ⊢; omega
+    have sH : Sym4 (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt) := F.sym _ hcn
+    have hw := lblWalk (1 :: (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt)) (Sym4.cons (by simp [ALL]) sH) (d ++ [r + 1]) false _ hdd' sP
+    have hdf : decide ((d ++ [r + 1]).length % 2 = 1) = true := by simp; omega
+    rw [hdf] at hw
+    simp only [Bool.false_xor] at hw
+    have sP2 : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc (d ++ [r + 1])) := sP.app (MEnc_sym4 _)
+    have h2 := y1oEnd _ _ sP2 sH
+    have hnb := F.nb _ hcn
+    refine ⟨Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc (d ++ [r + 1]) ++ [1], F.Hc (c + (p + 1) * n), ?_, hnb, ?_, ?_⟩
+    · simp only [NoB_app_iff]
+      refine ⟨⟨⟨⟨fun a ha => ?_, by simp [NB]⟩, by simp [NB]⟩, fun a ha => ?_⟩, by simp [NB]⟩
+      · have := Enc_o13 W a ha; simp [O13, NB] at this ⊢; omega
+      · have := MEnc_o12 (d ++ [r + 1]) a ha; simp [O12, NB] at this ⊢; omega
+    · have hun := F.un _ hcn
+      simp [Ufull, unm_append, unm_MEnc, unm_Enc, unm_rep3, unm1, hun, Enc, U, List.append_assoc]
+    · refine (hrow.of_eq rfl (by simp [Enc])).trans ?_
+      exact (hw.of_eq (by simp [Enc]) rfl).trans (h2.of_eq rfl (by simp [Enc]))
+
 end ZP.G
