@@ -14,7 +14,7 @@ transition the number of table steps of its gadget.  Lean checks all of it
 import json, os, sys
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 sys.path[:0] = [os.path.join(ROOT, 'native'), os.path.join(ROOT, 'compiler')]
-import compile2, final, zp2  # noqa: E402
+import compile2, final, tm, zp2  # noqa: E402
 
 SYM = {'B': 0, 'M': 1, '0': 2, '1': 3}
 
@@ -42,6 +42,28 @@ def minimize_map(table, beep, start=0):
     order = [cls[start]] + sorted(set(cls) - {cls[start]}, key=lambda c: rep[c])
     idx = {c: i for i, c in enumerate(order)}
     return [idx[cls[s]] for s in range(n)]
+
+
+def recover_cls(mt, mb, tab, beep):
+    """Map the states of the Moore-minimal table `mt` to the states of the final table `tab` by
+    following the defined transitions from the start (the final table only merges compatible states)."""
+    cls = {0: 0}
+    stack = [0]
+    while stack:
+        q = stack.pop()
+        for a in (0, 1):
+            tr = mt[q][a]
+            if tr is None:
+                continue
+            ft = tab[cls[q]][a]
+            assert ft is not None and ft[0] == tr[0] and ft[1] == tr[1], (q, a)
+            if tr[2] in cls:
+                assert cls[tr[2]] == ft[2], (q, a)
+            else:
+                cls[tr[2]] = ft[2]
+                stack.append(tr[2])
+    assert len(cls) == len(mt) and cls[mb] == beep
+    return [cls[i] for i in range(len(mt))]
 
 
 def read_tbl(name):
@@ -85,6 +107,7 @@ MACH = {
     'zfac': ('zfac', 'zfactor_native', 'zfac', 'F', None),
     'zdl': ('zdl', 'zdlog_native', 'zdl', 'D', 'zfac'),
     'zgi': ('zgi', 'zgi_native', 'zgi', 'G', 'zfac'),
+    'zntt': ('zntt', 'zntt_native', 'zntt', 'NTT', None),   # standalone: its own state names
 }
 DERIVED = ('zpp', 'zps', 'zfac', 'zdl', 'zgi')   # machines whose changes define zpBase
 
@@ -157,7 +180,7 @@ def main(name='zp'):
     m = importlib.import_module(modname).build()
     qs0 = m.states()
     assert qs0[0] == m.start
-    if name == 'zp':
+    if name in ('zp', 'zntt'):
         qs = qs0
         num = {q: i for i, q in enumerate(qs)}
     else:
@@ -167,8 +190,12 @@ def main(name='zp'):
     sd = final.sides(m, modname)
     t, b, names = compile2.compile_sides(m, final.ENC, sd)
     mm = minimize_map(t, b)
-    cls = json.load(open(os.path.join(ROOT, 'native', f'exact_{nat}.json')))
     tab, beep = read_tbl(nat)
+    jpath = os.path.join(ROOT, 'native', f'exact_{nat}.json')
+    if os.path.exists(jpath):
+        cls = json.load(open(jpath))
+    else:
+        cls = recover_cls(*tm.minimize(t, b), tab, beep)
     entry = [cls[mm[names[('P', q)]]] if q in present else 0 for q in qs]
     side = [sd[q] if q in present else 0 for q in qs]
     enc = {s: final.ENC[c] for c, s in SYM.items()}
@@ -198,7 +225,10 @@ def main(name='zp'):
     body.append('/-- Cell of the pair (0 left, 1 right) at which the table enters `q`. -/')
     body.append(f'def {ident}Side : List Nat :=\n  [' + ', '.join(map(str, side)) + ']\n')
     body += chunked(f'{ident}Glen', '(List Nat)', glen)
-    if name == 'zp':
+    if name == 'zntt':
+        body.append('-- State numbers of `zNttLogic`, by their names in `native/zntt.py`.')
+        body.append('namespace QNTT\n' + ''.join(f'def {q} : Nat := {num[q]}\n' for q in qs) + 'end QNTT\n')
+    elif name == 'zp':
         body.append('-- State numbers of `zpLogic`, by their names in `native/zp2.py`.')
         body.append('namespace Q\n' + ''.join(f'def {q} : Nat := {num[q]}\n' for q in qs) + 'end Q\n')
     else:

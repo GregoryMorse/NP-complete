@@ -74,6 +74,9 @@ public import ZP.MainG
 public import ZP.DefsNTT
 public import ZP.PadNTT
 public import ZP.AbstractNTT
+public import ZP.TableNTT
+public import ZP.LogicNTT
+public import ZP.CompileNTT
 public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile
