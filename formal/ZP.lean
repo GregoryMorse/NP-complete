@@ -71,6 +71,9 @@ public import ZP.CheckG11
 public import ZP.CheckG12
 public import ZP.PairMainG
 public import ZP.MainG
+public import ZP.DefsNTT
+public import ZP.PadNTT
+public import ZP.AbstractNTT
 public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile

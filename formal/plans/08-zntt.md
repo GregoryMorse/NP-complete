@@ -123,3 +123,7 @@ Done, building without sorry (`ZP/DefsNTT.lean`, `ZP/PadNTT.lean`, `ZP/AbstractN
 
 Still to do: the generalized bridge for this step function (copy of `Bridge.lean`), all of §3 (the machine proof),
 and the Challenge/Solution entries (the headline theorem carries the hypothesis `PrimeEx`).
+
+Update: `DefsNTT`, `PadNTT`, `AbstractNTT` are now imported by `ZP.lean` (full build green, no `sorry`).
+The machine proof (§3: rulers, record build, odometer, evaluation passes, power sums, merge, pair lemma,
+generalized bridge, `Challenge`/`Solution` entries) has not been started; it is the estimated 7000–10000 lines.
