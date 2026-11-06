@@ -247,4 +247,226 @@ theorem copyP (w j : Nat) (Mid1 Mid2 : List Nat) (hM1 : NoB Mid1) (hM2 : NoB Mid
   simp only [List.append_assoc, List.cons_append, List.nil_append, List.replicate_succ] at h1 h2 h3 h4 h5 h6 h7 ⊢
   exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans h7)))))
 
+theorem kx1Skip (A : List Nat) (s : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.KX1 A (List.replicate s 3 ++ 1 :: R))
+      (hdR QNTT.KX2 (A ++ List.replicate s 3 ++ [1]) R) := by
+  have hV : Valid [ALL, [3], ALL] [A, List.replicate s 3, R] :=
+    Valid.cons hA (Valid.cons (repSet s 3) (Valid.cons hR (Valid.nil _)))
+  simpa using checkFF (env := [A, List.replicate s 3, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem kx2Mark (A : List Nat) (a : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.KX2 A (List.replicate a 2 ++ 3 :: R))
+      (hdR QNTT.SPR (A ++ List.replicate (a + 1) 2) R) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate a 2, R] :=
+    Valid.cons hA (Valid.cons (repSet a 2) (Valid.cons hR (Valid.nil _)))
+  simpa [List.replicate_succ'] using checkFF (env := [A, List.replicate a 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 3, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 2]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem kx2End (A : List Nat) (a : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.KX2 A (List.replicate a 2 ++ 1 :: R))
+      (hd QNTT.KR (A ++ List.replicate a 2) (1 :: R)) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate a 2, R] :=
+    Valid.cons hA (Valid.cons (repSet a 2) (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [A, List.replicate a 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem krSweep (A : List Nat) (a : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.KR (A ++ [1] ++ List.replicate a 2) R)
+      (hdR QNTT.SWR (A ++ [1]) (List.replicate a 3 ++ R)) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate a 2, R] :=
+    Valid.cons hA (Valid.cons (repSet a 2) (Valid.cons hR (Valid.nil _)))
+  simpa using checkTF (env := [A, List.replicate a 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 (.const 3), .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem swrScan (A R : List Nat) (hA : Sym4 A) (hR : NoB R) :
+    znttLogic.Reach (hdR QNTT.SWR A R) (hd QNTT.SW1 (A ++ R) [1]) := by
+  have hV : Valid [ALL, NB] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem sw1Scan (L R : List Nat) (hL : NoB L) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.SW1 L R) (hdR QNTT.SW2 [] (L ++ R)) := by
+  have hV : Valid [NB, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id]) (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem sw2Mark (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.SW2 [] (3 :: R)) (hdR QNTT.SW3 [2] R) := by
+  have hV : Valid [ALL] [R] := Valid.cons hR (Valid.nil _)
+  exact checkFF (env := [R]) (E := []) (k := 4) hV trivial
+    (ls := []) (rs := [.sym 3, .blk 0 .id]) (ls' := [.sym 2]) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Copy `W` (of `j + 1` cells, at the left edge) to the end; `W` grows by a cell. -/
+theorem copyW (j : Nat) (Rest1 Rest2 : List Nat) (h1 : NoB Rest1) (h2 : NoB Rest2) :
+    znttLogic.Reach
+      (hdR QNTT.SWR (List.replicate (j + 1) 3 ++ 1 :: Rest1) Rest2)
+      (hdR QNTT.RN0 [3] (List.replicate (j + 1) 3 ++ 1 :: (Rest1 ++ Rest2 ++ 1 :: 3 :: List.replicate j 2))) := by
+  have nA : NoB (List.replicate (j + 1) 3 ++ 1 :: Rest1) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff]; simp [NB, h1]
+  have g1 := swrScan _ Rest2 nA.sym4 h2
+  have nL : NoB (List.replicate (j + 1) 3 ++ 1 :: Rest1 ++ Rest2) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff]; simp [NB, h1, h2]
+  have g2 := sw1Scan _ [1] nL (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have nR : NoB (List.replicate j 3 ++ 1 :: (Rest1 ++ Rest2 ++ [1])) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff, NoB_nil_iff]; simp [NB, h1, h2]
+  have g3 : znttLogic.Reach (hdR QNTT.SW2 [] (List.replicate (j + 1) 3 ++ 1 :: Rest1 ++ Rest2 ++ [1]))
+      (hdR QNTT.SW3 [2] (List.replicate j 3 ++ 1 :: (Rest1 ++ Rest2 ++ [1]))) :=
+    (sw2Mark _ nR.sym4).of_eq (by simp [List.replicate_succ]) rfl
+  have g4 := sw3Write [2] _ (by intro y hy; simp at hy; subst hy; simp [ALL]) nR
+  have nM' : NoB (Rest1 ++ Rest2 ++ [1]) := by
+    simp only [NoB_app_iff, NoB_cons_iff, NoB_nil_iff]; simp [NB, h1, h2]
+  have g5 := clLoop [] (by intro x hx; simp at hx) j 0 (Rest1 ++ Rest2 ++ [1]) 3 nM' (by simp)
+  have g6 := crsW (0 + 1 + j) (1 :: ((Rest1 ++ Rest2 ++ [1]) ++ 3 :: List.replicate j 2))
+    (Sym4.cons (by simp [ALL]) (nM'.sym4.app (Sym4.cons (by simp [ALL]) (s4rep _ 2 (by simp [ALL])))))
+  have e : 0 + 1 + j = j + 1 := by omega
+  rw [e] at g5 g6
+  simp only [List.append_assoc, List.cons_append, List.nil_append, List.replicate_succ] at g1 g2 g3 g4 g5 g6 ⊢
+  exact g1.trans (g2.trans (g3.trans (g4.trans (g5.trans g6))))
+
+theorem sym4_one : Sym4 [1] := by intro y hy; simp at hy; subst hy; simp [ALL]
+
+/-- The copy `M 1 0^j` appended after one copy of `P`. -/
+def Dcopy (j : Nat) : List Nat := 1 :: 3 :: List.replicate j 2
+
+theorem Dcopy_noB (j : Nat) : NoB (Dcopy j) := by
+  simp only [Dcopy, NoB_cons_iff, NoB_rep_iff]; simp [NB]
+
+theorem noB_flat (j b : Nat) : NoB (List.replicate b (Dcopy j)).flatten := by
+  induction b with
+  | zero => exact NoB.nil
+  | succ b ih => simp only [List.replicate_succ, List.flatten_cons, NoB_app_iff]; exact ⟨Dcopy_noB j, ih⟩
+
+/-- One cell of `K`: copy `P` once. -/
+theorem kIter (w j a : Nat) (Rest0 : List Nat) (hR : NoB Rest0) :
+    znttLogic.Reach
+      (hdR QNTT.KX1 (List.replicate w 3 ++ [1])
+        (List.replicate (j + 1) 3 ++ 1 :: (List.replicate a 2 ++ 3 :: Rest0)))
+      (hdR QNTT.KX1 (List.replicate w 3 ++ [1])
+        (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (a + 1) 2 ++ (Rest0 ++ Dcopy j)))) := by
+  have sW : Sym4 (List.replicate w 3 ++ [1]) :=
+    (s4rep _ 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) Sym4.nil)
+  have nR : NoB (List.replicate a 2 ++ 3 :: Rest0) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff]; simp [NB, hR]
+  have h1 := kx1Skip (List.replicate w 3 ++ [1]) (j + 1) _ sW nR.sym4
+  have h2 := kx2Mark (List.replicate w 3 ++ [1] ++ List.replicate (j + 1) 3 ++ [1]) a Rest0
+    (((sW.app (s4rep (j + 1) 3 (by simp [ALL]))).app sym4_one)) hR.sym4
+  have nM1 : NoB (List.replicate (a + 1) 2) := by simp only [NoB_rep_iff]; simp [NB]
+  have h3 := copyP w j (List.replicate (a + 1) 2) Rest0 nM1 hR
+  simp only [List.append_assoc, List.cons_append, List.nil_append, Dcopy] at h1 h2 h3 ⊢
+  exact h1.trans (h2.trans h3)
+
+theorem kLoop (w j : Nat) :
+    ∀ (b a : Nat) (Rest : List Nat), NoB Rest →
+    znttLogic.Reach
+      (hdR QNTT.KX1 (List.replicate w 3 ++ [1])
+        (List.replicate (j + 1) 3 ++ 1 :: (List.replicate a 2 ++ List.replicate b 3 ++ Rest)))
+      (hdR QNTT.KX1 (List.replicate w 3 ++ [1])
+        (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (a + b) 2 ++
+          (Rest ++ (List.replicate b (Dcopy j)).flatten)))) := by
+  intro b
+  induction b with
+  | zero => intro a Rest _; simpa using LTM.Reach.refl znttLogic _
+  | succ b ih =>
+    intro a Rest hR
+    have e1 : List.replicate a 2 ++ List.replicate (b + 1) 3 ++ Rest =
+        List.replicate a 2 ++ 3 :: (List.replicate b 3 ++ Rest) := by simp [List.replicate_succ]
+    have nR : NoB (List.replicate b 3 ++ Rest) := by
+      simp only [NoB_app_iff, NoB_rep_iff]; simp [NB, hR]
+    have h1 := kIter w j a _ nR
+    have nR' : NoB (Rest ++ Dcopy j) := by simp only [NoB_app_iff]; exact ⟨hR, Dcopy_noB j⟩
+    have h2 := ih (a + 1) (Rest ++ Dcopy j) nR'
+    rw [e1]
+    have e2 : a + 1 + b = a + (b + 1) := by omega
+    rw [e2] at h2
+    have := h1.trans (h2.of_eq (by simp [List.append_assoc]) rfl)
+    simpa [List.replicate_succ, List.append_assoc] using this
+
+/-- `RSR`..`RS4`: write the record separator `MM` and the header `0 1 0`. -/
+theorem rsHeader (A R : List Nat) (hA : Sym4 A) (hR : NoB R) :
+    znttLogic.Reach (hdR QNTT.RSR A R) (hd QNTT.KS (A ++ R ++ [1, 1, 2, 3]) [2]) := by
+  have hV : Valid [ALL, NB] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 8) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 1, .sym 2, .sym 3]) (rs' := [.sym 2])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem ksScan (L R : List Nat) (hL : NoB L) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.KS L R) (hdR QNTT.KS1 [] (L ++ R)) := by
+  have hV : Valid [NB, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id]) (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem ks1Skip (W R : List Nat) (hW : BitsD W) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.KS1 [] (W ++ 1 :: R)) (hdR QNTT.KX1 (W ++ [1]) R) := by
+  have hV : Valid [[2, 3], ALL] [W, R] := Valid.cons hW (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [W, R]) (E := []) (k := 4) hV trivial
+    (ls := []) (rs := [.blk 0 .id, .sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- What one record appends: `MM 0 1 0`, `kk` copies of `P`, one copy of `W`. -/
+def recTail (j j' kk : Nat) : List Nat :=
+  [1, 1, 2, 3, 2] ++ (List.replicate kk (Dcopy j)).flatten ++ Dcopy j'
+
+theorem recTail_noB (j j' kk : Nat) : NoB (recTail j j' kk) :=
+  NoB.app (NoB.app (by intro x hx; simp at hx; simp [NB]; omega) (noB_flat j kk)) (Dcopy_noB j')
+
+/-- One whole record: `W` has `j' + 1` cells, `P` has `j + 1` cells, `K` has `kk`. -/
+theorem recordOne (j' j kk : Nat) (Mid1 Mid2 : List Nat) (h1 : NoB Mid1) (h2 : NoB Mid2) :
+    znttLogic.Reach
+      (hdR QNTT.RSR
+        (List.replicate (j' + 1) 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate kk 3 ++ 1 :: Mid1)))
+        Mid2)
+      (hdR QNTT.RN0 [3]
+        (List.replicate (j' + 1) 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate kk 3 ++ 1 ::
+          (Mid1 ++ Mid2 ++ recTail j j' kk))))) := by
+  have nA : NoB (List.replicate (j' + 1) 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate kk 3 ++ 1 :: Mid1))) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff]; simp [NB, h1]
+  have g1 := rsHeader _ Mid2 nA.sym4 h2
+  have nL : NoB (List.replicate (j' + 1) 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate kk 3 ++ 1 :: Mid1)) ++ Mid2 ++ [1, 1, 2, 3]) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff, NoB_nil_iff]; simp [NB, h1, h2]
+  have g2 := ksScan _ [2] nL (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have nRest : NoB (List.replicate (j + 1) 3 ++ 1 :: (List.replicate kk 3 ++ 1 :: Mid1 ++ Mid2 ++ [1, 1, 2, 3, 2])) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff, NoB_nil_iff]; simp [NB, h1, h2]
+  have g3 := ks1Skip (List.replicate (j' + 1) 3) _ (BitsD.rep _ _ (by simp)) nRest.sym4
+  have nK : NoB (1 :: (Mid1 ++ Mid2 ++ [1, 1, 2, 3, 2])) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff, NoB_nil_iff]; simp [NB, h1, h2]
+  have g4 := kLoop (j' + 1) j kk 0 _ nK
+  have hf := noB_flat j kk
+  have nX : NoB (Mid1 ++ Mid2 ++ [1, 1, 2, 3, 2] ++ (List.replicate kk (Dcopy j)).flatten) := by
+    simp only [NoB_app_iff, NoB_cons_iff, NoB_nil_iff]; simp [NB, h1, h2, hf]
+  have g5 := kx1Skip (List.replicate (j' + 1) 3 ++ [1]) (j + 1)
+    (List.replicate kk 2 ++ 1 :: (Mid1 ++ Mid2 ++ [1, 1, 2, 3, 2] ++ (List.replicate kk (Dcopy j)).flatten))
+    ((s4rep _ 3 (by simp [ALL])).app sym4_one)
+    ((s4rep _ 2 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) nX.sym4))
+  have g6 := kx2End (List.replicate (j' + 1) 3 ++ [1] ++ List.replicate (j + 1) 3 ++ [1]) kk
+    (Mid1 ++ Mid2 ++ [1, 1, 2, 3, 2] ++ (List.replicate kk (Dcopy j)).flatten)
+    ((((s4rep _ 3 (by simp [ALL])).app sym4_one).app (s4rep _ 3 (by simp [ALL]))).app sym4_one) nX.sym4
+  have g7 := krSweep (List.replicate (j' + 1) 3 ++ [1] ++ List.replicate (j + 1) 3) kk
+    (1 :: (Mid1 ++ Mid2 ++ [1, 1, 2, 3, 2] ++ (List.replicate kk (Dcopy j)).flatten))
+    (((s4rep _ 3 (by simp [ALL])).app sym4_one).app (s4rep _ 3 (by simp [ALL])))
+    (Sym4.cons (by simp [ALL]) nX.sym4)
+  have nR1 : NoB (List.replicate (j + 1) 3 ++ [1]) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_nil_iff]; simp [NB]
+  have nR2 : NoB (List.replicate kk 3 ++ 1 :: (Mid1 ++ Mid2 ++ [1, 1, 2, 3, 2] ++ (List.replicate kk (Dcopy j)).flatten)) := by
+    simp only [NoB_app_iff, NoB_rep_iff, NoB_cons_iff, NoB_nil_iff]; simp [NB, h1, h2, hf]
+  have g8 := copyW j' _ _ nR1 nR2
+  simp only [recTail, List.append_assoc, List.cons_append, List.nil_append] at g1 g2 g3 g4 g5 g6 g7 g8 ⊢
+  simp only [Nat.zero_add] at g4
+  exact g1.trans (g2.trans (g3.trans (g4.trans (g5.trans (g6.trans (g7.trans g8))))))
+
 end ZP.NTT
