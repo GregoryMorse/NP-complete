@@ -173,4 +173,153 @@ theorem csForm4 (E : GEnv) (m0 : Nat) (X H J : List Nat) (hX : ∀ e ∈ X, 1 �
   | succ p =>
     exact checkSpecA E p hm X H J hne hHv hJ hJo hX (by rw [hHP]; exact hTc)
 
+theorem flatR_o13 (L : List Nat) : ∀ a ∈ flatR L, a ∈ O13 := by
+  intro a ha
+  simp only [flatR, List.mem_flatMap, List.mem_cons, List.mem_replicate] at ha
+  obtain ⟨t, _, h⟩ := ha
+  rcases h with rfl | ⟨_, rfl⟩ <;> simp [O13]
+
+theorem noZero_split : ∀ (R : List Nat), 0 ∉ R →
+    R.takeWhile (· != 0) = R ∧ R.drop (R.length + 1) = []
+  | [], _ => by simp
+  | a :: R, h => by
+    have ha : a ≠ 0 := fun e => h (by simp [e])
+    have h' : 0 ∉ R := fun e => h (by simp [e])
+    obtain ⟨h1, h2⟩ := noZero_split R h'
+    refine ⟨?_, by simp⟩
+    simp [List.takeWhile_cons, ha, h1]
+
+theorem hasZero_split : ∀ (X R2 : List Nat), 0 ∉ X →
+    (X ++ 0 :: R2).takeWhile (· != 0) = X ∧ (X ++ 0 :: R2).drop (X.length + 1) = R2
+  | [], R2, _ => by simp
+  | a :: X, R2, h => by
+    have ha : a ≠ 0 := fun e => h (by simp [e])
+    have h' : 0 ∉ X := fun e => h (by simp [e])
+    obtain ⟨h1, h2⟩ := hasZero_split X R2 h'
+    refine ⟨?_, by simpa using h2⟩
+    simp [List.takeWhile_cons, ha, h1]
+
+theorem first_zero : ∀ (R : List Nat), 0 ∈ R → ∃ X R2, R = X ++ 0 :: R2 ∧ 0 ∉ X
+  | [], h => by simp at h
+  | a :: R, h => by
+    by_cases ha : a = 0
+    · exact ⟨[], R, by simp [ha], by simp⟩
+    · have h' : 0 ∈ R := by simpa [Ne.symm ha] using h
+      obtain ⟨X, R2, e, hX⟩ := first_zero R h'
+      exact ⟨a :: X, R2, by simp [e], by simp [hX, Ne.symm ha]⟩
+
+theorem enc_dropLast_snoc (H' : List Nat) (h : Nat) :
+    (Enc (H' ++ [h])).dropLast = Enc H' ++ List.replicate h 3 := by
+  simp [Enc_append, Enc, U, List.append_assoc, List.dropLast_concat]
+
+theorem flatR_snoc_eq (H' : List Nat) (h : Nat) :
+    flatR (H' ++ [h]) = 1 :: ((Enc (H' ++ [h])).dropLast) := by
+  rw [enc_dropLast_snoc, flatR_snoc]
+  have h1 := flatR_append_one H'
+  have h2 : flatR H' ++ 1 :: List.replicate h 3 = (flatR H' ++ [1]) ++ List.replicate h 3 := by simp
+  rw [h2, h1]
+  simp
+
+theorem pos_of_ne0 {X : List Nat} (h : 0 ∉ X) : ∀ e ∈ X, 1 ≤ e := fun e he => by
+  have : e ≠ 0 := fun r => h (r ▸ he)
+  omega
+
+theorem flatR_cons_nil_zero : flatR [0] = [1] := by simp [flatR]
+
+theorem flatR_X_zero (X R2 : List Nat) : flatR (X ++ 0 :: R2) = 1 :: (Enc X ++ flatR R2) := by
+  have h1 := flatR_append_one X
+  rw [flatR_append]
+  have : flatR (0 :: R2) = 1 :: flatR R2 := by simp [flatR]
+  rw [this]
+  have h2 : flatR X ++ 1 :: flatR R2 = (flatR X ++ [1]) ++ flatR R2 := by simp
+  rw [h2, h1]
+  simp
+
+theorem enc_snoc_dl (H : List Nat) (hne : H ≠ []) : Enc H = (Enc H).dropLast ++ [1] := by
+  obtain ⟨H', h, rfl⟩ := (List.eq_nil_or_concat H).resolve_left hne
+  rw [List.concat_eq_append] at *
+  rw [enc_dropLast_snoc]
+  simp [Enc_append, Enc, U, List.append_assoc]
+
+theorem jshape_flat (R4 : List Nat) : JShape (1 :: flatR R4) ∧ ∀ a ∈ (1 :: flatR R4), a ∈ O13 := by
+  have ho : ∀ a ∈ (1 :: flatR R4), a ∈ O13 := by
+    intro a ha
+    rcases List.mem_cons.1 ha with rfl | ha
+    · simp [O13]
+    · exact flatR_o13 R4 a ha
+  refine ⟨⟨o13_noB ho, ?_⟩, ho⟩
+  cases R4 with
+  | nil => exact Or.inr (Or.inl (by simp [flatR]))
+  | cons r R5 => exact Or.inr (Or.inr ⟨List.replicate r 3 ++ flatR R5, by simp [flatR]⟩)
+
+theorem csList (E : GEnv) (m : Nat) (R : List Nat) (hTc : E.Tc = tcOfList (m :: R)) :
+    E.CheckSpec (fun w => checkG w m (R.takeWhile (· != 0))
+      ((R.drop ((R.takeWhile (· != 0)).length + 1)).takeWhile (· != 0))) (AccS E.Z) := by
+  have hTc' : E.Tc = List.replicate m 3 ++ flatR R := hTc
+  by_cases h0 : 0 ∈ R
+  · obtain ⟨X, R2, hR, hX0⟩ := first_zero R h0
+    obtain ⟨hs1, hs2⟩ := hasZero_split X R2 hX0
+    subst hR
+    rw [hs1, hs2]
+    have hX := pos_of_ne0 hX0
+    rw [flatR_X_zero] at hTc'
+    by_cases hR2 : R2 = []
+    · subst hR2
+      simp only [List.takeWhile_nil]
+      exact csForm3 E m X [] hX (Or.inl rfl) (by simp) (by simpa [flatR] using hTc')
+    · obtain ⟨r, R3, rfl⟩ := List.exists_cons_of_ne_nil hR2
+      by_cases hr : r = 0
+      · subst hr
+        have hH : (0 :: R3).takeWhile (· != 0) = [] := by simp
+        rw [hH]
+        have hf : flatR (0 :: R3) = 1 :: flatR R3 := by simp [flatR]
+        rw [hf] at hTc'
+        obtain ⟨hJ, hJo⟩ := jshape_flat R3
+        refine csForm3 E m X (1 :: flatR R3) hX ?_ hJo (by simpa using hTc')
+        rcases hJ.2 with h | h | ⟨J', h⟩
+        · exact absurd h (by simp)
+        · exact Or.inr (Or.inl h)
+        · refine Or.inr (Or.inr ⟨J', ?_, h⟩)
+          intro a ha
+          exact hJ.1 a (by rw [h]; simp [ha])
+      · by_cases hz : 0 ∈ r :: R3
+        · obtain ⟨H, R4, hR, hH0⟩ := first_zero (r :: R3) hz
+          obtain ⟨hs3, hs4⟩ := hasZero_split H R4 hH0
+          have hne : H ≠ [] := by
+            rintro rfl
+            simp at hR
+            exact hr hR.1
+          have hHv := pos_of_ne0 hH0
+          rw [hR, hs3]
+          rw [hR, flatR_X_zero] at hTc'
+          obtain ⟨hJ, hJo⟩ := jshape_flat R4
+          refine csForm4 E m X H (1 :: flatR R4) hX hne hHv hJ hJo ?_
+          have e : Enc H ++ flatR R4 = (Enc H).dropLast ++ 1 :: flatR R4 := by
+            have h := enc_snoc_dl H hne
+            calc Enc H ++ flatR R4 = ((Enc H).dropLast ++ [1]) ++ flatR R4 := by rw [← h]
+              _ = _ := by simp
+          rw [hTc', e]
+        · obtain ⟨hs3, hs4⟩ := noZero_split (r :: R3) hz
+          have hz' : 0 ∉ r :: R3 := hz
+          have hne : r :: R3 ≠ [] := by simp
+          have hHv := pos_of_ne0 hz'
+          rw [hs3]
+          obtain ⟨H', h, hH⟩ := (List.eq_nil_or_concat (r :: R3)).resolve_left hne
+          rw [List.concat_eq_append] at hH
+          rw [hH] at hTc' hHv ⊢
+          rw [flatR_snoc_eq] at hTc'
+          refine csForm4 E m X (H' ++ [h]) [] hX (by simp) hHv JShape_nil (by simp) ?_
+          simpa using hTc'
+  · obtain ⟨hs1, hs2⟩ := noZero_split R h0
+    rw [hs1, hs2]
+    simp only [List.takeWhile_nil]
+    have hR0 := pos_of_ne0 h0
+    rcases (List.eq_nil_or_concat R) with hR | ⟨R', y, hR⟩
+    · subst hR
+      simpa [flatR] using csForm1 E m (by simpa [flatR] using hTc')
+    · rw [List.concat_eq_append] at hR
+      rw [hR] at hTc' hR0 ⊢
+      rw [flatR_snoc_eq, enc_dropLast_snoc] at hTc'
+      exact csForm2 E m R' y (fun e he => hR0 e (by simp [he])) (hR0 y (by simp)) hTc'
+
 end ZP.G
