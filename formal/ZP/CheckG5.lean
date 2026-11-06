@@ -82,7 +82,7 @@ theorem checkSpecA (E : GEnv) (p : Nat) (hm : E.m = p + 1) (X H J : List Nat) (h
   · obtain ⟨A, R1, hA, hR1, hu, hr⟩ := hfull.2 hg
     have hf := failPath A R1 E.Z hA hR1 E.hZ
     refine (hpop.trans hr).trans (hf.of_eq rfl ?_)
-    rw [hu, unmHu H J hne hHv hJo]
-    simp [Ufull, GEnv.CfgD, GEnv.Rt, hTc, List.append_assoc]
+    rw [hu, unm_cons, unmHu H J hne hHv hJo]
+    simp [unm1, Ufull, GEnv.CfgD, GEnv.Rt, hTc, List.append_assoc]
 
 end ZP.G
