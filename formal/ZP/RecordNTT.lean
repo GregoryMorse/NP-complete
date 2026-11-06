@@ -966,5 +966,100 @@ theorem nnLoop (j k1 : Nat) (Cf : List Nat) (hC : BitsD Cf) (hCne : Cf ≠ []) :
     refine h1.trans (h2.trans ((h3.of_eq (by simp [PreT, List.replicate_succ, List.append_assoc]) rfl).trans (h4.of_eq ?_ rfl)))
     simp [List.append_assoc]
 
+/-! ### One round -/
+
+def Pfx (w j k1 : Nat) : List Nat :=
+  List.replicate w 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (k1 + 1) 3 ++ [1]))
+
+theorem Pfx_un (w j k1 : Nat) : Un (Pfx w j k1) := by
+  intro x hx
+  simp [Pfx, List.mem_replicate] at hx
+  simp; omega
+
+theorem PreT_eq (w j k1 : Nat) (Cf : List Nat) : PreT w j k1 Cf = Pfx w j k1 ++ Cf ++ [1] := by
+  simp [PreT, Pfx, List.append_assoc]
+
+theorem recsFlat_ne (j kk : Nat) (ps qs : List (Nat × Nat)) (q : Nat × Nat) (hq : ∀ x ∈ ps ++ q :: qs, x.1 ∈ [2, 3]) :
+    ∃ rest, recsFlat j kk (ps ++ q :: qs) = 1 :: rest ∧ Sym4 rest := by
+  rcases recsFlat_cases j kk (ps ++ q :: qs) hq with h | ⟨rest, h, hs⟩
+  · exfalso
+    cases ps with
+    | nil => simp [recsFlat, recH] at h
+    | cons a ps => simp [recsFlat, recH] at h
+  · refine ⟨1 :: rest, h, ?_⟩
+    have := (recsFlat_noB j kk _ hq).sym4
+    rw [h] at this
+    intro x hx; exact this x (List.mem_cons_of_mem _ hx)
+
+theorem resetO_snd (ps : List (Nat × Nat)) : ∀ q ∈ resetO ps, q.1 ∈ [2, 3] := by
+  intro q hq; simp [resetO] at hq; obtain ⟨a, b, _, rfl⟩ := hq; simp
+
+theorem roundStep (w0 j k1 c m n : Nat) (ps : List (Nat × Nat)) (hq : ∀ q ∈ ps, q.1 ∈ [2, 3]) :
+    znttLogic.Reach
+      (hd QNTT.RC1 (Pfx (w0 + 1) j k1 ++ (List.replicate (c + 1) 3 ++ List.replicate m 2))
+        (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps)))
+      (hd QNTT.RC1 (Pfx (w0 + 1 + (n + 1)) j k1 ++ (List.replicate c 3 ++ List.replicate (m + 1) 2))
+        (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) (resetO ps ++ newRecs w0 (n + 1))))) := by
+  have sP : Sym4 (Pfx (w0 + 1) j k1) := (Pfx_un _ _ _).sym4
+  have hCf : BitsD (List.replicate c 3 ++ List.replicate (m + 1) 2) := by
+    intro x hx; simp [List.mem_replicate] at hx; simp; omega
+  have hCne : (List.replicate c 3 ++ List.replicate (m + 1) 2) ≠ [] := by simp [List.replicate_succ']
+  have sR0 : Sym4 (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps)) := by
+    have : NoB (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps)) := by
+      simp only [NoB_cons_iff, NoB_app_iff, NoB_rep_iff]
+      simp [NB, recsFlat_noB j (k1 + 1) ps hq]
+    exact this.sym4
+  have sCr : Sym4 (Pfx (w0 + 1) j k1 ++ List.replicate c 3) :=
+    (Pfx_un _ _ _).sym4.app (Un.rep _ _ (by simp)).sym4
+  have h1 := rc1Mark (Pfx (w0 + 1) j k1 ++ List.replicate c 3) m _ sCr sR0
+  have hu : GoodW (List.replicate m 2 ++ 1 :: 3 :: List.replicate n 3) := by
+    refine GoodW.app (GoodW.rep _ _ (by simp)) (GoodW.mb (by simp) (GoodW.rep _ _ (by simp)))
+  have sA2 : Sym4 (Pfx (w0 + 1) j k1 ++ List.replicate c 3 ++ [2]) :=
+    sCr.app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have h2 := roAll j (k1 + 1) ps _ _ hq sA2 hu
+  have hq1 := resetO_snd ps
+  have eL : Pfx (w0 + 1) j k1 ++ List.replicate c 3 ++ [2] ++ (List.replicate m 2 ++ 1 :: 3 :: List.replicate n 3) ++
+      recsFlat j (k1 + 1) (resetO ps) = PreT (w0 + 1) j k1 (List.replicate c 3 ++ List.replicate (m + 1) 2) ++ List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) (resetO ps) := by
+    simp [PreT_eq, List.replicate_succ, List.replicate_succ', List.append_assoc]
+  have nL : NoB (Pfx (w0 + 1) j k1 ++ List.replicate c 3 ++ [2] ++ (List.replicate m 2 ++ 1 :: 3 :: List.replicate n 3) ++
+      recsFlat j (k1 + 1) (resetO ps)) := by
+    rw [eL]
+    exact NoB.app (NoB.app (preT_noB _ _ _ _ hCf.noB) (noBrep _ 3 (by simp [NB]))) (recsFlat_noB _ _ _ hq1)
+  have h3 := rnlScan _ nL
+  have h4 := rnWalkS' [] (w0 + 1) j k1 (List.replicate c 3 ++ List.replicate (m + 1) 2) (List.replicate (n + 1) 3) (recsFlat j (k1 + 1) (resetO ps)) Sym4.nil hCf hCne
+    (BitsD.rep _ _ (by simp)) (by simp) (recsFlat_cases j (k1 + 1) (resetO ps) hq1)
+  have h5 := nnLoop j k1 (List.replicate c 3 ++ List.replicate (m + 1) 2) hCf hCne (n + 1) 0 w0 (resetO ps) hq1
+  have hq2 : ∀ q ∈ (resetO ps) ++ newRecs w0 (n + 1), q.1 ∈ [2, 3] := by
+    intro q hq'
+    have hn : ∀ w u, ∀ q ∈ newRecs w u, q.1 ∈ [2, 3] := by
+      intro w u; induction u generalizing w with
+      | zero => simp [newRecs]
+      | succ u ih =>
+        intro q hq''; simp [newRecs] at hq''
+        rcases hq'' with h | h
+        · subst h; simp
+        · exact ih _ q h
+    simp at hq'; rcases hq' with h | h
+    · exact hq1 q h
+    · exact hn _ _ q h
+  obtain ⟨rest, hrest, hsrest⟩ : ∃ rest, recsFlat j (k1 + 1) ((resetO ps) ++ newRecs w0 (n + 1)) = 1 :: rest ∧ Sym4 rest := by
+    have : newRecs w0 (n + 1) = (3, w0) :: newRecs (w0 + 1) n := rfl
+    rw [this] at hq2 ⊢
+    exact recsFlat_ne j (k1 + 1) (resetO ps) _ _ hq2
+  have sC2 : Sym4 (Pfx (w0 + 1 + (n + 1)) j k1 ++ (List.replicate c 3 ++ List.replicate (m + 1) 2)) := (Pfx_un _ _ _).sym4.app hCf.sym4
+  have h6 := rn2End (Pfx (w0 + 1 + (n + 1)) j k1 ++ (List.replicate c 3 ++ List.replicate (m + 1) 2)) (n + 1) (recsFlat j (k1 + 1) ((resetO ps) ++ newRecs w0 (n + 1)))
+    sC2 (recsFlat_noB _ _ _ hq2).sym4
+  have h7 := rnuSweep (Pfx (w0 + 1 + (n + 1)) j k1 ++ (List.replicate c 3 ++ List.replicate (m + 1) 2) ++ [1]) (n + 1) rest
+    (sC2.app (by intro y hy; simp at hy; subst hy; simp [ALL])) hsrest
+  have h8 := rc0Walk (Pfx (w0 + 1 + (n + 1)) j k1 ++ (List.replicate c 3 ++ List.replicate (m + 1) 2)) (n + 1) (1 :: rest) sC2 (by
+    intro x hx; simp at hx; rcases hx with rfl | hx
+    · simp [ALL]
+    · exact hsrest x hx)
+  simp only [List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 h5 h6 h7 h8 ⊢
+  have e1 := h1.of_eq (c3 := hd QNTT.RC1 (Pfx (w0 + 1) j k1 ++ (List.replicate (c + 1) 3 ++ List.replicate m 2))
+        (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps))) (by simp [List.replicate_succ']) rfl
+  refine e1.trans ((h2.of_eq (by simp [List.replicate_succ]) rfl).trans (h3.trans ((h4.of_eq ?_ rfl).trans
+    ((h5.of_eq ?_ rfl).trans ((h6.of_eq ?_ rfl).trans ((h7.of_eq ?_ rfl).trans (h8.of_eq rfl ?_)))))))
+  all_goals simp [PreT_eq, List.replicate_succ, List.replicate_succ', List.append_assoc, hrest]
 
 end ZP.NTT
