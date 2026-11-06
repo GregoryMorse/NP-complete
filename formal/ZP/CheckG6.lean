@@ -1,0 +1,170 @@
+import ZP.CheckG5
+
+namespace ZP.G
+
+open ZP
+
+/-- The popped stack leads to the start of the edge loop, for an arbitrary tail `Q` after the separator. -/
+theorem popG (E : GEnv) (rest : List Nat) (hrest : ∀ e ∈ rest, 1 ≤ e) (p : Nat) (X Q : List Nat)
+    (hQ : ∀ a ∈ Q, a ∈ O13)
+    (hTc : E.Tc = List.replicate (p + 1) 3 ++ 1 :: (Enc X ++ 1 :: Q)) :
+    zgiLogic.Reach (E.CfgPop rest)
+      (hdR QG.gY1e (Enc rest ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc X ++ 1 :: (Q ++ 0 :: E.Z))) := by
+  have sRt := E.Rt_sym4
+  have hws := Enc_entries rest hrest
+  have sZ := E.hZ
+  have sEnc : Sym4 (Enc rest) := by
+    intro a ha; have := Enc_o13 rest a ha; simp [O13, ALL] at this ⊢; omega
+  have hlist : Enc rest ++ E.Rt = MEs (rest.map fun e => List.replicate e 3) ++ 1 ::
+      (List.replicate (p + 1) 3 ++ 1 :: (Enc X ++ 1 :: (Q ++ 0 :: E.Z))) := by
+    rw [Enc_MEs]
+    simp [GEnv.Rt, hTc, List.append_assoc]
+  obtain ⟨a, X0, hax, ha⟩ : ∃ a X0, Enc rest ++ E.Rt = a :: X0 ∧ a ∈ NB := by
+    cases rest with
+    | nil => exact ⟨1, E.Tc ++ 0 :: E.Z, by simp [GEnv.Rt, Enc], by simp [NB]⟩
+    | cons v r =>
+      obtain ⟨k, rfl⟩ : ∃ k, v = k + 1 := ⟨v - 1, by have := hrest v (by simp); omega⟩
+      exact ⟨3, List.replicate k 3 ++ 1 :: (Enc r ++ E.Rt), by simp [Enc, U, List.replicate_succ], by simp [NB]⟩
+  have hX0 : Sym4 X0 := by
+    have hs : Sym4 (a :: X0) := hax ▸ (sEnc.app sRt)
+    exact fun x hx => hs x (by simp [hx])
+  have h1 := gglStart X0 a ha hX0
+  have sR : Sym4 (Enc X ++ 1 :: (Q ++ 0 :: E.Z)) := by
+    refine Sym4.app (fun a ha => ?_) (Sym4.cons (by simp [ALL]) (Sym4.app ?_ (Sym4.cons (by simp [ALL]) sZ)))
+    · have := Enc_o13 X a ha; simp [O13, ALL] at this ⊢; omega
+    · exact o13_sym4 hQ
+  have hp := phaseU (rest.map fun e => List.replicate e 3) (List.replicate (p + 1) 3)
+    (Enc X ++ 1 :: (Q ++ 0 :: E.Z)) [0] hws (bits_rep3 _) (by simp [ALL]) sR
+  have hax2 := hax.symm.trans hlist
+  have hstart : E.CfgPop rest = hdR QG.gGL [0] (a :: X0) := by
+    simp only [GEnv.CfgPop]; rw [hax]
+  rw [hstart]
+  refine ((h1.trans (hp.of_eq (by rw [hax2]) rfl)).of_eq rfl ?_)
+  simp only [unm_append, unm_Enc, unm_rep3, ← Enc_MEs]
+  rw [show [0] ++ Enc rest ++ [1] ++ List.replicate (p + 1) 3 ++ [1] = 0 :: (Enc rest ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) by
+    simp [List.append_assoc], hdR_z0]
+
+/-- The `HFam` of an empty `H` (the separator `1` is followed by `R0`, then the blank). -/
+def HFam.ofEmpty (R0 : List Nat) (hR0 : R0 = [] ∨ ∃ J', NoB J' ∧ R0 = 1 :: J') (hnb : NoB R0) (Zt : List Nat)
+    (hZ : Sym4 Zt) : HFam where
+  Hc := fun _ => R0
+  N := 0
+  Zt := Zt
+  Hu := unm R0
+  hZ := hZ
+  nb := fun _ _ => hnb
+  un := fun _ _ => rfl
+  step := fun c hc => absurd hc (Nat.not_lt_zero _)
+  last := Or.inr ⟨rfl, hR0⟩
+
+/-- With an empty `H` every edge fails. -/
+theorem emptyBad (F : HFam) (hN : F.N = 0) (hH0 : F.Hc 0 = [] ∨ ∃ J', NoB J' ∧ F.Hc 0 = 1 :: J')
+    (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p x y : Nat) (hx : 1 ≤ x) (hy : 1 ≤ y) :
+    RowBad F W p x 0 ∨ ∃ n Wr, W.drop (x - 1) = (n + 1) :: Wr ∧ 0 + (p + 1) * n ≤ F.N ∧
+      ColBad F W y (0 + (p + 1) * n) := by
+  by_cases hxW : x ≤ W.length
+  · obtain ⟨n, Wr, hr, hgr⟩ := W_split W hW (x - 1) (by omega)
+    by_cases hn : n = 0
+    · subst hn
+      refine Or.inr ⟨0, Wr, hr, by simp [hN], ?_⟩
+      by_cases hyW : y ≤ W.length
+      · by_cases hy1 : 1 ≤ y
+        · obtain ⟨n', Wr', hr', hgr'⟩ := W_split W hW (y - 1) (by omega)
+          refine Or.inr ⟨n', Wr', hr', ?_⟩
+          by_cases hn' : n' = 0
+          · subst hn'
+            refine Or.inr ⟨[], F.Hc 0, by simp [hN], by simp, by simp [MP], ?_⟩
+            rcases hH0 with h | ⟨J', hJ', h⟩
+            · exact Or.inl (by simp [h])
+            · exact Or.inr (Or.inl ⟨J', hJ', by simp [h]⟩)
+          · exact Or.inl (by simp [hN]; omega)
+        · exact Or.inl (by omega)
+      · exact Or.inl (by omega)
+    · exact Or.inl (Or.inr ⟨n, Wr, hr, by
+        rw [hN]; have : 0 < (p + 1) * n := Nat.mul_pos (by omega) (Nat.pos_of_ne_zero hn); omega⟩)
+  · exact Or.inl (Or.inl (by omega))
+
+theorem checkEmpty (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (R0 : List Nat)
+    (hR0 : R0 = [] ∨ ∃ J', NoB J' ∧ R0 = 1 :: J') (hnb : NoB R0) (Zt : List Nat) (hZ : Sym4 Zt)
+    (X : List Nat) (hX : ∀ e ∈ X, 1 ≤ e) :
+    (X = [] → ∃ c', AccS c' ∧ zgiLogic.Reach
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc X ++ 1 :: (R0 ++ 0 :: Zt))) c') ∧
+    (X ≠ [] → FailsTo
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc X ++ 1 :: (R0 ++ 0 :: Zt)))
+      (Ufull W (p + 1) X (unm R0)) Zt) := by
+  let F := HFam.ofEmpty R0 hR0 hnb Zt hZ
+  have sP : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) := by
+    refine ((Sym4.app (fun a ha => ?_) (by simp [ALL])).app (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (by simp [ALL])))
+    have := Enc_o13 W a ha; simp [O13, ALL] at this ⊢; omega
+  constructor
+  · rintro rfl
+    have sR : Sym4 (R0 ++ 0 :: Zt) := F.sym 0 (Nat.le_refl _)
+    have h1 := y1eEnd _ (R0 ++ 0 :: Zt) sP sR
+    have sP1 : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ [1]) := by
+      refine sP.app (show Sym4 [1] from Sym4.cons (by simp [ALL]) Sym4.nil)
+    rcases hR0 with rfl | ⟨J', hJ', rfl⟩
+    · have h2 := fn1_B _ Zt sP1 hZ
+      exact ⟨_, ⟨_, _, Or.inl rfl⟩, (h1.of_eq (by simp [Enc]) rfl).trans h2⟩
+    · have h2 := fn1_M _ (J' ++ 0 :: Zt) sP1 (hJ'.sym4.app (Sym4.cons (by simp [ALL]) hZ))
+      exact ⟨_, ⟨_, _, Or.inr rfl⟩, (h1.of_eq (by simp [Enc]) rfl).trans h2⟩
+  · intro hne
+    obtain ⟨x, X1, rfl⟩ : ∃ x X1, X = x :: X1 := by
+      cases X with
+      | nil => exact absurd rfl hne
+      | cons x X1 => exact ⟨x, X1, rfl⟩
+    have hx : 1 ≤ x := hX x (by simp)
+    have hd0 : ∀ e ∈ ([] : List Nat), 1 ≤ e := by simp
+    cases X1 with
+    | nil =>
+      have := oddFailF F W [] p x 0 hW hd0 (by simp) hx (Nat.zero_le _)
+      refine FailsTo.ofCfg ?_ (FailsTo.cast ?_ this)
+      · simp [Enc, U, MEnc, F, HFam.ofEmpty, List.append_assoc]
+      · simp [Ufull, F, HFam.ofEmpty, Enc, U, List.append_assoc]
+    | cons y X2 =>
+      have hy : 1 ≤ y := hX y (by simp)
+      have hX2 : ∀ e ∈ X2, 1 ≤ e := fun e he => hX e (by simp [he])
+      have := edgeFailF F W [] X2 p x y 0 hW hd0 hX2 (by simp) hx hy (Nat.zero_le _)
+        (emptyBad F rfl (by simpa [F, HFam.ofEmpty] using hR0) W hW p x y hx hy)
+      refine FailsTo.ofCfg ?_ (FailsTo.cast ?_ this)
+      · simp [Enc, U, MEnc, F, HFam.ofEmpty, List.append_assoc]
+      · simp [Ufull, F, HFam.ofEmpty, Enc, U, List.append_assoc]
+
+theorem checkG_nil (w : List Nat) (m : Nat) (X : List Nat) : checkG w m X [] = decide (X = []) := by
+  match X with
+  | [] => simp [checkG, pairsOf, checkEdges]
+  | [x] => simp [checkG]
+  | x :: y :: r =>
+    simp only [checkG, pairsOf, checkEdges]
+    by_cases h1 : x > w.length ∨ y > w.length
+    · simp [h1]
+    · rw [if_neg h1]
+      have : (w.getD (x - 1) 0 - 1) * m + w.getD (y - 1) 0 > ([] : List Nat).length ∨
+          ([] : List Nat).getD (((w.getD (x - 1) 0 - 1) * m + w.getD (y - 1) 0) - 1) 0 < 2 ∨
+          ((w.getD (x - 1) 0 - 1) * m + w.getD (y - 1) 0) ∈ ([] : List Nat) := by
+        right; left; simp
+      rw [if_pos this]
+      simp
+
+theorem checkSpecE (E : GEnv) (p : Nat) (X R0 : List Nat) (hR0 : R0 = [] ∨ ∃ J', NoB J' ∧ R0 = 1 :: J')
+    (hR0o : ∀ a ∈ R0, a ∈ O13) (hX : ∀ e ∈ X, 1 ≤ e)
+    (hTc : E.Tc = List.replicate (p + 1) 3 ++ 1 :: (Enc X ++ 1 :: R0)) :
+    E.CheckSpec (fun w => checkG w (p + 1) X []) AccS := by
+  intro rest hv
+  have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
+  have hpop := popG E rest hW p X R0 hR0o hTc
+  have hnb : NoB R0 := fun a ha => by have := hR0o a ha; simp [O13, NB] at this ⊢; omega
+  have hfull := checkEmpty rest hW p R0 hR0 hnb E.Z E.hZ X hX
+  refine ⟨fun hg => ?_, fun hg => ?_⟩
+  · simp only [checkG_nil] at hg
+    have hX0 : X = [] := by simpa using hg
+    obtain ⟨c', hc, hr⟩ := hfull.1 hX0
+    exact ⟨c', hc, hpop.trans hr⟩
+  · simp only [checkG_nil] at hg
+    have hX0 : X ≠ [] := by simpa using hg
+    obtain ⟨A, R1, hA, hR1, hu, hr⟩ := hfull.2 hX0
+    have hf := failPath A R1 E.Z hA hR1 E.hZ
+    refine (hpop.trans hr).trans (hf.of_eq rfl ?_)
+    rw [hu, unm_o13 hR0o]
+    simp [Ufull, GEnv.CfgD, GEnv.Rt, hTc, List.append_assoc]
+
+end ZP.G
