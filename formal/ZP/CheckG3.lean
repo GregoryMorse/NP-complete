@@ -987,6 +987,63 @@ theorem edgeRow (F : HFam) (ms Wr d X' : List Nat) (n x p c : Nat)
   exact h1'.trans h2
 
 
+/-- The unmarked content of the whole check tape (without the blank and `Zt`). -/
+def Ufull (W : List Nat) (m : Nat) (Xall : List Nat) (Hu : List Nat) : List Nat :=
+  Enc W ++ 1 :: (List.replicate m 3 ++ 1 :: (Enc Xall ++ 1 :: Hu))
+
+/-- The row part of an edge fails: `H` runs out. -/
+theorem rowFail (F : HFam) (ms Wr d X' : List Nat) (n x p c : Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hWr : ∀ e ∈ Wr, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX' : ∀ e ∈ X', 1 ≤ e) (hx : 1 ≤ x)
+    (hc : c ≤ F.N) (hov : F.N < c + (p + 1) * n) :
+    FailsTo
+      (hd QG.gM1 (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate x 2)
+        (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (Ufull (ms ++ (n + 1) :: Wr) (p + 1) (d ++ x :: X') F.Hu) F.Zt := by
+  have hws := Enc_entries Wr hWr
+  have hxs : ∀ e ∈ (d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3,
+      Bits e ∧ e ≠ [] := by
+    intro e he
+    simp only [List.mem_append, List.mem_cons, List.mem_map] at he
+    rcases he with ⟨v, hv, rfl⟩ | rfl | ⟨v, hv, rfl⟩
+    · exact ⟨bits_rep2 v, by have := hdd v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+    · exact ⟨bits_rep2 x, by intro h; have := congrArg List.length h; simp at this; omega⟩
+    · exact ⟨bits_rep3 v, by have := hX' v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+  have sX' : Sym4 (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) := by
+    have := Enc_o13 X'
+    refine Sym4.app (fun a ha => ?_) (Sym4.cons (by simp [ALL]) (F.sym c hc))
+    have := Enc_o13 X' a ha; simp [O13, ALL] at this ⊢; omega
+  have sQ : Sym4 (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ List.replicate p 3) := by
+    refine (((MEnc_sym4 ms).app (fun a ha => ?_)).app (by simp [ALL])).app (Sym4.rep _ _ (by simp [ALL]))
+    have := Enc_o13 ((n + 1) :: Wr) a ha; simp [O13, ALL] at this ⊢; omega
+  have hZ : ∀ a ∈ [1] ++ MEnc d ++ List.replicate x 2, a = 1 ∨ a = 2 := by
+    intro a ha
+    simp only [List.mem_append, List.mem_singleton, List.mem_replicate] at ha
+    rcases ha with (rfl | ha) | ⟨_, rfl⟩
+    · left; rfl
+    · have := MEnc_o12 d a ha; simp [O12] at this; omega
+    · right; rfl
+  have h1 := gm1Walk (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ List.replicate p 3) sQ _ ([1] ++ MEnc d ++ List.replicate x 2)
+    (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) rfl hZ (Sym4.cons (by simp [ALL]) sX')
+  have h2 := rowLoopF F ms (Wr.map fun e => List.replicate e 3)
+    ((d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3)
+    hms hws hxs n p 0 n 0 c (by omega) hc hov
+  have h1' : zgiLogic.Reach
+      (hd QG.gM1 (MEnc ms ++ Enc ((n + 1) :: Wr) ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate x 2)
+        (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (hd QG.gTR1 (MEnc ms ++ List.replicate 0 2 ++ 3 :: (List.replicate n 3 ++ 1 :: (MEs (Wr.map fun e => List.replicate e 3) ++ 1 :: List.replicate p 3)))
+        (2 :: (List.replicate 0 2 ++ 1 :: (MEs ((d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3) ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))) := by
+    refine h1.of_eq (by simp [List.replicate_succ', List.append_assoc]) ?_
+    simp [Enc_MEs, MEnc_MEs, MEs_append, MEs, ME, List.append_assoc, List.replicate_succ]
+  refine FailsTo.pre h1' (FailsTo.cast ?_ h2)
+  have u3 : unm (MEs (Wr.map fun e => List.replicate e 3)) = MEs (Wr.map fun e => List.replicate e 3) := by
+    rw [← Enc_MEs, unm_Enc]
+  have e2 : MEs ((d.map fun e => List.replicate e 2) ++ List.replicate x 2 :: X'.map fun e => List.replicate e 3) =
+      MEnc d ++ List.replicate x 2 ++ 1 :: Enc X' := by
+    simp [MEnc_MEs, Enc_MEs, MEs_append, MEs, ME, List.append_assoc]
+  have e3 : unm (MEs (Wr.map fun e => List.replicate e 3)) = Enc Wr := by
+    rw [u3, ← Enc_MEs]
+  simp [UG, Ufull, e2, e3, unm_append, unm_MEnc, unm_rep2, unm_Enc, Enc_append, Enc, U, unm1, List.append_assoc]
+
 /-- After the row (or the column) part: back to the start of `X`, with `w` and `m` unmarked. -/
 theorem toY1 (WL : List (List Nat)) (c R : List Nat) (hW : ∀ e ∈ WL, Bits e ∧ e ≠ [])
     (hc : Bits c) (hR : Sym4 R) :
