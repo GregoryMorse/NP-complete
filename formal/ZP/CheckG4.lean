@@ -168,4 +168,118 @@ theorem secondFail (F : HFam) (W d X' : List Nat) (p y c : Nat)
     simp only [UG, Ufull, u3, u4, eW, unm_Enc, unm_rep3, F.hu_unm]
     simp [Enc, U, List.replicate_succ, rep3_cons, List.append_assoc]
 
+def RowBad (F : HFam) (W : List Nat) (p x c : Nat) : Prop :=
+  W.length < x ∨ ∃ n Wr, W.drop (x - 1) = (n + 1) :: Wr ∧ F.N < c + (p + 1) * n
+
+def ColBad (F : HFam) (W : List Nat) (y c : Nat) : Prop :=
+  W.length < y ∨ ∃ n Wr, W.drop (y - 1) = (n + 1) :: Wr ∧
+      (F.N < c + n ∨ ∃ (T : List (List Nat)) (R0 : List Nat), c + n ≤ F.N ∧ (∀ t ∈ T, Bits t) ∧
+        F.Hc (c + n) ++ 0 :: F.Zt = MP T ++ (R0 ++ 0 :: F.Zt) ∧
+        (R0 = [] ∨ (∃ R1, NoB R1 ∧ R0 = 1 :: R1) ∨ (∃ tl, Bits tl ∧ R0 = 2 :: tl) ∨
+          (∃ R1, NoB R1 ∧ R0 = 3 :: 1 :: R1) ∨ R0 = [3] ∨ (∃ Q, NoB Q ∧ R0 = 3 :: 2 :: Q)))
+
+/-- One edge `(x, y)` fails (at the `HFam` level). -/
+theorem edgeFailF (F : HFam) (W d X'' : List Nat) (p x y c : Nat)
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX'' : ∀ e ∈ X'', 1 ≤ e) (hdl : d.length % 2 = 0)
+    (hx : 1 ≤ x) (hy : 1 ≤ y) (hc : c ≤ F.N)
+    (hbad : RowBad F W p x c ∨ ∃ n Wr, W.drop (x - 1) = (n + 1) :: Wr ∧ c + (p + 1) * n ≤ F.N ∧
+      ColBad F W y (c + (p + 1) * n)) :
+    FailsTo
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc d ++ List.replicate x 3 ++ 1 :: (Enc (y :: X'') ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (Ufull W (p + 1) (d ++ x :: y :: X'') F.Hu) F.Zt := by
+  have hX' : ∀ e ∈ y :: X'', 1 ≤ e := by
+    intro e he
+    rcases List.mem_cons.1 he with rfl | he
+    · exact hy
+    · exact hX'' e he
+  rcases hbad with h | ⟨n, Wr, hr, hcn, hcol⟩
+  · exact firstFail F W d (y :: X'') p x c hW hdd hX' hdl hx hc h
+  · obtain ⟨r, rfl⟩ : ∃ r, x = r + 1 := ⟨x - 1, by omega⟩
+    have hr' : W.drop r = (n + 1) :: Wr := by simpa using hr
+    have hWr : ∀ e ∈ Wr, 1 ≤ e := by
+      intro e he
+      have : e ∈ W.drop r := by rw [hr']; exact List.mem_cons_of_mem _ he
+      exact hW e (List.mem_of_mem_drop this)
+    have hrow := rowHalf F W Wr d (y :: X'') r n p c hW hdd hX' hdl hr' hc hcn
+    have hdd' : ∀ e ∈ d ++ [r + 1], 1 ≤ e := by
+      intro e he
+      rcases List.mem_append.1 he with he | he
+      · exact hdd e he
+      · simp at he; omega
+    have hsec := secondFail F W (d ++ [r + 1]) X'' p y (c + (p + 1) * n) hW hdd' hX'' (by simp; omega) hy (by omega) hcol
+    refine FailsTo.pre (hrow.of_eq rfl (by simp [Enc, U, List.append_assoc])) (FailsTo.cast ?_ hsec)
+    simp [Ufull, List.append_assoc]
+
+/-- Shapes at the point where the column part looks for its target (index `i`). -/
+theorem hsBad (hs : List (List Nat)) (hb : ∀ t ∈ hs, Bits t) (hne : hs ≠ []) (J : List Nat) (hJ : JShape J)
+    (Zt : List Nat) (i : Nat) (hi : i ≤ hs.length)
+    (hbad : i = hs.length ∨ ∃ h : i < hs.length, hs[i] = [] ∨ ∃ Q, hs[i] = 2 :: Q) :
+    ∃ (T : List (List Nat)) (R0 : List Nat), (∀ t ∈ T, Bits t) ∧
+      HP hs i ++ J ++ 0 :: Zt = MP T ++ (R0 ++ 0 :: Zt) ∧
+      (R0 = [] ∨ (∃ R1, NoB R1 ∧ R0 = 1 :: R1) ∨ (∃ tl, Bits tl ∧ R0 = 2 :: tl) ∨
+        (∃ R1, NoB R1 ∧ R0 = 3 :: 1 :: R1) ∨ R0 = [3] ∨ (∃ Q, NoB Q ∧ R0 = 3 :: 2 :: Q)) := by
+  rcases hbad with rfl | ⟨hlt, ht⟩
+  · obtain ⟨tl, h1, h2⟩ := HP_full hs hne
+    obtain ⟨L, rfl⟩ : ∃ L, hs = L ++ [tl] := by
+      have h3 := List.dropLast_concat_getLast hne
+      rw [List.getLast?_eq_getLast hne] at h2
+      have h4 : hs.getLast hne = tl := by simpa using h2
+      exact ⟨hs.dropLast, by rw [← h4]; exact h3.symm⟩
+    simp only [List.dropLast_concat] at h1
+    have hbT : ∀ t ∈ L, Bits t := fun t ht => hb t (by simp [ht])
+    have hbtl : Bits tl := hb tl (by simp)
+    rcases hJ.2 with hJ0 | hJ1 | ⟨J', hJ'⟩
+    · refine ⟨L, 2 :: tl, hbT, ?_, Or.inr (Or.inr (Or.inl ⟨tl, hbtl, rfl⟩))⟩
+      rw [h1, hJ0]; simp
+    · refine ⟨L ++ [tl], [], hb, ?_, Or.inl rfl⟩
+      rw [h1, hJ1, MP_append]
+      simp [MP]
+    · refine ⟨L ++ [tl], 1 :: J', hb, ?_, Or.inr (Or.inl ⟨J', ?_, rfl⟩)⟩
+      · rw [h1, hJ', MP_append]
+        simp [MP]
+      · have := hJ.1; rw [hJ'] at this
+        intro a ha; exact this a (by simp [ha])
+  · have hbt := hb _ (List.getElem_mem hlt)
+    have e0 := List.take_append_drop i hs
+    have h1 : hs.drop i = hs[i] :: hs.drop (i + 1) := List.drop_eq_getElem_cons hlt
+    rw [h1] at e0
+    obtain ⟨A, hA⟩ : ∃ A, A = hs.take i := ⟨_, rfl⟩
+    obtain ⟨B, hB⟩ : ∃ B, B = hs.drop (i + 1) := ⟨_, rfl⟩
+    rw [← hA, ← hB] at e0
+    have hAl : A.length = i := by rw [hA]; simp; omega
+    have hAb : ∀ t ∈ A, Bits t := fun t ht => hb t (List.mem_of_mem_take (hA ▸ ht))
+    have hBb : ∀ t ∈ B, Bits t := fun t ht => hb t (List.mem_of_mem_drop (hB ▸ ht))
+    generalize hs[i] = t at e0 ht hbt
+    have hcut := (HP_cut t B A).1
+    rw [e0, hAl] at hcut
+    have sQB : NoB (Qof B ++ J) := by
+      refine NoB.app ?_ hJ.1
+      cases B with
+      | nil => simp [Qof]
+      | cons u ts => exact (NoB.cons (by simp [NB]) (HP_noB _ _ hBb))
+    rcases ht with ht | ⟨Q, hQ⟩
+    · refine ⟨A, 3 :: (Qof B ++ J), hAb, ?_, ?_⟩
+      · rw [hcut, ht]; simp
+      · cases B with
+        | nil => rcases hJ.2 with hJ0 | hJ1 | ⟨J', hJ'⟩
+                 · right; right; right; right; left; simp [Qof, hJ0]
+                 · right; right; right; left; exact ⟨[], NoB.nil, by simp [Qof, hJ1]⟩
+                 · right; right; right; left
+                   refine ⟨1 :: J', ?_, by simp [Qof, hJ']⟩
+                   have := hJ.1; rw [hJ'] at this
+                   intro a ha; exact this a (by simp [ha])
+        | cons u ts => right; right; right; left; exact ⟨HP (u :: ts) 0 ++ J, NoB.app (HP_noB _ _ hBb) hJ.1, by simp [Qof]⟩
+    · have hbQ : Bits Q := by
+        have := hbt; rw [hQ] at this
+        intro a ha; exact this a (by simp [ha])
+      refine ⟨A, 3 :: 2 :: (Q ++ Qof B ++ J), hAb, ?_, ?_⟩
+      · rw [hcut, hQ]; simp
+      · right; right; right; right; right
+        have nQ : NoB (Qof B) := by
+          cases B with
+          | nil => simp [Qof]
+          | cons u ts => exact NoB.cons (by simp [NB]) (HP_noB _ _ hBb)
+        exact ⟨Q ++ Qof B ++ J, NoB.app (NoB.app hbQ.noB nQ) hJ.1, rfl⟩
+
 end ZP.G
