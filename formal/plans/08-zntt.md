@@ -138,3 +138,10 @@ written). `PrimeNTT` proves the primality test and the whole ruler: copy phase `
 else back at `PA0`); `isPrimeN_iff`; `primeRuler` (P runs over 1+n*i until prime) and
 `primeRuler_primeN` (under `PrimeEx`, from P = 1 the machine reaches `WX` with P = `primeN n`).
 Next: records (`WX`..`RC*`), odometer, evaluation passes, power sums, merge, pair lemma.
+
+Record build (`ZP/RecordNTT.lean`, no sorry, imported by `ZP.lean`): `recordBuild` takes
+`hd WX [0,3] (1 :: P M K M C M Nn)` (P = j+1 cells, K = k1+1, C = c ≥ 1, Nn = n+1) to
+`hd WI0 (Pfx (wEnd n c 1 + 1) j k1 ++ 1^c) (1 :: Nn ++ recsFlat j (k1+1) (roundsPs n c 1 []))`.
+Pieces: copy engine (`copyP`, `copyW`, `kLoop`), `recordOne`, `roAll` (header reset), `nnLoop`,
+`roundStep` (one C cell), `roundLoop`, setup `wxStep`..`wc0Walk`. Next: evaluation passes.
+

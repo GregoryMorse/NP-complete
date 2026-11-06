@@ -1145,4 +1145,61 @@ theorem roundLoop (j k1 n : Nat) :
     simp only [wEnd, roundsPs]
     exact (hr.of_eq (by simp [List.replicate_succ']) rfl).trans h2
 
+/-! ### Setup: `WX` .. `RC1` -/
+
+theorem wxStep (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.WX [0, 3] R) (hd QNTT.WX2 [0] (3 :: R)) := by
+  have hV : Valid [ALL] [R] := Valid.cons hR (Valid.nil _)
+  exact checkTT (env := [R]) (E := []) (k := 4) hV trivial
+    (ls := [.sym 0, .sym 3]) (rs := [.blk 0 .id]) (ls' := [.sym 0]) (rs' := [.sym 3, .blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem wx2Step (R : List Nat) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.WX2 [0] R) (hdR QNTT.WSR [3] R) := by
+  have hV : Valid [ALL] [R] := Valid.cons hR (Valid.nil _)
+  exact checkTF (env := [R]) (E := []) (k := 4) hV trivial
+    (ls := [.sym 0]) (rs := [.blk 0 .id]) (ls' := [.sym 3]) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem wsrScan (A R : List Nat) (hA : Sym4 A) (hR : NoB R) :
+    znttLogic.Reach (hdR QNTT.WSR A R) (hd QNTT.WC0 (A ++ R) []) := by
+  have hV : Valid [ALL, NB] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem wc0Walk (A1 : List Nat) (n : Nat) (R : List Nat) (hA : Sym4 A1) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.WC0 (A1 ++ [1] ++ List.replicate n 3) R)
+      (hd QNTT.RC1 A1 (1 :: (List.replicate n 3 ++ R))) := by
+  have hV : Valid [ALL, [3], ALL] [A1, List.replicate n 3, R] :=
+    Valid.cons hA (Valid.cons (repSet n 3) (Valid.cons hR (Valid.nil _)))
+  exact checkTT (env := [A1, List.replicate n 3, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The whole record build, from `WX` to `WI0`. -/
+theorem recordBuild (j k1 c n : Nat) (hc : 0 < c) :
+    znttLogic.Reach
+      (hd QNTT.WX [0, 3] (1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (k1 + 1) 3 ++ 1 ::
+        (List.replicate c 3 ++ 1 :: List.replicate (n + 1) 3)))))
+      (hd QNTT.WI0 (Pfx (wEnd n c 1 + 1) j k1 ++ List.replicate (0 + c) 3)
+        (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) (roundsPs n c 1 [])))) := by
+  have sR : Sym4 (1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (k1 + 1) 3 ++ 1 ::
+        (List.replicate c 3 ++ 1 :: List.replicate (n + 1) 3)))) := by
+    intro x hx; simp [List.mem_replicate] at hx; simp [ALL]; omega
+  have h1 := wxStep _ sR
+  have h2 := wx2Step (3 :: _) (Sym4.cons (by simp [ALL]) sR)
+  have nR : NoB (3 :: 1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (k1 + 1) 3 ++ 1 ::
+        (List.replicate c 3 ++ 1 :: List.replicate (n + 1) 3)))) := by
+    intro x hx; simp [List.mem_replicate, NB] at hx; simp [NB]; omega
+  have h3 := wsrScan [3] _ (by intro y hy; simp at hy; subst hy; simp [ALL]) nR
+  have sA1 : Sym4 (Pfx 2 j k1 ++ List.replicate c 3) := (Pfx_un _ _ _).sym4.app (Un.rep _ _ (by simp)).sym4
+  have h4 := wc0Walk (Pfx 2 j k1 ++ List.replicate c 3) (n + 1) [] sA1 Sym4.nil
+  have h5 := roundLoop j k1 n c 0 1 [] (by simp) (by omega)
+  refine h1.trans (h2.trans (h3.trans ((h4.of_eq ?_ rfl).trans (h5.of_eq ?_ rfl))))
+  · simp [Pfx, List.replicate_succ, List.append_assoc]
+  · simp [recsFlat]
+
 end ZP.NTT
