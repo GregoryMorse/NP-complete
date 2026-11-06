@@ -999,4 +999,20 @@ theorem toY1 (WL : List (List Nat)) (c R : List Nat) (hW : ∀ e ∈ WL, Bits e 
   refine (h1.of_eq rfl (by simp)).trans (h2.of_eq rfl ?_)
   rw [show [0] ++ unm (MEs WL) ++ [1] ++ unm c ++ [1] = 0 :: (unm (MEs WL) ++ [1] ++ unm c ++ [1]) by simp, hdR_z0]
 
+
+/-- The same, with the head at the end of the tape to the left of `X`'s remainder (after the column part). -/
+theorem toY1g (WL : List (List Nat)) (c Rl Rr : List Nat) (hW : ∀ e ∈ WL, Bits e ∧ e ≠ [])
+    (hc : Bits c) (hRl : NoB Rl) (hR : Sym4 Rr) :
+    zgiLogic.Reach (hd QG.gGL (MEs WL ++ 1 :: (c ++ 1 :: Rl)) Rr)
+      (hdR QG.gY1e (unm (MEs WL) ++ [1] ++ unm c ++ [1]) (Rl ++ Rr)) := by
+  have nW := MEs_noB WL (fun e he => (hW e he).1)
+  have nA : NoB (MEs WL ++ 1 :: (c ++ 1 :: Rl)) := by
+    simp only [NoB_app_iff, NoB_cons_iff]
+    simp [NB, nW, hc.noB, hRl]
+  have h1 := gglWalk _ Rr nA hR
+  have sR : Sym4 (Rl ++ Rr) := hRl.sym4.app hR
+  have h2 := phaseU WL c (Rl ++ Rr) [0] hW hc (by simp [ALL]) sR
+  refine (h1.of_eq rfl (by simp)).trans (h2.of_eq rfl ?_)
+  rw [show [0] ++ unm (MEs WL) ++ [1] ++ unm c ++ [1] = 0 :: (unm (MEs WL) ++ [1] ++ unm c ++ [1]) by simp, hdR_z0]
+
 end ZP.G
