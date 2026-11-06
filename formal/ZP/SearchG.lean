@@ -261,20 +261,20 @@ end GEnv
 namespace GEnv
 
 /-- The check phase: from the popped stack the machine either accepts or returns to the decrement. -/
-def CheckSpec (E : GEnv) (chk : List Nat → Bool) (Acc : ZC) : Prop :=
+def CheckSpec (E : GEnv) (chk : List Nat → Bool) (Acc : ZC → Prop) : Prop :=
   ∀ rest, VStack E.m rest →
-    (chk rest = true → zgiLogic.Reach (E.CfgPop rest) Acc) ∧
+    (chk rest = true → ∃ c', Acc c' ∧ zgiLogic.Reach (E.CfgPop rest) c') ∧
     (chk rest = false → zgiLogic.Reach (E.CfgPop rest) (E.CfgD rest))
 
-theorem search_machine (E : GEnv) (chk : List Nat → Bool) (Acc : ZC) (hC : E.CheckSpec chk Acc)
+theorem search_machine (E : GEnv) (chk : List Nat → Bool) (Acc : ZC → Prop) (hC : E.CheckSpec chk Acc)
     {rest : List Nat} {c : Nat} {b : Bool} (h : Rch chk E.m rest c b) :
     VStack E.m rest → c ≤ E.m →
-    (b = true → zgiLogic.Reach (E.CfgS rest c) Acc) ∧
+    (b = true → ∃ c', Acc c' ∧ zgiLogic.Reach (E.CfgS rest c) c') ∧
     (b = false → zgiLogic.Reach (E.CfgS rest c) (E.CfgD rest)) := by
   induction h with
   | @z_ok rest hk =>
     intro hv _
-    exact ⟨fun _ => (E.pop rest).trans ((hC rest hv).1 hk), fun h => by cases h⟩
+    exact ⟨fun _ => by obtain ⟨c', h1, h2⟩ := (hC rest hv).1 hk; exact ⟨c', h1, (E.pop rest).trans h2⟩, fun h => by cases h⟩
   | @z_no rest hk =>
     intro hv _
     exact ⟨fun h => (by cases h), fun _ => (E.pop rest).trans ((hC rest hv).2 hk)⟩
@@ -283,13 +283,13 @@ theorem search_machine (E : GEnv) (chk : List Nat → Bool) (Acc : ZC) (hC : E.C
     have hr : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
     have hs := (E.scanColl c rest hr hm).trans (E.dec c rest)
     obtain ⟨i1, i2⟩ := ih hv (by omega)
-    exact ⟨fun hb => hs.trans (i1 hb), fun hb => hs.trans (i2 hb)⟩
+    exact ⟨fun hb => by obtain ⟨c', h1, h2⟩ := i1 hb; exact ⟨c', h1, hs.trans h2⟩, fun hb => hs.trans (i2 hb)⟩
   | @push_ok rest c hn _ ih =>
     intro hv hc
     have hr : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
     have hs := E.scanPush c rest hr hn
     have hv' := vstack_push hv hc hn
-    exact ⟨fun _ => hs.trans ((ih hv' (Nat.le_refl _)).1 rfl), fun h => by cases h⟩
+    exact ⟨fun _ => by obtain ⟨c', h1, h2⟩ := (ih hv' (Nat.le_refl _)).1 rfl; exact ⟨c', h1, hs.trans h2⟩, fun h => by cases h⟩
   | @push_no rest c b hn _ _ ih1 ih2 =>
     intro hv hc
     have hr : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
@@ -297,7 +297,7 @@ theorem search_machine (E : GEnv) (chk : List Nat → Bool) (Acc : ZC) (hC : E.C
     have hv' := vstack_push hv hc hn
     have hs2 := hs.trans (((ih1 hv' (Nat.le_refl _)).2 rfl).trans (E.dec c rest))
     obtain ⟨i1, i2⟩ := ih2 hv (by omega)
-    exact ⟨fun hb => hs2.trans (i1 hb), fun hb => hs2.trans (i2 hb)⟩
+    exact ⟨fun hb => by obtain ⟨c', h1, h2⟩ := i1 hb; exact ⟨c', h1, hs2.trans h2⟩, fun hb => hs2.trans (i2 hb)⟩
 
 end GEnv
 
