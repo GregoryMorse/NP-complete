@@ -1340,4 +1340,86 @@ theorem Hs_mark (H used : List Nat) (k : Nat) (hk1 : 1 ≤ k) (hk : k ≤ H.leng
         have : k + j + 1 ≠ k := by omega
         simp [this]
 
+/-- Decompose `W` at a position. -/
+theorem W_split (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (r : Nat) (hr : r < W.length) :
+    ∃ n Wr, W.drop r = (n + 1) :: Wr ∧ W.getD r 0 = n + 1 := by
+  have h1 : W.drop r = W[r] :: W.drop (r + 1) := List.drop_eq_getElem_cons hr
+  have h2 : 1 ≤ W[r] := hW _ (List.getElem_mem hr)
+  refine ⟨W[r] - 1, W.drop (r + 1), ?_, ?_⟩
+  · rw [h1]; congr 1; omega
+  · rw [List.getD_eq_getElem?_getD]; simp [hr]; omega
+
+/-- One successful edge `(r+1, r'+1)`. -/
+theorem edgeStep (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H used J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt)
+    (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e) (d X'' : List Nat) (r r' : Nat)
+    (hdd : ∀ e ∈ d, 1 ≤ e) (hX'' : ∀ e ∈ X'', 1 ≤ e) (hdl : d.length % 2 = 0)
+    (hr : r < W.length) (hr' : r' < W.length) (k : Nat)
+    (hkd : k = (W.getD r 0 - 1) * (p + 1) + W.getD r' 0)
+    (hk : k ≤ H.length) (hv : 2 ≤ H.getD (k - 1) 0) (hu : k ∉ used) :
+    zgiLogic.Reach
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc d ++ List.replicate (r + 1) 3 ++ 1 :: (Enc ((r' + 1) :: X'') ++ 1 :: (HP (Hs H used) 0 ++ J ++ 0 :: Zt))))
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc (d ++ [r + 1, r' + 1]) ++ Enc X'' ++ 1 :: (HP (Hs H (k :: used)) 0 ++ J ++ 0 :: Zt))) := by
+  obtain ⟨n, Wr, hdr, hgr⟩ := W_split W hW r hr
+  obtain ⟨n', Wr', hdr', hgr'⟩ := W_split W hW r' hr'
+  have hk1 : 1 ≤ k := by
+    rw [hkd, hgr']; exact Nat.le_trans (Nat.succ_le_succ (Nat.zero_le n')) (Nat.le_add_left _ _)
+  have hkn : k = n * (p + 1) + n' + 1 := by rw [hkd, hgr, hgr']; simp [Nat.add_assoc]
+  have hmul : (p + 1) * n = n * (p + 1) := Nat.mul_comm _ _
+  have hhne : Hs H used ≠ [] := by
+    intro h; have := Hs_length H used; rw [h] at this; simp at this; exact hne (List.length_eq_zero_iff.1 this.symm)
+  let F := HFam.ofHP (Hs H used) hhne (Hs_bits H used) J hJ Zt hZ
+  have hFN : F.N = H.length := by simp [F, HFam.ofHP, Hs_length]
+  have hFc : ∀ c, F.Hc c = HP (Hs H used) c ++ J := fun c => rfl
+  have hFZ : F.Zt = Zt := rfl
+  have hX' : ∀ e ∈ (r' + 1) :: X'', 1 ≤ e := by
+    intro e he
+    rcases List.mem_cons.1 he with rfl | he
+    · omega
+    · exact hX'' e he
+  have hrow := rowHalf F W Wr d ((r' + 1) :: X'') r n p 0 hW hdd hX' hdl hdr (by omega)
+    (by rw [hFN]; omega)
+  have hlt : k - 1 < H.length := by omega
+  have hget : (Hs H used)[k - 1]'(by rw [Hs_length]; exact hlt) = 3 :: List.replicate (H.getD (k - 1) 0 - 2) 3 := by
+    rw [Hs_get _ _ _ hlt]
+    have : (k - 1 + 1) = k := by omega
+    have hv1 : 1 < H.getD (k - 1) 0 := by omega
+    rw [List.getD_eq_getElem?_getD] at hv1
+    simp [tl, this, hu, show ¬ (H.getD (k - 1) 0 ≤ 1) by omega, hv1]
+  have hsplit : Hs H used = (Hs H used).take (k - 1) ++ (3 :: List.replicate (H.getD (k - 1) 0 - 2) 3) :: (Hs H used).drop k := by
+    have e0 := List.take_append_drop (k - 1) (Hs H used)
+    have h1 : (Hs H used).drop (k - 1) = (Hs H used)[k - 1]'(by rw [Hs_length]; exact hlt) :: (Hs H used).drop (k - 1 + 1) :=
+      List.drop_eq_getElem_cons (by rw [Hs_length]; exact hlt)
+    rw [h1, hget, show k - 1 + 1 = k by omega] at e0
+    exact e0.symm
+  obtain ⟨A, hA⟩ : ∃ A, A = (Hs H used).take (k - 1) := ⟨_, rfl⟩
+  obtain ⟨B, hB⟩ : ∃ B, B = (Hs H used).drop k := ⟨_, rfl⟩
+  obtain ⟨rr, hrr⟩ : ∃ rr, rr = List.replicate (H.getD (k - 1) 0 - 2) 3 := ⟨_, rfl⟩
+  rw [← hA, ← hB, ← hrr] at hsplit
+  have hAl : A.length = k - 1 := by rw [hA]; simp [Hs_length]; omega
+  have hBits : ∀ t ∈ B, Bits t := fun t ht => Hs_bits H used t (List.mem_of_mem_drop (hB ▸ ht))
+  have hAb : ∀ t ∈ A, Bits t := fun t ht => Hs_bits H used t (List.mem_of_mem_take (hA ▸ ht))
+  have sQB : Sym4 (Qof B) := by
+    cases B with
+    | nil => simp [Qof, ALL]
+    | cons u ts => exact Sym4.cons (by simp [ALL]) (HP_sym4 _ _ hBits)
+  have sr0 : Sym4 (rr ++ Qof B ++ J) := by
+    refine ((((hrr ▸ bits_rep3 _ : Bits rr)).sym4).app sQB).app hJ.1.sym4
+  obtain ⟨hc1, hc2⟩ := HP_cut (3 :: rr) B A
+  rw [← hsplit] at hc1 hc2
+  have hT : F.Hc ((p + 1) * n + n') = MP A ++ 3 :: 3 :: (rr ++ Qof B ++ J) := by
+    rw [hFc, show (p + 1) * n + n' = A.length by omega, hc1]; simp
+  have hcol := colHalf F W Wr' (d ++ [r + 1]) X'' r' n' p ((p + 1) * n) A (rr ++ Qof B ++ J) hW
+    (by intro e he; rcases List.mem_append.1 he with he | he
+        · exact hdd e he
+        · simp at he; omega) hX'' (by simp; omega) hdr' (by rw [hFN]; omega) hAb hT sr0
+  have hmark := Hs_mark H used k hk1 hk hv hu
+  rw [← hA, ← hB, ← hrr] at hmark
+  refine (hrow.of_eq (by simp [Enc, U, List.append_assoc, hFc, hFZ]) rfl).trans (hcol.of_eq (by simp [Enc, U, List.append_assoc, hFc, hFZ]) ?_)
+  rw [hmark]
+  have hc3 := (HP_cut (2 :: rr) B A).2
+  rw [hc3]
+  simp [List.append_assoc, hFZ]
+
 end ZP.G
