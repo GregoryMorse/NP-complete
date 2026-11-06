@@ -1877,15 +1877,19 @@ theorem colNoTarget (F : HFam) (W d X' : List Nat) (p y c : Nat)
   have nA : NoB (MEnc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate y 2) := by
     simp [NB]
   have h1 := il0Walk' _ _ nA sT
+  have a3 : (3 : Nat) ∈ ALL := by simp [ALL]
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have a2 : (2 : Nat) ∈ ALL := by simp [ALL]
+  have sL : Sym4 (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++
+      1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) :=
+    ((((Sym4.rep (p + 1) 3 a3).app (Sym4.cons a1 Sym4.nil)).app (MEnc_sym4 d)).app (Sym4.rep y 2 a2)).app sT
   have sR : Sym4 (1 :: (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++
-      1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) := by
-    refine Sym4.cons (by simp [ALL]) ((((Sym4.rep _ _ (by simp [ALL])).app (by simp [ALL])).app (MEnc_sym4 d)).app
-      ((Sym4.rep _ _ (by simp [ALL])).app sT))
+      1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) := Sym4.cons a1 sL
   have h2 := ilSkipList (1 :: (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++
       1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) sR W [] hW Sym4.nil
   have h3 := ilNoTarget (MEnc W) (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++
       1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) (MEnc_sym4 W)
-    (by simpa using sR.tail)
+    sL
   have hall := h1.trans ((h2.of_eq (by simp [List.append_assoc]) rfl).trans (h3.of_eq rfl rfl))
   have hnb := F.nb c hc
   have hX'n : NoB (Enc X') := by
