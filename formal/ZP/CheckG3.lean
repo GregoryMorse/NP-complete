@@ -1163,4 +1163,93 @@ theorem rowHalf (F : HFam) (W Wr d X' : List Nat) (r n p c : Nat)
       List.replicate_succ, List.append_assoc]
     done
 
+/-- The column half-step as a whole. -/
+theorem colHalf (F : HFam) (W Wr d X' : List Nat) (r n p c : Nat) (T : List (List Nat)) (r0 : List Nat)
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX' : ∀ e ∈ X', 1 ≤ e) (hdl : d.length % 2 = 1)
+    (hr : W.drop r = (n + 1) :: Wr) (hc : c + n ≤ F.N) (hTb : ∀ t ∈ T, Bits t)
+    (hT : F.Hc (c + n) = MP T ++ 3 :: 3 :: r0) (hr0 : Sym4 r0) :
+    zgiLogic.Reach
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc d ++ List.replicate (r + 1) 3 ++ 1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+        (MEnc (d ++ [r + 1]) ++ Enc X' ++ 1 :: (MU T ++ 3 :: 2 :: (r0 ++ 0 :: F.Zt)))) := by
+  have hrl : r ≤ W.length := by
+    have := congrArg List.length hr
+    simp at this; omega
+  have hWr : ∀ e ∈ Wr, 1 ≤ e := by
+    intro e he
+    have : e ∈ W.drop r := by rw [hr]; exact List.mem_cons_of_mem _ he
+    exact hW e (List.mem_of_mem_drop this)
+  have hms : ∀ e ∈ W.take r, 1 ≤ e := fun e he => hW e (List.mem_of_mem_take he)
+  have hcc : c ≤ F.N := by omega
+  have hXs : Sym4 (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) := by
+    refine Sym4.app (fun a ha => ?_) (Sym4.cons (by simp [ALL]) (F.sym c hcc))
+    have := Enc_o13 X' a ha; simp [O13, ALL] at this ⊢; omega
+  have hL := labelFind (p + 1) d (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) hdd hXs r [] W 0
+    (by simp) hW hrl
+  have hdf : decide (d.length % 2 = 1) = true := by simp [hdl]
+  rw [hdf] at hL
+  obtain ⟨e, d', hdeq⟩ : ∃ e d', d = e :: d' := by
+    cases d with
+    | nil => simp at hdl
+    | cons e d' => exact ⟨e, d', rfl⟩
+  have hde : 1 ≤ e := hdd e (by simp [hdeq])
+  have hd' : ∀ x ∈ d', 1 ≤ x := fun x hx => hdd x (by simp [hdeq, hx])
+  have hLd : (LDone true) = QG.gIL0 := rfl
+  rw [hLd, hr] at hL
+  have hZ0 : Sym4 (0 :: F.Zt) := Sym4.cons (by simp [ALL]) F.hZ
+  have hnA : NoB (MEnc (W.take r) ++ Enc ((n + 1) :: Wr) ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++
+      List.replicate (0 + r + 1) 2) := by simp [NB]
+  have hIL := il0Walk' _ (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) hnA (Sym4.cons (by simp [ALL]) hXs)
+  have hxs0 : ∀ x ∈ (List.replicate e 2 :: ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 ::
+      X'.map fun e => List.replicate e 3)), Bits x ∧ x ≠ [] := by
+    intro x hx
+    simp only [List.mem_append, List.mem_cons, List.mem_map] at hx
+    rcases hx with rfl | ⟨v, hv, rfl⟩ | rfl | ⟨v, hv, rfl⟩
+    · exact ⟨bits_rep2 e, by intro h; have := congrArg List.length h; simp at this; omega⟩
+    · exact ⟨bits_rep2 v, by have := hd' v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+    · exact ⟨bits_rep2 _, by intro h; have := congrArg List.length h; simp at this⟩
+    · exact ⟨bits_rep3 v, by have := hX' v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+  have hCol := colPartU F (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2)
+    ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3) r0
+    hms (fun x hx => by
+      obtain ⟨v, hv, rfl⟩ := List.mem_map.1 hx
+      exact ⟨bits_rep3 v, by have := hWr v hv; intro h; have := congrArg List.length h; simp at this; omega⟩)
+    (hxs0 _ (List.mem_cons_self ..)) (fun x hx => hxs0 x (List.mem_cons_of_mem _ hx)) hr0 (p + 1) n c hc T hTb hT
+  have hWL : ∀ x ∈ (W.take r).map (fun e => List.replicate e 2) ++ (List.replicate n 2 ++ [3]) :: Wr.map (fun e => List.replicate e 3),
+      Bits x ∧ x ≠ [] := by
+    intro x hx
+    simp only [List.mem_append, List.mem_cons, List.mem_map] at hx
+    rcases hx with ⟨v, hv, rfl⟩ | rfl | ⟨v, hv, rfl⟩
+    · exact ⟨bits_rep2 v, by have := hms v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+    · refine ⟨fun a ha => ?_, by simp⟩
+      rcases List.mem_append.1 ha with ha | ha
+      · rw [List.eq_of_mem_replicate ha]; simp [bits]
+      · simp at ha; subst ha; simp [bits]
+    · exact ⟨bits_rep3 v, by have := hWr v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+  have nRl : NoB (MEs (List.replicate e 2 :: ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 ::
+      X'.map fun e => List.replicate e 3)) ++ 1 :: (MU T ++ [3])) := by
+    have := MEs_noB _ (fun x hx => (hxs0 x hx).1)
+    simp only [NoB_app_iff, NoB_cons_iff]
+    simp [NB, this, MU_noB T hTb]
+  have sRr : Sym4 (2 :: (r0 ++ 0 :: F.Zt)) := Sym4.cons (by simp [ALL]) (hr0.app hZ0)
+  have hT1 := toY1g _ (List.replicate (p + 1) 3) _ _ hWL (bits_rep3 _) nRl sRr
+  have eX : MEs (List.replicate e 2 :: ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 ::
+      X'.map fun e => List.replicate e 3)) = MEnc d ++ List.replicate (r + 1) 2 ++ 1 :: Enc X' := by
+    subst hdeq
+    simp [MEnc_MEs, Enc_MEs, MEs_append, MEs, ME, List.append_assoc]
+  rw [eX] at hCol hT1
+  refine (hL.of_eq (by simp [MEnc]) rfl).trans ((hIL.of_eq (by simp [Enc, MEnc, List.append_assoc]) rfl).trans
+    ((hCol.of_eq (by simp [Enc, U, MEnc, Enc_MEs, List.append_assoc]) rfl).trans (hT1.of_eq ?_ ?_)))
+  · simp [MEnc_MEs, MEs_append, MEs, ME, List.append_assoc]
+  · have e1 : MEs ((W.take r).map (fun e => List.replicate e 2) ++ (List.replicate n 2 ++ [3]) :: Wr.map (fun e => List.replicate e 3)) =
+        MEnc (W.take r) ++ List.replicate n 2 ++ 3 :: 1 :: MEs (Wr.map fun e => List.replicate e 3) := by
+      simp [MEnc_MEs, MEs_append, MEs, ME, List.append_assoc]
+    have u3 : unm (MEs (Wr.map fun e => List.replicate e 3)) = MEs (Wr.map fun e => List.replicate e 3) := by
+      rw [← Enc_MEs, unm_Enc]
+    rw [e1, show Enc W = Enc (W.take r) ++ Enc ((n + 1) :: Wr) from by rw [← Enc_append, ← hr, List.take_append_drop]]
+    simp [unm_append, unm_rep2, unm_rep3, unm1, unm_MEnc, u3, Enc_MEs, rep3_cons, MEs, ME, MEnc, MEnc_append, Enc, U,
+      List.replicate_succ, List.append_assoc]
+    done
+
 end ZP.G
