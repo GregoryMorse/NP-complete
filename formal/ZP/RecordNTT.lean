@@ -1062,4 +1062,87 @@ theorem roundStep (w0 j k1 c m n : Nat) (ps : List (Nat × Nat)) (hq : ∀ q ∈
     ((h5.of_eq ?_ rfl).trans ((h6.of_eq ?_ rfl).trans ((h7.of_eq ?_ rfl).trans (h8.of_eq rfl ?_)))))))
   all_goals simp [PreT_eq, List.replicate_succ, List.replicate_succ', List.append_assoc, hrest]
 
+/-! ### The loop over the cells of `C` -/
+
+/-- Records after `c` rounds. -/
+def roundsPs (n : Nat) : Nat → Nat → List (Nat × Nat) → List (Nat × Nat)
+  | 0, _, ps => ps
+  | c + 1, w0, ps => roundsPs n c (w0 + (n + 1)) (resetO ps ++ newRecs w0 (n + 1))
+
+/-- `W` offset after `c` rounds. -/
+def wEnd (n : Nat) : Nat → Nat → Nat
+  | 0, w0 => w0
+  | c + 1, w0 => wEnd n c (w0 + (n + 1))
+
+theorem roundsPs_ok (n : Nat) : ∀ c w0 ps, (∀ q ∈ ps, q.1 ∈ [2, 3]) → ∀ q ∈ roundsPs n c w0 ps, q.1 ∈ [2, 3] := by
+  intro c
+  induction c with
+  | zero => intro w0 ps h; simpa [roundsPs] using h
+  | succ c ih =>
+    intro w0 ps h
+    refine ih _ _ ?_
+    have hn : ∀ w u, ∀ q ∈ newRecs w u, q.1 ∈ [2, 3] := by
+      intro w u; induction u generalizing w with
+      | zero => simp [newRecs]
+      | succ u ih =>
+        intro q hq''; simp [newRecs] at hq''
+        rcases hq'' with h | h
+        · subst h; simp
+        · exact ih _ q h
+    intro q hq'
+    simp at hq'; rcases hq' with h' | h'
+    · exact resetO_snd ps q h'
+    · exact hn _ _ q h'
+
+theorem Pfx_eq (w j k1 : Nat) :
+    Pfx w j k1 = (List.replicate w 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: List.replicate (k1 + 1) 3)) ++ [1] := by
+  simp [Pfx, List.append_assoc]
+
+theorem roundLoop (j k1 n : Nat) :
+    ∀ (c m w0 : Nat) (ps : List (Nat × Nat)), (∀ q ∈ ps, q.1 ∈ [2, 3]) → 0 < c + m →
+    znttLogic.Reach
+      (hd QNTT.RC1 (Pfx (w0 + 1) j k1 ++ (List.replicate c 3 ++ List.replicate m 2))
+        (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps)))
+      (hd QNTT.WI0 (Pfx (wEnd n c w0 + 1) j k1 ++ List.replicate (m + c) 3)
+        (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) (roundsPs n c w0 ps)))) := by
+  intro c
+  induction c with
+  | zero =>
+    intro m w0 ps hq hm
+    have sA : Sym4 (List.replicate (w0 + 1) 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: List.replicate (k1 + 1) 3)) := by
+      have := (Pfx_un (w0 + 1) j k1).sym4
+      rw [Pfx_eq] at this
+      intro x hx; exact this x (by simp at hx ⊢; omega)
+    have sR : Sym4 (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps)) := by
+      have : NoB (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps)) := by
+        simp only [NoB_cons_iff, NoB_app_iff, NoB_rep_iff]
+        simp [NB, recsFlat_noB j (k1 + 1) ps hq]
+      exact this.sym4
+    have h1 := rc1End _ m _ sA sR
+    have h2 := rcuSweep (List.replicate (w0 + 1) 3 ++ 1 :: (List.replicate (j + 1) 3 ++ 1 :: List.replicate (k1 + 1) 3) ++ [1])
+      m (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps)
+      (sA.app (by intro y hy; simp at hy; subst hy; simp [ALL]))
+      (by
+        have : NoB (List.replicate (n + 1) 3 ++ recsFlat j (k1 + 1) ps) := by
+          simp only [NoB_app_iff, NoB_rep_iff]
+          simp [NB, recsFlat_noB j (k1 + 1) ps hq]
+        exact this.sym4)
+    rw [Pfx_eq]
+    simp only [wEnd, roundsPs, Nat.add_zero]
+    refine (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl ?_)
+    simp [Pfx_eq]
+  | succ c ih =>
+    intro m w0 ps hq hm
+    have hr := roundStep w0 j k1 c m n ps hq
+    have e : w0 + 1 + (n + 1) = (w0 + (n + 1)) + 1 := by omega
+    rw [e] at hr
+    have hq' : ∀ q ∈ resetO ps ++ newRecs w0 (n + 1), q.1 ∈ [2, 3] := by
+      have := roundsPs_ok n 1 w0 ps hq
+      simpa [roundsPs] using this
+    have h2 := ih (m + 1) (w0 + (n + 1)) _ hq' (by omega)
+    have e2 : m + 1 + c = m + (c + 1) := by omega
+    rw [e2] at h2
+    simp only [wEnd, roundsPs]
+    exact (hr.of_eq (by simp [List.replicate_succ']) rfl).trans h2
+
 end ZP.NTT
