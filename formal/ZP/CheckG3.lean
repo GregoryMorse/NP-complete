@@ -986,4 +986,17 @@ theorem edgeRow (F : HFam) (ms Wr d X' : List Nat) (n x p c : Nat)
     simp [Enc_MEs, MEnc_MEs, MEs_append, MEs, ME, List.append_assoc, List.replicate_succ]
   exact h1'.trans h2
 
+
+/-- After the row (or the column) part: back to the start of `X`, with `w` and `m` unmarked. -/
+theorem toY1 (WL : List (List Nat)) (c R : List Nat) (hW : ∀ e ∈ WL, Bits e ∧ e ≠ [])
+    (hc : Bits c) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gGL (MEs WL) (1 :: (c ++ 1 :: R)))
+      (hdR QG.gY1e (unm (MEs WL) ++ [1] ++ unm c ++ [1]) R) := by
+  have nW := MEs_noB WL (fun e he => (hW e he).1)
+  have sR : Sym4 (1 :: (c ++ 1 :: R)) := Sym4.cons (by simp [ALL]) (hc.sym4.app (Sym4.cons (by simp [ALL]) hR))
+  have h1 := gglWalk (MEs WL) (1 :: (c ++ 1 :: R)) nW sR
+  have h2 := phaseU WL c R [0] hW hc (by simp [ALL]) hR
+  refine (h1.of_eq rfl (by simp)).trans (h2.of_eq rfl ?_)
+  rw [show [0] ++ unm (MEs WL) ++ [1] ++ unm c ++ [1] = 0 :: (unm (MEs WL) ++ [1] ++ unm c ++ [1]) by simp, hdR_z0]
+
 end ZP.G
