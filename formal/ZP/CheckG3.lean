@@ -1977,20 +1977,27 @@ theorem fn1_M (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- The accepting configurations of the check. -/
-def AccS (c : ZC) : Prop := ∃ L R, c = hd QG.FE L R ∨ c = hdR QG.FR1 L R
+def AccS (Z : List Nat) (c : ZC) : Prop :=
+  ∃ L Mr, NoB L ∧ NoB Mr ∧ (c = hd QG.FE L (3 :: Z) ∨ c = hdR QG.FR1 L (Mr ++ 0 :: Z))
 
 theorem entryLastJ (t : List Nat) (ht : t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') (J : List Nat) (hJ : JShape J)
-    (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
-    ∃ c', AccS c' ∧ zgiLogic.Reach (hdR QG.gFN1 P (3 :: (t ++ (J ++ 0 :: R)))) c' := by
+    (P R : List Nat) (hP : Sym4 P) (hPn : NoB P) (hR : Sym4 R) :
+    ∃ c', AccS R c' ∧ zgiLogic.Reach (hdR QG.gFN1 P (3 :: (t ++ (J ++ 0 :: R)))) c' := by
+  have hbt : NoB (3 :: t) ∧ NoB (t ++ [1]) := by
+    rcases ht with rfl | ⟨t', ht', rfl⟩
+    · simp [NB]
+    · have := ht'.noB; simp [NB, this]
+  have hLn : NoB (P ++ 3 :: (t ++ [1])) := hPn.app (NoB.cons (by simp [NB]) hbt.2)
   rcases hJ.2 with rfl | rfl | ⟨J', rfl⟩
-  · exact ⟨_, ⟨_, _, Or.inl rfl⟩, (entryLast t ht P R hP hR).of_eq (by simp) rfl⟩
+  · refine ⟨_, ⟨_, [], ?_, NoB.nil, Or.inl rfl⟩, (entryLast t ht P R hP hR).of_eq (by simp) rfl⟩
+    exact hPn.app hbt.1
   · have h1 := entryOk t ht P (0 :: R) hP (Sym4.cons (by simp [ALL]) hR)
     have hs : Sym4 (P ++ 3 :: (t ++ [1])) := by
       rcases ht with rfl | ⟨t', ht', rfl⟩
       · simp [ALL, hP]
       · simp [ALL, hP, ht'.sym4]
     have h2 := fn1_B (P ++ 3 :: (t ++ [1])) R hs hR
-    exact ⟨_, ⟨_, _, Or.inl rfl⟩, (h1.of_eq (by simp) rfl).trans h2⟩
+    exact ⟨_, ⟨_, [], hLn, NoB.nil, Or.inl rfl⟩, (h1.of_eq (by simp) rfl).trans h2⟩
   · have hJ' : NoB J' := by
       have := hJ.1
       simp only [NoB_cons_iff] at this
@@ -2003,23 +2010,24 @@ theorem entryLastJ (t : List Nat) (ht : t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: 
       · simp [ALL, hP]
       · simp [ALL, hP, ht'.sym4]
     have h2 := fn1_M (P ++ 3 :: (t ++ [1])) (J' ++ 0 :: R) hs sR2
-    exact ⟨_, ⟨_, _, Or.inr rfl⟩, (h1.of_eq (by simp) rfl).trans h2⟩
+    exact ⟨_, ⟨_, J', hLn.app (by simp [NB]), hJ', Or.inr rfl⟩, (h1.of_eq (by simp) rfl).trans h2⟩
 
 theorem finalOk (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) : ∀ (hs : List (List Nat)), hs ≠ [] →
-    (∀ t ∈ hs, Bits t) → (∀ t ∈ hs, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') → ∀ P, Sym4 P →
-    ∃ c', AccS c' ∧ zgiLogic.Reach (hdR QG.gFN1 P (HP hs 0 ++ J ++ 0 :: Zt)) c'
-  | [], h, _, _, _, _ => absurd rfl h
-  | [t], _, _, hok, P, hP => by
-    obtain ⟨c', hc, h⟩ := entryLastJ t (hok t (by simp)) J hJ P Zt hP hZ
+    (∀ t ∈ hs, Bits t) → (∀ t ∈ hs, t = [] ∨ ∃ t', Bits t' ∧ t = 2 :: t') → ∀ P, Sym4 P → NoB P →
+    ∃ c', AccS Zt c' ∧ zgiLogic.Reach (hdR QG.gFN1 P (HP hs 0 ++ J ++ 0 :: Zt)) c'
+  | [], h, _, _, _, _, _ => absurd rfl h
+  | [t], _, _, hok, P, hP, hPn => by
+    obtain ⟨c', hc, h⟩ := entryLastJ t (hok t (by simp)) J hJ P Zt hP hPn hZ
     exact ⟨c', hc, h.of_eq (by simp [HP]) rfl⟩
-  | t :: u :: ts, _, hb, hok, P, hP => by
+  | t :: u :: ts, _, hb, hok, P, hP, hPn => by
     have hbs : ∀ s ∈ u :: ts, Bits s := fun s hs => hb s (List.mem_cons_of_mem _ hs)
     have hoks : ∀ s ∈ u :: ts, s = [] ∨ ∃ t', Bits t' ∧ s = 2 :: t' := fun s hs => hok s (List.mem_cons_of_mem _ hs)
     have sH : Sym4 (HP (u :: ts) 0 ++ J ++ 0 :: Zt) :=
       ((HP_sym4 _ _ hbs).app hJ.1.sym4).app (Sym4.cons (by simp [ALL]) hZ)
     have h1 := entryOk t (hok t (by simp)) P (HP (u :: ts) 0 ++ J ++ 0 :: Zt) hP sH
     have hP' : Sym4 (P ++ 3 :: (t ++ [1])) := hP.app (Sym4.cons (by simp [ALL]) ((hb t (by simp)).sym4.app (by simp [ALL])))
-    obtain ⟨c', hc, h2⟩ := finalOk J Zt hJ hZ (u :: ts) (by simp) hbs hoks _ hP'
+    have hPn' : NoB (P ++ 3 :: (t ++ [1])) := hPn.app (NoB.cons (by simp [NB]) ((hb t (by simp)).noB.app (by simp [NB])))
+    obtain ⟨c', hc, h2⟩ := finalOk J Zt hJ hZ (u :: ts) (by simp) hbs hoks _ hP' hPn'
     exact ⟨c', hc, (h1.of_eq (by simp [HP]) rfl).trans h2⟩
 
 theorem finalBad (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) (r : List Nat) (hr : Bits r) (B : List (List Nat))

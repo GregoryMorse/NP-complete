@@ -431,7 +431,7 @@ theorem Hs_ok (H used : List Nat) (hall : ∀ k < H.length, H.getD k 0 < 2 ∨ k
 theorem finalAcc (W : List Nat) (p : Nat) (H : List Nat) (hne : H ≠ []) (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt)
     (d used : List Nat) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 0)
     (hall : ∀ k < H.length, H.getD k 0 < 2 ∨ k + 1 ∈ used) :
-    ∃ c', AccS c' ∧ zgiLogic.Reach (cfgE W p H J Zt d [] used) c' := by
+    ∃ c', AccS Zt c' ∧ zgiLogic.Reach (cfgE W p H J Zt d [] used) c' := by
   have hhne : Hs H used ≠ [] := by
     intro h; have := Hs_length H used; rw [h] at this; simp at this; exact hne (List.length_eq_zero_iff.1 this.symm)
   have sH : Sym4 (HP (Hs H used) 0 ++ J ++ 0 :: Zt) :=
@@ -445,7 +445,12 @@ theorem finalAcc (W : List Nat) (p : Nat) (H : List Nat) (hne : H ≠ []) (J Zt 
   simp only [Bool.xor_false] at h1
   have sP2 : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d) := sP.app (MEnc_sym4 d)
   have h2 := y1eEnd _ _ sP2 sH
-  obtain ⟨c', hc, h3⟩ := finalOk J Zt hJ hZ (Hs H used) hhne (Hs_bits H used) (Hs_ok H used hall) _ (sP2.app (show Sym4 [1] from Sym4.cons (by simp [ALL]) Sym4.nil))
+  have nP2 : NoB (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ [1]) := by
+    simp only [NoB_app_iff]
+    refine ⟨⟨⟨⟨fun a ha => ?_, by simp [NB]⟩, by simp [NB]⟩, fun a ha => ?_⟩, by simp [NB]⟩
+    · have := Enc_o13 W a ha; simp [O13, NB] at this ⊢; omega
+    · have := MEnc_o12 d a ha; simp [O12, NB] at this ⊢; omega
+  obtain ⟨c', hc, h3⟩ := finalOk J Zt hJ hZ (Hs H used) hhne (Hs_bits H used) (Hs_ok H used hall) _ (sP2.app (show Sym4 [1] from Sym4.cons (by simp [ALL]) Sym4.nil)) nP2
   exact ⟨c', hc, ((h1.of_eq (by simp [cfgE, Enc]) rfl).trans h2).trans h3⟩
 
 theorem exists_min (P : Nat → Prop) (h : ∃ k, P k) : ∃ i, P i ∧ ∀ j < i, ¬ P j := by
@@ -669,7 +674,7 @@ theorem loopOdd (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List N
 /-- The whole check for a tape with a nonempty `H`: accepts iff `checkG`, else fails on the unmarked tape. -/
 theorem checkAFull (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Nat) (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e)
     (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) (X : List Nat) (hX : ∀ e ∈ X, 1 ≤ e) :
-    (checkG W (p + 1) X H = true → ∃ c', AccS c' ∧ zgiLogic.Reach (cfgE W p H J Zt [] X []) c') ∧
+    (checkG W (p + 1) X H = true → ∃ c', AccS Zt c' ∧ zgiLogic.Reach (cfgE W p H J Zt [] X []) c') ∧
     (checkG W (p + 1) X H = false →
       FailsTo (cfgE W p H J Zt [] X []) (Ufull W (p + 1) X (unm (1 :: (HP (Hs H []) 0 ++ J)))) Zt) := by
   have hd0 : ∀ e ∈ ([] : List Nat), 1 ≤ e := by simp

@@ -71,7 +71,7 @@ theorem popE (E : GEnv) (rest : List Nat) (hrest : ∀ e ∈ rest, 1 ≤ e) (p :
 theorem checkSpecA (E : GEnv) (p : Nat) (hm : E.m = p + 1) (X H J : List Nat) (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e)
     (hJ : JShape J) (hJo : ∀ a ∈ J, a ∈ O13) (hX : ∀ e ∈ X, 1 ≤ e)
     (hTc : E.Tc = List.replicate (p + 1) 3 ++ 1 :: (Enc X ++ 1 :: (HP (Hs H []) 0 ++ J))) :
-    E.CheckSpec (fun w => checkG w (p + 1) X H) AccS := by
+    E.CheckSpec (fun w => checkG w (p + 1) X H) (AccS E.Z) := by
   intro rest hv
   have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
   have hpop := popE E rest hW p hm X H J hne hHv hJo hTc

@@ -95,7 +95,7 @@ theorem y1eEndB (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
 theorem checkEmpty (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H0 : List Nat)
     (hH0 : H0 = [] ∨ H0 = [1] ∨ (∃ J', NoB J' ∧ H0 = 1 :: 1 :: J') ∨ (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t)) (hnb : NoB H0) (Zt : List Nat) (hZ : Sym4 Zt)
     (X : List Nat) (hX : ∀ e ∈ X, 1 ≤ e) (hDlen : (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t) → 2 ≤ X.length) :
-    (X = [] → ∃ c', AccS c' ∧ zgiLogic.Reach
+    (X = [] → ∃ c', AccS Zt c' ∧ zgiLogic.Reach
       (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc X ++ (H0 ++ 0 :: Zt))) c') ∧
     (X ≠ [] → FailsTo
       (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc X ++ (H0 ++ 0 :: Zt)))
@@ -104,19 +104,23 @@ theorem checkEmpty (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H0 : Li
   have sP : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) := by
     refine ((Sym4.app (fun a ha => ?_) (by simp [ALL])).app (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (by simp [ALL])))
     have := Enc_o13 W a ha; simp [O13, ALL] at this ⊢; omega
+  have nP : NoB (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) := by
+    simp only [NoB_app_iff]
+    refine ⟨⟨fun a ha => ?_, by simp [NB]⟩, by simp [NB]⟩
+    have := Enc_o13 W a ha; simp [O13, NB] at this ⊢; omega
   constructor
   · rintro rfl
     have sP1 : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ [1]) := by
       refine sP.app (show Sym4 [1] from Sym4.cons (by simp [ALL]) Sym4.nil)
     rcases hH0 with rfl | rfl | ⟨J', hJ', rfl⟩ | ⟨t, ht, htne, hh⟩
-    · exact ⟨_, ⟨_, _, Or.inl rfl⟩, (y1eEndB _ Zt sP hZ).of_eq (by simp [Enc]) rfl⟩
+    · exact ⟨_, ⟨_, [], nP, NoB.nil, Or.inl rfl⟩, (y1eEndB _ Zt sP hZ).of_eq (by simp [Enc]) rfl⟩
     · have h1 := y1eEnd _ (0 :: Zt) sP (Sym4.cons (by simp [ALL]) hZ)
       have h2 := fn1_B _ Zt sP1 hZ
-      exact ⟨_, ⟨_, _, Or.inl rfl⟩, (h1.of_eq (by simp [Enc]) rfl).trans h2⟩
+      exact ⟨_, ⟨_, [], nP.app (NoB.cons one_nb NoB.nil), NoB.nil, Or.inl rfl⟩, (h1.of_eq (by simp [Enc]) rfl).trans h2⟩
     · have sR : Sym4 (1 :: (J' ++ 0 :: Zt)) := Sym4.cons (by simp [ALL]) (hJ'.sym4.app (Sym4.cons (by simp [ALL]) hZ))
       have h1 := y1eEnd _ (1 :: (J' ++ 0 :: Zt)) sP sR
       have h2 := fn1_M _ (J' ++ 0 :: Zt) sP1 (hJ'.sym4.app (Sym4.cons (by simp [ALL]) hZ))
-      exact ⟨_, ⟨_, _, Or.inr rfl⟩, (h1.of_eq (by simp [Enc]) rfl).trans h2⟩
+      exact ⟨_, ⟨_, J', (nP.app (NoB.cons one_nb NoB.nil)).app (NoB.cons one_nb NoB.nil), hJ', Or.inr rfl⟩, (h1.of_eq (by simp [Enc]) rfl).trans h2⟩
     · exact absurd (hDlen ⟨t, ht, htne, hh⟩) (by simp)
   · intro hne
     obtain ⟨x, X1, rfl⟩ : ∃ x X1, X = x :: X1 := by
@@ -165,7 +169,7 @@ theorem checkG_nil (w : List Nat) (m : Nat) (X : List Nat) : checkG w m X [] = d
 theorem checkSpecE (E : GEnv) (p : Nat) (X H0 : List Nat) (hH0 : H0 = [] ∨ H0 = [1] ∨ (∃ J', NoB J' ∧ H0 = 1 :: 1 :: J') ∨ (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t))
     (hH0o : ∀ a ∈ H0, a ∈ O13) (hX : ∀ e ∈ X, 1 ≤ e) (hDlen : (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t) → 2 ≤ X.length)
     (hTc : E.Tc = List.replicate (p + 1) 3 ++ 1 :: (Enc X ++ H0)) :
-    E.CheckSpec (fun w => checkG w (p + 1) X []) AccS := by
+    E.CheckSpec (fun w => checkG w (p + 1) X []) (AccS E.Z) := by
   intro rest hv
   have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
   have hpop := popG E rest hW p X H0 hH0o hTc
@@ -205,7 +209,7 @@ theorem xmCellsB (R : List Nat) (hR : Sym4 R) : ∀ (c P : List Nat), Bits c →
 
 /-- `T = [m]`: nothing but the cells of `m`; the machine accepts. -/
 theorem checkSpecS0 (E : GEnv) (p : Nat) (hTc : E.Tc = List.replicate (p + 1) 3) (m' : Nat) :
-    E.CheckSpec (fun w => checkG w m' [] []) AccS := by
+    E.CheckSpec (fun w => checkG w m' [] []) (AccS E.Z) := by
   intro rest hv
   have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
   refine ⟨fun _ => ?_, fun hg => absurd hg (by simp [checkG, pairsOf, checkEdges])⟩
@@ -234,12 +238,18 @@ theorem checkSpecS0 (E : GEnv) (p : Nat) (hTc : E.Tc = List.replicate (p + 1) 3)
   have hn := unm_nb (MEs_noB _ (fun e he => (hws e he).1))
   have hP1 : Sym4 ([0] ++ unm (MEs (rest.map fun e => List.replicate e 3))) := by simp [hn.sym4, ALL]
   have h2 := uw2End _ (List.replicate (p + 1) 3 ++ 0 :: E.Z) hP1 (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (Sym4.cons (by simp [ALL]) sZ))
-  have hP2 : Sym4 ([0] ++ unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1]) := by simp [hn.sym4, ALL]
+  have hP2 : Sym4 (unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1]) := by simp [hn.sym4, ALL]
   have h3 := xmCellsB E.Z sZ (List.replicate (p + 1) 3) _ (bits_rep3 _) hP2
+  have hLn : NoB (unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1] ++ unm (List.replicate (p + 1) 3)) := by
+    simp [NB, hn]
+  have hz0 : hdR QG.gXm ([0] ++ unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1]) (List.replicate (p + 1) 3 ++ 0 :: E.Z) =
+      hdR QG.gXm (unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1]) (List.replicate (p + 1) 3 ++ 0 :: E.Z) := by
+    rw [show [0] ++ unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1] =
+      0 :: (unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1]) by simp, hdR_z0]
   have hax2 := hax.symm.trans hlist
   have hstart : E.CfgPop rest = hdR QG.gGL [0] (a :: X0) := by
     simp only [GEnv.CfgPop]; rw [hax]
   rw [hstart]
-  exact ⟨_, ⟨_, _, Or.inl rfl⟩, h1.trans ((hu.of_eq (by rw [hax2]) rfl).trans ((h2.of_eq rfl rfl).trans (h3.of_eq rfl rfl)))⟩
+  exact ⟨_, ⟨_, [], hLn, NoB.nil, Or.inl rfl⟩, h1.trans ((hu.of_eq (by rw [hax2]) rfl).trans ((h2.of_eq rfl hz0).trans (h3.of_eq rfl rfl)))⟩
 
 end ZP.G

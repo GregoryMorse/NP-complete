@@ -439,7 +439,7 @@ theorem twoFailNS (W Z : List Nat) (p x y : Nat) (hZ : Sym4 Z) (hW : ∀ e ∈ W
 
 theorem checkSpecS3 (E : GEnv) (p : Nat) (d : List Nat) (y : Nat) (hd : d.length ≤ 1) (hdd : ∀ e ∈ d, 1 ≤ e) (hy : 1 ≤ y)
     (hTc : E.Tc = List.replicate (p + 1) 3 ++ 1 :: (Enc d ++ List.replicate y 3)) :
-    E.CheckSpec (fun w => checkG w (p + 1) (d ++ [y]) []) AccS := by
+    E.CheckSpec (fun w => checkG w (p + 1) (d ++ [y]) []) (AccS E.Z) := by
   intro rest hv
   have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
   have hg : checkG rest (p + 1) (d ++ [y]) [] = false := by
