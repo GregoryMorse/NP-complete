@@ -359,12 +359,12 @@ theorem Hu_used (H used used' J : List Nat) :
 
 theorem loopFail (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Nat) (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e)
     (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) :
-    ∀ (X d used : List Nat), (∀ e ∈ X, 1 ≤ e) → (∀ e ∈ d, 1 ≤ e) → d.length % 2 = 0 → X.length % 2 = 0 →
+    ∀ (X d used : List Nat), (∀ e ∈ X, 1 ≤ e) → (∀ e ∈ d, 1 ≤ e) → d.length % 2 = 0 →
     checkEdges W (p + 1) H (pairsOf X) used = none →
     FailsTo (cfgE W p H J Zt d X used) (Ufull W (p + 1) (d ++ X) (unm (HP (Hs H []) 0 ++ J))) Zt
-  | [], d, used, _, _, _, _, h => by simp [pairsOf, checkEdges] at h
-  | [x], d, used, _, _, _, hl, _ => by simp at hl
-  | x :: y :: rest, d, used, hX, hdd, hdl, hl, h => by
+  | [], d, used, _, _, _, h => by simp [pairsOf, checkEdges] at h
+  | [x], d, used, _, _, _, h => by simp [pairsOf, checkEdges] at h
+  | x :: y :: rest, d, used, hX, hdd, hdl, h => by
     simp only [pairsOf, checkEdges] at h
     have hx1 : 1 ≤ x := hX x (by simp)
     have hy1 : 1 ≤ y := hX y (by simp)
@@ -395,7 +395,7 @@ theorem loopFail (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List 
       · exact hdd e he
       · simp at he; rcases he with rfl | rfl <;> omega
     have ih := loopFail W hW p H hne hHv J Zt hJ hZ rest (d ++ [x, y]) _ hrest hdd'
-      (by simp; omega) (by simp at hl; omega) h
+      (by simp; omega) h
     have hs2 : zgiLogic.Reach (cfgE W p H J Zt d (x :: y :: rest) used)
         (cfgE W p H J Zt (d ++ [x, y]) rest (((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) :: used)) := by
       refine hstep.of_eq ?_ ?_
@@ -573,7 +573,69 @@ theorem oddFailF (F : HFam) (W d : List Nat) (p x c : Nat)
       · have := MEnc_o12 (d ++ [r + 1]) a ha; simp [O12, NB] at this ⊢; omega
     · have hun := F.un _ hcn
       simp [Ufull, unm_append, unm_MEnc, unm_Enc, unm_rep3, unm1, hun, Enc, U, List.append_assoc]
-    · refine (hrow.of_eq rfl (by simp [Enc])).trans ?_
-      exact (hw.of_eq (by simp [Enc]) rfl).trans (h2.of_eq rfl (by simp [Enc]))
+    · have hrow' : zgiLogic.Reach
+          (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+            (MEnc d ++ List.replicate (r + 1) 3 ++ 1 :: (Enc [] ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+          (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+            (MEnc (d ++ [r + 1]) ++ 1 :: (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt))) :=
+        hrow.of_eq rfl (by simp [Enc])
+      have hw' : zgiLogic.Reach
+          (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+            (MEnc (d ++ [r + 1]) ++ 1 :: (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt)))
+          (hdR QG.gFG (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc (d ++ [r + 1]) ++ [1])
+            (F.Hc (c + (p + 1) * n) ++ 0 :: F.Zt)) :=
+        (hw.of_eq rfl rfl).trans (h2.of_eq rfl rfl)
+      exact hrow'.trans hw'
+
+theorem oddFail (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H used J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt)
+    (hne : H ≠ []) (d : List Nat) (x : Nat) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 0) (hx : 1 ≤ x) :
+    FailsTo (cfgE W p H J Zt d [x] used) (Ufull W (p + 1) (d ++ [x]) (unm (HP (Hs H used) 0 ++ J))) Zt := by
+  have hhne : Hs H used ≠ [] := by
+    intro h; have := Hs_length H used; rw [h] at this; simp at this; exact hne (List.length_eq_zero_iff.1 this.symm)
+  let F := HFam.ofHP (Hs H used) hhne (Hs_bits H used) J hJ Zt hZ
+  have key := oddFailF F W d p x 0 hW hdd hdl hx (Nat.zero_le _)
+  refine FailsTo.ofCfg ?_ key
+  simp [cfgE, Enc, U, F, HFam.ofHP, List.append_assoc]
+
+theorem loopOdd (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Nat) (hne : H ≠ []) (hHv : ∀ e ∈ H, 1 ≤ e)
+    (J Zt : List Nat) (hJ : JShape J) (hZ : Sym4 Zt) :
+    ∀ (X d used used' : List Nat), (∀ e ∈ X, 1 ≤ e) → (∀ e ∈ d, 1 ≤ e) → d.length % 2 = 0 → X.length % 2 = 1 →
+    checkEdges W (p + 1) H (pairsOf X) used = some used' →
+    FailsTo (cfgE W p H J Zt d X used) (Ufull W (p + 1) (d ++ X) (unm (HP (Hs H []) 0 ++ J))) Zt
+  | [], d, used, used', _, _, _, hl, _ => by simp at hl
+  | [x], d, used, used', hX, hdd, hdl, _, _ => by
+    have := oddFail W hW p H used J Zt hJ hZ hne d x hdd hdl (hX x (by simp))
+    exact FailsTo.cast (by rw [Hu_used H used []]) this
+  | x :: y :: rest, d, used, used', hX, hdd, hdl, hl, h => by
+    simp only [pairsOf, checkEdges] at h
+    by_cases h1 : x > W.length ∨ y > W.length
+    · simp [h1] at h
+    rw [if_neg h1] at h
+    by_cases h2 : ((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) > H.length ∨
+        H.getD (((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) - 1) 0 < 2 ∨
+        ((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) ∈ used
+    · rw [if_pos h2] at h; simp at h
+    rw [if_neg h2] at h
+    simp only [not_or] at h1 h2
+    obtain ⟨hx, hy⟩ := h1
+    obtain ⟨hk, hv, hu⟩ := h2
+    have hx1 : 1 ≤ x := hX x (by simp)
+    have hy1 : 1 ≤ y := hX y (by simp)
+    have hrest : ∀ e ∈ rest, 1 ≤ e := fun e he => hX e (by simp [he])
+    have hstep := edgeStep W hW p H used J Zt hJ hZ hne hHv d rest (x - 1) (y - 1) hdd hrest hdl
+      (by omega) (by omega) _ rfl (by omega) (by omega) hu
+    have hdd' : ∀ e ∈ d ++ [x, y], 1 ≤ e := by
+      intro e he
+      rcases List.mem_append.1 he with he | he
+      · exact hdd e he
+      · simp at he; rcases he with rfl | rfl <;> omega
+    have ih := loopOdd W hW p H hne hHv J Zt hJ hZ rest (d ++ [x, y]) _ used' hrest hdd'
+      (by simp; omega) (by simp at hl; omega) h
+    have hs2 : zgiLogic.Reach (cfgE W p H J Zt d (x :: y :: rest) used)
+        (cfgE W p H J Zt (d ++ [x, y]) rest (((W.getD (x - 1) 0 - 1) * (p + 1) + W.getD (y - 1) 0) :: used)) := by
+      refine hstep.of_eq ?_ ?_
+      · simp [cfgE, Enc, U, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega, List.append_assoc]
+      · simp [cfgE, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega]
+    exact FailsTo.pre hs2 (FailsTo.cast (by simp [List.append_assoc]) ih)
 
 end ZP.G
