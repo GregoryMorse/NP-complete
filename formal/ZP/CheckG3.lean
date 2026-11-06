@@ -1600,4 +1600,55 @@ theorem finalBad (Zt : List Nat) (hZ : Sym4 Zt) (r : List Nat) (hr : Bits r) (B 
     refine FailsTo.pre (h1.of_eq (by rw [List.cons_append, HP_cons _ _ _ hne]; simp) rfl) (FailsTo.cast ?_ ih)
     rw [List.cons_append, HP_cons _ _ _ hne]; simp
 
+/-! ### The unmarked `H` tape -/
+
+theorem HP_unm_map : ∀ (hs : List (List Nat)) (c : Nat), unm (HP hs c) = HP (hs.map unm) 0
+  | [], _ => by simp [HP, unm]
+  | [t], c => by
+    simp only [HP, List.map_cons, List.map_nil, unm_cons]
+    split <;> simp [unm1]
+  | t :: u :: ts, c => by
+    have ih := HP_unm_map (u :: ts) (c - 1)
+    simp only [HP, List.map_cons, unm_cons, unm_append] at ih ⊢
+    rw [ih]
+    split <;> simp [unm1]
+
+theorem unm_tl (v : Nat) (b : Bool) : unm (tl v b) = tl v false := by
+  unfold tl
+  split
+  · simp [unm]
+  · cases b <;> simp [unm, unm1, unm_rep3]
+
+theorem Hs_unm (H used : List Nat) : (Hs H used).map unm = H.map (fun v => tl v false) := by
+  apply List.ext_getElem
+  · simp [Hs_length]
+  · intro i h1 h2
+    have hi : i < H.length := by simpa [Hs_length] using h1
+    simp only [List.getElem_map]
+    rw [Hs_get _ _ _ hi, unm_tl]
+    simp [List.getD_eq_getElem?_getD, hi]
+
+/-- With nothing used, the `H` tape is `Enc H` without its final separator. -/
+theorem HP_Enc : ∀ (H : List Nat), H ≠ [] → (∀ e ∈ H, 1 ≤ e) →
+    HP (H.map fun v => tl v false) 0 = (Enc H).dropLast
+  | [], h, _ => absurd rfl h
+  | [v], _, hv => by
+    have := hv v (by simp)
+    obtain ⟨k, rfl⟩ : ∃ k, v = k + 1 := ⟨v - 1, by omega⟩
+    cases k with
+    | zero => simp [HP, tl, Enc, U]
+    | succ k =>
+      simp [HP, tl, Enc, U, List.replicate_succ, show k + 1 + 1 - 2 = k by omega, List.dropLast_cons_of_ne_nil, List.dropLast_concat]
+  | v :: u :: H, _, hv => by
+    have ih := HP_Enc (u :: H) (by simp) (fun e he => hv e (List.mem_cons_of_mem _ he))
+    have := hv v (by simp)
+    obtain ⟨k, rfl⟩ : ∃ k, v = k + 1 := ⟨v - 1, by omega⟩
+    have hne : (Enc (u :: H)) ≠ [] := by simp [Enc, U]
+    simp only [List.map_cons, HP] at ih ⊢
+    rw [ih]
+    cases k with
+    | zero => simp [tl, Enc, U, List.dropLast_cons_of_ne_nil, List.dropLast_append_of_ne_nil]
+    | succ k =>
+      simp [tl, Enc, U, List.replicate_succ, List.dropLast_cons_of_ne_nil, List.dropLast_append_of_ne_nil, show k + 1 + 1 - 2 = k by omega]
+
 end ZP.G
