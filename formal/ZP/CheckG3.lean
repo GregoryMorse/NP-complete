@@ -1015,4 +1015,87 @@ theorem toY1g (WL : List (List Nat)) (c Rl Rr : List Nat) (hW : ∀ e ∈ WL, Bi
   refine (h1.of_eq rfl (by simp)).trans (h2.of_eq rfl ?_)
   rw [show [0] ++ unm (MEs WL) ++ [1] ++ unm c ++ [1] = 0 :: (unm (MEs WL) ++ [1] ++ unm c ++ [1]) by simp, hdR_z0]
 
+
+/-! ### Label failure: the label has more cells but `w` is exhausted -/
+
+theorem labelIterF (b : Bool) (ms : List Nat) (m : Nat) (d : List Nat) (j r' : Nat) (X0 Zt : List Nat)
+    (hms : ∀ e ∈ ms, 1 ≤ e) (hX : NoB X0) (hZ : Sym4 Zt) :
+    FailsTo
+      (hdR (LP b) (MEnc ms ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate (j + 1) 2)
+        (3 :: (List.replicate r' 3 ++ 1 :: (X0 ++ 0 :: Zt))))
+      (unm (MEnc ms ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate (j + 1) 2 ++
+        3 :: (List.replicate r' 3 ++ 1 :: X0))) Zt := by
+  have hX' := hX.sym4
+  have hRt : Sym4 (3 :: (List.replicate r' 3 ++ 1 :: (X0 ++ 0 :: Zt))) := by simp [ALL, hX', hZ]
+  have hP0 : Sym4 (MEnc ms ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate (j + 1) 2) := by
+    simp [ALL]
+  have hP0n : NoB (MEnc ms ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate (j + 1) 2) := by
+    simp [NB]
+  have hA := lpMoreB b _ (List.replicate r' 3 ++ 1 :: (X0 ++ 0 :: Zt)) hP0 (by simp [ALL, hX', hZ])
+  have hB := lw1Walk _ _ hP0n hRt
+  have hR1 : Sym4 (1 :: (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++
+      3 :: (List.replicate r' 3 ++ 1 :: (X0 ++ 0 :: Zt))))) := by
+    simp [ALL, hX', hZ]
+  have hC := lw2bSkipList (1 :: (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++
+      3 :: (List.replicate r' 3 ++ 1 :: (X0 ++ 0 :: Zt))))) hR1 ms [0] hms (by simp [ALL])
+  have hRest : Sym4 (List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++
+      3 :: (List.replicate r' 3 ++ 1 :: (X0 ++ 0 :: Zt)))) := by
+    simp [ALL, hX', hZ]
+  have hD := lw2bFail ([0] ++ MEnc ms) _ (by simp [ALL]) hRest
+  have hAll := hA.trans (hB.trans ((hC.of_eq (by simp [MEnc, List.append_assoc]) rfl).trans (hD.of_eq rfl rfl)))
+  refine FailsTo.mk' (A := MEnc ms ++ [1])
+    (R1 := List.replicate m 3 ++ 1 :: (MEnc d ++ List.replicate (j + 1) 2 ++ 3 :: (List.replicate r' 3 ++ 1 :: X0)))
+    (by simp [NB]) (by simp [NB, hX]) (by simp [List.append_assoc]) ?_
+  refine hAll.of_eq (by simp [List.append_assoc]) ?_
+  rw [show [0] ++ MEnc ms ++ [1] = 0 :: (MEnc ms ++ [1]) by simp]
+  rw [hdR_z0]; simp [List.append_assoc]
+
+theorem rep3_cons (j : Nat) (l : List Nat) : List.replicate j 3 ++ 3 :: l = 3 :: (List.replicate j 3 ++ l) := by
+  induction j with
+  | zero => simp
+  | succ j ih => simp [List.replicate_succ, ih]
+
+theorem labelFindF (m : Nat) (d : List Nat) (X0 Zt : List Nat) (hdd : ∀ e ∈ d, 1 ≤ e)
+    (hX : NoB X0) (hZ : Sym4 Zt) :
+    ∀ (r : Nat) (ms ws : List Nat) (j : Nat), (∀ e ∈ ms, 1 ≤ e) → (∀ e ∈ ws, 1 ≤ e) → ws.length < r →
+    FailsTo
+      (hdR QG.gY1e (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1]))
+        (MEnc d ++ List.replicate j 2 ++ List.replicate (r + 1) 3 ++ 1 :: (X0 ++ 0 :: Zt)))
+      (unm (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d ++ List.replicate j 2 ++
+        List.replicate (r + 1) 3 ++ 1 :: X0)) Zt := by
+  have hX' := hX.sym4
+  intro r
+  induction r with
+  | zero => intro ms ws j _ _ hr; simp at hr
+  | succ r ih =>
+    intro ms ws j hms hws hr
+    have hL := lblWalk (List.replicate j 2 ++ List.replicate (r + 1 + 1) 3 ++ 1 :: (X0 ++ 0 :: Zt))
+      (by simp [ALL, hX', hZ]) d false (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1])) hdd (by simp [ALL])
+    simp only [Bool.false_xor] at hL
+    have hM := lblMarkB (decide (d.length % 2 = 1)) (MEnc ms ++ Enc ws ++ [1] ++ (List.replicate m 3 ++ [1]) ++ MEnc d)
+      (List.replicate (r + 1) 3 ++ 1 :: (X0 ++ 0 :: Zt)) j (by simp [ALL]) (by simp [ALL, hX', hZ])
+    cases ws with
+    | nil =>
+      have hI := labelIterF (decide (d.length % 2 = 1)) ms m d j r X0 Zt hms hX hZ
+      refine FailsTo.pre ((hL.of_eq (by simp [List.append_assoc]) rfl).trans
+        (hM.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl))
+        (FailsTo.ofCfg ?_ (FailsTo.cast ?_ hI))
+      · simp [Enc, List.replicate_succ, List.append_assoc]
+      · simp [Enc, unm_append, unm_rep2, unm_rep3, unm1, List.replicate_succ, rep3_cons, List.append_assoc]
+    | cons w1 ws' =>
+      obtain ⟨v, rfl⟩ : ∃ v, w1 = v + 1 := ⟨w1 - 1, by have := hws w1 (List.mem_cons_self ..); omega⟩
+      have hws' : ∀ e ∈ ws', 1 ≤ e := fun e he => hws e (List.mem_cons_of_mem _ he)
+      have hI := labelIter (decide (d.length % 2 = 1)) ms ws' v m d j r (X0 ++ 0 :: Zt) hms hws' (by simp [ALL, hX', hZ])
+      have hF := ih (ms ++ [v + 1]) ws' (j + 1) (by
+          intro e he
+          rcases List.mem_append.1 he with he | he
+          · exact hms e he
+          · simp at he; omega) hws' (by simp at hr; omega)
+      refine FailsTo.pre ((hL.of_eq (by simp [List.append_assoc]) rfl).trans
+        ((hM.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl).trans
+          (hI.of_eq (by simp [List.replicate_succ, List.append_assoc]) rfl)))
+        (FailsTo.ofCfg ?_ (FailsTo.cast ?_ hF))
+      · simp [List.replicate_succ, List.append_assoc]
+      · simp [unm_append, unm_rep2, unm_rep3, unm1, MEnc_append, Enc, MEnc, U, ME, List.replicate_succ, rep3_cons, List.append_assoc]
+
 end ZP.G
