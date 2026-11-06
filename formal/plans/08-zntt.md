@@ -132,5 +132,9 @@ Machine-proof progress: the NTT machine is generated and certified (`TableNTT`, 
 469 table states, 254 logical states, certificate `znttCert_ok`). `RulerNTT` proves the `P += n` ruler
 (`pa0Scan`, `pa1Walk`, `pa1Mark`, `pa2Scan`, `pa1M`, `pauSweep`, `pt0Scan`, `paLoop`, `paEnd`, and the
 composite `padd`: from `PA0` on `P M Mid M 1^n` to `DC1` with `P` advanced by `n` and the separator `M`
-written). Next: the primality test (`DC*`, `XS*`, `X*`, `XR`, `XC`, `XD`, `CE`), with spec `P = primeN n`
-under `PrimeEx`.
+written). `PrimeNTT` proves the primality test and the whole ruler: copy phase `dcAll`; shrink steps (`xsMore`,
+`xsFinal`); marking cycle (`x4CycleLt/Eq`, `x4Cycle` with `Dm c d`, `x4Loop` giving `c = p % d`); `x4End`, `xdFull`,
+`xdMarked`, `ceErase`; the trial-division loop `testRun` (D of length e: reaches `WX` iff no d in [2,e-1] divides p,
+else back at `PA0`); `isPrimeN_iff`; `primeRuler` (P runs over 1+n*i until prime) and
+`primeRuler_primeN` (under `PrimeEx`, from P = 1 the machine reaches `WX` with P = `primeN n`).
+Next: records (`WX`..`RC*`), odometer, evaluation passes, power sums, merge, pair lemma.

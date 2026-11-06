@@ -2,6 +2,7 @@ module
 
 public import ZP.RulerNTT
 public import ZP.CheckG
+public import ZP.AbstractNTT
 
 @[expose] public section
 
@@ -588,5 +589,104 @@ theorem testRun (p : Nat) (rest : List Nat) (hr : Sym4 rest) (hp : 2 ≤ p) :
             rintro rfl
             exact absurd (Nat.mod_eq_zero_of_dvd hdd) hdiv
           exact hmid'.trans (ihB ⟨d, hd2, by omega, hdd⟩)
+
+theorem isPrimeN_iff (p : Nat) :
+    isPrimeN p = true ↔ 2 ≤ p ∧ ∀ d, 2 ≤ d → d < p → ¬ d ∣ p := by
+  simp only [isPrimeN, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true, List.mem_range,
+    Bool.or_eq_true]
+  constructor
+  · rintro ⟨h2, h⟩
+    refine ⟨h2, fun d hd hdp hdv => ?_⟩
+    rcases h d hdp with h | h
+    · omega
+    · simp at h; exact h (Nat.mod_eq_zero_of_dvd hdv)
+  · rintro ⟨h2, h⟩
+    refine ⟨h2, fun d hd => ?_⟩
+    by_cases h3 : d < 2
+    · exact Or.inl (by omega)
+    · refine Or.inr ?_
+      have := h d (by omega) hd
+      simp
+      intro h0; exact this (Nat.dvd_of_mod_eq_zero h0)
+
+/-- The primality ruler: `P` runs over `1 + n i` until it is prime. -/
+theorem primeRuler (n : Nat) (hn : 1 ≤ n) (Mid Z : List Nat) (hM : NoB Mid) (hZ : Sym4 Z) :
+    ∀ (t i0 j p0 : Nat), j + p0 = 1 + n * i0 →
+    (∃ i, i0 < i ∧ i ≤ i0 + t ∧ isPrimeN (1 + n * i) = true) →
+    ∃ i, i0 < i ∧ isPrimeN (1 + n * i) = true ∧
+      (∀ i', i0 < i' → i' < i → isPrimeN (1 + n * i') = false) ∧
+      znttLogic.Reach
+        (hdR QNTT.PA0 (List.replicate j 3)
+          (List.replicate p0 3 ++ 1 :: (Mid ++ 1 :: List.replicate n 3) ++ 0 :: Z))
+        (hd QNTT.WX [0, 3] (1 :: (List.replicate (1 + n * i) 3 ++ 1 :: ((Mid ++ 1 :: List.replicate n 3) ++ 0 :: Z)))) := by
+  intro t
+  induction t with
+  | zero => intro i0 j p0 _ ⟨i, h1, h2, _⟩; omega
+  | succ t ih =>
+    intro i0 j p0 hj hex
+    have hpad := padd Mid Z hM hZ j p0 n
+    have hp : j + p0 + n = 1 + n * (i0 + 1) := by rw [hj, Nat.mul_add]; omega
+    have hp2 : 2 ≤ j + p0 + n := by omega
+    have hrest : Sym4 ((Mid ++ 1 :: List.replicate n 3) ++ 0 :: Z) :=
+      (hM.sym4.app (Sym4.cons (by simp [ALL]) (s4rep _ 3 (by simp [ALL])))).app (Sym4.cons (by simp [ALL]) hZ)
+    have hdc := dcAll (j + p0 + n) _ hrest
+    have hxs := xs1Sweep (List.replicate (j + p0 + n) 3) (1 :: (List.replicate (j + p0 + n) 3 ++ 1 :: ((Mid ++ 1 :: List.replicate n 3) ++ 0 :: Z)))
+      (BitsD.rep _ _ (by simp)) (Sym4.cons (by simp [ALL]) ((s4rep _ 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hrest)))
+    have hrun := testRun (j + p0 + n) _ hrest hp2 (j + p0 + n) hp2 (List.replicate (j + p0 + n) 3)
+      (BitsD.rep _ _ (by simp)) (by simp)
+    simp only [List.append_assoc, List.cons_append] at hpad hdc hxs hrun ⊢
+    have hstart := hpad.trans (hdc.trans hxs)
+    by_cases hpr : isPrimeN (1 + n * (i0 + 1)) = true
+    · refine ⟨i0 + 1, by omega, hpr, fun i' h1 h2 => by omega, ?_⟩
+      rw [← hp] at hpr
+      have hno := ((isPrimeN_iff _).1 hpr).2
+      have := hstart.trans (hrun.1 (fun d h2 h3 => hno d h2 h3))
+      rw [hp] at this
+      exact this
+    · have hcomp : ∃ d, 2 ≤ d ∧ d < j + p0 + n ∧ d ∣ j + p0 + n := by
+        by_cases h : ∃ d, 2 ≤ d ∧ d < j + p0 + n ∧ d ∣ j + p0 + n
+        · exact h
+        · exfalso
+          apply hpr
+          rw [← hp, isPrimeN_iff]
+          refine ⟨hp2, fun d h2 h3 hd => h ⟨d, h2, h3, hd⟩⟩
+      have hnext := hstart.trans (hrun.2 hcomp)
+      obtain ⟨i, hi0, hi1, hi2⟩ := hex
+      have hi : i0 + 1 < i := by
+        rcases Nat.lt_or_ge (i0 + 1) i with h | h
+        · exact h
+        · exfalso; have : i = i0 + 1 := by omega
+          subst this; exact hpr hi2
+      obtain ⟨i', h1, h2, h3, h4⟩ := ih (i0 + 1) 0 (j + p0 + n) (by simpa using hp) ⟨i, hi, by omega, hi2⟩
+      refine ⟨i', by omega, h2, fun x hx1 hx2 => ?_, ?_⟩
+      · rcases Nat.lt_or_ge (i0 + 1) x with h | h
+        · exact h3 x h hx2
+        · have : x = i0 + 1 := by omega
+          subst this; simpa using hpr
+      · rw [hp] at hnext h4
+        simp only [List.append_assoc, List.cons_append, List.replicate_zero] at hnext h4 ⊢
+        exact hnext.trans h4
+
+/-- Under `PrimeEx`, from `P = 1` the ruler ends with `P = primeN n` at `WX`. -/
+theorem primeRuler_primeN (hex : PrimeEx) (n : Nat) (hn : 1 ≤ n) (Mid Z : List Nat)
+    (hM : NoB Mid) (hZ : Sym4 Z) :
+    znttLogic.Reach
+      (hdR QNTT.PA0 (List.replicate 1 3)
+        (List.replicate 0 3 ++ 1 :: (Mid ++ 1 :: List.replicate n 3) ++ 0 :: Z))
+      (hd QNTT.WX [0, 3] (1 :: (List.replicate (primeN n) 3 ++ 1 :: ((Mid ++ 1 :: List.replicate n 3) ++ 0 :: Z)))) := by
+  obtain ⟨i, hi1, hi2⟩ := hex n hn
+  obtain ⟨i1, hi1', hp1, hpn, hmin⟩ := primeN_spec n ⟨i, hi1, hi2⟩
+  obtain ⟨i', h0, hpr, hbef, hrun⟩ :=
+    primeRuler n hn Mid Z hM hZ i 0 1 0 (by simp) ⟨i, by omega, by omega, hi2⟩
+  have hle : i1 ≤ i' := hmin i' (by omega) hpr
+  have hle2 : i' ≤ i1 := by
+    rcases Nat.lt_or_ge i1 i' with h | h
+    · have := hbef i1 (by omega) h
+      rw [hp1] at this; cases this
+    · exact h
+  have : i' = i1 := by omega
+  subst this
+  rw [hpn]
+  exact hrun
 
 end ZP.NTT
