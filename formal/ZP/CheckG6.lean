@@ -167,4 +167,62 @@ theorem checkSpecE (E : GEnv) (p : Nat) (X R0 : List Nat) (hR0 : R0 = [] ∨ ∃
     rw [hu, unm_o13 hR0o]
     simp [Ufull, GEnv.CfgD, GEnv.Rt, hTc, List.append_assoc]
 
+theorem xmEndB (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gXm P (0 :: R)) (hd QG.FE P (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 0, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem xmCellsB (R : List Nat) (hR : Sym4 R) : ∀ (c P : List Nat), Bits c → Sym4 P →
+    zgiLogic.Reach (hdR QG.gXm P (c ++ 0 :: R)) (hd QG.FE (P ++ unm c) (3 :: R))
+  | [], P, _, hP => (xmEndB P R hP hR).of_eq (by simp) (by simp)
+  | b :: c, P, hc, hP => by
+    have hb := hc b (List.mem_cons_self ..)
+    have hc' : Bits c := fun a ha => hc a (List.mem_cons_of_mem _ ha)
+    have h1 := xmStep P (c ++ 0 :: R) b hb hP (by simp [ALL, hR, hc'.sym4])
+    have hP' : Sym4 (P ++ [unm1 b]) := by
+      rcases mem_bits hb with rfl | rfl <;> simp [unm1, ALL, hP]
+    have h2 := xmCellsB R hR c (P ++ [unm1 b]) hc' hP'
+    exact (h1.of_eq rfl rfl).trans (h2.of_eq rfl (by simp [unm]))
+
+/-- `T = [m]`: nothing but the cells of `m`; the machine accepts. -/
+theorem checkSpecS0 (E : GEnv) (p : Nat) (hTc : E.Tc = List.replicate (p + 1) 3) (m' : Nat) :
+    E.CheckSpec (fun w => checkG w m' [] []) AccS := by
+  intro rest hv
+  have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
+  refine ⟨fun _ => ?_, fun hg => absurd hg (by simp [checkG, pairsOf, checkEdges])⟩
+  have sRt := E.Rt_sym4
+  have hws := Enc_entries rest hW
+  have sZ := E.hZ
+  have sEnc : Sym4 (Enc rest) := by
+    intro a ha; have := Enc_o13 rest a ha; simp [O13, ALL] at this ⊢; omega
+  have hlist : Enc rest ++ E.Rt = MEs (rest.map fun e => List.replicate e 3) ++ 1 ::
+      (List.replicate (p + 1) 3 ++ 0 :: E.Z) := by
+    rw [Enc_MEs]
+    simp [GEnv.Rt, hTc, List.append_assoc]
+  obtain ⟨a, X0, hax, ha⟩ : ∃ a X0, Enc rest ++ E.Rt = a :: X0 ∧ a ∈ NB := by
+    cases rest with
+    | nil => exact ⟨1, E.Tc ++ 0 :: E.Z, by simp [GEnv.Rt, Enc], by simp [NB]⟩
+    | cons v r =>
+      obtain ⟨k, rfl⟩ : ∃ k, v = k + 1 := ⟨v - 1, by have := hW v (by simp); omega⟩
+      exact ⟨3, List.replicate k 3 ++ 1 :: (Enc r ++ E.Rt), by simp [Enc, U, List.replicate_succ], by simp [NB]⟩
+  have hX0 : Sym4 X0 := by
+    have hs : Sym4 (a :: X0) := hax ▸ (sEnc.app sRt)
+    exact fun x hx => hs x (by simp [hx])
+  have h1 := gglStart X0 a ha hX0
+  have hR1 : Sym4 (1 :: (List.replicate (p + 1) 3 ++ 0 :: E.Z)) :=
+    Sym4.cons (by simp [ALL]) ((Sym4.rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) sZ))
+  have hu := uwWalk (1 :: (List.replicate (p + 1) 3 ++ 0 :: E.Z)) hR1 (rest.map fun e => List.replicate e 3) [0] hws (by simp [ALL])
+  have hn := unm_nb (MEs_noB _ (fun e he => (hws e he).1))
+  have hP1 : Sym4 ([0] ++ unm (MEs (rest.map fun e => List.replicate e 3))) := by simp [hn.sym4, ALL]
+  have h2 := uw2End _ (List.replicate (p + 1) 3 ++ 0 :: E.Z) hP1 (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (Sym4.cons (by simp [ALL]) sZ))
+  have hP2 : Sym4 ([0] ++ unm (MEs (rest.map fun e => List.replicate e 3)) ++ [1]) := by simp [hn.sym4, ALL]
+  have h3 := xmCellsB E.Z sZ (List.replicate (p + 1) 3) _ (bits_rep3 _) hP2
+  have hax2 := hax.symm.trans hlist
+  have hstart : E.CfgPop rest = hdR QG.gGL [0] (a :: X0) := by
+    simp only [GEnv.CfgPop]; rw [hax]
+  rw [hstart]
+  exact ⟨_, ⟨_, _, Or.inl rfl⟩, h1.trans ((hu.of_eq (by rw [hax2]) rfl).trans ((h2.of_eq rfl rfl).trans (h3.of_eq rfl rfl)))⟩
+
 end ZP.G
