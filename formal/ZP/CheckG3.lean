@@ -1864,4 +1864,38 @@ theorem rowNoTarget (F : HFam) (W d X' : List Nat) (p x c : Nat)
     rw [show [0] ++ MEnc W ++ [1] = 0 :: (MEnc W ++ [1]) by simp, hdR_z0]
     simp [List.append_assoc]
 
+theorem colNoTarget (F : HFam) (W d X' : List Nat) (p y c : Nat)
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX' : ∀ e ∈ X', 1 ≤ e) (hc : c ≤ F.N) :
+    FailsTo
+      (hd QG.gIL0 (MEnc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate y 2)
+        (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (Ufull W (p + 1) (d ++ y :: X') F.Hu) F.Zt := by
+  have sX' : Sym4 (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) := by
+    refine Sym4.app (fun a ha => ?_) (Sym4.cons (by simp [ALL]) (F.sym c hc))
+    have := Enc_o13 X' a ha; simp [O13, ALL] at this ⊢; omega
+  have sT : Sym4 (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) := Sym4.cons (by simp [ALL]) sX'
+  have nA : NoB (MEnc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate y 2) := by
+    simp [NB]
+  have h1 := il0Walk' _ _ nA sT
+  have sR : Sym4 (1 :: (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++
+      1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) := by
+    refine Sym4.cons (by simp [ALL]) ((((Sym4.rep _ _ (by simp [ALL])).app (by simp [ALL])).app (MEnc_sym4 d)).app
+      ((Sym4.rep _ _ (by simp [ALL])).app sT))
+  have h2 := ilSkipList (1 :: (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++
+      1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) sR W [] hW Sym4.nil
+  have h3 := ilNoTarget (MEnc W) (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++
+      1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) (MEnc_sym4 W)
+    (by simpa using sR.tail)
+  have hall := h1.trans ((h2.of_eq (by simp [List.append_assoc]) rfl).trans (h3.of_eq rfl rfl))
+  have hnb := F.nb c hc
+  have hX'n : NoB (Enc X') := by
+    intro a ha; have := Enc_o13 X' a ha; simp [O13, NB] at this ⊢; omega
+  refine ⟨MEnc W ++ [1], List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++ 1 :: (Enc X' ++ 1 :: F.Hc c),
+    by simp [NB], ?_, ?_, ?_⟩
+  · simp only [NoB_app_iff, NoB_cons_iff]
+    simp [NB, hnb, hX'n]
+  · simp [Ufull, unm_append, unm_MEnc, unm_rep3, unm_Enc, F.un c hc, List.append_assoc, unm1, Enc_append, Enc, U]
+  · refine hall.of_eq rfl ?_
+    simp [List.append_assoc]
+
 end ZP.G
