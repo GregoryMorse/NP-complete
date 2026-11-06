@@ -62,7 +62,7 @@ theorem secondFail (F : HFam) (W d X' : List Nat) (p y c : Nat)
     (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX' : ∀ e ∈ X', 1 ≤ e) (hdl : d.length % 2 = 1)
     (hy : 1 ≤ y) (hc : c ≤ F.N)
     (hbad : W.length < y ∨ ∃ n Wr, W.drop (y - 1) = (n + 1) :: Wr ∧
-      (F.N < c + n ∨ (c + n ≤ F.N ∧ F.Hc (c + n) = []) ∨ ∃ (T : List (List Nat)) (R0 : List Nat), c + n ≤ F.N ∧ (∀ t ∈ T, Bits t) ∧
+      (F.N < c + n ∨ (c + n ≤ F.N ∧ F.Hc (c + n) = []) ∨ (c + n ≤ F.N ∧ ∃ t, Bits t ∧ t ≠ [] ∧ F.Hc (c + n) = t) ∨ ∃ (T : List (List Nat)) (R0 : List Nat), c + n ≤ F.N ∧ (∀ t ∈ T, Bits t) ∧
         F.Hc (c + n) ++ 0 :: F.Zt = 1 :: (MP T ++ (R0 ++ 0 :: F.Zt)) ∧
         (R0 = [] ∨ (∃ R1, NoB R1 ∧ R0 = 1 :: R1) ∨ (∃ tl, Bits tl ∧ R0 = 2 :: tl) ∨
           (∃ R1, NoB R1 ∧ R0 = 3 :: 1 :: R1) ∨ R0 = [3] ∨ (∃ Q, NoB Q ∧ R0 = 3 :: 2 :: Q)))) :
@@ -94,7 +94,7 @@ theorem secondFail (F : HFam) (W d X' : List Nat) (p y c : Nat)
       have hN := colNoTarget F W d X' p (W.length + 1) c hW hdd hX' hc
       exact FailsTo.pre (hL.of_eq (by simp [MEnc]) (by simp [MEnc, Enc])) hN
   · obtain ⟨n, Wr, hr, hcb⟩ : ∃ n Wr, W.drop r = (n + 1) :: Wr ∧
-        (F.N < c + n ∨ (c + n ≤ F.N ∧ F.Hc (c + n) = []) ∨ ∃ (T : List (List Nat)) (R0 : List Nat), c + n ≤ F.N ∧ (∀ t ∈ T, Bits t) ∧
+        (F.N < c + n ∨ (c + n ≤ F.N ∧ F.Hc (c + n) = []) ∨ (c + n ≤ F.N ∧ ∃ t, Bits t ∧ t ≠ [] ∧ F.Hc (c + n) = t) ∨ ∃ (T : List (List Nat)) (R0 : List Nat), c + n ≤ F.N ∧ (∀ t ∈ T, Bits t) ∧
         F.Hc (c + n) ++ 0 :: F.Zt = 1 :: (MP T ++ (R0 ++ 0 :: F.Zt)) ∧
         (R0 = [] ∨ (∃ R1, NoB R1 ∧ R0 = 1 :: R1) ∨ (∃ tl, Bits tl ∧ R0 = 2 :: tl) ∨
           (∃ R1, NoB R1 ∧ R0 = 3 :: 1 :: R1) ∨ R0 = [3] ∨ (∃ Q, NoB Q ∧ R0 = 3 :: 2 :: Q))) := by
@@ -141,7 +141,7 @@ theorem secondFail (F : HFam) (W d X' : List Nat) (p y c : Nat)
               X'.map fun e => List.replicate e 3)) ++ (F.Hc c ++ 0 :: F.Zt))))))
         (UG (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2 :: ((d'.map fun e => List.replicate e 2) ++
           List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3)) n (p + 1) F.Hu) F.Zt := by
-      rcases hcb with hov | ⟨hcn0, hT0⟩ | ⟨T, R0, hcn, hTb, hT, hR⟩
+      rcases hcb with hov | ⟨hcn0, hT0⟩ | ⟨hcn1, t, ht, htne, hT1⟩ | ⟨T, R0, hcn, hTb, hT, hR⟩
       · exact colPartF1 F (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2)
           ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3)
           hms hwsb (hxs0 _ (List.mem_cons_self ..)) (fun x hx => hxs0 x (List.mem_cons_of_mem _ hx))
@@ -150,6 +150,10 @@ theorem secondFail (F : HFam) (W d X' : List Nat) (p y c : Nat)
           ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3)
           hms hwsb (hxs0 _ (List.mem_cons_self ..)) (fun x hx => hxs0 x (List.mem_cons_of_mem _ hx))
           (p + 1) n c hcn0 hT0
+      · exact colPartF4 F (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2)
+          ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3)
+          hms hwsb (hxs0 _ (List.mem_cons_self ..)) (fun x hx => hxs0 x (List.mem_cons_of_mem _ hx))
+          (p + 1) n c hcn1 t ht htne hT1
       · exact colPartF2 F (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2)
           ((d'.map fun e => List.replicate e 2) ++ List.replicate (r + 1) 2 :: X'.map fun e => List.replicate e 3)
           hms hwsb (hxs0 _ (List.mem_cons_self ..)) (fun x hx => hxs0 x (List.mem_cons_of_mem _ hx))
@@ -177,7 +181,7 @@ def RowBad (F : HFam) (W : List Nat) (p x c : Nat) : Prop :=
 
 def ColBad (F : HFam) (W : List Nat) (y c : Nat) : Prop :=
   W.length < y ∨ ∃ n Wr, W.drop (y - 1) = (n + 1) :: Wr ∧
-      (F.N < c + n ∨ (c + n ≤ F.N ∧ F.Hc (c + n) = []) ∨ ∃ (T : List (List Nat)) (R0 : List Nat), c + n ≤ F.N ∧ (∀ t ∈ T, Bits t) ∧
+      (F.N < c + n ∨ (c + n ≤ F.N ∧ F.Hc (c + n) = []) ∨ (c + n ≤ F.N ∧ ∃ t, Bits t ∧ t ≠ [] ∧ F.Hc (c + n) = t) ∨ ∃ (T : List (List Nat)) (R0 : List Nat), c + n ≤ F.N ∧ (∀ t ∈ T, Bits t) ∧
         F.Hc (c + n) ++ 0 :: F.Zt = 1 :: (MP T ++ (R0 ++ 0 :: F.Zt)) ∧
         (R0 = [] ∨ (∃ R1, NoB R1 ∧ R0 = 1 :: R1) ∨ (∃ tl, Bits tl ∧ R0 = 2 :: tl) ∨
           (∃ R1, NoB R1 ∧ R0 = 3 :: 1 :: R1) ∨ R0 = [3] ∨ (∃ Q, NoB Q ∧ R0 = 3 :: 2 :: Q)))
@@ -324,7 +328,7 @@ theorem edgeFail (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H used J 
           refine Or.inr ⟨n', Wr', hr', ?_⟩
           by_cases hbig : H.length < 0 + (p + 1) * n + n'
           · exact Or.inl (by rw [hFN]; exact hbig)
-          · refine Or.inr (Or.inr ?_)
+          · refine Or.inr (Or.inr (Or.inr ?_))
             have hcn : 0 + (p + 1) * n + n' ≤ H.length := by omega
             have hsh := hsBad (Hs H used) (Hs_bits H used) hhne J hJ Zt (0 + (p + 1) * n + n')
               (by rw [Hs_length]; exact hcn) ?_
@@ -557,7 +561,8 @@ theorem y1oFail (P Hc Z : List Nat) (hP : Sym4 P) (hPn : NoB P) (hPne : P ≠ []
 
 /-- A lone last label: the second label is missing, so the check fails. -/
 theorem oddFailF (F : HFam) (W d : List Nat) (p x c : Nat)
-    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 0) (hx : 1 ≤ x) (hc : c ≤ F.N) :
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 0) (hx : 1 ≤ x) (hc : c ≤ F.N)
+    (hsh : ∀ c', c' ≤ F.N → F.Hc c' = [] ∨ ∃ t, F.Hc c' = 1 :: t) :
     FailsTo
       (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
         (MEnc d ++ List.replicate x 3 ++ 1 :: (Enc [] ++ (F.Hc c ++ 0 :: F.Zt))))
@@ -592,7 +597,7 @@ theorem oddFailF (F : HFam) (W d : List Nat) (p x c : Nat)
       · have := Enc_o13 W a ha; simp [O13, NB] at this ⊢; omega
       · have := MEnc_o12 (d ++ [r + 1]) a ha; simp [O12, NB] at this ⊢; omega
     have hne2 : (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc (d ++ [r + 1])) ≠ [] := by simp
-    obtain ⟨A, R1, hA, hR1, hAR, h2⟩ := y1oFail _ _ F.Zt sP2 nP2 hne2 (F.shape _ hcn) hnb F.hZ
+    obtain ⟨A, R1, hA, hR1, hAR, h2⟩ := y1oFail _ _ F.Zt sP2 nP2 hne2 (hsh _ hcn) hnb F.hZ
     refine ⟨A, R1, hA, hR1, ?_, ?_⟩
     · have hun := F.un _ hcn
       rw [hAR]
@@ -616,7 +621,7 @@ theorem oddFail (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H used J Z
   have hhne : Hs H used ≠ [] := by
     intro h; have := Hs_length H used; rw [h] at this; simp at this; exact hne (List.length_eq_zero_iff.1 this.symm)
   let F := HFam.ofHP (Hs H used) hhne (Hs_bits H used) J hJ Zt hZ
-  have key := oddFailF F W d p x 0 hW hdd hdl hx (Nat.zero_le _)
+  have key := oddFailF F W d p x 0 hW hdd hdl hx (Nat.zero_le _) (fun c' _ => Or.inr ⟨_, rfl⟩)
   refine FailsTo.ofCfg ?_ key
   simp [cfgE, Enc, U, F, HFam.ofHP, List.append_assoc]
 

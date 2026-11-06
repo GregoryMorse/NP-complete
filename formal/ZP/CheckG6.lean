@@ -45,7 +45,7 @@ theorem popG (E : GEnv) (rest : List Nat) (hrest : ∀ e ∈ rest, 1 ≤ e) (p :
     simp [List.append_assoc], hdR_z0]
 
 /-- The `HFam` of an empty `H`: what follows `X` is `H0` (nothing, one separator, or the separator and more). -/
-def HFam.ofEmpty (H0 : List Nat) (hH0 : H0 = [] ∨ H0 = [1] ∨ ∃ J', NoB J' ∧ H0 = 1 :: 1 :: J') (hnb : NoB H0)
+def HFam.ofEmpty (H0 : List Nat) (hH0 : H0 = [] ∨ H0 = [1] ∨ (∃ J', NoB J' ∧ H0 = 1 :: 1 :: J') ∨ (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t)) (hnb : NoB H0)
     (Zt : List Nat) (hZ : Sym4 Zt) : HFam where
   Hc := fun _ => H0
   N := 0
@@ -58,7 +58,7 @@ def HFam.ofEmpty (H0 : List Nat) (hH0 : H0 = [] ∨ H0 = [1] ∨ ∃ J', NoB J' 
   last := Or.inr ⟨rfl, hH0⟩
 
 /-- With an empty `H` every edge fails. -/
-theorem emptyBad (F : HFam) (hN : F.N = 0) (hH0 : F.Hc 0 = [] ∨ F.Hc 0 = [1] ∨ ∃ J', NoB J' ∧ F.Hc 0 = 1 :: 1 :: J')
+theorem emptyBad (F : HFam) (hN : F.N = 0) (hH0 : F.Hc 0 = [] ∨ F.Hc 0 = [1] ∨ (∃ J', NoB J' ∧ F.Hc 0 = 1 :: 1 :: J') ∨ (∃ t, Bits t ∧ t ≠ [] ∧ F.Hc 0 = t))
     (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p x y : Nat) (hx : 1 ≤ x) (hy : 1 ≤ y) :
     RowBad F W p x 0 ∨ ∃ n Wr, W.drop (x - 1) = (n + 1) :: Wr ∧ 0 + (p + 1) * n ≤ F.N ∧
       ColBad F W y (0 + (p + 1) * n) := by
@@ -73,10 +73,11 @@ theorem emptyBad (F : HFam) (hN : F.N = 0) (hH0 : F.Hc 0 = [] ∨ F.Hc 0 = [1] �
           refine Or.inr ⟨n', Wr', hr', ?_⟩
           by_cases hn' : n' = 0
           · subst hn'
-            rcases hH0 with h | h | ⟨J', hJ', h⟩
+            rcases hH0 with h | h | ⟨J', hJ', h⟩ | ⟨t, ht, htne, h⟩
             · exact Or.inr (Or.inl ⟨by simp [hN], by simp [h]⟩)
-            · exact Or.inr (Or.inr ⟨[], [], by simp [hN], by simp, by simp [MP, h], Or.inl rfl⟩)
-            · exact Or.inr (Or.inr ⟨[], 1 :: J', by simp [hN], by simp, by simp [MP, h], Or.inr (Or.inl ⟨J', hJ', rfl⟩)⟩)
+            · exact Or.inr (Or.inr (Or.inr ⟨[], [], by simp [hN], by simp, by simp [MP, h], Or.inl rfl⟩))
+            · exact Or.inr (Or.inr (Or.inr ⟨[], 1 :: J', by simp [hN], by simp, by simp [MP, h], Or.inr (Or.inl ⟨J', hJ', rfl⟩)⟩))
+            · exact Or.inr (Or.inr (Or.inl ⟨by simp [hN], t, ht, htne, h⟩))
           · exact Or.inl (by simp [hN]; omega)
         · exact Or.inl (by omega)
       · exact Or.inl (by omega)
@@ -92,8 +93,8 @@ theorem y1eEndB (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 theorem checkEmpty (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H0 : List Nat)
-    (hH0 : H0 = [] ∨ H0 = [1] ∨ ∃ J', NoB J' ∧ H0 = 1 :: 1 :: J') (hnb : NoB H0) (Zt : List Nat) (hZ : Sym4 Zt)
-    (X : List Nat) (hX : ∀ e ∈ X, 1 ≤ e) :
+    (hH0 : H0 = [] ∨ H0 = [1] ∨ (∃ J', NoB J' ∧ H0 = 1 :: 1 :: J') ∨ (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t)) (hnb : NoB H0) (Zt : List Nat) (hZ : Sym4 Zt)
+    (X : List Nat) (hX : ∀ e ∈ X, 1 ≤ e) (hDlen : (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t) → 2 ≤ X.length) :
     (X = [] → ∃ c', AccS c' ∧ zgiLogic.Reach
       (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc X ++ (H0 ++ 0 :: Zt))) c') ∧
     (X ≠ [] → FailsTo
@@ -107,7 +108,7 @@ theorem checkEmpty (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H0 : Li
   · rintro rfl
     have sP1 : Sym4 (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ [1]) := by
       refine sP.app (show Sym4 [1] from Sym4.cons (by simp [ALL]) Sym4.nil)
-    rcases hH0 with rfl | rfl | ⟨J', hJ', rfl⟩
+    rcases hH0 with rfl | rfl | ⟨J', hJ', rfl⟩ | ⟨t, ht, htne, hh⟩
     · exact ⟨_, ⟨_, _, Or.inl rfl⟩, (y1eEndB _ Zt sP hZ).of_eq (by simp [Enc]) rfl⟩
     · have h1 := y1eEnd _ (0 :: Zt) sP (Sym4.cons (by simp [ALL]) hZ)
       have h2 := fn1_B _ Zt sP1 hZ
@@ -116,6 +117,7 @@ theorem checkEmpty (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H0 : Li
       have h1 := y1eEnd _ (1 :: (J' ++ 0 :: Zt)) sP sR
       have h2 := fn1_M _ (J' ++ 0 :: Zt) sP1 (hJ'.sym4.app (Sym4.cons (by simp [ALL]) hZ))
       exact ⟨_, ⟨_, _, Or.inr rfl⟩, (h1.of_eq (by simp [Enc]) rfl).trans h2⟩
+    · exact absurd (hDlen ⟨t, ht, htne, hh⟩) (by simp)
   · intro hne
     obtain ⟨x, X1, rfl⟩ : ∃ x X1, X = x :: X1 := by
       cases X with
@@ -126,6 +128,12 @@ theorem checkEmpty (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H0 : Li
     cases X1 with
     | nil =>
       have := oddFailF F W [] p x 0 hW hd0 (by simp) hx (Nat.zero_le _)
+        (fun c' _ => by
+          rcases hH0 with h | h | ⟨J', _, h⟩ | ⟨t, ht, htne, h⟩
+          · simp [F, HFam.ofEmpty, h]
+          · simp [F, HFam.ofEmpty, h]
+          · simp [F, HFam.ofEmpty, h]
+          · exact absurd (hDlen ⟨t, ht, htne, h⟩) (by simp))
       refine FailsTo.ofCfg ?_ (FailsTo.cast ?_ this)
       · simp [Enc, U, MEnc, F, HFam.ofEmpty, List.append_assoc]
       · simp [Ufull, F, HFam.ofEmpty, Enc, U, List.append_assoc]
@@ -154,15 +162,15 @@ theorem checkG_nil (w : List Nat) (m : Nat) (X : List Nat) : checkG w m X [] = d
       rw [if_pos this]
       simp
 
-theorem checkSpecE (E : GEnv) (p : Nat) (X H0 : List Nat) (hH0 : H0 = [] ∨ H0 = [1] ∨ ∃ J', NoB J' ∧ H0 = 1 :: 1 :: J')
-    (hH0o : ∀ a ∈ H0, a ∈ O13) (hX : ∀ e ∈ X, 1 ≤ e)
+theorem checkSpecE (E : GEnv) (p : Nat) (X H0 : List Nat) (hH0 : H0 = [] ∨ H0 = [1] ∨ (∃ J', NoB J' ∧ H0 = 1 :: 1 :: J') ∨ (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t))
+    (hH0o : ∀ a ∈ H0, a ∈ O13) (hX : ∀ e ∈ X, 1 ≤ e) (hDlen : (∃ t, Bits t ∧ t ≠ [] ∧ H0 = t) → 2 ≤ X.length)
     (hTc : E.Tc = List.replicate (p + 1) 3 ++ 1 :: (Enc X ++ H0)) :
     E.CheckSpec (fun w => checkG w (p + 1) X []) AccS := by
   intro rest hv
   have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
   have hpop := popG E rest hW p X H0 hH0o hTc
   have hnb : NoB H0 := fun a ha => by have := hH0o a ha; simp [O13, NB] at this ⊢; omega
-  have hfull := checkEmpty rest hW p H0 hH0 hnb E.Z E.hZ X hX
+  have hfull := checkEmpty rest hW p H0 hH0 hnb E.Z E.hZ X hX hDlen
   refine ⟨fun hg => ?_, fun hg => ?_⟩
   · simp only [checkG_nil] at hg
     have hX0 : X = [] := by simpa using hg
