@@ -882,4 +882,50 @@ theorem colPartF2 (F : HFam) (ms : List Nat) (ws : List (List Nat)) (x0 : List N
   have hun := F.un (c + n) hc
   simp [UG, unm_append, unm_rep3, unm_MEnc, unm_rep2, hun, unm1, List.append_assoc, MEs, ME, List.replicate_succ']
 
+
+/-! ### The row part starts: `gM1` walks left to the last unmarked cell of `m` and marks it -/
+
+theorem gm1Pass (P R : List Nat) (a : Nat) (ha : a = 1 ∨ a = 2) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gM1 (P ++ [a]) R) (hd QG.gM1 P (a :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  rcases ha with rfl | rfl
+  · exact checkTT (env := [P, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTT (env := [P, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 2, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gm1Mark (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hd QG.gM1 (P ++ [3]) R) (hd QG.gTR1 P (2 :: R)) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [P, R]) (E := []) (k := 3) hV trivial (q' := QG.gTR1)
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 2, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem gm1Walk (Q : List Nat) (hQ : Sym4 Q) : ∀ (n : Nat) (Z R : List Nat), Z.length = n →
+    (∀ a ∈ Z, a = 1 ∨ a = 2) → Sym4 R →
+    zgiLogic.Reach (hd QG.gM1 (Q ++ 3 :: Z) R) (hd QG.gTR1 Q (2 :: (Z ++ R))) := by
+  intro n
+  induction n with
+  | zero =>
+    intro Z R hl _ hR
+    have : Z = [] := List.length_eq_zero_iff.1 hl
+    subst this
+    simpa using gm1Mark Q R hQ hR
+  | succ n ih =>
+    intro Z R hl hZ hR
+    obtain ⟨Z0, a, hZa⟩ := (List.eq_nil_or_concat Z).resolve_left (by rintro rfl; simp at hl)
+    rw [List.concat_eq_append] at hZa
+    subst hZa
+    have ha := hZ a (by simp)
+    have hZ0 : ∀ b ∈ Z0, b = 1 ∨ b = 2 := fun b hb => hZ b (by simp [hb])
+    have sZ0 : Sym4 (Q ++ 3 :: Z0) := by
+      refine hQ.app (Sym4.cons (by simp [ALL]) ?_)
+      intro b hb; rcases hZ0 b hb with rfl | rfl <;> simp [ALL]
+    have sR : Sym4 (a :: R) := Sym4.cons (by rcases ha with rfl | rfl <;> simp [ALL]) hR
+    have h1 := gm1Pass (Q ++ 3 :: Z0) R a ha sZ0 hR
+    have h2 := ih Z0 (a :: R) (by simpa using hl) hZ0 sR
+    exact (h1.of_eq (by simp) rfl).trans (h2.of_eq rfl (by simp))
+
 end ZP.G
