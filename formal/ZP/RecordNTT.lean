@@ -469,4 +469,187 @@ theorem recordOne (j' j kk : Nat) (Mid1 Mid2 : List Nat) (h1 : NoB Mid1) (h2 : N
   simp only [Nat.zero_add] at g4
   exact g1.trans (g2.trans (g3.trans (g4.trans (g5.trans (g6.trans (g7.trans g8))))))
 
+/-- `RN0`/`RN1`: cross a field and the single separator `M`, and the first cell of the next field. -/
+theorem rnField (A f : List Nat) (b : Nat) (rest : List Nat) (hA : Sym4 A) (hf : BitsD f)
+    (hb : b ∈ [2, 3]) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RN0 A (f ++ 1 :: b :: rest)) (hdR QNTT.RN0 (A ++ f ++ [1, b]) rest) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, rest] :=
+    Valid.cons hA (Valid.cons hf (Valid.cons hr (Valid.nil _)))
+  simp at hb; rcases hb with rfl | rfl
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 2, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 2]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RN0`: the record separator `MM` is reached; step back onto the last cell of `Nn`. -/
+theorem rnMM (A f rest : List Nat) (hA : Sym4 A) (hf : BitsD f) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RN0 A (f ++ 1 :: 1 :: rest)) (hd QNTT.RN2 (A ++ f) (1 :: 1 :: rest)) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, rest] :=
+    Valid.cons hA (Valid.cons hf (Valid.cons hr (Valid.nil _)))
+  exact checkFT (env := [A, f, rest]) (E := []) (k := 6) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.sym 1, .sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RN0`: the end of the tape is reached (no record yet). -/
+theorem rnEnd (A f : List Nat) (hA : Sym4 A) (hf : BitsD f) :
+    znttLogic.Reach (hdR QNTT.RN0 A f) (hd QNTT.RN2 (A ++ f) []) := by
+  have hV : Valid [ALL, [2, 3]] [A, f] := Valid.cons hA (Valid.cons hf (Valid.nil _))
+  exact checkFT (env := [A, f]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RN2`: mark the last unmarked cell of `Nn` and start a record. -/
+theorem rn2Mark (A0 : List Nat) (m : Nat) (R : List Nat) (hA : Sym4 A0) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.RN2 (A0 ++ [3] ++ List.replicate m 2) R)
+      (hdR QNTT.RSR (A0 ++ [2]) (List.replicate m 2 ++ R)) := by
+  have hV : Valid [ALL, [2], ALL] [A0, List.replicate m 2, R] :=
+    Valid.cons hA (Valid.cons (repSet m 2) (Valid.cons hR (Valid.nil _)))
+  exact checkTF (env := [A0, List.replicate m 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RN2`: `Nn` is used up (all marked); `RNU` unmarks it. -/
+theorem rn2End (A0 : List Nat) (m : Nat) (R : List Nat) (hA : Sym4 A0) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.RN2 (A0 ++ [1] ++ List.replicate m 2) R)
+      (hdR QNTT.RNU (A0 ++ [1]) (List.replicate m 2 ++ R)) := by
+  have hV : Valid [ALL, [2], ALL] [A0, List.replicate m 2, R] :=
+    Valid.cons hA (Valid.cons (repSet m 2) (Valid.cons hR (Valid.nil _)))
+  exact checkTF (env := [A0, List.replicate m 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rnuSweep (A : List Nat) (m : Nat) (rest : List Nat) (hA : Sym4 A) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RNU A (List.replicate m 2 ++ 1 :: rest))
+      (hd QNTT.RC0 (A ++ List.replicate m 3) (1 :: rest)) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate m 2, rest] :=
+    Valid.cons hA (Valid.cons (repSet m 2) (Valid.cons hr (Valid.nil _)))
+  exact checkFT (env := [A, List.replicate m 2, rest]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 (.const 3)]) (rs' := [.sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rnuSweepB (A : List Nat) (m : Nat) (hA : Sym4 A) :
+    znttLogic.Reach (hdR QNTT.RNU A (List.replicate m 2)) (hd QNTT.RC0 (A ++ List.replicate m 3) []) := by
+  have hV : Valid [ALL, [2]] [A, List.replicate m 2] := Valid.cons hA (Valid.cons (repSet m 2) (Valid.nil _))
+  exact checkFT (env := [A, List.replicate m 2]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .blk 1 (.const 3)]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rc0Walk (A1 : List Nat) (n : Nat) (R : List Nat) (hA : Sym4 A1) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.RC0 (A1 ++ [1] ++ List.replicate n 3) R)
+      (hd QNTT.RC1 A1 (1 :: (List.replicate n 3 ++ R))) := by
+  have hV : Valid [ALL, [3], ALL] [A1, List.replicate n 3, R] :=
+    Valid.cons hA (Valid.cons (repSet n 3) (Valid.cons hR (Valid.nil _)))
+  exact checkTT (env := [A1, List.replicate n 3, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rc1Mark (A0 : List Nat) (m : Nat) (R : List Nat) (hA : Sym4 A0) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.RC1 (A0 ++ [3] ++ List.replicate m 2) R)
+      (hdR QNTT.RO0 (A0 ++ [2]) (List.replicate m 2 ++ R)) := by
+  have hV : Valid [ALL, [2], ALL] [A0, List.replicate m 2, R] :=
+    Valid.cons hA (Valid.cons (repSet m 2) (Valid.cons hR (Valid.nil _)))
+  exact checkTF (env := [A0, List.replicate m 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rc1End (A0 : List Nat) (m : Nat) (R : List Nat) (hA : Sym4 A0) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.RC1 (A0 ++ [1] ++ List.replicate m 2) R)
+      (hdR QNTT.RCU (A0 ++ [1]) (List.replicate m 2 ++ R)) := by
+  have hV : Valid [ALL, [2], ALL] [A0, List.replicate m 2, R] :=
+    Valid.cons hA (Valid.cons (repSet m 2) (Valid.cons hR (Valid.nil _)))
+  exact checkTF (env := [A0, List.replicate m 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rcuSweep (A : List Nat) (m : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.RCU A (List.replicate m 2 ++ 1 :: R))
+      (hd QNTT.WI0 (A ++ List.replicate m 3) (1 :: R)) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate m 2, R] :=
+    Valid.cons hA (Valid.cons (repSet m 2) (Valid.cons hR (Valid.nil _)))
+  exact checkFT (env := [A, List.replicate m 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 (.const 3)]) (rs' := [.sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RO0`/`RO1`: cross a field, the separator `M` and the first cell of the next field. -/
+theorem roField (A f : List Nat) (b : Nat) (rest : List Nat) (hA : Sym4 A) (hf : BitsD f)
+    (hb : b ∈ [2, 3]) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RO0 A (f ++ 1 :: b :: rest)) (hdR QNTT.RO0 (A ++ f ++ [1, b]) rest) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, rest] :=
+    Valid.cons hA (Valid.cons hf (Valid.cons hr (Valid.nil _)))
+  simp at hb; rcases hb with rfl | rfl
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 2, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 2]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 3, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 3]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RO0`: a bit block. -/
+theorem roBlock (A f rest : List Nat) (hA : Sym4 A) (hf : BitsD f) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RO0 A (f ++ rest)) (hdR QNTT.RO0 (A ++ f) rest) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, rest] :=
+    Valid.cons hA (Valid.cons hf (Valid.cons hr (Valid.nil _)))
+  exact checkFF (env := [A, f, rest]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RO0`: at a record `MM h0 h1 ...`, set `h1 := '0'`. -/
+theorem roRec (A f : List Nat) (h0 h1 : Nat) (rest : List Nat) (hA : Sym4 A) (hf : BitsD f)
+    (h0b : h0 ∈ [2, 3]) (h1b : h1 ∈ [2, 3]) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.RO0 A (f ++ 1 :: 1 :: h0 :: h1 :: rest))
+      (hdR QNTT.RO0 (A ++ f ++ [1, 1, h0, 2]) rest) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, rest] :=
+    Valid.cons hA (Valid.cons hf (Valid.cons hr (Valid.nil _)))
+  simp at h0b h1b
+  rcases h0b with rfl | rfl <;> rcases h1b with rfl | rfl
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 8) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 1, .sym 2, .sym 2, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 1, .sym 2, .sym 2]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 8) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 1, .sym 2, .sym 3, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 1, .sym 2, .sym 2]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 8) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 1, .sym 3, .sym 2, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 1, .sym 3, .sym 2]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, f, rest]) (E := []) (k := 8) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .sym 1, .sym 3, .sym 3, .blk 2 .id])
+      (ls' := [.blk 0 .id, .blk 1 .id, .sym 1, .sym 1, .sym 3, .sym 2]) (rs' := [.blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `RO0`: the end of the tape; `RNL` runs back to the left end, into `RN0`. -/
+theorem roEnd (A f : List Nat) (hA : Sym4 A) (hf : BitsD f) :
+    znttLogic.Reach (hdR QNTT.RO0 A f) (hd QNTT.RNL (A ++ f) []) := by
+  have hV : Valid [ALL, [2, 3]] [A, f] := Valid.cons hA (Valid.cons hf (Valid.nil _))
+  exact checkFT (env := [A, f]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rnlScan (L : List Nat) (hL : NoB L) :
+    znttLogic.Reach (hd QNTT.RNL L []) (hdR QNTT.RN0 [] L) := by
+  have hV : Valid [NB] [L] := Valid.cons hL (Valid.nil _)
+  simpa using checkTF (env := [L]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := []) (ls' := []) (rs' := [.blk 0 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 end ZP.NTT
