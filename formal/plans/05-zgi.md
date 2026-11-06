@@ -162,3 +162,16 @@ Open: S3, the unterminated tail (`Tc = rep m 3 ++ 1 :: (Enc X).dropLast`, `X ≠
 - `|X| ∈ {1,2}`: the current label is the unterminated last one. Plan: generalise the label-level lemmas (`labelIterF`, `labelFindF`, `labelIter`, `labelFind`) from `1 :: (X0 ++ 0 :: Zt)` to a tail `Y ++ 0 :: Zt` so that `Y = []` is allowed, then add NS variants of `firstFail`/`secondFail`/`rowHalf` for that case.
 
 Still to do after S3: shape case-split into `CheckSpec`, parse/`Tc` lemma, `Rch [] m b ↔ inLG`, truth-phase wrapper, `newInstG`/`MainG`, Challenge/Solution entries, import into `ZP.lean`. Plan 08 not started on `lean-n3-p08`; plan 07 skipped by instruction.
+
+## Status update (CheckG8/CheckG9)
+- `CheckG8`: unterminated-last-label variants (`Fmark`, `firstFailNS`, `secondFailNS`, `twoFailNS`) and
+  `checkSpecS3` (|X| in {1,2}, last label unterminated). No `sorry`.
+- `CheckG3/4/5/6`: `AccS E.Z` now carries `Z`, so the accepting `FE`/`FR1` configurations can be turned into `TR`.
+- `CheckG9`: result paths `frPath0G`, `frPath1G`, `fePathG` (`FR0`/`FR1`/`FE` -> `hdR GRB ...`). No `sorry`.
+- `m = 0` (last run of `s` empty): every `checkSpec*` lemma assumes `E.m = p+1`. Simulating `zgi.build()` from
+  `CfgPop []` shows the machine does handle `m = 0` correctly (`checkG [] 0 X H = decide (X = [] ∧ no H entry >= 2)`):
+  it takes `gGL gUW2 gXm(M) gY1e ...` and then either `gFN1` (X empty) or fails at the first label (`gLPe`/`gLW1`).
+  A dedicated Lean lemma is still needed for this case.
+- Still to do: `m = 0` lemma, parse/`Tc` lemma (`Tc = tcOfList (runsAux s 0).reverse`), shape case-split into
+  `E.CheckSpec (fun w => checkG w (parseG s).1 ..) (AccS E.Z)`, truth-phase wrapper (`newInstG`), `layG`/`pair_mainG`,
+  `MainG`, Challenge/Solution/comparator entries, imports in `ZP.lean` (files need module headers first).
