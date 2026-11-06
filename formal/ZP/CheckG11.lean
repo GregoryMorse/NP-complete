@@ -322,4 +322,17 @@ theorem csList (E : GEnv) (m : Nat) (R : List Nat) (hTc : E.Tc = tcOfList (m :: 
       rw [flatR_snoc_eq, enc_dropLast_snoc] at hTc'
       exact csForm2 E m R' y (fun e he => hR0 e (by simp [he])) (hR0 y (by simp)) hTc'
 
+theorem csParse (E : GEnv) (s : List Bool) (hTc : E.Tc = fz (bitsOf s).reverse) :
+    E.CheckSpec (fun w => checkG w (parseG s).1 (parseG s).2.1 (parseG s).2.2) (AccS E.Z) := by
+  have hne : (runsAux s 0).reverse ≠ [] := by simpa using runsAux_ne s 0
+  obtain ⟨m, R, hT⟩ := List.exists_cons_of_ne_nil hne
+  have hTc2 : E.Tc = tcOfList (m :: R) := by
+    rw [hTc, fz_bitsOf, ← hT]
+    have := tc_runs s 0
+    simpa using this
+  have hp : parseG s = (m, R.takeWhile (· != 0), (R.drop ((R.takeWhile (· != 0)).length + 1)).takeWhile (· != 0)) := by
+    simp [parseG, hT]
+  rw [hp]
+  exact csList E m R hTc2
+
 end ZP.G
