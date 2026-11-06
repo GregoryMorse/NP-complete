@@ -284,4 +284,120 @@ theorem firstFailNS (W d Z : List Nat) (p x : Nat) (hZ : Sym4 Z)
       rw [List.drop_length, List.take_length] at hL
       exact FailsTo.pre (hL.of_eq (by simp [MEnc]) (by simp [MEnc, Enc])) hN
 
+
+theorem colNoTargetNS (W d Z : List Nat) (p y : Nat) (hW : ∀ e ∈ W, 1 ≤ e) (hZ : Sym4 Z) :
+    FailsTo
+      (hd QG.gIL0 (MEnc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate y 2) (0 :: Z))
+      (UfullNS W (p + 1) d y) Z := by
+  have sT : Sym4 (0 :: Z) := Sym4.cons (by simp [ALL]) hZ
+  have nA : NoB (MEnc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate y 2) := by
+    simp [NB]
+  have h1 := il0Walk' _ _ nA sT
+  have a3 : (3 : Nat) ∈ ALL := by simp [ALL]
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have a2 : (2 : Nat) ∈ ALL := by simp [ALL]
+  have sL : Sym4 (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++ 0 :: Z) :=
+    ((((Sym4.rep (p + 1) 3 a3).app (Sym4.cons a1 Sym4.nil)).app (MEnc_sym4 d)).app (Sym4.rep y 2 a2)).app sT
+  have sR : Sym4 (1 :: (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++ 0 :: Z)) := Sym4.cons a1 sL
+  have h2 := ilSkipList (1 :: (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++ 0 :: Z)) sR W [] hW Sym4.nil
+  have h3 := ilNoTarget (MEnc W) (List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2 ++ 0 :: Z) (MEnc_sym4 W) sL
+  have hall := h1.trans ((h2.of_eq (by simp [List.append_assoc]) rfl).trans (h3.of_eq rfl rfl))
+  have nd : NoB (MEnc d) := by
+    intro a ha; have := MEnc_o12 d a ha; simp [O12, NB] at this ⊢; omega
+  refine ⟨MEnc W ++ [1], List.replicate (p + 1) 3 ++ [1] ++ MEnc d ++ List.replicate y 2,
+    by simp [NB], ?_, ?_, ?_⟩
+  · simp only [NoB_app_iff]
+    simp [NB, nd]
+  · simp [UfullNS, unm_append, unm_MEnc, unm_rep3, unm_rep2, unm_Enc, List.append_assoc, unm1, Enc_append, Enc, U]
+  · refine hall.of_eq rfl ?_
+    simp [List.append_assoc]
+
+
+/-- The second label is the unterminated last entry of `X`: the check fails. -/
+theorem secondFailNS (W d Z : List Nat) (p y : Nat) (hZ : Sym4 Z)
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hdl : d.length % 2 = 1) (hy : 1 ≤ y) :
+    FailsTo
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (MEnc d ++ List.replicate y 3 ++ 0 :: Z))
+      (UfullNS W (p + 1) d y) Z := by
+  obtain ⟨r, rfl⟩ : ∃ r, y = r + 1 := ⟨y - 1, by omega⟩
+  have hdf : decide (d.length % 2 = 1) = true := by simp [hdl]
+  have hY : ∃ c R', (c = 0 ∨ c = 1) ∧ (0 :: Z) = c :: R' ∧ Sym4 R' := ⟨0, Z, Or.inl rfl, rfl, hZ⟩
+  have sZ0 : Sym4 (0 :: Z) := Sym4.cons (by simp [ALL]) hZ
+  rcases Nat.lt_or_ge W.length r with hlt | hge
+  · have hF := labelFindFY (p + 1) d [] Z hdd NoB.nil hZ r [] W 0 (by simp) hW hlt
+    refine FailsTo.ofCfg ?_ (FailsTo.cast ?_ hF)
+    · simp [MEnc, List.append_assoc]
+    simp [UfullNS, unm_append, unm_MEnc, unm_rep3, unm_Enc, List.append_assoc, unm1, Enc, U, List.replicate_succ']
+  · have hrl : r ≤ W.length := by
+      rcases Nat.lt_or_ge W.length r with h | h
+      · omega
+      · exact h
+    have hL := labelFindY (p + 1) d (0 :: Z) hdd sZ0 hY r [] W 0 (by simp) hW hrl
+    rw [hdf] at hL
+    have hLd : (LDone true) = QG.gIL0 := rfl
+    rw [hLd] at hL
+    rcases Nat.lt_or_ge r W.length with hrw | hrw
+    · obtain ⟨n, Wr, hr, _⟩ := W_split W hW r hrw
+      have hWr : ∀ e ∈ Wr, 1 ≤ e := by
+        intro e he
+        have : e ∈ W.drop r := by rw [hr]; exact List.mem_cons_of_mem _ he
+        exact hW e (List.mem_of_mem_drop this)
+      have hms : ∀ e ∈ W.take r, 1 ≤ e := fun e he => hW e (List.mem_of_mem_take he)
+      rw [hr] at hL
+      obtain ⟨e, d', hdeq⟩ : ∃ e d', d = e :: d' := by
+        cases d with
+        | nil => simp at hdl
+        | cons e d' => exact ⟨e, d', rfl⟩
+      have hde : 1 ≤ e := hdd e (by simp [hdeq])
+      have hd' : ∀ x ∈ d', 1 ≤ x := fun x hx => hdd x (by simp [hdeq, hx])
+      let F := Fmark (r + 1) hy Z hZ
+      have hnA : NoB (MEnc (W.take r) ++ Enc ((n + 1) :: Wr) ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++
+          List.replicate (0 + r + 1) 2) := by simp [NB]
+      have hIL := il0Walk' _ (0 :: Z) hnA sZ0
+      have hxs0 : ∀ x ∈ (List.replicate e 2 :: (d'.map fun e => List.replicate e 2)), Bits x ∧ x ≠ [] := by
+        intro x hx
+        simp only [List.mem_cons, List.mem_map] at hx
+        rcases hx with rfl | ⟨v, hv, rfl⟩
+        · exact ⟨bits_rep2 e, by intro h; have := congrArg List.length h; simp at this; omega⟩
+        · exact ⟨bits_rep2 v, by have := hd' v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+      have hwsb : ∀ x ∈ Wr.map (fun e => List.replicate e 3), Bits x ∧ x ≠ [] := by
+        intro x hx
+        obtain ⟨v, hv, rfl⟩ := List.mem_map.1 hx
+        exact ⟨bits_rep3 v, by have := hWr v hv; intro h; have := congrArg List.length h; simp at this; omega⟩
+      have hF : FailsTo
+          (hdR QG.gIL1b [] (MEnc (W.take r) ++ List.replicate 0 2 ++ List.replicate (n + 1) 3 ++ 1 ::
+            (MEs (Wr.map fun e => List.replicate e 3) ++ 1 :: (List.replicate (p + 1) 3 ++ 1 ::
+              (MEs (List.replicate e 2 :: (d'.map fun e => List.replicate e 2)) ++ (F.Hc 0 ++ 0 :: F.Zt))))))
+          (UG (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2 :: (d'.map fun e => List.replicate e 2))
+            n (p + 1) F.Hu) F.Zt := by
+        rcases Nat.eq_zero_or_pos n with rfl | hn
+        · exact colPartF4 F (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2)
+            (d'.map fun e => List.replicate e 2)
+            hms hwsb (hxs0 _ (List.mem_cons_self ..)) (fun x hx => hxs0 x (List.mem_cons_of_mem _ hx))
+            (p + 1) 0 0 (Nat.le_refl _) (List.replicate (r + 1) 2) (bits_rep2 _)
+            (by intro h; have := congrArg List.length h; simp at this) rfl
+        · exact colPartF1 F (W.take r) (Wr.map fun e => List.replicate e 3) (List.replicate e 2)
+            (d'.map fun e => List.replicate e 2)
+            hms hwsb (hxs0 _ (List.mem_cons_self ..)) (fun x hx => hxs0 x (List.mem_cons_of_mem _ hx))
+            (p + 1) n 0 (Nat.le_refl _) (by show 0 < 0 + n; omega)
+      refine FailsTo.pre (hL.of_eq (by simp [MEnc]) rfl) (FailsTo.pre (hIL.of_eq rfl ?_) (FailsTo.cast ?_ hF))
+      · subst hdeq
+        simp [F, Fmark, Enc, U, MEnc, Enc_MEs, MEnc_MEs, MEs_append, MEs, ME, List.append_assoc]
+      have u3 : unm (MEs (Wr.map fun e => List.replicate e 3)) = Enc Wr := by
+        rw [← Enc_MEs, unm_Enc]
+      have e4 : unm (MEs (List.replicate e 2 :: (d'.map fun e => List.replicate e 2))) = Enc (e :: d') := by
+        have := MEnc_MEs (e :: d')
+        simp only [List.map_cons] at this
+        rw [← this, unm_MEnc]
+      have eW : Enc W = Enc (W.take r) ++ Enc ((n + 1) :: Wr) := by
+        rw [← Enc_append, ← hr, List.take_append_drop]
+      subst hdeq
+      simp only [UG, UfullNS, u3, e4, eW, unm_Enc, unm_rep3]
+      simp [F, Fmark, Enc, U, List.replicate_succ, rep3_cons, List.append_assoc]
+    · have hr : r = W.length := by omega
+      subst hr
+      have hN := colNoTargetNS W d Z p (W.length + 1) hW hZ
+      rw [List.drop_length, List.take_length] at hL
+      exact FailsTo.pre (hL.of_eq (by simp [MEnc]) (by simp [MEnc, Enc])) hN
+
 end ZP.G
