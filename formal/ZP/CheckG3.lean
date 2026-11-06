@@ -1805,4 +1805,63 @@ theorem loopOk (W : List Nat) (hW : ∀ e ∈ W, 1 ≤ e) (p : Nat) (H : List Na
       · simp [cfgE, show x - 1 + 1 = x by omega, show y - 1 + 1 = y by omega]
     exact hs2.trans (ih.of_eq rfl (by simp [cfgE, List.append_assoc]))
 
+/-! ### Failure: the label is beyond `w` by exactly one (the target is absent) -/
+
+theorem trNoTarget (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gTR2b P (1 :: R)) (hdR QG.gFG (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem ilNoTarget (P R : List Nat) (hP : Sym4 P) (hR : Sym4 R) :
+    zgiLogic.Reach (hdR QG.gIL1b P (1 :: R)) (hdR QG.gFG (P ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [P, R] := Valid.cons hP (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [P, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem rowNoTarget (F : HFam) (W d X' : List Nat) (p x c : Nat)
+    (hW : ∀ e ∈ W, 1 ≤ e) (hdd : ∀ e ∈ d, 1 ≤ e) (hX' : ∀ e ∈ X', 1 ≤ e) (hc : c ≤ F.N) :
+    FailsTo
+      (hd QG.gM1 (MEnc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]) ++ MEnc d ++ List.replicate x 2)
+        (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+      (Ufull W (p + 1) (d ++ x :: X') F.Hu) F.Zt := by
+  have sX' : Sym4 (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)) := by
+    refine Sym4.app (fun a ha => ?_) (Sym4.cons (by simp [ALL]) (F.sym c hc))
+    have := Enc_o13 X' a ha; simp [O13, ALL] at this ⊢; omega
+  have sQ : Sym4 (MEnc W ++ [1] ++ List.replicate p 3) :=
+    (((MEnc_sym4 W).app (by simp [ALL])).app (Sym4.rep _ _ (by simp [ALL])))
+  have nQ : NoB (MEnc W ++ [1] ++ List.replicate p 3) := by simp [NB]
+  have hZ : ∀ a ∈ [1] ++ MEnc d ++ List.replicate x 2, a = 1 ∨ a = 2 := by
+    intro a ha
+    simp only [List.mem_append, List.mem_singleton, List.mem_replicate] at ha
+    rcases ha with (rfl | ha) | ⟨_, rfl⟩
+    · left; rfl
+    · have := MEnc_o12 d a ha; simp [O12] at this; omega
+    · right; rfl
+  have h1 := gm1Walk (MEnc W ++ [1] ++ List.replicate p 3) sQ _ ([1] ++ MEnc d ++ List.replicate x 2)
+    (1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))) rfl hZ (Sym4.cons (by simp [ALL]) sX')
+  have sR2 : Sym4 (2 :: ([1] ++ MEnc d ++ List.replicate x 2 ++ 1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt)))) := by
+    refine Sym4.cons (by simp [ALL]) ((((Sym4.cons (by simp [ALL]) Sym4.nil).app (MEnc_sym4 d)).app (Sym4.rep _ _ (by simp [ALL]))).app
+      (Sym4.cons (by simp [ALL]) sX'))
+  have h2 := trLeft _ _ nQ sR2
+  have sR3 : Sym4 (1 :: (List.replicate p 3 ++ 2 :: ([1] ++ MEnc d ++ List.replicate x 2 ++ 1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))) := by
+    refine Sym4.cons (by simp [ALL]) ((Sym4.rep _ _ (by simp [ALL])).app sR2)
+  have h3 := trSkipList _ sR3 W [0] hW (by simp [ALL])
+  have h4 := trNoTarget ([0] ++ MEnc W) (List.replicate p 3 ++ 2 :: ([1] ++ MEnc d ++ List.replicate x 2 ++ 1 :: (Enc X' ++ 1 :: (F.Hc c ++ 0 :: F.Zt))))
+    (by simp [ALL]) ((Sym4.rep _ _ (by simp [ALL])).app sR2)
+  have hall := h1.trans ((h2.of_eq rfl (by simp [List.append_assoc])).trans ((h3.of_eq rfl (by simp)).trans (h4.of_eq rfl rfl)))
+  have hnb := F.nb c hc
+  have hX'n : NoB (Enc X') := by
+    intro a ha; have := Enc_o13 X' a ha; simp [O13, NB] at this ⊢; omega
+  refine ⟨MEnc W ++ [1], List.replicate p 3 ++ 2 :: ([1] ++ MEnc d ++ List.replicate x 2 ++ 1 :: (Enc X' ++ 1 :: F.Hc c)),
+    by simp [NB], ?_, ?_, ?_⟩
+  · simp only [NoB_app_iff, NoB_cons_iff]
+    simp [NB, hnb, hX'n]
+  · simp [Ufull, unm_append, unm_MEnc, unm_rep3, unm_Enc, F.un c hc, List.append_assoc, unm1, List.replicate_succ', Enc_append, Enc, U]
+  · refine hall.of_eq (by simp [List.replicate_succ', List.append_assoc]) ?_
+    rw [show [0] ++ MEnc W ++ [1] = 0 :: (MEnc W ++ [1]) by simp, hdR_z0]
+    simp [List.append_assoc]
+
 end ZP.G
