@@ -110,3 +110,20 @@ and `gFG`); (2) the link `Rch [] m b` <-> `inLG` (via `Expl` and `injL`); (3) th
 (entry `gUP` -> result `FR0/FE/FR1`), `newInstG`, `pair_mainG`, `MainG`, Challenge/Solution/comparator entries.
 Key tape facts: the stack is stored top-first as `Enc rest` (`U v = 1^v M`), so the check word is `rest` itself;
 `good s := checkG s m X H`.
+
+### Status update (check phase, `ZP/CheckG*.lean`, all building, no `sorry`, not yet imported by `ZP.lean`)
+
+Done: `CheckG` (unmark walks, label find, inner-loop skeleton, reset walks), `CheckG2` (row loop in the
+`MP/MU` form, column part, `huWalk`), `CheckG3`:
+- `HP`, `HFam` (a family of `H` tapes indexed by the number of passed entries, with a tail `J` of shape
+  `[]`, `[1]` or `1 :: 1 :: _` after the last entry, then the blank and `Zt`), `HFam.ofHP`;
+- success: `innerLoopU`/`innerLoopU0`, `rowIterU`, `rowLoopU`, `colPre`, `colPartU`, `edgeRow` (label found -> end of row
+  loop), `toY1`/`toY1g` (back to the start of `X`);
+- failure (`FailsTo c U Z`: reach `hdR gFG A (R1 ++ 0 :: Z)` with `unm (A ++ R1) = U`): `hSkipFail`, `innerLoopF`,
+  `rowIterF`, `rowLoopF`, `colPartF1`, `colPartF2`/`huFail`.
+The H tape of the machine is NOT terminated by an `M` in general, so the success lemmas of `CheckG2` that use
+`MP pasT ++ MU HU ++ Rt` cannot reach the last entry; use the `HFam` versions.
+
+Still to do: `labelFail` (x or y > |w|), odd `X`, the glue `labelFind -> gIL0 -> colPartU -> toY1g`, the edge-loop
+induction against `checkEdges` (H state `HP (Hs H used) 0 ++ J`), the final check `gFN*`, `CheckSpec` (via `failPath`), the link
+`Rch` <-> `inLG`, the truth-phase wrapper, `pair_mainG`, `MainG`, entries, import in `ZP.lean`.
