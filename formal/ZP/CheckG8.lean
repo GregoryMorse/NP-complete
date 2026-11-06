@@ -400,4 +400,68 @@ theorem secondFailNS (W d Z : List Nat) (p y : Nat) (hZ : Sym4 Z)
       rw [List.drop_length, List.take_length] at hL
       exact FailsTo.pre (hL.of_eq (by simp [MEnc]) (by simp [MEnc, Enc])) hN
 
+
+/-- `|X| = 2`, the second label unterminated: the check fails. -/
+theorem twoFailNS (W Z : List Nat) (p x y : Nat) (hZ : Sym4 Z) (hW : ∀ e ∈ W, 1 ≤ e) (hx : 1 ≤ x) (hy : 1 ≤ y) :
+    FailsTo
+      (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc [x] ++ (List.replicate y 3 ++ 0 :: Z)))
+      (UfullNS W (p + 1) [x] y) Z := by
+  let F := HFam.ofEmpty (List.replicate y 3)
+    (Or.inr (Or.inr (Or.inr ⟨List.replicate y 3, bits_rep3 y, by
+      intro h; have := congrArg List.length h; simp at this; omega, rfl⟩)))
+    (by simp [NB]) Z hZ
+  have hd0 : ∀ e ∈ ([] : List Nat), 1 ≤ e := by simp
+  by_cases hb : RowBad F W p x 0
+  · have := firstFail F W [] [] p x 0 hW hd0 (by simp) (by simp) hx (Nat.le_refl _) hb
+    refine FailsTo.ofCfg ?_ (FailsTo.cast ?_ this)
+    · simp [Enc, U, MEnc, F, HFam.ofEmpty, List.append_assoc]
+    · simp [Ufull, UfullNS, F, HFam.ofEmpty, unm_rep3, Enc, U, List.append_assoc]
+  · obtain ⟨r, rfl⟩ : ∃ r, x = r + 1 := ⟨x - 1, by omega⟩
+    have hrl : r < W.length := Classical.byContradiction fun h => hb (Or.inl (by omega))
+    obtain ⟨n, Wr, hr, _⟩ := W_split W hW r hrl
+    have hcn : 0 + (p + 1) * n ≤ F.N := Classical.byContradiction fun h => hb (Or.inr ⟨n, Wr, by simpa using hr, by omega⟩)
+    have hn : n = 0 := by
+      have hN0 : F.N = 0 := rfl
+      have : (p + 1) * n ≤ 0 := by omega
+      rcases Nat.eq_zero_or_pos n with h | h
+      · exact h
+      · have hpos := Nat.mul_pos (by omega : 0 < p + 1) h
+        omega
+    subst hn
+    have hrow := rowHalf F W Wr [] [] r 0 p 0 hW hd0 (by simp) (by simp) hr (Nat.le_refl _) hcn
+    have h2 := secondFailNS W [r + 1] Z p y hZ hW (by simp) (by simp) hy
+    have hrow' : zgiLogic.Reach
+        (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (Enc [r + 1] ++ (List.replicate y 3 ++ 0 :: Z)))
+        (hdR QG.gY1e (Enc W ++ [1] ++ (List.replicate (p + 1) 3 ++ [1])) (MEnc [r + 1] ++ List.replicate y 3 ++ 0 :: Z)) :=
+      hrow.of_eq (by simp [Enc, U, MEnc, F, HFam.ofEmpty, List.append_assoc])
+        (by simp [Enc, U, MEnc, F, HFam.ofEmpty, List.append_assoc])
+    exact FailsTo.pre hrow' h2
+
+theorem checkSpecS3 (E : GEnv) (p : Nat) (d : List Nat) (y : Nat) (hd : d.length ≤ 1) (hdd : ∀ e ∈ d, 1 ≤ e) (hy : 1 ≤ y)
+    (hTc : E.Tc = List.replicate (p + 1) 3 ++ 1 :: (Enc d ++ List.replicate y 3)) :
+    E.CheckSpec (fun w => checkG w (p + 1) (d ++ [y]) []) AccS := by
+  intro rest hv
+  have hW : ∀ e ∈ rest, 1 ≤ e := fun e he => (hv.2 e he).1
+  have hg : checkG rest (p + 1) (d ++ [y]) [] = false := by
+    rw [checkG_nil]; simp
+  refine ⟨fun h => ?_, fun _ => ?_⟩
+  · have h' : checkG rest (p + 1) (d ++ [y]) [] = true := h
+    rw [hg] at h'; cases h'
+  have hQ : ∀ a ∈ List.replicate y 3, a ∈ O13 := by
+    intro a ha; rw [List.eq_of_mem_replicate ha]; simp [O13]
+  have hpop := popG E rest hW p d (List.replicate y 3) hQ hTc
+  have hfail : FailsTo (hdR QG.gY1e (Enc rest ++ [1] ++ (List.replicate (p + 1) 3 ++ [1]))
+      (Enc d ++ (List.replicate y 3 ++ 0 :: E.Z))) (UfullNS rest (p + 1) d y) E.Z := by
+    match d, hd, hdd with
+    | [], _, _ =>
+      have := firstFailNS rest [] E.Z p y E.hZ hW (by simp) (by simp) hy
+      refine FailsTo.ofCfg ?_ this
+      simp [Enc, MEnc]
+    | [x], _, hdd => exact twoFailNS rest E.Z p x y E.hZ hW (hdd x (by simp)) hy
+  obtain ⟨A, R1, hA, hR1, hu, hr⟩ := hfail
+  have hf := failPath A R1 E.Z hA hR1 E.hZ
+  refine (hpop.trans hr).trans (hf.of_eq rfl ?_)
+  rw [hu]
+  simp [UfullNS, GEnv.CfgD, GEnv.Rt, hTc, List.append_assoc]
+
 end ZP.G
