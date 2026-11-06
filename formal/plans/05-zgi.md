@@ -148,3 +148,9 @@ Still to do:
 2. The link `Rch [] m b <-> inLG` (via `Expl`, `injL`), including the parse/`Tc` shape lemma
    (`J` from the tail of `T`; `HP_Enc` gives `HP (Hs H []) 0 = (Enc H).dropLast`).
 3. Truth-phase wrapper (`gUP` -> `FR0/FE/FR1`), `newInstG`, `pair_mainG`, `MainG`, entries; import in `ZP.lean`.
+
+## Status update (CheckG6)
+
+Check phase proved (CheckG3–CheckG6, no sorry, builds clean): nonempty `H`, `H = []` with separator (incl. accept for `X = []`), and `T = [m]` (`checkSpecS0`).
+
+Open: degenerate tapes with `H = []` and no separator (S2: `T = m :: X ++ [0]`; S3: unterminated `X`). Attempted a "Tl" refactor of `HFam` (separator moved into `Hc`); it touched ~80 sites across CheckG3/4 and was reverted. A cleaner route is a dedicated walk for these two shapes. Still to do: shape case-split into `CheckSpec`, parse/`Tc` lemma, `Rch [] m b ↔ inLG`, truth-phase wrapper, `newInstG`/`MainG`, Challenge/Solution entries, import into `ZP.lean`. Plan 08 not started on `lean-n3-p08`; plan 07 skipped by instruction.
