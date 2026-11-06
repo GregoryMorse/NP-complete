@@ -1252,4 +1252,92 @@ theorem colHalf (F : HFam) (W Wr d X' : List Nat) (r n p c : Nat) (T : List (Lis
       List.replicate_succ, List.append_assoc]
     done
 
+/-! ### The `H` tape across edges: cutting at one entry -/
+
+def Qof (B : List (List Nat)) : List Nat :=
+  match B with
+  | [] => []
+  | u :: ts => 1 :: HP (u :: ts) 0
+
+theorem HP_cons (a : List Nat) (l : List (List Nat)) (c : Nat) (hl : l ≠ []) :
+    HP (a :: l) c = (if 0 < c then 2 else 3) :: (a ++ 1 :: HP l (c - 1)) := by
+  cases l with
+  | nil => exact absurd rfl hl
+  | cons u ts => rfl
+
+theorem HP_cut (t : List Nat) (B : List (List Nat)) : ∀ (A : List (List Nat)),
+    HP (A ++ t :: B) A.length = MP A ++ 3 :: (t ++ Qof B) ∧
+    HP (A ++ t :: B) 0 = MU A ++ 3 :: (t ++ Qof B)
+  | [] => by
+    cases B with
+    | nil => simp [HP, MP, MU, Qof]
+    | cons u ts => simp [HP, MP, MU, Qof]
+  | a :: A => by
+    obtain ⟨h1, h2⟩ := HP_cut t B A
+    have hne : A ++ t :: B ≠ [] := by simp
+    refine ⟨?_, ?_⟩
+    · rw [List.cons_append, List.length_cons, HP_cons _ _ _ hne]
+      simp [MP, h1]
+    · rw [List.cons_append, HP_cons _ _ _ hne]
+      simp [MU, h2]
+
+/-- The tail (cells after the first) of the `H` entry of value `v`, with the edge used or not. -/
+def tl (v : Nat) (b : Bool) : List Nat :=
+  if v ≤ 1 then [] else (if b then 2 else 3) :: List.replicate (v - 2) 3
+
+def Hs (H used : List Nat) : List (List Nat) :=
+  (List.range H.length).map fun i => tl (H.getD i 0) (decide (i + 1 ∈ used))
+
+theorem Hs_length (H used : List Nat) : (Hs H used).length = H.length := by simp [Hs]
+
+theorem Hs_get (H used : List Nat) (i : Nat) (hi : i < H.length) :
+    (Hs H used)[i]'(by rw [Hs_length]; exact hi) = tl (H.getD i 0) (decide (i + 1 ∈ used)) := by
+  simp [Hs]
+
+theorem tl_bits (v : Nat) (b : Bool) : Bits (tl v b) := by
+  intro a ha
+  unfold tl at ha
+  split at ha
+  · simp at ha
+  · rcases List.mem_cons.1 ha with rfl | ha
+    · split <;> simp [bits]
+    · rw [List.eq_of_mem_replicate ha]; simp [bits]
+
+theorem Hs_bits (H used : List Nat) : ∀ t ∈ Hs H used, Bits t := by
+  intro t ht
+  obtain ⟨i, _, rfl⟩ := List.mem_map.1 ht
+  exact tl_bits _ _
+
+/-- Marking the edge `k` as used rewrites one entry. -/
+theorem Hs_mark (H used : List Nat) (k : Nat) (hk1 : 1 ≤ k) (hk : k ≤ H.length) (hv : 2 ≤ H.getD (k - 1) 0)
+    (hu : k ∉ used) :
+    Hs H (k :: used) = (Hs H used).take (k - 1) ++ (2 :: List.replicate (H.getD (k - 1) 0 - 2) 3) :: (Hs H used).drop k := by
+  apply List.ext_getElem
+  · simp [Hs]; omega
+  · intro i h1 h2
+    have hiH : i < H.length := by simpa [Hs] using h1
+    rw [show (Hs H (k :: used))[i] = tl (H.getD i 0) (decide (i + 1 ∈ k :: used)) from Hs_get _ _ _ hiH]
+    rw [List.getElem_append]
+    split
+    · rename_i hlt
+      rw [List.getElem_take, Hs_get _ _ _ hiH]
+      have : i + 1 ≠ k := by simp at hlt; omega
+      simp [this]
+    · rename_i hge
+      have hlen : ((Hs H used).take (k - 1)).length = k - 1 := by simp [Hs_length]; omega
+      simp only [hlen]
+      by_cases hik : i - (k - 1) = 0
+      · have hi : i = k - 1 := by omega
+        subst hi
+        have hv1 : 1 < H.getD (k - 1) 0 := by omega
+        rw [List.getD_eq_getElem?_getD] at hv1
+        simp [hik, tl, show ¬ (H.getD (k - 1) 0 ≤ 1) by omega, show (k - 1 + 1) = k by omega, hv1]
+      · obtain ⟨j, hj⟩ : ∃ j, i - (k - 1) = j + 1 := ⟨i - (k - 1) - 1, by omega⟩
+        have e : i = k + j := by omega
+        subst e
+        simp only [hj, List.getElem_cons_succ, List.getElem_drop]
+        rw [Hs_get _ _ _ (by omega)]
+        have : k + j + 1 ≠ k := by omega
+        simp [this]
+
 end ZP.G
