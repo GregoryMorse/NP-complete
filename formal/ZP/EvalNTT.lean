@@ -847,6 +847,7 @@ theorem passStartAll (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (r : Rc) (hr
   have h3 := rz1MM Pm (r.body ++ tailB rs) hP.sym4 sT
   have h4 := passStart rs hrs r hr (Pm ++ [1, 1]) (hP.sym4.app (sym4_M (sym4_M Sym4.nil)))
   simp only [List.nil_append, List.append_assoc, List.cons_append, List.append_nil] at h1 h2 h3 h4 ⊢
+  rw [hLe]
   exact h1.trans (h2.trans (h3.trans h4))
 
 end ZP.NTT
