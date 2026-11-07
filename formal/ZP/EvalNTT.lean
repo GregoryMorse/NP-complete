@@ -725,4 +725,129 @@ theorem recPass3 (A : List Nat) (r : Rc) (hr : r.Ok) (hPf : r.Pf = 3) (hacc2 : 2
   all_goals first | sy | skip
   simp [accI, hacc]
 
+/-- `RU` restores the leading marks of a pointer. -/
+def restoreU : List Nat → List Nat
+  | 2 :: l => 3 :: restoreU l
+  | l => l
+
+theorem restoreU_rep (a : Nat) (ur : List Nat) :
+    restoreU (List.replicate a 2 ++ 3 :: ur) = List.replicate a 3 ++ 3 :: ur := by
+  induction a with
+  | zero => simp [restoreU]
+  | succ a ih => simp [List.replicate_succ, restoreU, ih]
+
+/-- The record after the pass start. -/
+def Rc.ps (r : Rc) : Rc :=
+  { F := 2, O := r.O, Pf := r.Pf, acc := accI r.Pf r.acc.length, E := r.E, b0 := r.b0, br := r.br,
+    u0 := (restoreU (r.u0 :: r.ur)).headD 3, ur := (restoreU (r.u0 :: r.ur)).tail }
+
+/-- The pointer has the form `0^a 1 ...` (so `RU` stops). -/
+def Rc.Rest (r : Rc) : Prop := ∃ a ur', r.u0 :: r.ur = List.replicate a 2 ++ 3 :: ur'
+
+theorem Rc.ps_body (r : Rc) (hr : r.Rest) :
+    r.ps.body = [2, r.O, r.Pf] ++ 1 :: (accI r.Pf r.acc.length ++ 1 :: (r.E ++ 1 :: r.b0 :: (r.br ++ 1 ::
+      restoreU (r.u0 :: r.ur)))) := by
+  obtain ⟨a, ur', h⟩ := hr
+  have hu' : restoreU (r.u0 :: r.ur) = List.replicate a 3 ++ 3 :: ur' := by rw [h, restoreU_rep]
+  simp only [Rc.ps, Rc.body, Rc.tlr, Rc.tl0, hu']
+  cases a <;> simp [List.replicate_succ]
+
+def tailP : List Rc → List Nat
+  | [] => []
+  | r :: rs => 1 :: 1 :: (r.ps.body ++ tailP rs)
+
+theorem recPassC (A : List Nat) (r : Rc) (hr : r.Ok) (hacc2 : 2 ≤ r.acc.length)
+    (a : Nat) (ur' Tl : List Nat) (hu : r.u0 :: r.ur = List.replicate a 2 ++ 3 :: ur')
+    (hA : Sym4 A) (hTl : Sym4 Tl) :
+    znttLogic.Reach (hdR QNTT.RH0 A (r.body ++ Tl))
+      (hdR QNTT.RU2 (A ++ [2, r.O, r.Pf] ++ 1 :: (accI r.Pf r.acc.length ++ 1 :: (r.E ++ 1 :: r.b0 :: (r.br ++ 1 ::
+        (List.replicate a 3 ++ [3]))))) (ur' ++ Tl)) := by
+  have hP := hr.Pf
+  simp at hP; rcases hP with h | h
+  · have := recPass2 A r hr h hacc2 a ur' Tl hu hA hTl
+    rw [h]; exact this
+  · have := recPass3 A r hr h hacc2 a ur' Tl hu hA hTl
+    rw [h]; exact this
+
+theorem Rc.ur_bits (r : Rc) (hr : r.Ok) (a : Nat) (ur' : List Nat) (hu : r.u0 :: r.ur = List.replicate a 2 ++ 3 :: ur') :
+    BitsD ur' := by
+  intro x hx
+  have h2 : x ∈ r.u0 :: r.ur := by rw [hu]; simp [hx]
+  simp at h2; rcases h2 with h2 | h2
+  · rw [h2]; exact hr.u0
+  · exact hr.ur x h2
+
+/-- Records ready for a pass start. -/
+structure Rc.PS (r : Rc) : Prop where
+  ok : r.Ok
+  acc2 : 2 ≤ r.acc.length
+  rest : r.Rest
+
+theorem Rc.ps_sym4 (r : Rc) (h : r.PS) : Sym4 r.ps.body := by
+  obtain ⟨a, ur', hu⟩ := h.rest
+  rw [Rc.ps_body r h.rest]
+  have hr := h.ok
+  have hacc : Sym4 (accI r.Pf r.acc.length) := by
+    unfold accI; split
+    · exact sym4_B (by simp) (sym4_B (by simp) (BitsD.rep _ _ (by simp)).sym4)
+    · exact sym4_B (by simp) (BitsD.rep _ _ (by simp)).sym4
+  have hU : Sym4 (restoreU (r.u0 :: r.ur)) := by
+    rw [hu, restoreU_rep]
+    exact (BitsD.rep _ _ (by simp : 3 ∈ [2, 3])).sym4.app (sym4_B (by simp) (r.ur_bits hr a ur' hu).sym4)
+  have s1 := hr.br.sym4.app (sym4_M hU)
+  exact sym4_B (by simp) (sym4_B hr.O (sym4_B hr.Pf
+    (sym4_M (hacc.app (sym4_M (hr.E.sym4.app (sym4_M (sym4_B hr.b0 s1))))))))
+
+theorem passStart : ∀ (rs : List Rc), (∀ r ∈ rs, r.PS) → ∀ (r : Rc), r.PS → ∀ (A : List Nat), Sym4 A →
+    znttLogic.Reach (hdR QNTT.RH0 A (r.body ++ tailB rs)) (hd QNTT.FAL (A ++ r.ps.body ++ tailP rs) [])
+  | [], _, r, hr, A, hA => by
+    obtain ⟨a, ur', hu⟩ := hr.rest
+    have h1 := recPassC A r hr.ok hr.acc2 a ur' [] hu hA Sym4.nil
+    have bU := r.ur_bits hr.ok a ur' hu
+    have eL : (A ++ [2, r.O, r.Pf] ++ 1 :: (accI r.Pf r.acc.length ++ 1 :: (r.E ++ 1 :: r.b0 :: (r.br ++ 1 ::
+        (List.replicate a 3 ++ [3]))))) ++ ur' = A ++ r.ps.body := by
+      rw [Rc.ps_body r hr.rest, hu, restoreU_rep]; simp
+    have sL := ((Sym4_app_iff.mp (eL ▸ hA.app (r.ps_sym4 hr))).1)
+    have h2 := ru2End _ ur' sL bU
+    rw [eL] at h2
+    simp only [tailB, tailP, List.append_nil] at h1 ⊢
+    exact h1.trans h2
+  | r' :: rs, hok, r, hr, A, hA => by
+    have hr' : r'.PS := hok r' (by simp)
+    have hrs : ∀ x ∈ rs, x.PS := fun x hx => hok x (by simp [hx])
+    obtain ⟨a, ur', hu⟩ := hr.rest
+    have sT : Sym4 (tailB (r' :: rs)) := tailB_sym4 _ (fun x hx => (hok x hx).ok)
+    have h1 := recPassC A r hr.ok hr.acc2 a ur' _ hu hA sT
+    have bU := r.ur_bits hr.ok a ur' hu
+    have eL : (A ++ [2, r.O, r.Pf] ++ 1 :: (accI r.Pf r.acc.length ++ 1 :: (r.E ++ 1 :: r.b0 :: (r.br ++ 1 ::
+        (List.replicate a 3 ++ [3]))))) ++ ur' = A ++ r.ps.body := by
+      rw [Rc.ps_body r hr.rest, hu, restoreU_rep]; simp
+    have sL := ((Sym4_app_iff.mp (eL ▸ hA.app (r.ps_sym4 hr))).1)
+    have sR : Sym4 (r'.body ++ tailB rs) :=
+      (r'.body_sym4 hr'.ok).app (tailB_sym4 rs (fun x hx => (hrs x hx).ok))
+    have h2 := ru2 _ ur' (1 :: (r'.body ++ tailB rs)) sL bU (sym4_M sR)
+    have h3 := rnStep (_ ++ ur' ++ [1]) (r'.body ++ tailB rs) (by
+      rw [eL]; exact (hA.app (r.ps_sym4 hr)).app (sym4_M Sym4.nil)) sR
+    rw [eL] at h2 h3
+    have h4 := passStart rs hrs r' hr' (A ++ r.ps.body ++ [1] ++ [1]) (by
+      exact ((hA.app (r.ps_sym4 hr)).app (sym4_M Sym4.nil)).app (sym4_M Sym4.nil))
+    simp only [tailB, tailP, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 ⊢
+    exact h1.trans (h2.trans (h3.trans h4))
+
+/-- The pass start `RZ0` .. `FAL` over the whole tape. -/
+theorem passStartAll (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (r : Rc) (hr : r.PS)
+    (rs : List Rc) (hrs : ∀ x ∈ rs, x.PS) (hLe : L = Pm ++ 1 :: 1 :: (r.body ++ tailB rs)) :
+    znttLogic.Reach (hd QNTT.RZ0 L [])
+      (hd QNTT.FAL (Pm ++ [1, 1] ++ r.ps.body ++ tailP rs) []) := by
+  have sT : Sym4 (r.body ++ tailB rs) :=
+    (r.body_sym4 hr.ok).app (tailB_sym4 rs (fun x hx => (hrs x hx).ok))
+  have h1 := rz0Scan L [] hL Sym4.nil
+  rw [hLe] at h1
+  have h2 := rz1Good hP [] (1 :: 1 :: (r.body ++ tailB rs)) Sym4.nil (sym4_M (sym4_M sT))
+  have h3 := rz1MM Pm (r.body ++ tailB rs) hP.sym4 sT
+  have h4 := passStart rs hrs r hr (Pm ++ [1, 1]) (hP.sym4.app (sym4_M (sym4_M Sym4.nil)))
+  simp only [List.nil_append, List.append_assoc, List.cons_append, List.append_nil] at h1 h2 h3 h4 ⊢
+  exact h1.trans (h2.trans (h3.trans h4))
+
 end ZP.NTT
+
