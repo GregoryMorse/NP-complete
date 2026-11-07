@@ -212,31 +212,43 @@ theorem wsEnd (A f : List Nat) (hA : Sym4 A) (hf : BitsD f) :
     (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+theorem wsGood {u : List Nat} (hu : GoodW u) :
+    ∀ (A rest : List Nat), Sym4 A → Sym4 rest →
+    znttLogic.Reach (hdR QNTT.WS A (u ++ rest)) (hdR QNTT.WS (A ++ u) rest) := by
+  induction hu with
+  | nil => intro A rest _ _; simpa using LTM.Reach.refl znttLogic _
+  | @bit b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [b] := by
+      intro y hy; simp at hy; subst hy; simp at hb; rcases hb with rfl | rfl <;> simp [ALL]
+    have h1 := wsBlock A [b] (u ++ rest) hA (by intro x hx; simp at hx; subst hx; exact hb) (hu'.sym4.app hr)
+    have h2 := ih (A ++ [b]) rest (hA.app sb) hr
+    simpa using h1.trans h2
+  | @mb b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [1, b] := by
+      intro y hy; simp at hy; simp at hb; rcases hy with rfl | rfl <;> (try rcases hb with rfl | rfl) <;> simp [ALL]
+    have h1 := wsField A [] b (u ++ rest) hA (by intro x hx; simp at hx) hb (hu'.sym4.app hr)
+    have h2 := ih (A ++ [] ++ [1, b]) rest (by simpa using hA.app sb) hr
+    simpa using h1.trans h2
+
 theorem sym4_M {l : List Nat} (h : Sym4 l) : Sym4 (1 :: l) := Sym4.cons (by simp [ALL]) h
 
 theorem sym4_B {b : Nat} {l : List Nat} (hb : b ∈ [2, 3]) (h : Sym4 l) : Sym4 (b :: l) :=
   Sym4.cons (by simp at hb; rcases hb with rfl | rfl <;> simp [ALL]) h
 
-theorem recMid (A acc : List Nat) (e0 e1 : Nat) (eT : List Nat) (z0 : Nat) (zr : List Nat) (b0 : Nat)
-    (br : List Nat) (u0 : Nat) (ur Tl : List Nat)
+theorem recMid (A acc : List Nat) (e0 e1 : Nat) (eT : List Nat) (t0 : Nat) (tr Tl : List Nat)
     (hA : Sym4 A) (hacc : BitsD acc) (he0 : e0 ∈ [2, 3]) (he1 : e1 ∈ [2, 3]) (heT : BitsD eT)
-    (hz0 : z0 ∈ [2, 3]) (hzr : BitsD zr) (hb0 : b0 ∈ [2, 3]) (hbr : BitsD br) (hu0 : u0 ∈ [2, 3])
-    (hur : BitsD ur) (hTl : Sym4 Tl) :
+    (ht0 : t0 ∈ [2, 3]) (htr : GoodW tr) (hTl : Sym4 Tl) :
     znttLogic.Reach
-      (hdR QNTT.WE0 A (1 :: (acc ++ 1 :: (e0 :: e1 :: eT ++ 1 :: ((z0 :: zr) ++ 1 :: (b0 :: br ++ 1 :: (u0 :: ur ++ Tl)))))))
-      (hdR QNTT.WS (A ++ 1 :: (acc ++ 1 :: (3 :: 3 :: List.replicate eT.length 2 ++ 1 :: ((z0 :: zr) ++ 1 :: b0 :: br ++ 1 :: u0 :: ur))))
-        Tl) := by
-  have hz : BitsD (z0 :: zr) := hzr.cons hz0
-  have sU : Sym4 (ur ++ Tl) := hur.sym4.app hTl
-  have sB1 : Sym4 (br ++ 1 :: (u0 :: ur ++ Tl)) := hbr.sym4.app (sym4_M (sym4_B hu0 sU))
-  have sZ : Sym4 ((z0 :: zr) ++ 1 :: (b0 :: br ++ 1 :: (u0 :: ur ++ Tl))) :=
-    hz.sym4.app (sym4_M (sym4_B hb0 sB1))
-  have sE3 : Sym4 (eT ++ 1 :: ((z0 :: zr) ++ 1 :: (b0 :: br ++ 1 :: (u0 :: ur ++ Tl)))) :=
-    heT.sym4.app (sym4_M sZ)
-  have sE2 : Sym4 (e1 :: eT ++ 1 :: ((z0 :: zr) ++ 1 :: (b0 :: br ++ 1 :: (u0 :: ur ++ Tl)))) := sym4_B he1 sE3
-  have sE1 : Sym4 (e0 :: e1 :: eT ++ 1 :: ((z0 :: zr) ++ 1 :: (b0 :: br ++ 1 :: (u0 :: ur ++ Tl)))) := sym4_B he0 sE2
-  have sA1 : Sym4 (acc ++ 1 :: (e0 :: e1 :: eT ++ 1 :: ((z0 :: zr) ++ 1 :: (b0 :: br ++ 1 :: (u0 :: ur ++ Tl))))) :=
-    hacc.sym4.app (sym4_M sE1)
+      (hdR QNTT.WE0 A (1 :: (acc ++ 1 :: (e0 :: e1 :: eT ++ 1 :: (t0 :: tr ++ Tl)))))
+      (hdR QNTT.WS (A ++ 1 :: (acc ++ 1 :: (3 :: 3 :: List.replicate eT.length 2 ++ 1 :: t0 :: tr))) Tl) := by
+  have sU : Sym4 (tr ++ Tl) := htr.sym4.app hTl
+  have sZ : Sym4 (t0 :: tr ++ Tl) := sym4_B ht0 sU
+  have sE3 : Sym4 (eT ++ 1 :: (t0 :: tr ++ Tl)) := heT.sym4.app (sym4_M sZ)
+  have sE2 : Sym4 (e1 :: eT ++ 1 :: (t0 :: tr ++ Tl)) := sym4_B he1 sE3
+  have sE1 : Sym4 (e0 :: e1 :: eT ++ 1 :: (t0 :: tr ++ Tl)) := sym4_B he0 sE2
+  have sA1 : Sym4 (acc ++ 1 :: (e0 :: e1 :: eT ++ 1 :: (t0 :: tr ++ Tl))) := hacc.sym4.app (sym4_M sE1)
   have c1 : Sym4 [1] := sym4_cell 1 (by simp)
   have c3 : Sym4 [3] := sym4_cell 3 (by simp)
   have h0 := we0 A _ hA sA1
@@ -245,37 +257,38 @@ theorem recMid (A acc : List Nat) (e0 e1 : Nat) (eT : List Nat) (z0 : Nat) (zr :
   have s2 : Sym4 (A ++ [1] ++ acc ++ [1] ++ [3]) := (((hA.app c1).app hacc.sym4).app c1).app c3
   have h3 := we2 _ e1 _ he1 s2 sE3
   have s3 : Sym4 (A ++ [1] ++ acc ++ [1] ++ [3] ++ [3]) := s2.app c3
-  have h4 := we3 _ eT _ s3 heT (sym4_M sZ |> fun _ => sZ)
+  have h4 := we3 _ eT _ s3 heT (sym4_B ht0 sU |> fun _ => sym4_B ht0 sU)
   have s4 : Sym4 (A ++ [1] ++ acc ++ [1] ++ [3] ++ [3] ++ List.replicate eT.length 2 ++ [1]) :=
     ((s3.app (BitsD.rep _ _ (by simp)).sym4).app c1)
-  have h5 := wsField _ (z0 :: zr) b0 (br ++ 1 :: (u0 :: ur ++ Tl)) s4 hz hb0 sB1
-  have s5 : Sym4 (A ++ [1] ++ acc ++ [1] ++ [3] ++ [3] ++ List.replicate eT.length 2 ++ [1] ++ (z0 :: zr) ++ [1, b0]) :=
-    (s4.app hz.sym4).app (sym4_M (sym4_B hb0 Sym4.nil))
-  have h6 := wsField _ br u0 (ur ++ Tl) s5 hbr hu0 sU
-  have s6 : Sym4 (A ++ [1] ++ acc ++ [1] ++ [3] ++ [3] ++ List.replicate eT.length 2 ++ [1] ++ (z0 :: zr) ++ [1, b0] ++ br ++ [1, u0]) :=
-    (s5.app hbr.sym4).app (sym4_M (sym4_B hu0 Sym4.nil))
-  have h7 := wsBlock _ ur Tl s6 hur hTl
-  simp only [List.append_assoc, List.cons_append, List.nil_append] at h0 h1 h2 h3 h4 h5 h6 h7 ⊢
-  exact h0.trans (h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans h7))))))
+  have h5 := wsBlock _ [t0] (tr ++ Tl) s4 (by intro x hx; simp at hx; subst hx; exact ht0) sU
+  have s5 : Sym4 (A ++ [1] ++ acc ++ [1] ++ [3] ++ [3] ++ List.replicate eT.length 2 ++ [1] ++ [t0]) :=
+    s4.app (sym4_B ht0 Sym4.nil)
+  have h6 := wsGood htr _ Tl s5 hTl
+  simp only [List.append_assoc, List.cons_append, List.nil_append] at h0 h1 h2 h3 h4 h5 h6 ⊢
+  exact h0.trans (h1.trans (h2.trans (h3.trans (h4.trans (h5.trans h6)))))
 
-/-- A record of the evaluation phase (the cells after `MM`). -/
+/-- A record of the evaluation phase (the cells after `MM`): `F O Pf M acc M E M b M u`
+(three `P`-wide fields and the pointer `u`; `b` and `u` are nonempty). -/
 structure Rc where
   F : Nat
   O : Nat
   Pf : Nat
   acc : List Nat
   E : List Nat
-  z : List Nat
-  b : List Nat
-  u : List Nat
+  b0 : Nat
+  br : List Nat
+  u0 : Nat
+  ur : List Nat
+
+def Rc.tl0 (r : Rc) : Nat := r.b0
+def Rc.tlr (r : Rc) : List Nat := r.br ++ 1 :: r.u0 :: r.ur
 
 def Rc.body (r : Rc) : List Nat :=
-  [r.F, r.O, r.Pf] ++ 1 :: (r.acc ++ 1 :: (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u))))
+  [r.F, r.O, r.Pf] ++ 1 :: (r.acc ++ 1 :: (r.E ++ 1 :: r.tl0 :: r.tlr))
 
 /-- After the witness initialisation: input flag `x`, `E := 1`. -/
 def Rc.initB (r : Rc) (x : Nat) : List Nat :=
-  [r.F, r.O, x] ++ 1 :: (r.acc ++ 1 :: ((3 :: 3 :: List.replicate (r.E.length - 2) 2) ++ 1 ::
-    (r.z ++ 1 :: (r.b ++ 1 :: r.u))))
+  [r.F, r.O, x] ++ 1 :: (r.acc ++ 1 :: ((3 :: 3 :: List.replicate (r.E.length - 2) 2) ++ 1 :: r.tl0 :: r.tlr))
 
 structure Rc.Ok (r : Rc) : Prop where
   F : r.F ∈ [2, 3]
@@ -283,67 +296,67 @@ structure Rc.Ok (r : Rc) : Prop where
   Pf : r.Pf ∈ [2, 3]
   acc : BitsD r.acc
   E : BitsD r.E
-  z : BitsD r.z
-  b : BitsD r.b
-  u : BitsD r.u
   Elen : 2 ≤ r.E.length
-  zne : r.z ≠ []
-  bne : r.b ≠ []
-  une : r.u ≠ []
+  b0 : r.b0 ∈ [2, 3]
+  br : BitsD r.br
+  u0 : r.u0 ∈ [2, 3]
+  ur : BitsD r.ur
 
-/-- Common part of a record: from `WE0` to the end of `u` (`Tl` is `[]` or `MM ..`). -/
+theorem Rc.Ok.tl0 {r : Rc} (h : r.Ok) : r.tl0 ∈ [2, 3] := h.b0
+
+theorem Rc.Ok.tlr {r : Rc} (h : r.Ok) : GoodW r.tlr :=
+  GoodW.app (GoodW.bits h.br) (GoodW.mb h.u0 (GoodW.bits h.ur))
+
+theorem Rc.tail_sym4 (r : Rc) (hr : r.Ok) : Sym4 (r.acc ++ 1 :: (r.E ++ 1 :: r.tl0 :: r.tlr)) :=
+  hr.acc.sym4.app (sym4_M (hr.E.sym4.app (sym4_M (sym4_B hr.tl0 hr.tlr.sym4))))
+
+/-- Common part of a record: from `WE0` to the end of the record (`Tl` is `[]` or `MM ..`). -/
 theorem recWS (A : List Nat) (r : Rc) (hr : r.Ok) (Tl : List Nat) (hA : Sym4 A) (hTl : Sym4 Tl) (x : Nat) (hx : x ∈ [2, 3]) :
-    znttLogic.Reach (hdR QNTT.WE0 (A ++ [r.F, r.O, x]) (1 :: (r.acc ++ 1 :: (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: (r.u ++ Tl)))))))
+    znttLogic.Reach (hdR QNTT.WE0 (A ++ [r.F, r.O, x]) (1 :: (r.acc ++ 1 :: (r.E ++ 1 :: r.tl0 :: (r.tlr ++ Tl)))))
       (hdR QNTT.WS (A ++ r.initB x) Tl) := by
   obtain ⟨e0, e1, eT, hE⟩ : ∃ e0 e1 eT, r.E = e0 :: e1 :: eT := by
     have := hr.Elen
     match h : r.E, this with
     | e0 :: e1 :: eT, _ => exact ⟨e0, e1, eT, rfl⟩
-  obtain ⟨z0, zr, hz⟩ := List.exists_cons_of_ne_nil hr.zne
-  obtain ⟨b0, br, hb⟩ := List.exists_cons_of_ne_nil hr.bne
-  obtain ⟨u0, ur, hu⟩ := List.exists_cons_of_ne_nil hr.une
-  have hEb := hr.E; have hzb := hr.z; have hbb := hr.b; have hub := hr.u
-  rw [hE] at hEb; rw [hz] at hzb; rw [hb] at hbb; rw [hu] at hub
+  have hEb := hr.E
+  rw [hE] at hEb
   have gen : ∀ (l : List Nat) (a : Nat) , BitsD (a :: l) → a ∈ [2, 3] ∧ BitsD l := fun l a h =>
     ⟨h a (by simp), fun y hy => h y (by simp [hy])⟩
   obtain ⟨he0, hE1⟩ := gen _ _ hEb
   obtain ⟨he1, heT⟩ := gen _ _ hE1
-  obtain ⟨hz0, hzr⟩ := gen _ _ hzb
-  obtain ⟨hb0, hbr⟩ := gen _ _ hbb
-  obtain ⟨hu0, hur⟩ := gen _ _ hub
   have sA : Sym4 (A ++ [r.F, r.O, x]) := hA.app (sym4_B hr.F (sym4_B hr.O (sym4_B hx Sym4.nil)))
-  have := recMid (A ++ [r.F, r.O, x]) r.acc e0 e1 eT z0 zr b0 br u0 ur Tl sA hr.acc he0 he1 heT hz0 hzr hb0 hbr hu0 hur hTl
-  rw [hE, hz, hb, hu]
-  simp only [Rc.initB, hE, hz, hb, hu, List.append_assoc, List.cons_append, List.nil_append, List.length_cons,
+  have := recMid (A ++ [r.F, r.O, x]) r.acc e0 e1 eT r.tl0 r.tlr Tl sA hr.acc he0 he1 heT hr.tl0 hr.tlr hTl
+  rw [hE]
+  simp only [Rc.initB, hE, List.append_assoc, List.cons_append, List.nil_append, List.length_cons,
     Nat.add_sub_cancel] at this ⊢
   simpa using this
 
 /-- `WH0`/`WH1` .. `WE0`: the header sweep and the input flag. -/
 theorem recHead0 (A : List Nat) (r : Rc) (hr : r.Ok) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
-    znttLogic.Reach (hdR QNTT.WH0 A (r.body ++ R)) (hdR QNTT.WE0 (A ++ [r.F, r.O, 2]) (1 :: ((r.acc ++ 1 :: (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u)))) ++ R))) := by
+    znttLogic.Reach (hdR QNTT.WH0 A (r.body ++ R))
+      (hdR QNTT.WE0 (A ++ [r.F, r.O, 2]) (1 :: (r.acc ++ 1 :: (r.E ++ 1 :: r.tl0 :: (r.tlr ++ R))))) := by
   have sH : BitsD [r.F, r.O, r.Pf] := by
     intro y hy; simp at hy; rcases hy with rfl | rfl | rfl
     · exact hr.F
     · exact hr.O
     · exact hr.Pf
-  have sT : Sym4 ((r.acc ++ 1 :: (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u)))) ++ R) := by
-    refine Sym4.app ?_ hR
-    exact hr.acc.sym4.app (sym4_M (hr.E.sym4.app (sym4_M (hr.z.sym4.app (sym4_M (hr.b.sym4.app (sym4_M hr.u.sym4)))))))
+  have sT : Sym4 (r.acc ++ 1 :: (r.E ++ 1 :: r.tl0 :: (r.tlr ++ R))) :=
+    hr.acc.sym4.app (sym4_M (hr.E.sym4.app (sym4_M (sym4_B hr.tl0 (hr.tlr.sym4.app hR)))))
   have h1 := whSweep0 A [r.F, r.O, r.Pf] _ hA sH sT
   have h2 := wp0 (A ++ [r.F, r.O]) r.Pf _ hr.Pf (hA.app (sym4_B hr.F (sym4_B hr.O Sym4.nil))) (sym4_M sT)
   simp only [Rc.body, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 ⊢
   exact h1.trans h2
 
 theorem recHead1 (A : List Nat) (r : Rc) (hr : r.Ok) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
-    znttLogic.Reach (hdR QNTT.WH1 A (r.body ++ R)) (hdR QNTT.WE0 (A ++ [r.F, r.O, 3]) (1 :: ((r.acc ++ 1 :: (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u)))) ++ R))) := by
+    znttLogic.Reach (hdR QNTT.WH1 A (r.body ++ R))
+      (hdR QNTT.WE0 (A ++ [r.F, r.O, 3]) (1 :: (r.acc ++ 1 :: (r.E ++ 1 :: r.tl0 :: (r.tlr ++ R))))) := by
   have sH : BitsD [r.F, r.O, r.Pf] := by
     intro y hy; simp at hy; rcases hy with rfl | rfl | rfl
     · exact hr.F
     · exact hr.O
     · exact hr.Pf
-  have sT : Sym4 ((r.acc ++ 1 :: (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u)))) ++ R) := by
-    refine Sym4.app ?_ hR
-    exact hr.acc.sym4.app (sym4_M (hr.E.sym4.app (sym4_M (hr.z.sym4.app (sym4_M (hr.b.sym4.app (sym4_M hr.u.sym4)))))))
+  have sT : Sym4 (r.acc ++ 1 :: (r.E ++ 1 :: r.tl0 :: (r.tlr ++ R))) :=
+    hr.acc.sym4.app (sym4_M (hr.E.sym4.app (sym4_M (sym4_B hr.tl0 (hr.tlr.sym4.app hR)))))
   have h1 := whSweep1 A [r.F, r.O, r.Pf] _ hA sH sT
   have h2 := wp1 (A ++ [r.F, r.O]) r.Pf _ hr.Pf (hA.app (sym4_B hr.F (sym4_B hr.O Sym4.nil))) (sym4_M sT)
   simp only [Rc.body, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 ⊢
@@ -357,20 +370,14 @@ def tailI : List Rc → List Nat
   | [] => []
   | r :: rs => 1 :: 1 :: (r.initB 2 ++ tailI rs)
 
-theorem Rc.body_sym4 (r : Rc) (hr : r.Ok) : Sym4 r.body := by
-  have s1 : Sym4 (r.b ++ 1 :: r.u) := hr.b.sym4.app (sym4_M hr.u.sym4)
-  have s2 : Sym4 (r.z ++ 1 :: (r.b ++ 1 :: r.u)) := hr.z.sym4.app (sym4_M s1)
-  have s3 : Sym4 (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u))) := hr.E.sym4.app (sym4_M s2)
-  have s4 : Sym4 (r.acc ++ 1 :: (r.E ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u)))) := hr.acc.sym4.app (sym4_M s3)
-  exact sym4_B hr.F (sym4_B hr.O (sym4_B hr.Pf (sym4_M s4)))
+theorem Rc.body_sym4 (r : Rc) (hr : r.Ok) : Sym4 r.body :=
+  sym4_B hr.F (sym4_B hr.O (sym4_B hr.Pf (sym4_M (r.tail_sym4 hr))))
 
 theorem Rc.initB_sym4 (r : Rc) (hr : r.Ok) (x : Nat) (hx : x ∈ [2, 3]) : Sym4 (r.initB x) := by
   have hE : Sym4 (3 :: 3 :: List.replicate (r.E.length - 2) 2) :=
     sym4_B (by simp) (sym4_B (by simp) (BitsD.rep _ _ (by simp)).sym4)
-  have s1 : Sym4 (r.b ++ 1 :: r.u) := hr.b.sym4.app (sym4_M hr.u.sym4)
-  have s2 : Sym4 (r.z ++ 1 :: (r.b ++ 1 :: r.u)) := hr.z.sym4.app (sym4_M s1)
-  have s3 : Sym4 ((3 :: 3 :: List.replicate (r.E.length - 2) 2) ++ 1 :: (r.z ++ 1 :: (r.b ++ 1 :: r.u))) :=
-    hE.app (sym4_M s2)
+  have s3 : Sym4 ((3 :: 3 :: List.replicate (r.E.length - 2) 2) ++ 1 :: r.tl0 :: r.tlr) :=
+    hE.app (sym4_M (sym4_B hr.tl0 hr.tlr.sym4))
   have s4 := hr.acc.sym4.app (sym4_M s3)
   exact sym4_B hr.F (sym4_B hr.O (sym4_B hx (sym4_M s4)))
 
