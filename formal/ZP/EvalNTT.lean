@@ -1061,5 +1061,150 @@ theorem uDecEnd (A : List Nat) (a : Nat) (rest : List Nat) (hA : Sym4 A) (hr : B
       simp only [List.nil_append, List.append_assoc, List.cons_append] at h1 h2 h3 h4 h5 ⊢
       exact h1.trans (h2.trans (h3.trans (h4.trans h5)))
 
+/-- The part of a record after `Pf M`. -/
+def Rc.tl (r : Rc) : List Nat :=
+  r.acc ++ 1 :: (r.E ++ 1 :: r.b0 :: (r.br ++ 1 :: r.u0 :: r.ur))
+
+theorem Rc.body_eq (r : Rc) : r.body = [r.F, r.O, r.Pf] ++ 1 :: r.tl := by
+  simp [Rc.body, Rc.tl, Rc.tlr, Rc.tl0]
+
+/-- The record after the pointer decrement. -/
+def Rc.dec (r : Rc) : Rc :=
+  { r with u0 := (decU (r.u0 :: r.ur)).headD 3, ur := (decU (r.u0 :: r.ur)).tail }
+
+structure Rc.DE (r : Rc) : Prop where
+  ok : r.Ok
+  rest : r.Rest
+
+theorem Rc.dec_tl (r : Rc) (h : r.Rest) :
+    r.dec.tl = r.acc ++ 1 :: (r.E ++ 1 :: r.b0 :: (r.br ++ 1 :: decU (r.u0 :: r.ur))) := by
+  obtain ⟨a, ur', hu⟩ := h
+  have hd : decU (r.u0 :: r.ur) ≠ [] := by
+    rw [hu, decU_rep]; cases ur' with
+    | nil => simp
+    | cons x l => rcases x with _ | _ | _ | _ | x <;> simp
+  simp only [Rc.dec, Rc.tl]
+  generalize decU (r.u0 :: r.ur) = d at hd ⊢
+  cases d with
+  | nil => exact absurd rfl hd
+  | cons x l => simp
+
+theorem Rc.dec_body (r : Rc) (h : r.Rest) :
+    r.dec.body = [r.F, r.O, r.Pf] ++ 1 :: (r.acc ++ 1 :: (r.E ++ 1 :: r.b0 :: (r.br ++ 1 :: decU (r.u0 :: r.ur)))) := by
+  rw [Rc.body_eq, Rc.dec_tl r h]
+  rfl
+
+theorem Rc.tl_sym4 (r : Rc) (hr : r.Ok) : Sym4 r.tl := r.tail_sym4 hr
+
+def tailD : List Rc → List Nat
+  | [] => []
+  | r :: rs => 1 :: 1 :: (r.dec.body ++ tailD rs)
+
+theorem decRecE (A : List Nat) (r : Rc) (hr : r.DE) (hA : Sym4 A) :
+    znttLogic.Reach (hdR QNTT.DAc A r.tl) (hd QNTT.RFL (A ++ r.dec.tl) []) := by
+  obtain ⟨a, ur', hu⟩ := hr.rest
+  have ho := hr.ok
+  have hBB : BitsD (r.b0 :: r.br) := fun x hx => by
+    simp at hx; rcases hx with rfl | hx; exact ho.b0; exact ho.br x hx
+  have bU := r.ur_bits ho a ur' hu
+  have e : r.tl = r.acc ++ 1 :: (r.E ++ 1 :: ((r.b0 :: r.br) ++ 1 :: (List.replicate a 2 ++ 3 :: ur'))) := by
+    simp [Rc.tl, hu]
+  have sAcc := ho.acc.sym4; have sE := ho.E.sym4; have sBB := hBB.sym4
+  rw [e]
+  refine (dacSkip A r.acc _ hA ho.acc ?_).trans ((deSkip _ r.E _ ?_ ho.E ?_).trans
+    ((dbSkip _ (r.b0 :: r.br) _ ?_ hBB ?_).trans ((uDecEnd _ a ur' ?_ bU).of_eq rfl ?_)))
+  all_goals first
+    | (simp only [Sym4_app_iff, Sym4_cons_iff, Sym4_rep_iff, Sym4_nil_iff, all1, all2, all3, or_true, true_and,
+        and_true, and_self, hA, sAcc, sE, sBB, bU.sym4]; done)
+    | skip
+  rw [Rc.dec_tl r ⟨a, ur', hu⟩, hu]
+  simp
+
+theorem decRecM (A : List Nat) (r : Rc) (hr : r.DE) (T : List Nat) (hA : Sym4 A) (hT : Sym4 T) :
+    znttLogic.Reach (hdR QNTT.DAc A (r.tl ++ 1 :: 1 :: T)) (hdR QNTT.DH (A ++ r.dec.tl ++ [1, 1]) T) := by
+  obtain ⟨a, ur', hu⟩ := hr.rest
+  have ho := hr.ok
+  have hBB : BitsD (r.b0 :: r.br) := fun x hx => by
+    simp at hx; rcases hx with rfl | hx; exact ho.b0; exact ho.br x hx
+  have bU := r.ur_bits ho a ur' hu
+  have e : r.tl ++ 1 :: 1 :: T = r.acc ++ 1 :: (r.E ++ 1 :: ((r.b0 :: r.br) ++ 1 ::
+      (List.replicate a 2 ++ 3 :: (ur' ++ 1 :: 1 :: T)))) := by
+    simp [Rc.tl, hu]
+  have sAcc := ho.acc.sym4; have sE := ho.E.sym4; have sBB := hBB.sym4
+  rw [e]
+  refine (dacSkip A r.acc _ hA ho.acc ?_).trans ((deSkip _ r.E _ ?_ ho.E ?_).trans
+    ((dbSkip _ (r.b0 :: r.br) _ ?_ hBB ?_).trans ((uDecMM _ a ur' T ?_ bU hT).of_eq rfl ?_)))
+  all_goals first
+    | (simp only [Sym4_app_iff, Sym4_cons_iff, Sym4_rep_iff, Sym4_nil_iff, all1, all2, all3, or_true, true_and,
+        and_true, and_self, hA, hT, sAcc, sE, sBB, bU.sym4]; done)
+    | skip
+  rw [Rc.dec_tl r ⟨a, ur', hu⟩, hu]
+  simp
+
+theorem Rc.hdr_bits (r : Rc) (hr : r.Ok) : BitsD [r.F, r.O, r.Pf] := by
+  intro y hy; simp at hy; rcases hy with rfl | rfl | rfl
+  · exact hr.F
+  · exact hr.O
+  · exact hr.Pf
+
+theorem decU_mem : ∀ (l : List Nat) (x : Nat), x ∈ decU l → x ∈ l ∨ x = 2
+  | [], x, h => by simp [decU] at h
+  | [a], x, h => by
+    rcases a with _ | _ | _ | _ | a <;> simp [decU] at h ⊢ <;> simp [h]
+  | 2 :: l, x, h => by
+    simp only [decU, List.mem_cons] at h
+    rcases h with h | h
+    · right; exact h
+    · rcases decU_mem l x h with h' | h'
+      · left; simp [h']
+      · right; exact h'
+  | 3 :: 3 :: l, x, h => by
+    simp only [decU, List.mem_cons] at h
+    rcases h with h | h | h
+    · right; exact h
+    · left; simp [h]
+    · left; simp [h]
+  | 3 :: 2 :: l, x, h => by simp [decU] at h; left; simp [h]
+  | 3 :: 1 :: l, x, h => by simp [decU] at h; left; simp [h]
+  | 3 :: 0 :: l, x, h => by simp [decU] at h; left; simp [h]
+  | 3 :: (n + 4) :: l, x, h => by simp [decU] at h; left; simp [h]
+  | 1 :: l, x, h => by simp [decU] at h; left; simp [h]
+  | 0 :: l, x, h => by simp [decU] at h; left; simp [h]
+  | (n + 4) :: l, x, h => by simp [decU] at h; left; simp [h]
+
+theorem decU_sym4 (l : List Nat) (h : Sym4 l) : Sym4 (decU l) := by
+  intro x hx
+  rcases decU_mem l x hx with h' | h'
+  · exact h x h'
+  · subst h'; simp [ALL]
+
+theorem Rc.dec_tl_sym4 (r : Rc) (hr : r.DE) : Sym4 r.dec.tl := by
+  rw [Rc.dec_tl r hr.rest]
+  have ho := hr.ok
+  have hU : Sym4 (r.u0 :: r.ur) := sym4_B ho.u0 ho.ur.sym4
+  exact ho.acc.sym4.app (sym4_M (ho.E.sym4.app (sym4_M (sym4_B ho.b0 (ho.br.sym4.app (sym4_M (decU_sym4 _ hU)))))))
+
+theorem decAll : ∀ (rs : List Rc), (∀ x ∈ rs, x.DE) → ∀ (r : Rc), r.DE → ∀ (A : List Nat), Sym4 A →
+    znttLogic.Reach (hdR QNTT.DAc A (r.tl ++ tailB rs)) (hd QNTT.RFL (A ++ r.dec.tl ++ tailD rs) [])
+  | [], _, r, hr, A, hA => by
+    have := decRecE A r hr hA
+    simpa [tailB, tailD] using this
+  | r' :: rs, hok, r, hr, A, hA => by
+    have hr' : r'.DE := hok r' (by simp)
+    have hrs : ∀ x ∈ rs, x.DE := fun x hx => hok x (by simp [hx])
+    have sRest : Sym4 (r'.tl ++ tailB rs) :=
+      (r'.tl_sym4 hr'.ok).app (tailB_sym4 rs (fun x hx => (hrs x hx).ok))
+    have sT : Sym4 (r'.body ++ tailB rs) :=
+      (r'.body_sym4 hr'.ok).app (tailB_sym4 rs (fun x hx => (hrs x hx).ok))
+    have h1 := decRecM A r hr (r'.body ++ tailB rs) hA sT
+    have sA' : Sym4 (A ++ r.dec.tl ++ [1, 1]) := by
+      exact (hA.app (r.dec_tl_sym4 hr)).app (sym4_M (sym4_M Sym4.nil))
+    have h2 := dhSkip (A ++ r.dec.tl ++ [1, 1]) [r'.F, r'.O, r'.Pf] (r'.tl ++ tailB rs) sA' (r'.hdr_bits hr'.ok) sRest
+    have h3 := decAll rs hrs r' hr' (A ++ r.dec.tl ++ [1, 1] ++ [r'.F, r'.O, r'.Pf] ++ [1]) (by
+      exact (sA'.app (r'.hdr_bits hr'.ok).sym4).app (sym4_M Sym4.nil))
+    rw [Rc.body_eq] at h1
+    simp only [tailB, tailD, Rc.body_eq, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 ⊢
+    exact h1.trans (h2.trans h3)
+
 end ZP.NTT
 
