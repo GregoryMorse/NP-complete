@@ -169,3 +169,10 @@ Done: counter increment `iaInc`, LA/LE/LB/LH/AB skips, CU test primitives
 (captured record: AB0 sweep over the unit). Remaining: AB1..AB9, IR*, ABR*,
 `abUnit`/`abLoop`, non-captured visit, cursor-record marking, CA*, output
 branch, PE*, SC*/PM*/FL*.
+
+### Progress: captured-record visit (EvalNTT)
+`abUnit` (one unit: acc += 1 mod w, one mark of b consumed), `abLoop` (n units),
+`capVisit` (AB0 .. LN0: acc incremented n times, b restored to all marks,
+head back in `LN0` after u). Layout: `.. M acc M E M b M u`, b = 0^m 1^(n+1) 0^s.
+Next: non-captured visit, cursor-record marking (BU*/BS*), CA*, output branch,
+PE*, SC*/PM*/FL*, odometer, power sums, merge, final theorem.

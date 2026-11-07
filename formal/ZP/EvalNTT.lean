@@ -1888,5 +1888,209 @@ theorem irw2 (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+theorem rep_cons_app (j c : Nat) (R : List Nat) :
+    List.replicate j c ++ c :: R = c :: (List.replicate j c ++ R) := by
+  induction j with
+  | zero => simp
+  | succ j ih => simp [List.replicate_succ, ih]
+
+theorem ab6Sweep (Z E R : List Nat) (hZ : Sym4 Z) (hE : BitsD E) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.AB6 (Z ++ [1] ++ E) R) (hd QNTT.IR0 Z (1 :: E ++ R)) := by
+  have hV : Valid [ALL, [2, 3], ALL] [Z, E, R] := Valid.cons hZ (Valid.cons hE (Valid.cons hR (Valid.nil _)))
+  simpa using checkTT (env := [Z, E, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `IR0` .. `AB8`: the accumulator is incremented (modulo its width). -/
+theorem irInc (A0 R : List Nat) (w k : Nat) (hk : 1 ≤ k) (hkw : k ≤ w) (hA : Sym4 A0) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.IR0 (A0 ++ [1] ++ fld w k) R)
+      (hdR QNTT.AB8 (A0 ++ [1] ++ List.replicate (incK w k) 3) (List.replicate (w - incK w k) 2 ++ R)) := by
+  have sA1 : Sym4 (A0 ++ [1]) := hA.app (sym4_cell 1 (by simp))
+  by_cases hkw' : k = w
+  · subst hkw'
+    obtain ⟨w', rfl⟩ : ∃ w', k = w' + 1 := ⟨k - 1, by omega⟩
+    have sK : Sym4 (A0 ++ [1] ++ List.replicate w' 3) := sA1.app (BitsD.rep _ _ (by simp : 3 ∈ [2, 3])).sym4
+    have h1 := ir0One (A0 ++ [1] ++ List.replicate w' 3) R sK hR
+    have h1' : znttLogic.Reach (hd QNTT.IR0 (A0 ++ [1] ++ fld (w' + 1) (w' + 1)) R)
+        (hd QNTT.IRW (A0 ++ [1] ++ List.replicate w' 3) (2 :: R)) :=
+      h1.of_eq (by simp [fld, List.replicate_succ']) rfl
+    have h2 := irwSweep A0 w' (2 :: R) hA (sym4_B (by simp) hR)
+    have h3 := irw2 (A0 ++ [1]) (List.replicate w' 2 ++ R) sA1
+      ((BitsD.rep _ _ (by simp : 2 ∈ [2, 3])).sym4.app hR)
+    simp only [incK, if_true] at *
+    refine h1'.trans (h2.trans (h3.of_eq ?_ ?_))
+    · simp [rep_cons_app]
+    · simp [List.replicate_succ']
+  · obtain ⟨j, hj⟩ : ∃ j, w - k = j + 1 := ⟨w - k - 1, by omega⟩
+    obtain ⟨k', rfl⟩ : ∃ k', k = k' + 1 := ⟨k - 1, by omega⟩
+    have s3 : Sym4 (A0 ++ [1] ++ List.replicate k' 3) := sA1.app (BitsD.rep _ _ (by simp : 3 ∈ [2, 3])).sym4
+    have h1 := ir0Zero (A0 ++ [1] ++ List.replicate (k' + 1) 3 ++ List.replicate j 2) R
+      ((sA1.app (BitsD.rep (k' + 1) 3 (by simp)).sym4).app (BitsD.rep j 2 (by simp)).sym4) hR
+    have h1' : znttLogic.Reach (hd QNTT.IR0 (A0 ++ [1] ++ fld w (k' + 1)) R)
+        (hd QNTT.IR1 (A0 ++ [1] ++ List.replicate k' 3 ++ [3] ++ List.replicate j 2) (2 :: R)) :=
+      h1.of_eq (by simp [fld, hj, List.replicate_succ']) (by simp [List.replicate_succ'])
+    have h2 := ir1Sweep (A0 ++ [1] ++ List.replicate k' 3) j (2 :: R) s3 (sym4_B (by simp) hR)
+    have h3 := ir2 (A0 ++ [1] ++ List.replicate k' 3 ++ [3]) (List.replicate j 2 ++ R)
+      (s3.app (sym4_cell 3 (by simp))) ((BitsD.rep _ _ (by simp : 2 ∈ [2, 3])).sym4.app hR)
+    have hi : incK w (k' + 1) = k' + 2 := by simp [incK, hkw']
+    rw [hi, show w - (k' + 2) = j by omega]
+    refine h1'.trans (h2.trans (h3.of_eq ?_ ?_))
+    · simp [rep_cons_app]
+    · simp [List.replicate_succ']
+
+
+/-- One unit of a captured record: `acc += 1`, the leading mark of `b` is consumed. -/
+theorem abUnit (A0 E : List Nat) (w k m r s : Nat) (T : List Nat) (hk : 1 ≤ k) (hkw : k ≤ w)
+    (hA : Sym4 A0) (hE : BitsD E) (hT : Sym4 T) :
+    znttLogic.Reach
+      (hdR QNTT.AB2 (A0 ++ [1] ++ fld w k ++ [1] ++ E ++ [1])
+        (List.replicate m 2 ++ List.replicate (r + 2) 3 ++ List.replicate s 2 ++ T))
+      (hdR QNTT.AB2 (A0 ++ [1] ++ fld w (incK w k) ++ [1] ++ E ++ [1])
+        (List.replicate (m + 1) 2 ++ List.replicate (r + 1) 3 ++ List.replicate s 2 ++ T)) := by
+  have sA1 : Sym4 (A0 ++ [1]) := hA.app (sym4_cell 1 (by simp))
+  have sF : Sym4 (fld w k) := by
+    unfold fld
+    exact (BitsD.rep _ _ (by simp : 3 ∈ [2, 3])).sym4.app (BitsD.rep _ _ (by simp : 2 ∈ [2, 3])).sym4
+  have sF' : Sym4 (fld w (incK w k)) := by
+    unfold fld
+    exact (BitsD.rep _ _ (by simp : 3 ∈ [2, 3])).sym4.app (BitsD.rep _ _ (by simp : 2 ∈ [2, 3])).sym4
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have s3 : ∀ j, Sym4 (List.replicate j 3) := fun j => (BitsD.rep j 3 (by simp)).sym4
+  have sY : Sym4 (A0 ++ [1] ++ fld w k ++ [1] ++ E) :=
+    ((sA1.app sF).app (sym4_cell 1 (by simp))).app hE.sym4
+  have sR' : Sym4 (List.replicate r 3 ++ List.replicate s 2 ++ T) := ((s3 r).app (s2 s)).app hT
+  have h1 := ab2Sweep (A0 ++ [1] ++ fld w k ++ [1] ++ E ++ [1]) m
+    (List.replicate (r + 1) 3 ++ List.replicate s 2 ++ T) (sY.app (sym4_cell 1 (by simp)))
+    (((s3 _).app (s2 s)).app hT)
+  have h2 := ab3One (A0 ++ [1] ++ fld w k ++ [1] ++ E ++ [1] ++ List.replicate m 2)
+    (List.replicate r 3 ++ List.replicate s 2 ++ T) ((sY.app (sym4_cell 1 (by simp))).app (s2 m)) sR'
+  have h3 := ab4 (A0 ++ [1] ++ fld w k ++ [1] ++ E ++ [1] ++ List.replicate m 2)
+    (3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)) ((sY.app (sym4_cell 1 (by simp))).app (s2 m))
+    (sym4_B (by simp) sR')
+  have h4 := ab5Sweep (A0 ++ [1] ++ fld w k ++ [1] ++ E) m
+    (2 :: 3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)) sY
+    (sym4_B (by simp) (sym4_B (by simp) sR'))
+  have h5 := ab6Sweep (A0 ++ [1] ++ fld w k) E
+    (1 :: (List.replicate m 2 ++ 2 :: 3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)))
+    (sA1.app sF) hE (sym4_M ((s2 m).app (sym4_B (by simp) (sym4_B (by simp) sR'))))
+  have h6 := irInc A0 (1 :: E ++ 1 :: (List.replicate m 2 ++ 2 :: 3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)))
+    w k hk hkw hA (sym4_M (hE.sym4.app (sym4_M ((s2 m).app (sym4_B (by simp) (sym4_B (by simp) sR'))))))
+  have h7 := abe8Skip (A0 ++ [1] ++ List.replicate (incK w k) 3) (List.replicate (w - incK w k) 2)
+    (E ++ 1 :: (List.replicate m 2 ++ 2 :: 3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)))
+    (sA1.app (s3 _)) (BitsD.rep _ _ (by simp)) (hE.sym4.app (sym4_M ((s2 m).app (sym4_B (by simp) (sym4_B (by simp) sR')))))
+  have h8 := ab9Skip (A0 ++ [1] ++ List.replicate (incK w k) 3 ++ List.replicate (w - incK w k) 2 ++ [1]) E
+    (List.replicate m 2 ++ 2 :: 3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T))
+    (((sA1.app (s3 _)).app (s2 _)).app (sym4_cell 1 (by simp))) hE ((s2 m).app (sym4_B (by simp) (sym4_B (by simp) sR')))
+  simp only [fld, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 h5 h6 h7 h8 ⊢
+  refine h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans (h7.trans (h8.of_eq rfl ?_)))))))
+  simp [List.replicate_succ, rep_cons_app]
+
+theorem abrSweep (X b R : List Nat) (hX : Sym4 X) (hb : BitsD b) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.ABR (X ++ [1] ++ b) R) (hdR QNTT.ABR2 (X ++ [1]) (b ++ R)) := by
+  have hV : Valid [ALL, [2, 3], ALL] [X, b, R] := Valid.cons hX (Valid.cons hb (Valid.cons hR (Valid.nil _)))
+  simpa using checkTF (env := [X, b, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem abr2Sweep (A : List Nat) (m : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ABR2 A (List.replicate m 2 ++ 3 :: R))
+      (hdR QNTT.ABR3 (A ++ List.replicate m 3 ++ [3]) R) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate m 2, R] :=
+    Valid.cons hA (Valid.cons (repSet m 2) (Valid.cons hR (Valid.nil _)))
+  simpa using checkFF (env := [A, List.replicate m 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 3, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 (.const 3), .sym 3]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `incK` iterated. -/
+def incKn (w : Nat) : Nat → Nat → Nat
+  | 0, k => k
+  | n + 1, k => incKn w n (incK w k)
+
+theorem incK_bounds (w k : Nat) (hk : 1 ≤ k) (hkw : k ≤ w) : 1 ≤ incK w k ∧ incK w k ≤ w := by
+  unfold incK; split <;> omega
+
+theorem incKn_bounds (w : Nat) : ∀ (n k : Nat), 1 ≤ k → k ≤ w → 1 ≤ incKn w n k ∧ incKn w n k ≤ w
+  | 0, k, hk, hkw => ⟨hk, hkw⟩
+  | n + 1, k, hk, hkw => by
+    have h := incK_bounds w k hk hkw
+    exact incKn_bounds w n _ h.1 h.2
+
+/-- The unit loop of a captured record: `n` units are consumed. -/
+theorem abLoop (A0 E : List Nat) (w s : Nat) (T : List Nat) (hA : Sym4 A0) (hE : BitsD E) (hT : Sym4 T) :
+    ∀ (n m k : Nat), 1 ≤ k → k ≤ w →
+    znttLogic.Reach
+      (hdR QNTT.AB2 (A0 ++ [1] ++ fld w k ++ [1] ++ E ++ [1])
+        (List.replicate m 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2 ++ T))
+      (hdR QNTT.AB2 (A0 ++ [1] ++ fld w (incKn w n k) ++ [1] ++ E ++ [1])
+        (List.replicate (m + n) 2 ++ List.replicate 1 3 ++ List.replicate s 2 ++ T))
+  | 0, m, k, _, _ => by simpa [incKn] using LTM.Reach.refl znttLogic _
+  | n + 1, m, k, hk, hkw => by
+    have h1 := abUnit A0 E w k m n s T hk hkw hA hE hT
+    have hb := incK_bounds w k hk hkw
+    have h2 := abLoop A0 E w s T hA hE hT n (m + 1) (incK w k) hb.1 hb.2
+    refine h1.trans (h2.of_eq ?_ ?_)
+    · simp [List.replicate_succ]
+    · simp [incKn, Nat.add_assoc, Nat.add_comm 1 n]
+
+theorem bd_app {a b : List Nat} (ha : BitsD a) (hb : BitsD b) : BitsD (a ++ b) := by
+  intro x hx
+  rcases List.mem_append.1 hx with h | h
+  · exact ha x h
+  · exact hb x h
+
+theorem ab3End (A : List Nat) (s : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.AB3 (A ++ [3]) (List.replicate s 2 ++ 1 :: R))
+      (hd QNTT.ABR (A ++ [3]) (List.replicate s 2 ++ 1 :: R)) := by
+  cases s with
+  | zero => simpa using ab3M A R hA hR
+  | succ s =>
+    have := ab3Zero A (List.replicate s 2 ++ 1 :: R) hA
+      ((BitsD.rep s 2 (by simp)).sym4.app (sym4_M hR))
+    simpa [List.replicate_succ] using this
+
+/-- A captured record: `acc += (number of marks of b) - 1`, `b` restored, back in `LN0` after `u`. -/
+theorem capVisit (A0 E u R : List Nat) (w k m n s : Nat) (hk : 1 ≤ k) (hkw : k ≤ w)
+    (hA : Sym4 A0) (hE : BitsD E) (hu : BitsD u) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hd QNTT.AB0 (A0 ++ [1] ++ fld w k ++ [1] ++ E ++ [1] ++
+        (List.replicate m 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2) ++ [1] ++ u) R)
+      (hdR QNTT.LN0 (A0 ++ [1] ++ fld w (incKn w n k) ++ [1] ++ E ++ [1] ++
+        (List.replicate (m + n + 1) 3 ++ List.replicate s 2) ++ [1]) (u ++ R)) := by
+  have sA1 : Sym4 (A0 ++ [1]) := hA.app (sym4_cell 1 (by simp))
+  have hF : ∀ k', Sym4 (fld w k') := fun k' => by
+    unfold fld
+    exact (BitsD.rep _ _ (by simp : 3 ∈ [2, 3])).sym4.app (BitsD.rep _ _ (by simp : 2 ∈ [2, 3])).sym4
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have s3 : ∀ j, Sym4 (List.replicate j 3) := fun j => (BitsD.rep j 3 (by simp)).sym4
+  have sM : Sym4 [1] := sym4_cell 1 (by simp)
+  have hb : BitsD (List.replicate m 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2) :=
+    bd_app (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))) (BitsD.rep _ _ (by simp))
+  have sT : Sym4 (1 :: (u ++ R)) := sym4_M (hu.sym4.app hR)
+  have sX : ∀ k', Sym4 (A0 ++ [1] ++ fld w k' ++ [1] ++ E) := fun k' =>
+    ((sA1.app (hF k')).app sM).app hE.sym4
+  have g0 := ab0Sweep (A0 ++ [1] ++ fld w k ++ [1] ++ E ++ [1])
+    (List.replicate m 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2) u R ((sX k).app sM) hb hu hR
+  have g1 := ab1Sweep (A0 ++ [1] ++ fld w k ++ [1] ++ E)
+    (List.replicate m 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2) (1 :: u ++ R) (sX k) hb sT
+  have g2 := abLoop A0 E w s (1 :: (u ++ R)) hA hE sT n m k hk hkw
+  have hb' := incKn_bounds w n k hk hkw
+  have g3 := ab2Sweep (A0 ++ [1] ++ fld w (incKn w n k) ++ [1] ++ E ++ [1]) (m + n)
+    (List.replicate s 2 ++ 1 :: (u ++ R)) ((sX _).app sM) ((s2 s).app sT)
+  have g4 := ab3End (A0 ++ [1] ++ fld w (incKn w n k) ++ [1] ++ E ++ [1] ++ List.replicate (m + n) 2) s (u ++ R)
+    (((sX _).app sM).app (s2 _)) (hu.sym4.app hR)
+  have g5 := abrSweep (A0 ++ [1] ++ fld w (incKn w n k) ++ [1] ++ E) (List.replicate (m + n) 2 ++ [3])
+    (List.replicate s 2 ++ 1 :: (u ++ R)) (sX _) (bd_app (BitsD.rep _ _ (by simp)) (by intro x hx; simp at hx; simp [hx])) ((s2 s).app sT)
+  have g6 := abr2Sweep (A0 ++ [1] ++ fld w (incKn w n k) ++ [1] ++ E ++ [1]) (m + n)
+    (List.replicate s 2 ++ 1 :: (u ++ R)) ((sX _).app sM) ((s2 s).app sT)
+  have g7 := ab3Skip (A0 ++ [1] ++ fld w (incKn w n k) ++ [1] ++ E ++ [1] ++ List.replicate (m + n) 3 ++ [3])
+    (List.replicate s 2) (u ++ R) (((((sX _).app sM).app (s3 _)).app (sym4_cell 3 (by simp)))) (BitsD.rep _ _ (by simp))
+    (hu.sym4.app hR)
+  simp only [List.append_assoc, List.cons_append, List.nil_append] at g0 g1 g2 g3 g4 g5 g6 g7 ⊢
+  refine g0.trans (g1.trans (g2.trans (g3.trans (g4.trans (g5.trans (g6.trans (g7.of_eq rfl ?_)))))))
+  simp [← Nat.add_assoc, List.replicate_succ']
+
 end ZP.NTT
 
