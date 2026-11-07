@@ -145,3 +145,8 @@ Record build (`ZP/RecordNTT.lean`, no sorry, imported by `ZP.lean`): `recordBuil
 Pieces: copy engine (`copyP`, `copyW`, `kLoop`), `recordOne`, `roAll` (header reset), `nnLoop`,
 `roundStep` (one C cell), `roundLoop`, setup `wxStep`..`wc0Walk`. Next: evaluation passes.
 
+Evaluation phase (`ZP/EvalNTT.lean`, no sorry): `witnessInit` proves `WI0` .. `RZ0` (restore parameters, input flag
+`1` on record 0 and `0` on the others, `E := 1` in every record) for records modelled by `Rc` / `Rc.body`
+(`tailB` / `tailI` for the lists). Next: pass start `RZ0` .. `RH*`, `FA*` (advance, decrement/capture), `CP*`
+(compare `acc = E`), `BU*`/`BS*`/`IA*`/`AB*` (broadcast, `+1`, `+b`), `CA*`, `PE*`, `SC*`/`PM*`, `FL*`.
+
