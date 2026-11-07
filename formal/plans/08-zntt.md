@@ -176,3 +176,14 @@ branch, PE*, SC*/PM*/FL*.
 head back in `LN0` after u). Layout: `.. M acc M E M b M u`, b = 0^m 1^(n+1) 0^s.
 Next: non-captured visit, cursor-record marking (BU*/BS*), CA*, output branch,
 PE*, SC*/PM*/FL*, odometer, power sums, merge, final theorem.
+
+### Progress: non-captured visit, cursor unit (EvalNTT)
+Model `VR` (record with `acc = fld w k`, `E`, `b = 0^m 1^(n+1) 0^s`, `u = 0^a 1^(c+1) 0^t`);
+`VR.vis` (captured iff c = 1: acc += n, b restored), `VR.inc` (+1 for the first record
+after the cursor). Proved: `visitPre`, `visitCap`, `visitNoLn`, `visitSpecialEnd/Next`,
+`visitEnd/Next`, `visitAllS/visitAll` (sweep over all later records, ends in `RFL`),
+`incPre/incVisitAll` (IA0 + sweep), `cursorMark` (BU0n..BS0), `bsTailEnd/Next`, and
+`cursorUnit`: one unit of the cursor's acc, whole sweep, back to `RFL`;
+effect on later records: `stepList`.
+Next: loop of cursor units (+ rfFind between), `BU1n` exit to `CA0..CA5` (column advance),
+output-record branch (`BU*o`), bridge VR <-> Rc, then PE*, SC*/PM*/FL*, odometer, ...

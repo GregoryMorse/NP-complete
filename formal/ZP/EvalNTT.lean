@@ -2126,6 +2126,7 @@ structure VR.Ok (v : VR) : Prop where
   k1 : 1 ≤ v.k
   kw : v.k ≤ v.w
   E : BitsD v.E
+  Ene : v.E ≠ []
 
 def tailVR (vs : List VR) : List Nat := (vs.map VR.recd).flatten
 
@@ -2333,7 +2334,7 @@ theorem vis_Ok (v : VR) (hv : v.Ok) : v.vis.Ok := by
   unfold VR.vis
   split
   · exact { F := hv.F, O := hv.O, P := hv.P, k1 := (incKn_bounds v.w v.n v.k hv.k1 hv.kw).1,
-            kw := (incKn_bounds v.w v.n v.k hv.k1 hv.kw).2, E := hv.E }
+            kw := (incKn_bounds v.w v.n v.k hv.k1 hv.kw).2, E := hv.E, Ene := hv.Ene }
   · exact hv
 
 theorem VR.Ok.left {v : VR} (hv : v.Ok) (A0 : List Nat) (hA : Sym4 A0) (f : List Nat) (hf : Sym4 f) :
@@ -2413,26 +2414,317 @@ theorem tailVR_sym4 : ∀ (vs : List VR), (∀ v ∈ vs, v.Ok) → Sym4 (tailVR 
     exact (h v (by simp)).recd_sym4.app (tailVR_sym4 vs (fun w hw => h w (by simp [hw])))
 
 /-- The whole broadcast sweep after the cursor record has been marked: every later record is visited. -/
-theorem visitAll : ∀ (vs : List VR) (v : VR), v.Ok → (∀ w ∈ vs, w.Ok) → ∀ (A0 : List Nat), Sym4 A0 →
-    znttLogic.Reach (hdR QNTT.LA (A0 ++ [1]) (v.tl ++ tailVR vs))
-      (hd QNTT.RFL (A0 ++ [1] ++ v.vis.tl ++ tailVR (vs.map VR.vis)) [])
-  | [], v, hv, _, A0, hA => by
-    have := visitEnd v hv A0 hA _ (visitPre v hv (A0 ++ [1]) [] (hA.app (sym4_cell 1 (by simp))) Sym4.nil)
+theorem visitAllS : ∀ (vs : List VR) (v : VR), v.Ok → (∀ w ∈ vs, w.Ok) → ∀ (A0 : List Nat), Sym4 A0 →
+    ∀ (S : ZC), znttLogic.Reach S (cu0Cfg v A0 (tailVR vs)) →
+    znttLogic.Reach S (hd QNTT.RFL (A0 ++ [1] ++ v.vis.tl ++ tailVR (vs.map VR.vis)) [])
+  | [], v, hv, _, A0, hA, S, hS => by
+    have := visitEnd v hv A0 hA S (by simpa [tailVR] using hS)
     simpa [tailVR] using this
-  | w :: vs, v, hv, hvs, A0, hA => by
+  | w :: vs, v, hv, hvs, A0, hA, S, hS => by
     have hw : w.Ok := hvs w (by simp)
     have hvs' : ∀ x ∈ vs, x.Ok := fun x hx => hvs x (by simp [hx])
     have hf : BitsD [w.F, w.O, w.P] := hw.hdr3
     have h1 := visitNext v hv A0 [w.F, w.O, w.P] (w.tl ++ tailVR vs) hA hf
-      (hw.tl_sym4.app (tailVR_sym4 vs hvs')) _
-      (visitPre v hv (A0 ++ [1]) (1 :: 1 :: ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR vs))) (hA.app (sym4_cell 1 (by simp)))
-        (sym4_M (sym4_M ((hf.sym4).app (sym4_M (hw.tl_sym4.app (tailVR_sym4 vs hvs')))))))
-    have h2 := visitAll vs w hw hvs' (A0 ++ [1] ++ v.vis.tl ++ [1, 1] ++ [w.F, w.O, w.P])
-      ((((hA.app (sym4_cell 1 (by simp))).app (vis_Ok v hv).tl_sym4).app (sym4_M (sym4_M Sym4.nil))).app hf.sym4)
+      (hw.tl_sym4.app (tailVR_sym4 vs hvs')) S (by simpa [tailVR, VR.recd] using hS)
+    have h2 := visitAllS vs w hw hvs' (A0 ++ [1] ++ v.vis.tl ++ [1, 1] ++ [w.F, w.O, w.P])
+      ((((hA.app (sym4_cell 1 (by simp))).app (vis_Ok v hv).tl_sym4).app (sym4_M (sym4_M Sym4.nil))).app hf.sym4) _
+      (visitPre w hw (A0 ++ [1] ++ v.vis.tl ++ [1, 1] ++ [w.F, w.O, w.P] ++ [1]) (tailVR vs)
+        (((((hA.app (sym4_cell 1 (by simp))).app (vis_Ok v hv).tl_sym4).app (sym4_M (sym4_M Sym4.nil))).app hf.sym4).app
+          (sym4_cell 1 (by simp))) (tailVR_sym4 vs hvs'))
     obtain ⟨e1, e2, e3⟩ := vis_hdr w
     simp only [tailVR, VR.recd, List.map_cons, List.flatten_cons, e1, e2, e3, List.append_assoc, List.cons_append,
       List.nil_append] at h1 h2 ⊢
     exact h1.trans h2
+
+theorem visitAll (vs : List VR) (v : VR) (hv : v.Ok) (hvs : ∀ w ∈ vs, w.Ok) (A0 : List Nat) (hA : Sym4 A0) :
+    znttLogic.Reach (hdR QNTT.LA (A0 ++ [1]) (v.tl ++ tailVR vs))
+      (hd QNTT.RFL (A0 ++ [1] ++ v.vis.tl ++ tailVR (vs.map VR.vis)) []) :=
+  visitAllS vs v hv hvs A0 hA _ (visitPre v hv (A0 ++ [1]) (tailVR vs) (hA.app (sym4_cell 1 (by simp)))
+    (tailVR_sym4 vs hvs))
+
+/-! ### Cursor record: marking one unit of `acc` (`BU*`, `BS*`) -/
+
+theorem bu0Skip (A : List Nat) (a : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BU0n A (List.replicate a 2 ++ R)) (hdR QNTT.BU0n (A ++ List.replicate a 2) R) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate a 2, R] :=
+    Valid.cons hA (Valid.cons (repSet a 2) (Valid.cons hR (Valid.nil _)))
+  exact checkFF (env := [A, List.replicate a 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bu0Hit (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BU0n A (3 :: R)) (hdR QNTT.BU1n (A ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bu1Two (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BU1n (A ++ [3]) (3 :: R)) (hd QNTT.BU2n (A ++ [3]) (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bu2Mark (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.BU2n (A ++ [3]) R) (hdR QNTT.BS0 (A ++ [2]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bs0Block (A f R : List Nat) (hA : Sym4 A) (hf : BitsD f) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BS0 A (f ++ R)) (hdR QNTT.BS0 (A ++ f) R) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, R] := Valid.cons hA (Valid.cons hf (Valid.cons hR (Valid.nil _)))
+  exact checkFF (env := [A, f, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bs0M (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BS0 A (1 :: R)) (hdR QNTT.BS1 (A ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bs0B (A : List Nat) (hA : Sym4 A) :
+    znttLogic.Reach (hdR QNTT.BS0 A []) (hd QNTT.RFL A []) := by
+  have hV : Valid [ALL] [A] := Valid.cons hA (Valid.nil _)
+  exact checkFT (env := [A]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := []) (ls' := [.blk 0 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bs1Two (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BS1 A (2 :: R)) (hdR QNTT.BS0 (A ++ [2]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bs1Three (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BS1 A (3 :: R)) (hdR QNTT.BS0 (A ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bs1M (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BS1 A (1 :: R)) (hdR QNTT.BSh (A ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bshSkip (A f R : List Nat) (hA : Sym4 A) (hf : BitsD f) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BSh A (f ++ 1 :: R)) (hdR QNTT.IA0 (A ++ f ++ [1]) R) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, R] := Valid.cons hA (Valid.cons hf (Valid.cons hR (Valid.nil _)))
+  simpa using checkFF (env := [A, f, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `BS1` then bits: continue as `BS0` over a nonempty bit block. -/
+theorem bs1Block (A : List Nat) (c : Nat) (f R : List Nat) (hA : Sym4 A) (hc : c ∈ [2, 3]) (hf : BitsD f)
+    (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BS1 A (c :: f ++ R)) (hdR QNTT.BS0 (A ++ c :: f) R) := by
+  have hfR : Sym4 (f ++ R) := hf.sym4.app hR
+  have h2 := bs0Block (A ++ [c]) f R (hA.app (sym4_cell c (by simp at hc ⊢; omega))) hf hR
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+  rcases hc with rfl | rfl
+  · have h1 := bs1Two A (f ++ R) hA hfR
+    simp only [List.append_assoc, List.cons_append, List.nil_append] at h1 h2 ⊢
+    exact h1.trans h2
+  · have h1 := bs1Three A (f ++ R) hA hfR
+    simp only [List.append_assoc, List.cons_append, List.nil_append] at h1 h2 ⊢
+    exact h1.trans h2
+
+theorem bits_head (l : List Nat) (hne : l ≠ []) (hl : BitsD l) : ∃ c f, l = c :: f ∧ c ∈ [2, 3] ∧ BitsD f := by
+  cases l with
+  | nil => exact absurd rfl hne
+  | cons c f => exact ⟨c, f, rfl, hl c (by simp), fun x hx => hl x (by simp [hx])⟩
+
+theorem VR.Ok.bne {v : VR} (_ : v.Ok) : v.b ≠ [] := by
+  simp [VR.b, List.replicate_succ]
+
+theorem VR.Ok.une {v : VR} (_ : v.Ok) : v.u ≠ [] := by
+  simp [VR.u, List.replicate_succ]
+
+/-- `BS0` along the rest of the cursor record: to the end of the tape. -/
+theorem bsTailEnd (v : VR) (hv : v.Ok) (X ac2 : List Nat) (hX : Sym4 X) (hac : BitsD ac2) :
+    znttLogic.Reach (hdR QNTT.BS0 X (ac2 ++ 1 :: (v.E ++ 1 :: (v.b ++ 1 :: v.u))))
+      (hd QNTT.RFL (X ++ ac2 ++ 1 :: (v.E ++ 1 :: (v.b ++ 1 :: v.u))) []) := by
+  obtain ⟨e, fe, hE, he, hfe⟩ := bits_head v.E hv.Ene hv.E
+  obtain ⟨b0, fb, hB, hb0, hfb⟩ := bits_head v.b hv.bne hv.b
+  obtain ⟨u0, fu, hU, hu0, hfu⟩ := bits_head v.u hv.une hv.u
+  have sE := hv.E.sym4
+  have sB := hv.b.sym4
+  have sU := hv.u.sym4
+  rw [hE] at sE ⊢
+  rw [hB] at sB ⊢
+  rw [hU] at sU ⊢
+  have sac := hac.sym4
+  have sM : Sym4 [1] := sym4_cell 1 (by simp)
+  have s1 := bs0Block X ac2 (1 :: (e :: fe ++ 1 :: (b0 :: fb ++ 1 :: (u0 :: fu)))) hX hac
+    (sym4_M (sE.app (sym4_M (sB.app (sym4_M sU)))))
+  have s2 := bs0M (X ++ ac2) (e :: fe ++ 1 :: (b0 :: fb ++ 1 :: (u0 :: fu))) (hX.app sac)
+    (sE.app (sym4_M (sB.app (sym4_M sU))))
+  have s3 := bs1Block (X ++ ac2 ++ [1]) e fe (1 :: (b0 :: fb ++ 1 :: (u0 :: fu))) ((hX.app sac).app sM) he hfe
+    (sym4_M (sB.app (sym4_M sU)))
+  have s4 := bs0M (X ++ ac2 ++ [1] ++ e :: fe) (b0 :: fb ++ 1 :: (u0 :: fu))
+    (((hX.app sac).app sM).app sE) (sB.app (sym4_M sU))
+  have s5 := bs1Block (X ++ ac2 ++ [1] ++ e :: fe ++ [1]) b0 fb (1 :: (u0 :: fu))
+    ((((hX.app sac).app sM).app sE).app sM) hb0 hfb (sym4_M sU)
+  have s6 := bs0M (X ++ ac2 ++ [1] ++ e :: fe ++ [1] ++ b0 :: fb) (u0 :: fu)
+    ((((((hX.app sac).app sM).app sE).app sM).app sB)) sU
+  have s7 := bs1Block (X ++ ac2 ++ [1] ++ e :: fe ++ [1] ++ b0 :: fb ++ [1]) u0 fu []
+    (((((((hX.app sac).app sM).app sE).app sM).app sB)).app sM) hu0 hfu Sym4.nil
+  have s8 := bs0B (X ++ ac2 ++ [1] ++ e :: fe ++ [1] ++ b0 :: fb ++ [1] ++ u0 :: fu)
+    (((((((hX.app sac).app sM).app sE).app sM).app sB).app sM).app sU)
+  simp only [List.append_assoc, List.cons_append, List.nil_append, List.append_nil] at s1 s2 s3 s4 s5 s6 s7 s8 ⊢
+  exact s1.trans (s2.trans (s3.trans (s4.trans (s5.trans (s6.trans (s7.trans s8))))))
+
+/-- `BS0` along the rest of the cursor record: to the next record. -/
+theorem bsTailNext (v : VR) (hv : v.Ok) (X ac2 Rest : List Nat) (hX : Sym4 X) (hac : BitsD ac2) (hR : Sym4 Rest) :
+    znttLogic.Reach (hdR QNTT.BS0 X (ac2 ++ 1 :: (v.E ++ 1 :: (v.b ++ 1 :: (v.u ++ 1 :: 1 :: Rest)))))
+      (hdR QNTT.BSh (X ++ ac2 ++ 1 :: (v.E ++ 1 :: (v.b ++ 1 :: (v.u ++ [1, 1])))) Rest) := by
+  obtain ⟨e, fe, hE, he, hfe⟩ := bits_head v.E hv.Ene hv.E
+  obtain ⟨b0, fb, hB, hb0, hfb⟩ := bits_head v.b hv.bne hv.b
+  obtain ⟨u0, fu, hU, hu0, hfu⟩ := bits_head v.u hv.une hv.u
+  have sE := hv.E.sym4
+  have sB := hv.b.sym4
+  have sU := hv.u.sym4
+  rw [hE] at sE ⊢
+  rw [hB] at sB ⊢
+  rw [hU] at sU ⊢
+  have sac := hac.sym4
+  have sM : Sym4 [1] := sym4_cell 1 (by simp)
+  have sN : Sym4 (1 :: 1 :: Rest) := sym4_M (sym4_M hR)
+  have s1 := bs0Block X ac2 (1 :: (e :: fe ++ 1 :: (b0 :: fb ++ 1 :: (u0 :: fu ++ 1 :: 1 :: Rest)))) hX hac
+    (sym4_M (sE.app (sym4_M (sB.app (sym4_M (sU.app sN))))))
+  have s2 := bs0M (X ++ ac2) (e :: fe ++ 1 :: (b0 :: fb ++ 1 :: (u0 :: fu ++ 1 :: 1 :: Rest))) (hX.app sac)
+    (sE.app (sym4_M (sB.app (sym4_M (sU.app sN)))))
+  have s3 := bs1Block (X ++ ac2 ++ [1]) e fe (1 :: (b0 :: fb ++ 1 :: (u0 :: fu ++ 1 :: 1 :: Rest)))
+    ((hX.app sac).app sM) he hfe (sym4_M (sB.app (sym4_M (sU.app sN))))
+  have s4 := bs0M (X ++ ac2 ++ [1] ++ e :: fe) (b0 :: fb ++ 1 :: (u0 :: fu ++ 1 :: 1 :: Rest))
+    (((hX.app sac).app sM).app sE) (sB.app (sym4_M (sU.app sN)))
+  have s5 := bs1Block (X ++ ac2 ++ [1] ++ e :: fe ++ [1]) b0 fb (1 :: (u0 :: fu ++ 1 :: 1 :: Rest))
+    ((((hX.app sac).app sM).app sE).app sM) hb0 hfb (sym4_M (sU.app sN))
+  have s6 := bs0M (X ++ ac2 ++ [1] ++ e :: fe ++ [1] ++ b0 :: fb) (u0 :: fu ++ 1 :: 1 :: Rest)
+    (((((hX.app sac).app sM).app sE).app sM).app sB) (sU.app sN)
+  have s7 := bs1Block (X ++ ac2 ++ [1] ++ e :: fe ++ [1] ++ b0 :: fb ++ [1]) u0 fu (1 :: 1 :: Rest)
+    ((((((hX.app sac).app sM).app sE).app sM).app sB).app sM) hu0 hfu sN
+  have s8 := bs0M (X ++ ac2 ++ [1] ++ e :: fe ++ [1] ++ b0 :: fb ++ [1] ++ u0 :: fu) (1 :: Rest)
+    (((((((hX.app sac).app sM).app sE).app sM).app sB).app sM).app sU) (sym4_M hR)
+  have s9 := bs1M (X ++ ac2 ++ [1] ++ e :: fe ++ [1] ++ b0 :: fb ++ [1] ++ u0 :: fu ++ [1]) Rest
+    ((((((((hX.app sac).app sM).app sE).app sM).app sB).app sM).app sU).app sM) hR
+  simp only [List.append_assoc, List.cons_append, List.nil_append, List.append_nil] at s1 s2 s3 s4 s5 s6 s7 s8 s9 ⊢
+  exact s1.trans (s2.trans (s3.trans (s4.trans (s5.trans (s6.trans (s7.trans (s8.trans s9)))))))
+
+/-- The record after the cursor gets `+1` (`IA0`), then is visited as usual. -/
+def VR.inc (v : VR) : VR := { v with k := incK v.w v.k }
+
+theorem VR.Ok.inc {v : VR} (hv : v.Ok) : v.inc.Ok :=
+  { F := hv.F, O := hv.O, P := hv.P, k1 := (incK_bounds v.w v.k hv.k1 hv.kw).1,
+    kw := (incK_bounds v.w v.k hv.k1 hv.kw).2, E := hv.E, Ene := hv.Ene }
+
+theorem incPre (v : VR) (hv : v.Ok) (A0 Next : List Nat) (hA : Sym4 A0) (hN : Sym4 Next) :
+    znttLogic.Reach (hdR QNTT.IA0 (A0 ++ [1]) (v.tl ++ Next)) (cu0Cfg v.inc A0 Next) := by
+  have sA1 : Sym4 (A0 ++ [1]) := hA.app (sym4_cell 1 (by simp))
+  have sU := hv.u.sym4
+  have sB := hv.b.sym4
+  have sE := hv.E.sym4
+  have sM : Sym4 [1] := sym4_cell 1 (by simp)
+  have sR : Sym4 (v.E ++ 1 :: (v.b ++ 1 :: (v.u ++ Next))) := sE.app (sym4_M (sB.app (sym4_M (sU.app hN))))
+  have s1 := iaInc A0 (v.E ++ 1 :: (v.b ++ 1 :: (v.u ++ Next))) v.w v.k hv.k1 hv.kw hA sR
+  have hb2 : BitsD (List.replicate (v.w - incK v.w v.k) 2) := BitsD.rep _ _ (by simp)
+  have hb3 : BitsD (List.replicate (incK v.w v.k) 3) := BitsD.rep _ _ (by simp)
+  have s2 := laSkip (A0 ++ [1] ++ List.replicate (incK v.w v.k) 3) (List.replicate (v.w - incK v.w v.k) 2)
+    (v.E ++ 1 :: (v.b ++ 1 :: (v.u ++ Next)))
+    (sA1.app hb3.sym4) hb2 sR
+  have s3 := leSkip (A0 ++ [1] ++ List.replicate (incK v.w v.k) 3 ++ List.replicate (v.w - incK v.w v.k) 2 ++ [1])
+    v.E (v.b ++ 1 :: (v.u ++ Next))
+    (((sA1.app hb3.sym4).app hb2.sym4).app sM) hv.E (sB.app (sym4_M (sU.app hN)))
+  have s4 := lbSkip (A0 ++ [1] ++ List.replicate (incK v.w v.k) 3 ++ List.replicate (v.w - incK v.w v.k) 2 ++ [1]
+      ++ v.E ++ [1]) v.b (v.u ++ Next)
+    ((((sA1.app hb3.sym4).app hb2.sym4).app sM).app sE |>.app sM) hv.b (sU.app hN)
+  simp only [cu0Cfg, VR.inc, VR.tl, fld, List.append_assoc, List.cons_append, List.nil_append] at s1 s2 s3 s4 ⊢
+  exact s1.trans (s2.trans (s3.trans s4))
+
+theorem incVisitAll (vs : List VR) (v : VR) (hv : v.Ok) (hvs : ∀ w ∈ vs, w.Ok) (A0 : List Nat) (hA : Sym4 A0) :
+    znttLogic.Reach (hdR QNTT.IA0 (A0 ++ [1]) (v.tl ++ tailVR vs))
+      (hd QNTT.RFL (A0 ++ [1] ++ v.inc.vis.tl ++ tailVR (vs.map VR.vis)) []) :=
+  visitAllS vs v.inc hv.inc hvs A0 hA _ (incPre v hv A0 (tailVR vs) hA (tailVR_sym4 vs hvs))
+
+/-- The effect of one cursor unit on the later records. -/
+def stepList : List VR → List VR
+  | [] => []
+  | w :: ws => w.inc.vis :: ws.map VR.vis
+
+/-- Marking one unit of the cursor record's accumulator (`BU0n` .. `BS0`), up to the cursor record's end. -/
+theorem cursorMark (X : List Nat) (a r s : Nat) (T : List Nat) (hX : Sym4 X) (hT : Sym4 T) :
+    znttLogic.Reach
+      (hdR QNTT.BU0n X (List.replicate a 2 ++ 3 :: 3 :: List.replicate r 3 ++ List.replicate s 2 ++ T))
+      (hdR QNTT.BS0 (X ++ List.replicate a 2 ++ [2]) (List.replicate (r + 1) 3 ++ List.replicate s 2 ++ T)) := by
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have s3 : ∀ j, Sym4 (List.replicate j 3) := fun j => (BitsD.rep j 3 (by simp)).sym4
+  have sR : Sym4 (List.replicate r 3 ++ List.replicate s 2 ++ T) := ((s3 r).app (s2 s)).app hT
+  have h1 := bu0Skip X a (3 :: 3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)) hX
+    (sym4_B (by simp) (sym4_B (by simp) sR))
+  have h2 := bu0Hit (X ++ List.replicate a 2) (3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)) (hX.app (s2 a))
+    (sym4_B (by simp) sR)
+  have h3 := bu1Two (X ++ List.replicate a 2) (List.replicate r 3 ++ List.replicate s 2 ++ T) (hX.app (s2 a)) sR
+  have h4 := bu2Mark (X ++ List.replicate a 2) (3 :: (List.replicate r 3 ++ List.replicate s 2 ++ T)) (hX.app (s2 a))
+    (sym4_B (by simp) sR)
+  simp only [List.append_assoc, List.cons_append, List.nil_append, List.replicate_succ] at h1 h2 h3 h4 ⊢
+  exact h1.trans (h2.trans (h3.trans h4))
+
+/-- One unit of the cursor record, with the whole sweep over the later records, back to `RFL`. -/
+theorem cursorUnit (c : VR) (hc : c.Ok) (vs : List VR) (hvs : ∀ w ∈ vs, w.Ok) (X : List Nat) (a r s : Nat)
+    (hX : Sym4 X) :
+    znttLogic.Reach
+      (hdR QNTT.BU0n X (List.replicate a 2 ++ 3 :: 3 :: List.replicate r 3 ++ List.replicate s 2 ++
+        1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))))
+      (hd QNTT.RFL (X ++ List.replicate (a + 1) 2 ++ List.replicate (r + 1) 3 ++ List.replicate s 2 ++
+        1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (stepList vs))))) []) := by
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have s3 : ∀ j, Sym4 (List.replicate j 3) := fun j => (BitsD.rep j 3 (by simp)).sym4
+  have sM : Sym4 [1] := sym4_cell 1 (by simp)
+  have hac2 : BitsD (List.replicate (r + 1) 3 ++ List.replicate s 2) :=
+    bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))
+  have sX2 : Sym4 (X ++ List.replicate a 2 ++ [2]) := (hX.app (s2 a)).app (sym4_cell 2 (by simp))
+  have sEBU : ∀ N, Sym4 N → Sym4 (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ N))) := fun N hN =>
+    hc.E.sym4.app (sym4_M (hc.b.sym4.app (sym4_M (hc.u.sym4.app hN))))
+  cases vs with
+  | nil =>
+    have hm := cursorMark X a r s (1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ [])))) hX (sym4_M (sEBU [] Sym4.nil))
+    have he := bsTailEnd c hc (X ++ List.replicate a 2 ++ [2]) (List.replicate (r + 1) 3 ++ List.replicate s 2) sX2 hac2
+    simp only [tailVR, stepList, List.map_nil, List.flatten_nil, List.append_nil, List.append_assoc, List.cons_append,
+      List.nil_append, List.replicate_succ'] at hm he ⊢
+    exact hm.trans he
+  | cons w ws =>
+    have hw : w.Ok := hvs w (by simp)
+    have hws : ∀ x ∈ ws, x.Ok := fun x hx => hvs x (by simp [hx])
+    have hf : BitsD [w.F, w.O, w.P] := hw.hdr3
+    have sRest : Sym4 ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) :=
+      hf.sym4.app (sym4_M (hw.tl_sym4.app (tailVR_sym4 ws hws)))
+    have hm := cursorMark X a r s (1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))))
+      hX (sym4_M (sEBU _ (by simpa [tailVR, VR.recd] using sym4_M (sym4_M sRest))))
+    have hn := bsTailNext c hc (X ++ List.replicate a 2 ++ [2]) (List.replicate (r + 1) 3 ++ List.replicate s 2)
+      ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) sX2 hac2 sRest
+    have sA : Sym4 (X ++ List.replicate a 2 ++ [2] ++ (List.replicate (r + 1) 3 ++ List.replicate s 2) ++
+        1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ [1, 1])))) :=
+      (sX2.app hac2.sym4).app (sym4_M (sEBU [1, 1] (sym4_M (sym4_M Sym4.nil))))
+    have hs := bshSkip _ [w.F, w.O, w.P] (w.tl ++ tailVR ws) sA hf (hw.tl_sym4.app (tailVR_sym4 ws hws))
+    have hv := incVisitAll ws w hw hws (X ++ List.replicate a 2 ++ [2] ++ (List.replicate (r + 1) 3 ++ List.replicate s 2) ++
+        1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ [1, 1]))) ++ [w.F, w.O, w.P]) (sA.app hf.sym4)
+    have e1 : w.inc.vis.F = w.F := by simpa [VR.inc] using (vis_hdr w.inc).1
+    have e2 : w.inc.vis.O = w.O := by simpa [VR.inc] using (vis_hdr w.inc).2.1
+    have e3 : w.inc.vis.P = w.P := by simpa [VR.inc] using (vis_hdr w.inc).2.2
+    simp only [tailVR, stepList, VR.recd, List.map_cons, List.flatten_cons, e1, e2, e3, List.append_assoc,
+      List.cons_append, List.nil_append, List.replicate_succ'] at hm hn hs hv ⊢
+    exact hm.trans (hn.trans (hs.trans hv))
 
 end ZP.NTT
 
