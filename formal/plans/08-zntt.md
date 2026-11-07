@@ -196,3 +196,7 @@ CA primitives, `caNext` (F := 0, walk to next header), `fa0N`, and
 cursor, later pointers decremented (`curTape` form again, so it can be iterated).
 Next: end of pass (CA4 -> PE0 .. SC/PM/FL), output-record branch (BU*o, BZ*, IE*, TS*, CP*),
 iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odometer.
+
+- Output compare (CP*/CPE*) single-step/sweep primitives proved in `ZP/EvalNTT.lean` (`cp0Hit` … `cpe7`).
+  Remaining: `cpLoop`/`cmpAcc`, `fa0O`, output cursor unit (BU*o/BZ*/IE*/TS*), pass loop, pass end,
+  odometer, power sums, pair lemma, Challenge/Solution entries.
