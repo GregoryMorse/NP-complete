@@ -1206,5 +1206,134 @@ theorem decAll : ∀ (rs : List Rc), (∀ x ∈ rs, x.DE) → ∀ (r : Rc), r.DE
     simp only [tailB, tailD, Rc.body_eq, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 ⊢
     exact h1.trans (h2.trans h3)
 
-end ZP.NTT
+/-! ### Cursor entry: `FAL` .. `DAc` / `CP0` -/
 
+theorem falScan (L R : List Nat) (hL : NoB L) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.FAL L R) (hdR QNTT.FAs [] (L ++ R)) := by
+  have hV : Valid [NB, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id]) (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fasBlock (A f rest : List Nat) (hA : Sym4 A) (hf : BitsD f) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.FAs A (f ++ rest)) (hdR QNTT.FAs (A ++ f) rest) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, rest] :=
+    Valid.cons hA (Valid.cons hf (Valid.cons hr (Valid.nil _)))
+  exact checkFF (env := [A, f, rest]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fasField (A : List Nat) (b : Nat) (rest : List Nat) (hA : Sym4 A) (hb : b ∈ [2, 3]) (hr : Sym4 rest) :
+    znttLogic.Reach (hdR QNTT.FAs A (1 :: b :: rest)) (hdR QNTT.FAs (A ++ [1, b]) rest) := by
+  have hV : Valid [ALL, ALL] [A, rest] := Valid.cons hA (Valid.cons hr (Valid.nil _))
+  simp at hb; rcases hb with rfl | rfl
+  · simpa using checkFF (env := [A, rest]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 1, .sym 2, .blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 1, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, rest]) (E := []) (k := 6) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 1, .sym 3, .blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 1, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fasGood {u : List Nat} (hu : GoodW u) :
+    ∀ (A rest : List Nat), Sym4 A → Sym4 rest →
+    znttLogic.Reach (hdR QNTT.FAs A (u ++ rest)) (hdR QNTT.FAs (A ++ u) rest) := by
+  induction hu with
+  | nil => intro A rest _ _; simpa using LTM.Reach.refl znttLogic _
+  | @bit b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [b] := by
+      intro y hy; simp at hy; subst hy; simp at hb; rcases hb with rfl | rfl <;> simp [ALL]
+    have h1 := fasBlock A [b] (u ++ rest) hA (by intro x hx; simp at hx; subst hx; exact hb) (hu'.sym4.app hr)
+    have h2 := ih (A ++ [b]) rest (hA.app sb) hr
+    simpa using h1.trans h2
+  | @mb b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [1, b] := by
+      intro y hy; simp at hy; simp at hb; rcases hy with rfl | rfl <;> (try rcases hb with rfl | rfl) <;> simp [ALL]
+    have h1 := fasField A b (u ++ rest) hA hb (hu'.sym4.app hr)
+    have h2 := ih (A ++ [1, b]) rest (hA.app sb) hr
+    simpa using h1.trans h2
+
+theorem fasMM (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.FAs A (1 :: 1 :: R)) (hdR QNTT.FA0 (A ++ [1, 1]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fa0Mark (A : List Nat) (a : Nat) (R : List Nat) (ha : a ∈ [2, 3]) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.FA0 A (a :: R)) (hdR QNTT.FA1 (A ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simp at ha; rcases ha with rfl | rfl
+  · simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fa1n (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.FA1 A (2 :: R)) (hdR QNTT.FAn (A ++ [2]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fa1o (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.FA1 A (3 :: R)) (hdR QNTT.FAo (A ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem fanSkip (A f R : List Nat) (hA : Sym4 A) (hf : BitsD f) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.FAn A (f ++ 1 :: R)) (hdR QNTT.DAc (A ++ f ++ [1]) R) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, R] := Valid.cons hA (Valid.cons hf (Valid.cons hR (Valid.nil _)))
+  simpa using checkFF (env := [A, f, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem faoSkip (A f R : List Nat) (hA : Sym4 A) (hf : BitsD f) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.FAo A (f ++ 1 :: R)) (hdR QNTT.CP0 (A ++ f ++ [1]) R) := by
+  have hV : Valid [ALL, [2, 3], ALL] [A, f, R] := Valid.cons hA (Valid.cons hf (Valid.cons hR (Valid.nil _)))
+  simpa using checkFF (env := [A, f, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 1, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Cursor on the first record, a non-output node: decrement all pointers (`FAL` .. `RFL`). -/
+theorem faN (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (r : Rc) (hr : r.DE) (hO : r.O = 2)
+    (rs : List Rc) (hrs : ∀ x ∈ rs, x.DE) (hLe : L = Pm ++ 1 :: 1 :: (r.body ++ tailB rs)) :
+    znttLogic.Reach (hd QNTT.FAL L [])
+      (hd QNTT.RFL (Pm ++ [1, 1] ++ [3, r.O, r.Pf] ++ 1 :: r.dec.tl ++ tailD rs) []) := by
+  have ho := hr.ok
+  have sTl : Sym4 (r.tl ++ tailB rs) := (r.tl_sym4 ho).app (tailB_sym4 rs (fun x hx => (hrs x hx).ok))
+  have sT : Sym4 (r.body ++ tailB rs) := (r.body_sym4 ho).app (tailB_sym4 rs (fun x hx => (hrs x hx).ok))
+  have sPm := hP.sym4
+  have sMM : Sym4 (Pm ++ [1, 1]) := sPm.app (sym4_M (sym4_M Sym4.nil))
+  have h1 := falScan L [] hL Sym4.nil
+  rw [hLe] at h1
+  have h2 := fasGood hP [] (1 :: 1 :: (r.body ++ tailB rs)) Sym4.nil (sym4_M (sym4_M sT))
+  have h3 := fasMM Pm (r.body ++ tailB rs) sPm sT
+  rw [Rc.body_eq] at h3
+  have h4 := fa0Mark (Pm ++ [1, 1]) r.F (r.O :: r.Pf :: 1 :: (r.tl ++ tailB rs)) ho.F sMM
+    (sym4_B ho.O (sym4_B ho.Pf (sym4_M sTl)))
+  have h5 := fa1n (Pm ++ [1, 1] ++ [3]) (r.Pf :: 1 :: (r.tl ++ tailB rs)) (sMM.app (sym4_cell 3 (by simp)))
+    (sym4_B ho.Pf (sym4_M sTl))
+  have h6 := fanSkip (Pm ++ [1, 1] ++ [3] ++ [2]) [r.Pf] (r.tl ++ tailB rs)
+    ((sMM.app (sym4_cell 3 (by simp))).app (sym4_cell 2 (by simp)))
+    (fun y hy => by simp at hy; subst hy; exact ho.Pf) sTl
+  have h7 := decAll rs hrs r hr (Pm ++ [1, 1] ++ [3] ++ [2] ++ [r.Pf] ++ [1]) (by
+    have := (((sMM.app (sym4_cell 3 (by simp))).app (sym4_cell 2 (by simp))).app
+      (sym4_B ho.Pf Sym4.nil)).app (sym4_M Sym4.nil)
+    exact this)
+  simp only [hO, List.append_nil, List.append_assoc, List.cons_append, List.nil_append, Rc.body_eq] at h1 h2 h3 h4 h5 h6 h7 ⊢
+  rw [hLe]
+  simp only [hO, List.append_nil, List.append_assoc, List.cons_append, List.nil_append, Rc.body_eq]
+  exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans h7)))))
+
+end ZP.NTT
