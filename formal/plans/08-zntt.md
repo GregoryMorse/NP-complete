@@ -187,3 +187,12 @@ after the cursor). Proved: `visitPre`, `visitCap`, `visitNoLn`, `visitSpecialEnd
 effect on later records: `stepList`.
 Next: loop of cursor units (+ rfFind between), `BU1n` exit to `CA0..CA5` (column advance),
 output-record branch (`BU*o`), bridge VR <-> Rc, then PE*, SC*/PM*/FL*, odometer, ...
+
+### Progress: cursor loop and column advance (non-output nodes)
+`VR`<->`Rc` bridge (`toRcA`, `toRc`, `tailB_toRc`, `tailD_toRc`, `VR.dec`), NoB lemmas,
+`cursorLoop` (all units of the cursor's acc: rfFind + cursorUnit, `stepN`),
+CA primitives, `caNext` (F := 0, walk to next header), `fa0N`, and
+`colAdvance`: cursor (O = 2) with all units broadcast -> next non-output record is the new
+cursor, later pointers decremented (`curTape` form again, so it can be iterated).
+Next: end of pass (CA4 -> PE0 .. SC/PM/FL), output-record branch (BU*o, BZ*, IE*, TS*, CP*),
+iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odometer.

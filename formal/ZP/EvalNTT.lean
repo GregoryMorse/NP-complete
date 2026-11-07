@@ -3080,5 +3080,155 @@ theorem cursorLoop (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 2) (Pm : List
     rw [e] at hIH
     exact hA.trans (hU.trans hIH)
 
+theorem bu1Any (A : List Nat) (s : Nat) (T : List Nat) (hA : Sym4 A) (hT : Sym4 T) :
+    znttLogic.Reach (hdR QNTT.BU1n (A ++ [3]) (List.replicate s 2 ++ 1 :: T))
+      (hd QNTT.CA0 (A ++ [3]) (List.replicate s 2 ++ 1 :: T)) := by
+  cases s with
+  | zero => simpa using bu1M A T hA hT
+  | succ s =>
+    have := bu1Zero A (List.replicate s 2 ++ 1 :: T) hA ((BitsD.rep s 2 (by simp)).sym4.app (sym4_M hT))
+    simpa [List.replicate_succ] using this
+
+/-- `FA0` on the next record, a non-output node: mark it as the cursor, decrement all later pointers. -/
+theorem fa0N (A : List Nat) (w : Rc) (hw : w.DE) (hO : w.O = 2) (ws : List Rc) (hws : ∀ x ∈ ws, x.DE)
+    (hA : Sym4 A) :
+    znttLogic.Reach (hdR QNTT.FA0 A ([w.F, w.O, w.Pf] ++ 1 :: (w.tl ++ tailB ws)))
+      (hd QNTT.RFL (A ++ [3, w.O, w.Pf] ++ 1 :: w.dec.tl ++ tailD ws) []) := by
+  have ho := hw.ok
+  have sTl : Sym4 (w.tl ++ tailB ws) := (w.tl_sym4 ho).app (tailB_sym4 ws (fun x hx => (hws x hx).ok))
+  have h4 := fa0Mark A w.F (w.O :: w.Pf :: 1 :: (w.tl ++ tailB ws)) ho.F hA
+    (sym4_B ho.O (sym4_B ho.Pf (sym4_M sTl)))
+  have h5 := fa1n (A ++ [3]) (w.Pf :: 1 :: (w.tl ++ tailB ws)) (hA.app (sym4_cell 3 (by simp)))
+    (sym4_B ho.Pf (sym4_M sTl))
+  have h6 := fanSkip (A ++ [3] ++ [2]) [w.Pf] (w.tl ++ tailB ws)
+    ((hA.app (sym4_cell 3 (by simp))).app (sym4_cell 2 (by simp)))
+    (fun y hy => by simp at hy; subst hy; exact ho.Pf) sTl
+  have h7 := decAll ws hws w hw (A ++ [3] ++ [2] ++ [w.Pf] ++ [1]) (by
+    exact (((hA.app (sym4_cell 3 (by simp))).app (sym4_cell 2 (by simp))).app
+      (sym4_B ho.Pf Sym4.nil)).app (sym4_M Sym4.nil))
+  simp only [hO, List.append_nil, List.append_assoc, List.cons_append, List.nil_append] at h4 h5 h6 h7 ⊢
+  exact h4.trans (h5.trans (h6.trans h7))
+
+theorem VR.dec_fields (v : VR) : v.dec.w = v.w ∧ v.dec.k = v.k ∧ v.dec.E = v.E ∧ v.dec.b = v.b ∧
+    v.dec.F = v.F ∧ v.dec.O = v.O ∧ v.dec.P = v.P := by
+  unfold VR.dec; split <;> simp [VR.b]
+
+theorem VR.dec_ok (v : VR) (hv : v.Ok) : v.dec.Ok := by
+  obtain ⟨e1, e2, e3, e4, e5, e6, e7⟩ := v.dec_fields
+  exact { F := by rw [e5]; exact hv.F, O := by rw [e6]; exact hv.O, P := by rw [e7]; exact hv.P,
+          k1 := by rw [e2]; exact hv.k1, kw := by rw [e2, e1]; exact hv.kw,
+          E := by rw [e3]; exact hv.E, Elen := by rw [e3]; exact hv.Elen }
+
+theorem VR.dec_toRc_tl (v : VR) (hv : v.Ok) : v.toRc.dec.tl = v.dec.tl := by
+  obtain ⟨e1, e2, e3, e4, e5, e6, e7⟩ := v.dec_fields
+  rw [VR.toRc, VR.dec_toRcA_tl v hv]
+  simp [VR.tl, e1, e2, e3, e4]
+
+theorem tailD_toRc : ∀ (vs : List VR), (∀ v ∈ vs, v.Ok) → tailD (vs.map VR.toRc) = tailVR (vs.map VR.dec)
+  | [], _ => rfl
+  | v :: vs, h => by
+    have hv : v.Ok := h v (by simp)
+    have := tailD_toRc vs (fun x hx => h x (by simp [hx]))
+    obtain ⟨e1, e2, e3, e4, e5, e6, e7⟩ := v.dec_fields
+    simp only [List.map_cons, tailD, tailVR, VR.recd, List.flatten_cons, List.map_cons] at this ⊢
+    rw [Rc.body_eq, this, VR.dec_toRc_tl v hv, e5, e6, e7]
+    simp [VR.toRc, VR.toRcA, Rc.dec]
+
+/-- The finished cursor record as an `Rc` (flag `F = 0`). -/
+def VR.done (c : VR) (a s : Nat) : Rc :=
+  { c.toRcA (List.replicate a 2 ++ 3 :: List.replicate s 2) with F := 2 }
+
+theorem VR.done_ok (c : VR) (hc : c.Ok) (a s : Nat) : (c.done a s).Ok := by
+  have := c.toRcA_ok hc (List.replicate a 2 ++ 3 :: List.replicate s 2)
+    (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all))
+  exact { this with F := by simp [VR.done] }
+
+/-- The next cursor record. -/
+def VR.cur (w : VR) : VR := { w.dec with F := 3 }
+
+theorem VR.cur_ok (w : VR) (hw : w.Ok) : w.cur.Ok :=
+  { (w.dec_ok hw) with F := by simp [VR.cur] }
+
+theorem colAdvance (c w : VR) (ws : List VR) (hc : c.Ok) (hw : w.Ok) (hws : ∀ x ∈ ws, x.Ok) (hF : c.F = 3)
+    (hO : c.O = 2) (hOw : w.O = 2) (Pm : List Nat) (hP : GoodW Pm) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a s : Nat) :
+    znttLogic.Reach (hd QNTT.RFL (curTape Pm pre c a 0 s (w :: ws)) [])
+      (hd QNTT.RFL (curTape Pm (pre ++ [c.done a s]) w.cur 0 (w.k - 1) (w.w - w.k) (ws.map VR.dec)) []) := by
+  have hvs : ∀ x ∈ w :: ws, x.Ok := fun x hx => by
+    simp at hx; rcases hx with rfl | hx
+    · exact hw
+    · exact hws x hx
+  have sPm := hP.sym4
+  have sPre : Sym4 (tailB pre) := tailB_sym4 pre (fun x hx => (hpre x hx).1)
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have sM : Sym4 [1] := sym4_cell 1 (by simp)
+  have hacc : BitsD (List.replicate a 2 ++ List.replicate (0 + 1) 3 ++ List.replicate s 2) :=
+    bd_app (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))) (BitsD.rep _ _ (by simp))
+  have hcur : (c.toRcA (List.replicate a 2 ++ List.replicate (0 + 1) 3 ++ List.replicate s 2)).Ok :=
+    c.toRcA_ok hc _ hacc
+  have hvs' : ∀ x ∈ (w :: ws).map VR.toRc, x.Ok := by
+    intro x hx; simp only [List.mem_map] at hx
+    obtain ⟨v, hv, rfl⟩ := hx
+    exact v.toRcA_ok (hvs v hv) _ (fld_bits _ _)
+  have hLe : curTape Pm pre c a 0 s (w :: ws) = Pm ++ tailB (pre ++ (c.toRcA (List.replicate a 2 ++
+      List.replicate (0 + 1) 3 ++ List.replicate s 2)) :: (w :: ws).map VR.toRc) := by
+    rw [tailB_append]
+    simp only [tailB]
+    rw [tailB_toRc (w :: ws) hvs]
+    simp [curTape, VR.toRcA_body c hc, hF, hO, List.append_assoc]
+  have hA := (rfFind (curTape Pm pre c a 0 s (w :: ws)) Pm (curTape_noB c hc Pm hP pre hpre a 0 s (w :: ws) hvs) hP
+    pre hpre _ hcur hF ((w :: ws).map VR.toRc) hvs' hLe).1 hO
+  rw [VR.toRcA_tl c hc, tailB_toRc (w :: ws) hvs] at hA
+  have hX : Sym4 (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1]) :=
+    (sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B (by simp) (sym4_B hc.P (sym4_M Sym4.nil))))))
+  have sU := hc.u.sym4
+  have sB := hc.b.sym4
+  have sE := hc.E.sym4
+  have sW : Sym4 ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) :=
+    hw.hdr3.sym4.app (sym4_M (hw.tl_sym4.app (tailVR_sym4 ws hws)))
+  have sT : Sym4 (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))) := by
+    refine sE.app (sym4_M (sB.app (sym4_M (sU.app ?_))))
+    exact tailVR_sym4 (w :: ws) hvs
+  have b1 := bu0Skip (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1]) a
+    (3 :: (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))))) hX
+    (sym4_B (by simp) ((s2 s).app (sym4_M sT)))
+  have b2 := bu0Hit (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1] ++ List.replicate a 2)
+    (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws))))) (hX.app (s2 a))
+    ((s2 s).app (sym4_M sT))
+  have b3 := bu1Any (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1] ++ List.replicate a 2) s
+    (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))) (hX.app (s2 a)) sT
+  have b4 := ca0Sweep (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P]) (List.replicate a 2 ++ [3])
+    (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))))
+    ((sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B (by simp) (sym4_B hc.P Sym4.nil))))))
+    (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; simp [hx])) ((s2 s).app (sym4_M sT))
+  have b5 := caNext c hc (Pm ++ tailB pre) (List.replicate a 2 ++ 3 :: List.replicate s 2)
+    ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) (sPm.app sPre)
+    (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all))
+    (by cases a <;> simp [List.replicate_succ]) sW
+  have hwd : w.toRc.DE := ⟨w.toRcA_ok hw _ (fld_bits _ _), w.toRcA_rest _⟩
+  have hws' : ∀ x ∈ ws.map VR.toRc, x.DE := by
+    intro x hx; simp only [List.mem_map] at hx
+    obtain ⟨v, hv, rfl⟩ := hx
+    exact ⟨v.toRcA_ok (hws v hv) _ (fld_bits _ _), v.toRcA_rest _⟩
+  have b6 := fa0N (Pm ++ tailB pre ++ [1, 1, 2, c.O, c.P, 1] ++ (List.replicate a 2 ++ 3 :: List.replicate s 2) ++
+      1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ [1, 1])))) w.toRc hwd (by simpa [VR.toRc, VR.toRcA] using hOw)
+    (ws.map VR.toRc) hws'
+    (((((sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B hc.O (sym4_B hc.P (sym4_M Sym4.nil))))))).app
+      (BitsD.sym4 (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)))).app
+      (sym4_M (sE.app (sym4_M (sB.app (sym4_M (sU.app (sym4_M (sym4_M Sym4.nil))))))))))
+  rw [VR.toRc_tl w hw, tailB_toRc ws hws, VR.dec_toRc_tl w hw, tailD_toRc ws hws] at b6
+  simp only [VR.toRc, VR.toRcA] at b6
+  have hdone : (c.done a s).body = [2, c.O, c.P] ++ 1 :: ((List.replicate a 2 ++ 3 :: List.replicate s 2) ++
+      1 :: (c.E ++ 1 :: (c.b ++ 1 :: c.u))) := by
+    have e : (c.done a s).tl = (c.toRcA (List.replicate a 2 ++ 3 :: List.replicate s 2)).tl := rfl
+    rw [Rc.body_eq, e, VR.toRcA_tl c hc]
+    rfl
+  simp only [tailB_append, tailB, hdone, List.append_nil, curTape, VR.cur, hO, hF, List.append_assoc, List.cons_append,
+    List.nil_append, List.replicate_succ] at hA b1 b2 b3 b4 b5 b6 ⊢
+  refine hA.trans (b1.trans (b2.trans (b3.trans (b4.trans (b5.trans (b6.of_eq rfl ?_))))))
+  obtain ⟨e1, e2, e3, e4, e5, e6, e7⟩ := w.dec_fields
+  obtain ⟨k', hk'⟩ : ∃ k', w.k = k' + 1 := ⟨w.k - 1, by have := hw.k1; omega⟩
+  simp [VR.tl, fld, VR.b, VR.u, e1, e2, e3, e6, e7, hOw, hk', List.replicate_succ] at e4 ⊢
+
 end ZP.NTT
 
