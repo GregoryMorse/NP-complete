@@ -150,3 +150,9 @@ Evaluation phase (`ZP/EvalNTT.lean`, no sorry): `witnessInit` proves `WI0` .. `R
 (`tailB` / `tailI` for the lists). Next: pass start `RZ0` .. `RH*`, `FA*` (advance, decrement/capture), `CP*`
 (compare `acc = E`), `BU*`/`BS*`/`IA*`/`AB*` (broadcast, `+1`, `+b`), `CA*`, `PE*`, `SC*`/`PM*`, `FL*`.
 
+Evaluation phase, update: the record model is `Rc` = `F O Pf M acc M E M b M u` (the machine has K = 3 `P`-wide
+fields, not 4 as the file header says: checked on a trace of `native/zntt.py`). `EvalNTT` now also has the pass-start
+primitives (`rz0Scan`, `rz1*`, `rh*`, `ra*`, `rse`, `rsb`, `ru`, `ru2`, `rnStep`) and the per-record lemmas
+`recPass2`/`recPass3` (`RH0` .. `RU2`: `F := 0`, `acc := 1` or `2` by the input flag, `u` restored).
+Next: close the record loop (`RU2` -> `RN` -> `RH0` / `FAL`), then `FA*`, `DU*`, `RF*`, `CP*`, `BU*`, `BS*`, `IA*`, `AB*`.
+
