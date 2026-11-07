@@ -3540,5 +3540,46 @@ theorem cmpAcc (A : List Nat) (n : Nat) : ∀ (a s z : Nat) (R : List Nat), Sym4
     simp only [List.append_assoc, List.cons_append, List.nil_append, List.replicate_succ] at h ih' ⊢
     exact h.trans ih'
 
+/-- `FA0` on the next record, an output node whose `E` matches the accumulator: compare, then decrement. -/
+theorem fa0O (A : List Nat) (w : Rc) (hw : w.DE) (hO : w.O = 3) (n s z : Nat)
+    (hacc : w.acc = List.replicate (n + 1) 3 ++ List.replicate s 2)
+    (hE : w.E = List.replicate (n + 1) 3 ++ List.replicate z 2)
+    (ws : List Rc) (hws : ∀ x ∈ ws, x.DE) (hA : Sym4 A) :
+    znttLogic.Reach (hdR QNTT.FA0 A ([w.F, w.O, w.Pf] ++ 1 :: (w.tl ++ tailB ws)))
+      (hd QNTT.RFL (A ++ [3, w.O, w.Pf] ++ 1 :: ({ w with E := 3 :: List.replicate (z + n) 2 } : Rc).dec.tl ++ tailD ws) []) := by
+  have ho := hw.ok
+  have sTl : Sym4 (w.tl ++ tailB ws) := (w.tl_sym4 ho).app (tailB_sym4 ws (fun x hx => (hws x hx).ok))
+  have sA3 : Sym4 (A ++ [3]) := hA.app (sym4_cell 3 (by simp))
+  have h4 := fa0Mark A w.F (w.O :: w.Pf :: 1 :: (w.tl ++ tailB ws)) ho.F hA
+    (sym4_B ho.O (sym4_B ho.Pf (sym4_M sTl)))
+  have h5 := fa1o (A ++ [3]) (w.Pf :: 1 :: (w.tl ++ tailB ws)) sA3 (sym4_B ho.Pf (sym4_M sTl))
+  have h6 := faoSkip (A ++ [3] ++ [3]) [w.Pf] (w.tl ++ tailB ws) (sA3.app (sym4_cell 3 (by simp)))
+    (fun y hy => by simp at hy; subst hy; exact ho.Pf) sTl
+  have sR' : Sym4 (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws) := by
+    have := sTl
+    simp only [Rc.tl] at this
+    simp [hacc, hE] at this
+    simpa using this.2.2.2.2.2.2
+  have hwt : w.tl ++ tailB ws = List.replicate 0 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2 ++
+      1 :: (List.replicate (n + 1) 3 ++ List.replicate z 2) ++ 1 :: (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws) := by
+    simp [Rc.tl, hacc, hE]
+  rw [hwt] at h4 h5 h6 ⊢
+  have h7 := cmpAcc (A ++ [3] ++ [3] ++ [w.Pf]) n 0 s z (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws)
+    ((sA3.app (sym4_cell 3 (by simp))).app (sym4_B ho.Pf Sym4.nil)) sR'
+  have hw' : ({ w with E := 3 :: List.replicate (z + n) 2 } : Rc).DE := by
+    refine ⟨{ ho with E := ?_, Elen := ?_ }, hw.rest⟩
+    · exact BitsD.cons (by simp) (BitsD.rep _ _ (by simp))
+    · have := ho.Elen
+      simp [hE] at this
+      show 2 ≤ (3 :: List.replicate (z + n) 2).length
+      simp only [List.length_cons, List.length_replicate]
+      omega
+  have sA5 : Sym4 (A ++ [3] ++ [3] ++ [w.Pf] ++ [1]) :=
+    (((sA3.app (sym4_cell 3 (by simp))).app (sym4_B ho.Pf Sym4.nil))).app (sym4_cell 1 (by simp))
+  have h8 := decAll ws hws { w with E := 3 :: List.replicate (z + n) 2 } hw' (A ++ [3] ++ [3] ++ [w.Pf] ++ [1]) sA5
+  simp only [hO, List.append_assoc, List.cons_append, List.nil_append] at h4 h5 h6 h7 h8 ⊢
+  refine h4.trans (h5.trans (h6.trans (h7.trans (h8.of_eq ?_ rfl))))
+  simp [Rc.tl, hacc, List.replicate_succ, Nat.add_comm, Nat.add_left_comm]
+
 end ZP.NTT
 
