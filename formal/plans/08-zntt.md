@@ -156,3 +156,9 @@ primitives (`rz0Scan`, `rz1*`, `rh*`, `ra*`, `rse`, `rsb`, `ru`, `ru2`, `rnStep`
 `recPass2`/`recPass3` (`RH0` .. `RU2`: `F := 0`, `acc := 1` or `2` by the input flag, `u` restored).
 Next: close the record loop (`RU2` -> `RN` -> `RH0` / `FAL`), then `FA*`, `DU*`, `RF*`, `CP*`, `BU*`, `BS*`, `IA*`, `AB*`.
 
+Evaluation phase, update 2 (`EvalNTT`, no sorry): `passStartAll` (pass start `RZ0` .. `FAL` over all records, with
+`Rc.ps`), `faN` (cursor on the first record, non-output: `FAL` .. `RFL` with `decAll` decrementing every pointer by
+`decU`), `rfFind` (`RFL` .. `BU0n`/`BU0o`: finds the cursor record, `F = 1`, for any position). Next: the broadcast
+loop `BU0n`/`BU1n`/`BU2n` .. `BS*`, `IA*`, `LA..LB`, `CU*`, `AB*` (acc += 1 for the next record, acc += b for captured
+records, modular counters), `CA*` (next column), the output branch `FAo`/`CP*`/`BU*o`/`BZ*`/`IE*`/`TS*`, `PE*`, `SC*`/`PM*`/`FL*`.
+
