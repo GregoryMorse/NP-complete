@@ -162,3 +162,10 @@ Evaluation phase, update 2 (`EvalNTT`, no sorry): `passStartAll` (pass start `RZ
 loop `BU0n`/`BU1n`/`BU2n` .. `BS*`, `IA*`, `LA..LB`, `CU*`, `AB*` (acc += 1 for the next record, acc += b for captured
 records, modular counters), `CA*` (next column), the output branch `FAo`/`CP*`/`BU*o`/`BZ*`/`IE*`/`TS*`, `PE*`, `SC*`/`PM*`/`FL*`.
 
+
+### Progress: broadcast primitives (EvalNTT)
+Done: counter increment `iaInc`, LA/LE/LB/LH/AB skips, CU test primitives
+(`cu0*`, `cu1*`, `cu2Three`, `cu2Cap*`), LN primitives, and `ab0Sweep`
+(captured record: AB0 sweep over the unit). Remaining: AB1..AB9, IR*, ABR*,
+`abUnit`/`abLoop`, non-captured visit, cursor-record marking, CA*, output
+branch, PE*, SC*/PM*/FL*.
