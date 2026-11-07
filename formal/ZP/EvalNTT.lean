@@ -1527,6 +1527,47 @@ theorem rfFind (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (pre : List Rc)
     simp only [hO, e, eb, List.append_nil, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 h5 h6 ⊢
     exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans h6))))
 
+theorem rfFind0 (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (r : Rc) (hr : r.Ok) (hF : r.F = 3)
+    (post : List Rc) (hpost : ∀ x ∈ post, x.Ok)
+    (hLe : L = Pm ++ tailB (pre ++ r :: post)) :
+    (r.O = 2 → znttLogic.Reach (hdR QNTT.RF0 [] L)
+      (hdR QNTT.BU0n (Pm ++ tailB pre ++ [1, 1, 3, 2, r.Pf, 1]) (r.tl ++ tailB post))) ∧
+    (r.O = 3 → znttLogic.Reach (hdR QNTT.RF0 [] L)
+      (hdR QNTT.BU0o (Pm ++ tailB pre ++ [1, 1, 3, 3, r.Pf, 1]) (r.tl ++ tailB post))) := by
+  have sP : Sym4 (tailB pre) := tailB_sym4 pre (fun x hx => (hpre x hx).1)
+  have sPost : Sym4 (tailB post) := tailB_sym4 post hpost
+  have sTl : Sym4 (r.tl ++ tailB post) := (r.tl_sym4 hr).app sPost
+  have sPm := hP.sym4
+  have e : L = Pm ++ (tailB pre ++ 1 :: 1 :: (r.body ++ tailB post)) := by
+    rw [hLe, tailB_append]; simp [tailB]
+  have sBody : Sym4 (r.body ++ tailB post) := (r.body_sym4 hr).app sPost
+  have h2 := rf0Good hP [] (tailB pre ++ 1 :: 1 :: (r.body ++ tailB post)) Sym4.nil
+    (sP.app (sym4_M (sym4_M sBody)))
+  have h3 := rfPre pre hpre Pm (r.body ++ tailB post) sPm sBody
+  have eb : r.body = 3 :: (r.O :: r.Pf :: 1 :: r.tl) := by simp [Rc.body_eq, hF]
+  have sA : Sym4 (Pm ++ tailB pre ++ [1, 1]) := (sPm.app sP).app (sym4_M (sym4_M Sym4.nil))
+  have sRest : Sym4 (r.O :: r.Pf :: 1 :: (r.tl ++ tailB post)) := sym4_B hr.O (sym4_B hr.Pf (sym4_M sTl))
+  rw [eb] at h3
+  have h4 := rf2One (Pm ++ tailB pre ++ [1, 1]) (r.O :: r.Pf :: 1 :: (r.tl ++ tailB post)) sA
+    sRest
+  have sA3 : Sym4 (Pm ++ tailB pre ++ [1, 1] ++ [3]) := sA.app (sym4_cell 3 (by simp))
+  have sPf : BitsD [r.Pf] := fun y hy => by simp at hy; subst hy; exact hr.Pf
+  have hsrc : Sym4 (r.Pf :: 1 :: (r.tl ++ tailB post)) := sym4_B hr.Pf (sym4_M sTl)
+  constructor
+  · intro hO
+    have h5 := rf3n (Pm ++ tailB pre ++ [1, 1] ++ [3]) (r.Pf :: 1 :: (r.tl ++ tailB post)) sA3 hsrc
+    have h6 := rfnSkip (Pm ++ tailB pre ++ [1, 1] ++ [3] ++ [2]) [r.Pf] (r.tl ++ tailB post)
+      (sA3.app (sym4_cell 2 (by simp))) sPf sTl
+    simp only [hO, e, eb, List.append_nil, List.append_assoc, List.cons_append, List.nil_append] at h2 h3 h4 h5 h6 ⊢
+    exact h2.trans (h3.trans (h4.trans (h5.trans h6)))
+  · intro hO
+    have h5 := rf3o (Pm ++ tailB pre ++ [1, 1] ++ [3]) (r.Pf :: 1 :: (r.tl ++ tailB post)) sA3 hsrc
+    have h6 := rfoSkip (Pm ++ tailB pre ++ [1, 1] ++ [3] ++ [3]) [r.Pf] (r.tl ++ tailB post)
+      (sA3.app (sym4_cell 3 (by simp))) sPf sTl
+    simp only [hO, e, eb, List.append_nil, List.append_assoc, List.cons_append, List.nil_append] at h2 h3 h4 h5 h6 ⊢
+    exact h2.trans (h3.trans (h4.trans (h5.trans h6)))
+
 /-! ### Counters: `1^k 0^(w-k)` and the increments `IA*`, `IR*` -/
 
 /-- A counter field of width `w` holding `k` marks (value `k - 1`). -/
@@ -3855,6 +3896,215 @@ theorem bzr6Mark (A : List Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
   simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
     (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-! ### `E += 1` and `S += 1` -/
+
+theorem rep_app_cons (n c : Nat) (x : List Nat) :
+    List.replicate n c ++ c :: x = c :: (List.replicate n c ++ x) := by
+  induction n with
+  | zero => simp
+  | succ n ih => simp [List.replicate_succ, ih]
+
+theorem ieStep (Y : List Nat) (wE e : Nat) (T : List Nat) (hY : Sym4 Y) (hYn : NoB Y) (hT : Sym4 T)
+    (he : 1 ≤ e) (hew : e ≤ wE) :
+    znttLogic.Reach (hd QNTT.IE0 (Y ++ [1] ++ fld wE e) (1 :: T))
+      (hdR QNTT.TS1 [] (Y ++ [1] ++ fld wE (incK wE e) ++ 1 :: T)) := by
+  have sY1 : Sym4 (Y ++ [1]) := hY.app (sym4_cell 1 (by simp))
+  have nY1 : NoB (Y ++ [1]) := by simp [NoB_app_iff, hYn, NB]
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have s3 : ∀ j, Sym4 (List.replicate j 3) := fun j => (BitsD.rep j 3 (by simp)).sym4
+  have n3 : ∀ j, NoB (List.replicate j 3) := fun j => (BitsD.rep j 3 (by simp)).noB
+  obtain ⟨e', rfl⟩ : ∃ e', e = e' + 1 := ⟨e - 1, by omega⟩
+  by_cases h : e' + 1 = wE
+  · subst h
+    have h1 := ie0One (Y ++ [1] ++ List.replicate e' 3) (1 :: T) ((sY1.app (s3 _))) (sym4_M hT)
+    have h2 := iewSweep (Y ++ [1]) e' (2 :: 1 :: T) sY1 (sym4_B (by simp) (sym4_M hT))
+    have h3 := iewM Y (2 :: (List.replicate e' 2 ++ 1 :: T)) hY (sym4_B (by simp) ((s2 _).app (sym4_M hT)))
+    have h4 := iew2Mark Y (List.replicate e' 2 ++ 1 :: T) hY ((s2 _).app (sym4_M hT))
+    have h5 := ts0Left (Y ++ [1]) (3 :: (List.replicate e' 2 ++ 1 :: T)) nY1
+      (sym4_B (by simp) ((s2 _).app (sym4_M hT)))
+    simp only [fld, incK, ite_true, Nat.sub_self, List.replicate_zero, List.append_nil, Nat.add_sub_cancel,
+      List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 h5 ⊢
+    rw [rep_app_cons] at h2
+    refine (h1.trans (h2.trans (h3.trans (h4.trans h5)))).of_eq (by simp [List.replicate_succ']) ?_
+    simp [List.replicate_succ]
+  · have hlt : e' + 1 < wE := by omega
+    obtain ⟨z', rfl⟩ : ∃ z', wE = e' + 1 + z' + 1 := ⟨wE - e' - 2, by omega⟩
+    have hinc : incK (e' + 1 + z' + 1) (e' + 1) = e' + 2 := by simp [incK]; omega
+    have h1 := ie0Zero (Y ++ [1] ++ List.replicate e' 3 ++ [3] ++ List.replicate z' 2) (1 :: T)
+      (((sY1.app (s3 _)).app (sym4_cell 3 (by simp))).app (s2 _)) (sym4_M hT)
+    have h2 := ie1Sweep (Y ++ [1] ++ List.replicate e' 3 ++ [3]) z' (2 :: 1 :: T)
+      ((sY1.app (s3 _)).app (sym4_cell 3 (by simp))) (sym4_B (by simp) (sym4_M hT))
+    rw [rep_app_cons] at h2
+    have h3 := ie1One (Y ++ [1] ++ List.replicate e' 3) (2 :: (List.replicate z' 2 ++ 1 :: T)) (sY1.app (s3 _))
+      (sym4_B (by simp) ((s2 _).app (sym4_M hT)))
+    have h4 := ie2Mark (Y ++ [1] ++ List.replicate e' 3) (List.replicate z' 2 ++ 1 :: T) (sY1.app (s3 _))
+      ((s2 _).app (sym4_M hT))
+    have h5 := ts0Left (Y ++ [1] ++ List.replicate e' 3 ++ [3]) (3 :: (List.replicate z' 2 ++ 1 :: T))
+      (by simp [NoB_app_iff, hYn, NB, n3]) (sym4_B (by simp) ((s2 _).app (sym4_M hT)))
+    rw [hinc]
+    have hs : e' + 1 + z' + 1 - (e' + 1) = z' + 1 := by omega
+    have hs2 : e' + 1 + z' + 1 - (e' + 2) = z' := by omega
+    refine (h1.trans (h2.trans (h3.trans (h4.trans h5)))).of_eq ?_ ?_
+    · simp [fld, hs, List.replicate_succ']
+    · simp [fld, hs2, List.replicate_succ, rep_app_cons]
+
+/-- The register `S` (thermometer `0^j 1^q`, value = number of marks mod `p`) after `S += 1`. -/
+def sInc (j q : Nat) : List Nat :=
+  if q ≤ 1 then List.replicate (j + 1) 3 else List.replicate (j + 1) 2 ++ List.replicate (q - 1) 3
+
+theorem tsStep (Wf : List Nat) (hW : BitsD Wf) (j q : Nat) (hq : 1 ≤ q) (P2 : List Nat) (hP : Sym4 P2) :
+    znttLogic.Reach
+      (hdR QNTT.TS1 [] (Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2)))
+      (hdR QNTT.RF0 [] (Wf ++ 1 :: (sInc j q ++ 1 :: P2))) := by
+  have sW := hW.sym4
+  have sW1 : Sym4 (Wf ++ [1]) := sW.app (sym4_cell 1 (by simp))
+  have nW := hW.noB
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have s3 : ∀ j, Sym4 (List.replicate j 3) := fun j => (BitsD.rep j 3 (by simp)).sym4
+  have hW1 : NoB (Wf ++ [1]) := by simp [NoB_app_iff, nW, NB]
+  have hWj : NoB (Wf ++ [1] ++ List.replicate j 2) := by
+    simp [NoB_app_iff, nW, NB, noB_rep]
+  obtain ⟨q', rfl⟩ : ∃ q', q = q' + 1 := ⟨q - 1, by omega⟩
+  have g1 := ts1Skip [] Wf (List.replicate j 2 ++ List.replicate (q' + 1) 3 ++ 1 :: P2) Sym4.nil hW
+    (by simp [ALL, s2, s3, hP])
+  have g2 := ts2Skip (Wf ++ [1]) j (List.replicate (q' + 1) 3 ++ 1 :: P2) sW1 (by simp [ALL, s3, hP])
+  have g3 := ts2Mark (Wf ++ [1] ++ List.replicate j 2) (List.replicate q' 3 ++ 1 :: P2) (sW1.app (s2 _))
+    (by simp [ALL, s3, hP])
+  cases q' with
+  | succ q'' =>
+    have g4 := ts3One (Wf ++ [1] ++ List.replicate j 2) (List.replicate q'' 3 ++ 1 :: P2) (sW1.app (s2 _))
+      (by simp [ALL, s3, hP])
+    have g5 := rflScan (Wf ++ [1] ++ List.replicate j 2 ++ [2]) (3 :: (List.replicate q'' 3 ++ 1 :: P2))
+      (by simp [NoB_app_iff, nW, NB, noB_rep]) (by simp [ALL, s3, hP])
+    simp only [List.replicate_succ, List.append_assoc, List.cons_append, List.nil_append] at g1 g2 g3 g4 g5 ⊢
+    refine (g1.trans (g2.trans (g3.trans (g4.trans g5)))).of_eq rfl ?_
+    simp [sInc, List.replicate_succ, rep_app_cons]
+  | zero =>
+    have g4 := ts3M (Wf ++ [1] ++ List.replicate j 2) P2 (sW1.app (s2 _)) hP
+    have g5 := tswSweep (Wf ++ [1]) (j + 1) (1 :: P2) sW1 (sym4_M hP)
+    have g6 := tswM Wf (List.replicate (j + 1) 3 ++ 1 :: P2) sW ((s3 _).app (sym4_M hP))
+    have g7 := rflScan Wf (1 :: (List.replicate (j + 1) 3 ++ 1 :: P2)) nW (sym4_M ((s3 _).app (sym4_M hP)))
+    have e : Wf ++ [1] ++ List.replicate j 2 ++ [2] = Wf ++ [1] ++ List.replicate (j + 1) 2 := by
+      rw [List.append_assoc _ (List.replicate j 2), ← List.replicate_succ']
+    rw [e] at g3 g4
+    simp only [List.replicate_zero, List.append_nil, List.append_assoc, List.cons_append,
+      List.nil_append] at g1 g2 g3 g4 g5 g6 g7 ⊢
+    refine (g1.trans (g2.trans (g3.trans (g4.trans (g5.trans (g6.trans g7)))))).of_eq rfl ?_
+    simp [sInc, List.replicate_succ, rep_app_cons]
+
+/-! ### Output cursor: one broadcast step -/
+
+/-- The cursor record is an output node: `RF0` finds it and dispatches to `BU0o`. -/
+theorem rfO (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (Pm : List Nat) (hP : GoodW Pm) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a r s : Nat) (vs : List VR) (hvs : ∀ w ∈ vs, w.Ok) :
+    znttLogic.Reach
+      (hdR QNTT.RF0 [] (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2 ++ List.replicate (r + 1) 3 ++
+        List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))))
+      (hdR QNTT.BU0o (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) (List.replicate a 2 ++ List.replicate (r + 1) 3 ++
+        List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))))) := by
+  have hacc : BitsD (List.replicate a 2 ++ List.replicate (r + 1) 3 ++ List.replicate s 2) :=
+    bd_app (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))) (BitsD.rep _ _ (by simp))
+  have hcur : (c.toRcA (List.replicate a 2 ++ List.replicate (r + 1) 3 ++ List.replicate s 2)).Ok :=
+    c.toRcA_ok hc _ hacc
+  have hvs' : ∀ x ∈ vs.map VR.toRc, x.Ok := by
+    intro x hx; simp only [List.mem_map] at hx
+    obtain ⟨v, hv, rfl⟩ := hx
+    exact v.toRcA_ok (hvs v hv) _ (fld_bits _ _)
+  have hLe : Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2 ++ List.replicate (r + 1) 3 ++
+        List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))) =
+      Pm ++ tailB (pre ++ (c.toRcA (List.replicate a 2 ++ List.replicate (r + 1) 3 ++ List.replicate s 2)) :: vs.map VR.toRc) := by
+    rw [tailB_append]
+    simp only [tailB]
+    rw [tailB_toRc vs hvs]
+    simp [VR.toRcA_body c hc, hF, hO, List.append_assoc]
+  have hnb : NoB (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2 ++ List.replicate (r + 1) 3 ++
+        List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))) := by
+    have hPc : c.P ∈ NB := by have := hc.P; simp at this; simp [NB]; omega
+    simp only [NoB_app_iff, NoB_cons_iff, List.cons_append, List.nil_append]
+    exact ⟨⟨⟨⟨⟨⟨hP.noB, tailB_noB pre (fun x hx => (hpre x hx).1)⟩, by simp [NB], by simp [NB], by simp [NB],
+      by simp [NB], hPc, by simp [NB]⟩, noB_rep _ _ (by simp)⟩, noB_rep _ _ (by simp)⟩, noB_rep _ _ (by simp)⟩,
+      by simp [NB], hc.E.noB, by simp [NB], hc.b.noB, by simp [NB], hc.u.noB, tailVR_noB vs hvs⟩
+  have hA := (rfFind0 _ Pm hnb hP pre hpre _ hcur hF (vs.map VR.toRc) hvs' hLe).2 hO
+  rw [VR.toRcA_tl c hc, tailB_toRc vs hvs] at hA
+  simpa [VR.toRcA, List.append_assoc] using hA
+
+theorem goodW_reg (Wf S P2 : List Nat) (hW : BitsD Wf) (hS : BitsD S) (hne : S ≠ []) (hP2 : GoodW (1 :: P2)) :
+    GoodW (Wf ++ 1 :: (S ++ 1 :: P2)) := by
+  cases S with
+  | nil => exact absurd rfl hne
+  | cons b S0 =>
+    exact GoodW.app (GoodW.bits hW) (GoodW.mb (hS b (by simp))
+      (GoodW.app (GoodW.bits (fun x hx => hS x (by simp [hx]))) hP2))
+
+theorem sInc_bits (j q : Nat) : BitsD (sInc j q) := by
+  unfold sInc; split
+  · exact BitsD.rep _ _ (by simp)
+  · exact bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))
+
+theorem sInc_ne (j q : Nat) : sInc j q ≠ [] := by
+  unfold sInc; split <;> simp
+
+theorem fld_len (w k : Nat) (h : k ≤ w) : (fld w k).length = w := by simp [fld]; omega
+
+/-- One broadcast step of the output cursor with at least two ones left in `b`: `E += 1`, `S += 1`, one more
+`b`-mark, back to `BU0o` via `RFL`. -/
+theorem oStep (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (Wf : List Nat) (hW : BitsD Wf) (j q : Nat)
+    (hq : 1 ≤ q) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a r s : Nat) (vs : List VR) (hvs : ∀ w ∈ vs, w.Ok)
+    (wE e : Nat) (he : 1 ≤ e) (hew : e ≤ wE) (hE : c.E = fld wE e) (n' : Nat) (hn : c.n = n' + 1) :
+    znttLogic.Reach
+      (hdR QNTT.BU0o (Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1])
+        (List.replicate a 2 ++ List.replicate (r + 2) 3 ++ List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))))
+      (hdR QNTT.BU0o (Wf ++ 1 :: (sInc j q ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1])
+        (List.replicate a 2 ++ List.replicate (r + 2) 3 ++ List.replicate s 2 ++ 1 ::
+          (fld wE (incK wE e) ++ 1 :: (({ c with m := c.m + 1, n := n' } : VR).b ++ 1 :: (c.u ++ tailVR vs))))) := by
+  have hS0 : BitsD (List.replicate j 2 ++ List.replicate q 3) :=
+    bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))
+  have hG0 := goodW_reg Wf _ P2 hW hS0 (by obtain ⟨q', rfl⟩ : ∃ q', q = q' + 1 := ⟨q - 1, by omega⟩; simp [List.replicate_succ]) hP2
+  have hG1 := goodW_reg Wf _ P2 hW (sInc_bits j q) (sInc_ne j q) hP2
+  have hElen := hc.Elen
+  rw [hE, fld_len _ _ hew] at hElen
+  have hinc : incK wE e ≤ wE := by unfold incK; split <;> omega
+  have hc1 : ({ c with m := c.m + 1, n := n', E := fld wE (incK wE e) } : VR).Ok :=
+    { F := hc.F, O := hc.O, P := hc.P, k1 := hc.k1, kw := hc.kw, E := fld_bits _ _,
+      Elen := by show 2 ≤ (fld wE (incK wE e)).length; rw [fld_len _ _ hinc]; exact hElen }
+  have hNext := rfO { c with m := c.m + 1, n := n', E := fld wE (incK wE e) } hc1 hF hO _ hG1 pre hpre a (r + 1) s vs hvs
+  have hb : c.b = (List.replicate c.m 2 ++ 3 :: 3 :: (List.replicate n' 3 ++ List.replicate c.s 2)) := by simp [VR.b, hn, List.replicate_succ]
+  have sW := hW.sym4
+  have sP2 : Sym4 P2 := by
+    have := hP2.sym4; simp at this; exact this.2
+  have sPre : Sym4 (tailB pre) := tailB_sym4 pre (fun x hx => (hpre x hx).1)
+  have sE : Sym4 (fld wE e) := (fld_bits _ _).sym4
+  have sU := hc.u.sym4
+  have sV := tailVR_sym4 vs hvs
+  have hP23 : c.P = 2 ∨ c.P = 3 := by have := hc.P; simpa using this
+  have hPA : c.P ∈ ALL := by simp [ALL]; omega
+  have nPm := hG0.noB
+  have nX : NoB (Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) := by
+    exact NoB_app_iff.2 ⟨NoB_app_iff.2 ⟨nPm, tailB_noB pre (fun x hx => (hpre x hx).1)⟩, by simp [NB]; omega⟩
+  rw [hb, hE]
+  have bRacc : BitsD (List.replicate r 3 ++ List.replicate s 2) := bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))
+  have g1 := bu0oSkip (Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) a (3 :: 3 :: ((List.replicate r 3 ++ List.replicate s 2) ++ 1 :: ((fld wE e) ++ 1 :: ((List.replicate c.m 2 ++ 3 :: 3 :: (List.replicate n' 3 ++ List.replicate c.s 2)) ++ 1 :: (c.u ++ tailVR vs))))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g2 := bu0oHit ((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2) (3 :: ((List.replicate r 3 ++ List.replicate s 2) ++ 1 :: ((fld wE e) ++ 1 :: ((List.replicate c.m 2 ++ 3 :: 3 :: (List.replicate n' 3 ++ List.replicate c.s 2)) ++ 1 :: (c.u ++ tailVR vs))))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g3 := bu1oOne ((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3]) ((List.replicate r 3 ++ List.replicate s 2) ++ 1 :: ((fld wE e) ++ 1 :: ((List.replicate c.m 2 ++ 3 :: 3 :: (List.replicate n' 3 ++ List.replicate c.s 2)) ++ 1 :: (c.u ++ tailVR vs)))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g4 := bz0Skip ((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3]) (List.replicate r 3 ++ List.replicate s 2) ((fld wE e) ++ 1 :: ((List.replicate c.m 2 ++ 3 :: 3 :: (List.replicate n' 3 ++ List.replicate c.s 2)) ++ 1 :: (c.u ++ tailVR vs))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) bRacc (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g5 := bz1Skip (((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) ++ [1]) (fld wE e) ((List.replicate c.m 2 ++ 3 :: 3 :: (List.replicate n' 3 ++ List.replicate c.s 2)) ++ 1 :: (c.u ++ tailVR vs)) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (fld_bits _ _) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g6 := bz2Skip (((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) ++ [1] ++ (fld wE e) ++ [1]) c.m (3 :: 3 :: ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g7 := bz2Hit ((((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) ++ [1] ++ (fld wE e) ++ [1]) ++ List.replicate c.m 2) (3 :: ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g8 := bz3One ((((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) ++ [1] ++ (fld wE e) ++ [1]) ++ List.replicate c.m 2) ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs)) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g9 := bz4Mark ((((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) ++ [1] ++ (fld wE e) ++ [1]) ++ List.replicate c.m 2) (3 :: ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g10 := bz5Sweep (((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) ++ [1] ++ (fld wE e) ++ [1]) c.m (2 :: 3 :: ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g11 := bz5M (((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) ++ [1] ++ (fld wE e)) (List.replicate c.m 2 ++ 2 :: 3 :: ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+  have g12 := ieStep ((Wf ++ 1 :: (List.replicate j 2 ++ List.replicate q 3 ++ 1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2)) wE e (List.replicate c.m 2 ++ 2 :: 3 :: ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs))) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega)
+    (NoB_app_iff.2 ⟨NoB_app_iff.2 ⟨NoB_app_iff.2 ⟨NoB_app_iff.2 ⟨nX, noB_rep _ _ (by simp)⟩, by simp [NB]⟩, by simp [NB]⟩, bRacc.noB⟩) (by simp [ALL, sW, sP2, sPre, sE, sU, sV] <;> omega) he hew
+  have sEi : Sym4 (fld wE (incK wE e)) := (fld_bits _ _).sym4
+  have g13 := tsStep Wf hW j q hq (P2 ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2 ++ [3] ++ [3] ++ (List.replicate r 3 ++ List.replicate s 2) ++ [1] ++ fld wE (incK wE e) ++ 1 :: (List.replicate c.m 2 ++ 2 :: 3 :: ((List.replicate n' 3 ++ List.replicate c.s 2) ++ 1 :: (c.u ++ tailVR vs)))) (by simp [ALL, sP2, sPre, sU, sV, sEi] <;> omega)
+  simp only [List.append_assoc, List.cons_append, List.nil_append] at g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 g12 g13 hNext ⊢
+  refine (g1.trans (g2.trans (g3.trans (g4.trans (g5.trans (g6.trans (g7.trans (g8.trans (g9.trans (g10.trans (g11.trans (g12.trans ((g13.of_eq rfl ?_).trans hNext))))))))))))).of_eq ?_ ?_
+  · simp [VR.b, VR.u, List.replicate_succ, rep_app_cons, List.append_assoc]
+  · simp [VR.b, VR.u, List.replicate_succ, rep_app_cons, List.append_assoc]
+  · simp [VR.b, VR.u, List.replicate_succ, rep_app_cons, List.append_assoc]
 
 end ZP.NTT
 
