@@ -203,3 +203,8 @@ iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odo
 - `cpRound`, `cpTerm`, `cmpAcc` proved: `acc = E` compare (n+1 ones each) restores acc to ones and leaves `E = 1 0^(z+n)`, ending at `hdR DAc`.
 - `fa0O` proved: `FA0` on an output record whose `E` has as many ones as `acc`: mark, compare (`cmpAcc`), set `E := 1 0^(z+n)`, decrement later pointers, ends at `RFL`.
   Next: output cursor unit (`BU1o`, `BZ*`, `IE*`, `TS*`, `BZR*` → `BS0`), which needs the `S` register layout inside `Pm` (`GoodW`).
+- Output cursor unit proved: primitives (`bu0oSkip` … `bzr6Mark`), `ieStep` (`E += 1`), `tsStep` (`S += 1`; `S` is the second
+  header field `0^j 1^q`, `sInc`/`sNext`/`sAdv`), `rfO` (RF0 → BU0o), `oStep` (one `b`-step), `oLoop`, `oLast`, `oMark`,
+  `cursorTail` (factored out of `cursorUnit`), `outUnit` (BU0o → RFL for a whole accumulator unit; `E` advances by `eAdv`).
+  Remaining: output-node cursor loop over all units (like `cursorLoop`), `colAdvance` into/out of output records, pass end
+  (`CA4 → PE*`, `SC*`/`PM*`/`FL*`), the pass loop, odometer, power sums, merge, pair lemma, Challenge/Solution.
