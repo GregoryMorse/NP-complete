@@ -4609,5 +4609,56 @@ theorem colAdvanceG (c w : VR) (ws : List VR) (hc : c.Ok) (hw : w.Ok) (hws : ∀
   obtain ⟨k', hk'⟩ : ∃ k', w.k = k' + 1 := ⟨w.k - 1, by have := hw.k1; omega⟩
   simp [VR.tl, fld, hk.1, hk.2.1, hk.2.2.1, hk.2.2.2, hk', List.replicate_succ]
 
+
+/-- A full column step for a non-output cursor record: broadcast all `r + 1` units, then advance. -/
+theorem colStepN (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 2) (Pm : List Nat) (hP : GoodW Pm)
+    (pre : List Rc) (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (r s : Nat) (vs : List VR)
+    (hvs : ∀ x ∈ vs, x.Ok) (w : VR) (ws : List VR) (hw : stepN r vs = w :: ws)
+    (hcmp : w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k) :
+    znttLogic.Reach (hd QNTT.RFL (curTapeG Pm pre c 0 r s vs) [])
+      (hd QNTT.RFL (curTapeG Pm (pre ++ [c.done r s]) w.curG 0 (w.k - 1) (w.w - w.k) (ws.map VR.dec)) []) := by
+  have h1 := cursorLoop c hc hF hO Pm hP pre hpre s r 0 vs hvs
+  rw [hw, Nat.zero_add] at h1
+  have hok := stepN_ok r vs hvs
+  rw [hw] at hok
+  have h2 := colAdvanceG c w ws hc (hok w (by simp)) (fun x hx => hok x (by simp [hx])) hF (Or.inl hO) hcmp Pm hP pre
+    hpre r s
+  rw [curTapeG_eq _ _ _ hO]
+  rw [curTapeG_eq _ _ _ hO] at h2
+  exact h1.trans h2
+
+/-- A full column step for an output cursor record (`c.E = fld wE e`): broadcast all units (advancing `E` and the `S`
+register in `Pm`), then advance. -/
+theorem colStepO (n : Nat) (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (hm : c.m = 0) (hn : c.n = n)
+    (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (s wE : Nat) (hwE : 2 ≤ wE)
+    (r : Nat) (p : Nat × Nat) (e : Nat) (hp : 1 ≤ p.2) (he : 1 ≤ e) (hew : e ≤ wE) (hE : c.E = fld wE e)
+    (vs : List VR) (hvs : ∀ x ∈ vs, x.Ok) (w : VR) (ws : List VR) (hw : stepN r vs = w :: ws)
+    (hcmp : w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k) :
+    znttLogic.Reach
+      (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2)) pre c 0 r s vs) [])
+      (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate (sAdv (r * n) p).1 2 ++ List.replicate (sAdv (r * n) p).2 3 ++ 1 :: P2))
+        (pre ++ [({ c with E := fld wE (eAdv wE (r * n) e) } : VR).done r s]) w.curG 0 (w.k - 1) (w.w - w.k)
+        (ws.map VR.dec)) []) := by
+  have h1 := outLoop n c hc hF hO hm hn Wf hW P2 hP2 pre hpre s wE hwE r 0 p e vs hvs hp he hew
+  have hb := eAdv_bounds wE (r * n) e he hew
+  have hElen := hc.Elen
+  rw [hE, fld_len _ _ hew] at hElen
+  have hc' : ({ c with E := fld wE (eAdv wE (r * n) e) } : VR).Ok :=
+    { F := hc.F, O := hc.O, P := hc.P, k1 := hc.k1, kw := hc.kw, E := fld_bits _ _,
+      Elen := by show 2 ≤ (fld wE (eAdv wE (r * n) e)).length; rw [fld_len _ _ hb.2]; exact hElen }
+  have hG := goodW_reg Wf (List.replicate (sAdv (r * n) p).1 2 ++ List.replicate (sAdv (r * n) p).2 3) P2 hW
+    (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)))
+    (by have := sAdv_pos (r * n) p hp; obtain ⟨q', hq'⟩ : ∃ q', (sAdv (r * n) p).2 = q' + 1 := ⟨(sAdv (r * n) p).2 - 1, by omega⟩
+        simp [hq', List.replicate_succ]) hP2
+  have hok := stepN_ok r vs hvs
+  rw [hw] at hok
+  have h2 := colAdvanceG ({ c with E := fld wE (eAdv wE (r * n) e) } : VR) w ws hc' (hok w (by simp))
+    (fun x hx => hok x (by simp [hx])) hF (Or.inr hO) hcmp _ hG pre hpre r s
+  rw [hw, Nat.zero_add] at h1
+  refine (LTM.Reach.of_eq h1 ?_ ?_).trans h2
+  · simp [curTapeG, hE, hO, List.append_assoc]
+  · simp [curTapeG, hO, VR.b, VR.u, List.append_assoc]
+
 end ZP.NTT
 
