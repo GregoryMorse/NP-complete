@@ -208,3 +208,6 @@ iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odo
   `cursorTail` (factored out of `cursorUnit`), `outUnit` (BU0o → RFL for a whole accumulator unit; `E` advances by `eAdv`).
   Remaining: output-node cursor loop over all units (like `cursorLoop`), `colAdvance` into/out of output records, pass end
   (`CA4 → PE*`, `SC*`/`PM*`/`FL*`), the pass loop, odometer, power sums, merge, pair lemma, Challenge/Solution.
+
+- `outLoop`: iterates `outUnit` over all accumulator units of an output record (E, S counters advance by `r*n`).
+- `fa0G` (+ `VR.curG`, `curG_tl`): FA0 on the next record for either kind; output case resets E to `fld |E| 1` after the compare. Remaining: `curTapeG`, `buEnd`, `rfG`, `colAdvanceG`.

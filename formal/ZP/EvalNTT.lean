@@ -4391,5 +4391,60 @@ theorem outLoop (n : Nat) (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (hm
     rw [e1, sAdv_add, eAdv_add, e2]
     simp [stepN]
 
+
+/-- The next cursor record: decremented, `F := 3`, and for an output node `E` reset to `1`. -/
+def VR.curG (w : VR) : VR :=
+  if w.O = 3 then { w.cur with E := fld w.E.length 1 } else w.cur
+
+theorem VR.curG_nonout (w : VR) (h : w.O = 2) : w.curG = w.cur := by
+  simp [VR.curG, h]
+
+theorem curG_tl (w : VR) (hO : w.O = 3) (z n : Nat) (hn : w.k = n + 1) (hlen : w.E.length = w.k + z)
+    (_hE : w.E = fld (w.k + z) w.k) :
+    (VR.curG w).tl = ({ w with E := 3 :: List.replicate (z + n) 2 } : VR).dec.tl := by
+  have h1 : fld w.E.length 1 = 3 :: List.replicate (z + n) 2 := by
+    rw [hlen]; simp [fld, hn, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+  unfold VR.curG VR.cur VR.dec
+  rw [if_pos hO]
+  by_cases hc : w.c = 0 <;> simp [hc, VR.tl, VR.b, VR.u, h1]
+
+/-- `FA0` on the next record (either kind). -/
+theorem fa0G (A : List Nat) (w : VR) (hw : w.Ok) (ws : List VR) (hws : ∀ x ∈ ws, x.Ok) (hA : Sym4 A)
+    (hcmp : w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k) :
+    znttLogic.Reach (hdR QNTT.FA0 A ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)))
+      (hd QNTT.RFL (A ++ [3, w.O, w.P] ++ 1 :: (w.curG.tl ++ tailVR (ws.map VR.dec))) []) := by
+  have hwd : w.toRc.DE := ⟨w.toRcA_ok hw _ (fld_bits _ _), w.toRcA_rest _⟩
+  have hws' : ∀ x ∈ ws.map VR.toRc, x.DE := by
+    intro x hx; simp only [List.mem_map] at hx
+    obtain ⟨v, hv, rfl⟩ := hx
+    exact ⟨v.toRcA_ok (hws v hv) _ (fld_bits _ _), v.toRcA_rest _⟩
+  have hOw := hw.O
+  simp at hOw
+  rcases hOw with hO | hO
+  · have b6 := fa0N A w.toRc hwd (by simpa [VR.toRc, VR.toRcA] using hO) (ws.map VR.toRc) hws' hA
+    rw [VR.toRc_tl w hw, tailB_toRc ws hws, VR.dec_toRc_tl w hw, tailD_toRc ws hws] at b6
+    simp only [VR.toRc, VR.toRcA] at b6
+    refine b6.of_eq rfl ?_
+    simp [VR.curG, hO, VR.cur, VR.tl, VR.b, VR.u]
+  · obtain ⟨z, hk1, hE⟩ := hcmp hO
+    obtain ⟨n, hn⟩ : ∃ n, w.k = n + 1 := ⟨w.k - 1, by omega⟩
+    have b6 := fa0O A w.toRc hwd (by simpa [VR.toRc, VR.toRcA] using hO) n (w.w - w.k) z
+      (by simp [VR.toRc, VR.toRcA, fld, hn]) (by simp [VR.toRc, VR.toRcA, hE, fld, hn]) (ws.map VR.toRc) hws' hA
+    rw [VR.toRc_tl w hw, tailB_toRc ws hws, tailD_toRc ws hws] at b6
+    have hlen : w.E.length = w.k + z := by rw [hE]; simp [fld]
+    have hw' : ({ w with E := 3 :: List.replicate (z + n) 2 } : VR).Ok :=
+      { hw with
+        E := by exact BitsD.cons (by simp) (BitsD.rep _ _ (by simp))
+        Elen := by simp; have := hw.Elen; omega }
+    have e1 := VR.dec_toRc_tl _ hw'
+    have e2 : ({ w with E := 3 :: List.replicate (z + n) 2 } : VR).toRc =
+      { F := w.toRc.F, O := w.toRc.O, Pf := w.toRc.Pf, acc := w.toRc.acc, E := 3 :: List.replicate (z + n) 2,
+        b0 := w.toRc.b0, br := w.toRc.br, u0 := w.toRc.u0, ur := w.toRc.ur } := rfl
+    rw [e2] at e1
+    rw [e1] at b6
+    refine b6.of_eq rfl ?_
+    rw [curG_tl w hO z n hn hlen hE]
+    simp [VR.toRc, VR.toRcA]
+
 end ZP.NTT
 
