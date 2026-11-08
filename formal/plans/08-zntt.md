@@ -211,3 +211,4 @@ iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odo
 
 - `outLoop`: iterates `outUnit` over all accumulator units of an output record (E, S counters advance by `r*n`).
 - `fa0G` (+ `VR.curG`, `curG_tl`): FA0 on the next record for either kind; output case resets E to `fld |E| 1` after the compare. Remaining: `curTapeG`, `buEnd`, `rfG`, `colAdvanceG`.
+- `colAdvanceG` (+ `curTapeG`, `curToCA0`, `bu1oAny`): column advance for cursor/next records of either kind (`c.O ∈ {2,3}`; output next record needs the compare hypothesis). Remaining: pass loop, pass end, odometer, power sums, merge, bridge.

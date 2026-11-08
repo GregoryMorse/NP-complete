@@ -4446,5 +4446,168 @@ theorem fa0G (A : List Nat) (w : VR) (hw : w.Ok) (ws : List VR) (hws : ∀ x ∈
     rw [curG_tl w hO z n hn hlen hE]
     simp [VR.toRc, VR.toRcA]
 
+
+theorem bu1oZero (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BU1o (A ++ [3]) (2 :: R)) (hd QNTT.CA0 (A ++ [3]) (2 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.sym 2, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bu1oM (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BU1o (A ++ [3]) (1 :: R)) (hd QNTT.CA0 (A ++ [3]) (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bu1oAny (A : List Nat) (s : Nat) (T : List Nat) (hA : Sym4 A) (hT : Sym4 T) :
+    znttLogic.Reach (hdR QNTT.BU1o (A ++ [3]) (List.replicate s 2 ++ 1 :: T))
+      (hd QNTT.CA0 (A ++ [3]) (List.replicate s 2 ++ 1 :: T)) := by
+  cases s with
+  | zero => simpa using bu1oM A T hA hT
+  | succ s =>
+    have := bu1oZero A (List.replicate s 2 ++ 1 :: T) hA ((BitsD.rep s 2 (by simp)).sym4.app (sym4_M hT))
+    simpa [List.replicate_succ, VR.toRcA] using this
+
+def curTapeG (Pm : List Nat) (pre : List Rc) (c : VR) (a r s : Nat) (vs : List VR) : List Nat :=
+  Pm ++ tailB pre ++ [1, 1, 3, c.O, c.P, 1] ++ List.replicate a 2 ++ List.replicate (r + 1) 3 ++ List.replicate s 2 ++
+    1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))
+
+theorem curTapeG_eq (Pm : List Nat) (pre : List Rc) (c : VR) (hO : c.O = 2) (a r s : Nat) (vs : List VR) :
+    curTapeG Pm pre c a r s vs = curTape Pm pre c a r s vs := by
+  simp [curTapeG, curTape, hO]
+
+theorem curTapeG_noB (c : VR) (hc : c.Ok) (Pm : List Nat) (hP : GoodW Pm) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a r s : Nat) (vs : List VR) (hvs : ∀ w ∈ vs, w.Ok) :
+    NoB (curTapeG Pm pre c a r s vs) := by
+  have hPc : c.P ∈ NB := by have := hc.P; simp at this; simp [NB]; omega
+  have hOc : c.O ∈ NB := by have := hc.O; simp at this; simp [NB]; omega
+  simp only [curTapeG, NoB_app_iff, NoB_cons_iff, List.cons_append, List.nil_append]
+  exact ⟨⟨⟨⟨⟨⟨hP.noB, tailB_noB pre (fun x hx => (hpre x hx).1)⟩, by simp [NB], by simp [NB], by simp [NB],
+    hOc, hPc, by simp [NB]⟩, noB_rep _ _ (by simp)⟩, noB_rep _ _ (by simp)⟩, noB_rep _ _ (by simp)⟩,
+    by simp [NB], hc.E.noB, by simp [NB], hc.b.noB, by simp [NB], hc.u.noB, tailVR_noB vs hvs⟩
+
+theorem curToCA0 (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 2 ∨ c.O = 3) (Pm : List Nat) (hP : GoodW Pm)
+    (pre : List Rc) (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a s : Nat) (vs : List VR)
+    (hvs : ∀ x ∈ vs, x.Ok) :
+    znttLogic.Reach (hd QNTT.RFL (curTapeG Pm pre c a 0 s vs) [])
+      (hd QNTT.CA0 (Pm ++ tailB pre ++ [1, 1, 3, c.O, c.P, 1] ++ List.replicate a 2 ++ [3])
+        (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))))) := by
+  have sPm := hP.sym4
+  have sPre : Sym4 (tailB pre) := tailB_sym4 pre (fun x hx => (hpre x hx).1)
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have hacc : BitsD (List.replicate a 2 ++ List.replicate (0 + 1) 3 ++ List.replicate s 2) :=
+    bd_app (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))) (BitsD.rep _ _ (by simp))
+  have hcur : (c.toRcA (List.replicate a 2 ++ List.replicate (0 + 1) 3 ++ List.replicate s 2)).Ok :=
+    c.toRcA_ok hc _ hacc
+  have hvs' : ∀ x ∈ vs.map VR.toRc, x.Ok := by
+    intro x hx; simp only [List.mem_map] at hx
+    obtain ⟨v, hv, rfl⟩ := hx
+    exact v.toRcA_ok (hvs v hv) _ (fld_bits _ _)
+  have hLe : curTapeG Pm pre c a 0 s vs = Pm ++ tailB (pre ++ (c.toRcA (List.replicate a 2 ++
+      List.replicate (0 + 1) 3 ++ List.replicate s 2)) :: vs.map VR.toRc) := by
+    rw [tailB_append]
+    simp only [tailB]
+    rw [tailB_toRc vs hvs]
+    simp [curTapeG, VR.toRcA_body c hc, hF, List.append_assoc]
+  have hA := rfFind (curTapeG Pm pre c a 0 s vs) Pm (curTapeG_noB c hc Pm hP pre hpre a 0 s vs hvs) hP pre hpre _ hcur hF
+    (vs.map VR.toRc) hvs' hLe
+  rw [VR.toRcA_tl c hc, tailB_toRc vs hvs] at hA
+  have hX : Sym4 (Pm ++ tailB pre ++ [1, 1, 3, c.O, c.P, 1]) :=
+    (sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B hc.O (sym4_B hc.P (sym4_M Sym4.nil))))))
+  have sU := hc.u.sym4
+  have sB := hc.b.sym4
+  have sE := hc.E.sym4
+  have sT : Sym4 (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))) :=
+    sE.app (sym4_M (sB.app (sym4_M (sU.app (tailVR_sym4 vs hvs)))))
+  have sT' : Sym4 (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))) :=
+    (s2 s).app (sym4_M sT)
+  have sTail := tailVR_sym4 vs hvs
+  rcases hO with hO | hO
+  · have hX2 : Sym4 (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1]) := by
+      have := hX; rwa [hO] at this
+    have hA' : znttLogic.Reach (hd QNTT.RFL (curTapeG Pm pre c a 0 s vs) [])
+        (hdR QNTT.BU0n (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1]) (List.replicate a 2 ++ 3 :: (List.replicate s 2 ++
+          1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))))) := by
+      have := hA.1 hO
+      simpa [List.replicate_succ, VR.toRcA] using this
+    have b1 := bu0Skip (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1]) a
+      (3 :: (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))))
+      hX2 (sym4_B (by simp) sT')
+    have b2 := bu0Hit (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1] ++ List.replicate a 2)
+      (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))))
+      (hX2.app (s2 a)) sT'
+    have b3 := bu1Any (Pm ++ tailB pre ++ [1, 1, 3, 2, c.P, 1] ++ List.replicate a 2) s
+      (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))) (hX2.app (s2 a)) sT
+    rw [hO]
+    simpa using hA'.trans (b1.trans (b2.trans b3))
+  · have hX2 : Sym4 (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) := by
+      have := hX; rwa [hO] at this
+    have hA' : znttLogic.Reach (hd QNTT.RFL (curTapeG Pm pre c a 0 s vs) [])
+        (hdR QNTT.BU0o (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) (List.replicate a 2 ++ 3 :: (List.replicate s 2 ++
+          1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))))) := by
+      have := hA.2 hO
+      simpa [List.replicate_succ, VR.toRcA] using this
+    have b1 := bu0oSkip (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1]) a
+      (3 :: (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))))
+      hX2 (sym4_B (by simp) sT')
+    have b2 := bu0oHit (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2)
+      (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))))
+      (hX2.app (s2 a)) sT'
+    have b3 := bu1oAny (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2) s
+      (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs))) (hX2.app (s2 a)) sT
+    rw [hO]
+    simpa using hA'.trans (b1.trans (b2.trans b3))
+
+theorem colAdvanceG (c w : VR) (ws : List VR) (hc : c.Ok) (hw : w.Ok) (hws : ∀ x ∈ ws, x.Ok) (hF : c.F = 3)
+    (hO : c.O = 2 ∨ c.O = 3) (hcmp : w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k)
+    (Pm : List Nat) (hP : GoodW Pm) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a s : Nat) :
+    znttLogic.Reach (hd QNTT.RFL (curTapeG Pm pre c a 0 s (w :: ws)) [])
+      (hd QNTT.RFL (curTapeG Pm (pre ++ [c.done a s]) w.curG 0 (w.k - 1) (w.w - w.k) (ws.map VR.dec)) []) := by
+  have hvs : ∀ x ∈ w :: ws, x.Ok := fun x hx => by
+    simp at hx; rcases hx with rfl | hx
+    · exact hw
+    · exact hws x hx
+  have sPm := hP.sym4
+  have sPre : Sym4 (tailB pre) := tailB_sym4 pre (fun x hx => (hpre x hx).1)
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have hA := curToCA0 c hc hF hO Pm hP pre hpre a s (w :: ws) hvs
+  have sU := hc.u.sym4
+  have sB := hc.b.sym4
+  have sE := hc.E.sym4
+  have sW : Sym4 ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) :=
+    hw.hdr3.sym4.app (sym4_M (hw.tl_sym4.app (tailVR_sym4 ws hws)))
+  have sT : Sym4 (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))) := by
+    refine sE.app (sym4_M (sB.app (sym4_M (sU.app ?_))))
+    exact tailVR_sym4 (w :: ws) hvs
+  have b4 := ca0Sweep (Pm ++ tailB pre ++ [1, 1, 3, c.O, c.P]) (List.replicate a 2 ++ [3])
+    (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))))
+    ((sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B hc.O (sym4_B hc.P Sym4.nil))))))
+    (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; simp [hx])) ((s2 s).app (sym4_M sT))
+  have b5 := caNext c hc (Pm ++ tailB pre) (List.replicate a 2 ++ 3 :: List.replicate s 2)
+    ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) (sPm.app sPre)
+    (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all))
+    (by cases a <;> simp [List.replicate_succ]) sW
+  have b6 := fa0G (Pm ++ tailB pre ++ [1, 1, 2, c.O, c.P, 1] ++ (List.replicate a 2 ++ 3 :: List.replicate s 2) ++
+      1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ [1, 1])))) w hw ws hws
+    (((((sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B hc.O (sym4_B hc.P (sym4_M Sym4.nil))))))).app
+      (BitsD.sym4 (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)))).app
+      (sym4_M (sE.app (sym4_M (sB.app (sym4_M (sU.app (sym4_M (sym4_M Sym4.nil))))))))))
+    hcmp
+  have hdone : (c.done a s).body = [2, c.O, c.P] ++ 1 :: ((List.replicate a 2 ++ 3 :: List.replicate s 2) ++
+      1 :: (c.E ++ 1 :: (c.b ++ 1 :: c.u))) := by
+    have e : (c.done a s).tl = (c.toRcA (List.replicate a 2 ++ 3 :: List.replicate s 2)).tl := rfl
+    rw [Rc.body_eq, e, VR.toRcA_tl c hc]
+    rfl
+  simp only [tailB_append, tailB, hdone, List.append_nil, curTapeG, List.append_assoc, List.cons_append,
+    List.nil_append, List.replicate_succ] at hA b4 b5 b6 ⊢
+  refine hA.trans (b4.trans (b5.trans (b6.of_eq rfl ?_)))
+  have hk : w.curG.O = w.O ∧ w.curG.P = w.P ∧ w.curG.w = w.w ∧ w.curG.k = w.k := by
+    by_cases h : w.O = 3 <;> simp [VR.curG, VR.cur, VR.dec, h] <;> split <;> simp_all
+  obtain ⟨k', hk'⟩ : ∃ k', w.k = k' + 1 := ⟨w.k - 1, by have := hw.k1; omega⟩
+  simp [VR.tl, fld, hk.1, hk.2.1, hk.2.2.1, hk.2.2.2, hk', List.replicate_succ]
+
 end ZP.NTT
 
