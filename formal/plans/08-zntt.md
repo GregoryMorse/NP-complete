@@ -218,3 +218,7 @@ iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odo
   `scPm` (more passes: `S` is checked to be `0` in `SC`, the input flag moves from record `r` to the next record `r2`,
   ends in `RZ1` of the next pass; `Pf := 2` / `Pf := 3`), `flOk` (last pass, `S` has a leading `0`: `FL0` → `SU1`).
   Remaining: failure branches (`SC2` on `0`, `FL2` on `1` → `ODL`), odometer `OD*`, `SU*`/`BX*`/`BEEP`/`PA*`, semantic layer.
+- Success path proved (`su3Sweep` … `su10Set`, `su1Good`, `suOk`): when `Nn` ends in a `0` (fully marked) the records are erased
+  (blank cells), `Nn := 1^(|Nn|+1)`, `W` and `S` are erased and `P := 1`; ends at `hdR PA0 [3] (1 :: K ++ 1 :: C ++ 1 :: Nn' ++ 0^(|recs|+1))`
+  (leading blanks are normalised with `ZP.F.hdR_zeros`). Next: beep path (`SUX` on `1`, `BX*`), failure branches into `ODL`, odometer `OD*`, then the
+  primality phase restarts (`PA0`, existing `PrimeNTT`/`RulerNTT`), semantic layer.
