@@ -4660,5 +4660,195 @@ theorem colStepO (n : Nat) (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (h
   · simp [curTapeG, hE, hO, List.append_assoc]
   · simp [curTapeG, hO, VR.b, VR.u, List.append_assoc]
 
+
+/-! ### Pass end (`PE*`) -/
+
+theorem pe0Scan (L R : List Nat) (hL : NoB L) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.PE0 L R) (hdR QNTT.PE1 [] (L ++ R)) := by
+  have hV : Valid [NB, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id]) (ls' := []) (rs' := [.blk 0 .id, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe1Bit (A : List Nat) (b : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) (hb : b ∈ [2, 3]) :
+    znttLogic.Reach (hdR QNTT.PE1 A (b :: R)) (hdR QNTT.PE1 (A ++ [b]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simp at hb; rcases hb with rfl | rfl
+  · simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe1M (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.PE1 A (1 :: R)) (hdR QNTT.PE2 (A ++ [1]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe2Bit (A : List Nat) (b : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) (hb : b ∈ [2, 3]) :
+    znttLogic.Reach (hdR QNTT.PE2 A (b :: R)) (hdR QNTT.PE1 (A ++ [b]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simp at hb; rcases hb with rfl | rfl
+  · simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe2M (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.PE2 (A ++ [1]) (1 :: R)) (hd QNTT.PE3 (A ++ [1]) (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 1]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe3M (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.PE3 (A ++ [1]) (1 :: R)) (hd QNTT.PE4 A (1 :: 1 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 1, .sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe4Zeros (A R : List Nat) (b : Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.PE4 (A ++ List.replicate b 2) R) (hd QNTT.PE4 A (List.replicate b 2 ++ R)) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate b 2, R] :=
+    Valid.cons hA (Valid.cons (repSet b 2) (Valid.cons hR (Valid.nil _)))
+  simpa using checkTT (env := [A, List.replicate b 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .blk 1 .id]) (rs := [.blk 2 .id]) (ls' := [.blk 0 .id]) (rs' := [.blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe4One (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.PE4 (A ++ [3]) R) (hd QNTT.PE5 A (2 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 2, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe5More (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.PE5 (A ++ [3]) R) (hd QNTT.SC A (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe5Last (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.PE5 (A ++ [1]) R) (hd QNTT.FL0 A (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem pe1Good {u : List Nat} (hu : GoodW u) :
+    ∀ (A rest : List Nat), Sym4 A → Sym4 rest →
+    znttLogic.Reach (hdR QNTT.PE1 A (u ++ rest)) (hdR QNTT.PE1 (A ++ u) rest) := by
+  induction hu with
+  | nil => intro A rest _ _; simpa using LTM.Reach.refl znttLogic _
+  | @bit b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [b] := by
+      intro y hy; simp at hy; subst hy; simp at hb; rcases hb with rfl | rfl <;> simp [ALL]
+    have h1 := pe1Bit A b (u ++ rest) hA (hu'.sym4.app hr) hb
+    have h2 := ih (A ++ [b]) rest (hA.app sb) hr
+    simpa using h1.trans h2
+  | @mb b u hb hu' ih =>
+    intro A rest hA hr
+    have sb : Sym4 [1, b] := by
+      intro y hy; simp at hy; simp at hb; rcases hy with rfl | rfl <;> (try rcases hb with rfl | rfl) <;> simp [ALL]
+    have s1 : Sym4 [1] := sym4_cell 1 (by simp)
+    have h1 := pe1M A (b :: u ++ rest) hA ((Sym4.cons (by simp at hb; rcases hb with rfl | rfl <;> simp [ALL]) hu'.sym4).app hr)
+    have h1' := pe2Bit (A ++ [1]) b (u ++ rest) (hA.app s1) (hu'.sym4.app hr) hb
+    have h2 := ih (A ++ [1, b]) rest (hA.app sb) hr
+    simp only [List.append_assoc, List.cons_append, List.nil_append] at h1 h1' h2 ⊢
+    exact h1.trans (h1'.trans h2)
+
+/-- Pass end, more passes to come: scan to `Nn`, unmark its last `1`; the head is left in `SC`. -/
+theorem peMore (Pm0 : List Nat) (a b : Nat) (rest : List Nat) (hP : GoodW (Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2))
+    (hrest : NoB rest) :
+    znttLogic.Reach (hd QNTT.PE0 (Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2 ++ 1 :: 1 :: rest) [])
+      (hd QNTT.SC (Pm0 ++ List.replicate a 3) (3 :: 2 :: (List.replicate b 2 ++ 1 :: 1 :: rest))) := by
+  have hrs : Sym4 rest := hrest.sym4
+  have sP := hP.sym4
+  have s1 : Sym4 [1] := sym4_cell 1 (by simp)
+  have e : Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2 ++ 1 :: 1 :: rest =
+      (Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2) ++ ([1, 1] ++ rest) := by simp
+  have hNB : NoB ((Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2) ++ ([1, 1] ++ rest)) := by
+    intro x hx
+    rw [List.mem_append] at hx
+    rcases hx with hx | hx
+    · exact hP.noB x hx
+    · rw [List.mem_append] at hx
+      rcases hx with hx | hx
+      · simp at hx; subst hx; simp [NB]
+      · exact hrest x hx
+  rw [e]
+  have h0 := pe0Scan _ [] hNB Sym4.nil
+  simp only [List.append_nil] at h0
+  have h1 := pe1Good hP [] ([1, 1] ++ rest) Sym4.nil ((sym4_M (sym4_M hrs)))
+  have h2 := pe1M (Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2) (1 :: rest) sP (sym4_M hrs)
+  have h3 := pe2M (Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2) rest sP hrs
+  have h4 := pe3M (Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2) rest sP hrs
+  have sX : Sym4 (Pm0 ++ List.replicate a 3) := by
+    have : Sym4 (Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2) := sP
+    intro x hx; apply this; simp only [List.mem_append] at hx ⊢; rcases hx with hx | hx
+    · exact Or.inl (Or.inl hx)
+    · refine Or.inl (Or.inr ?_); exact List.mem_replicate.2 ⟨by omega, (List.mem_replicate.1 hx).2⟩
+  have s3 : Sym4 [3] := sym4_cell 3 (by simp)
+  have sR : Sym4 (1 :: 1 :: rest) := sym4_M (sym4_M hrs)
+  have e2 : Pm0 ++ List.replicate (a + 2) 3 ++ List.replicate b 2 =
+      (Pm0 ++ List.replicate a 3 ++ [3] ++ [3]) ++ List.replicate b 2 := by simp [List.replicate_succ', List.append_assoc]
+  have h5 := pe4Zeros (Pm0 ++ List.replicate a 3 ++ [3] ++ [3]) (1 :: 1 :: rest) b ((sX.app s3).app s3) sR
+  have h6 := pe4One (Pm0 ++ List.replicate a 3 ++ [3]) (List.replicate b 2 ++ 1 :: 1 :: rest) (sX.app s3)
+    ((BitsD.rep b 2 (by simp)).sym4.app sR)
+  have h7 := pe5More (Pm0 ++ List.replicate a 3) (2 :: (List.replicate b 2 ++ 1 :: 1 :: rest)) sX
+    (Sym4.cons (by simp [ALL]) ((BitsD.rep b 2 (by simp)).sym4.app sR))
+  rw [← e2] at h5
+  simp only [List.nil_append] at h0 h1
+  exact h0.trans (h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans h7))))))
+
+/-- Pass end, last pass: `Nn` had a single `1`; the head is left in `FL0` on the last cell of the field before `Nn`. -/
+theorem peLast (Pm1 : List Nat) (b : Nat) (rest : List Nat) (hP : GoodW (Pm1 ++ [1] ++ [3] ++ List.replicate b 2))
+    (hrest : NoB rest) :
+    znttLogic.Reach (hd QNTT.PE0 (Pm1 ++ [1] ++ [3] ++ List.replicate b 2 ++ 1 :: 1 :: rest) [])
+      (hd QNTT.FL0 Pm1 (1 :: 2 :: (List.replicate b 2 ++ 1 :: 1 :: rest))) := by
+  have hrs : Sym4 rest := hrest.sym4
+  have sP := hP.sym4
+  have s1 : Sym4 [1] := sym4_cell 1 (by simp)
+  have e : Pm1 ++ [1] ++ [3] ++ List.replicate b 2 ++ 1 :: 1 :: rest =
+      (Pm1 ++ [1] ++ [3] ++ List.replicate b 2) ++ ([1, 1] ++ rest) := by simp
+  have hNB : NoB ((Pm1 ++ [1] ++ [3] ++ List.replicate b 2) ++ ([1, 1] ++ rest)) := by
+    intro x hx
+    rw [List.mem_append] at hx
+    rcases hx with hx | hx
+    · exact hP.noB x hx
+    · rw [List.mem_append] at hx
+      rcases hx with hx | hx
+      · simp at hx; subst hx; simp [NB]
+      · exact hrest x hx
+  rw [e]
+  have h0 := pe0Scan _ [] hNB Sym4.nil
+  simp only [List.append_nil] at h0
+  have h1 := pe1Good hP [] ([1, 1] ++ rest) Sym4.nil ((sym4_M (sym4_M hrs)))
+  have h2 := pe1M (Pm1 ++ [1] ++ [3] ++ List.replicate b 2) (1 :: rest) sP (sym4_M hrs)
+  have h3 := pe2M (Pm1 ++ [1] ++ [3] ++ List.replicate b 2) rest sP hrs
+  have h4 := pe3M (Pm1 ++ [1] ++ [3] ++ List.replicate b 2) rest sP hrs
+  have sX : Sym4 Pm1 := by
+    intro x hx; apply sP; simp only [List.mem_append]; exact Or.inl (Or.inl (Or.inl hx))
+  have s3 : Sym4 [3] := sym4_cell 3 (by simp)
+  have s1 : Sym4 [1] := sym4_cell 1 (by simp)
+  have sR : Sym4 (1 :: 1 :: rest) := sym4_M (sym4_M hrs)
+  have e2 : Pm1 ++ [1] ++ [3] ++ List.replicate b 2 = (Pm1 ++ [1] ++ [3]) ++ List.replicate b 2 := rfl
+  have h5 := pe4Zeros (Pm1 ++ [1] ++ [3]) (1 :: 1 :: rest) b ((sX.app s1).app s3) sR
+  have h6 := pe4One (Pm1 ++ [1]) (List.replicate b 2 ++ 1 :: 1 :: rest) (sX.app s1)
+    ((BitsD.rep b 2 (by simp)).sym4.app sR)
+  have h7 := pe5Last Pm1 (2 :: (List.replicate b 2 ++ 1 :: 1 :: rest)) sX
+    (Sym4.cons (by simp [ALL]) ((BitsD.rep b 2 (by simp)).sym4.app sR))
+  simp only [List.nil_append] at h0 h1
+  exact h0.trans (h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans h7))))))
+
+
 end ZP.NTT
 
