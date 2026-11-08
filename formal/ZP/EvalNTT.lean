@@ -4326,5 +4326,70 @@ theorem outUnit (n : Nat) (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (Wf
   simp only [List.append_assoc, List.cons_append, List.nil_append] at h1 h2 ⊢
   exact (h1.trans h2).of_eq rfl (by simp [VR.b, VR.u])
 
+/-! ### Output cursor: the loop over all accumulator units -/
+
+theorem sAdv_add : ∀ (m n : Nat) (p : Nat × Nat), sAdv (m + n) p = sAdv n (sAdv m p)
+  | 0, n, p => by simp [sAdv]
+  | m + 1, n, p => by
+    rw [show m + 1 + n = (m + n) + 1 by omega]
+    simp only [sAdv]; exact sAdv_add m n _
+
+theorem eAdv_add (wE : Nat) : ∀ (m n e : Nat), eAdv wE (m + n) e = eAdv wE n (eAdv wE m e)
+  | 0, n, e => by simp [eAdv]
+  | m + 1, n, e => by
+    rw [show m + 1 + n = (m + n) + 1 by omega]
+    simp only [eAdv]; exact eAdv_add wE m n _
+
+theorem outTape_noB (c : VR) (hc : c.Ok) (Pm : List Nat) (hP : GoodW Pm) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a r s : Nat) (vs : List VR) (hvs : ∀ w ∈ vs, w.Ok) :
+    NoB (Pm ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2 ++ List.replicate (r + 1) 3 ++
+        List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))) := by
+  have hPc : c.P ∈ NB := by have := hc.P; simp at this; simp [NB]; omega
+  simp only [NoB_app_iff, NoB_cons_iff, List.cons_append, List.nil_append]
+  exact ⟨⟨⟨⟨⟨⟨hP.noB, tailB_noB pre (fun x hx => (hpre x hx).1)⟩, by simp [NB], by simp [NB], by simp [NB],
+    by simp [NB], hPc, by simp [NB]⟩, noB_rep _ _ (by simp)⟩, noB_rep _ _ (by simp)⟩, noB_rep _ _ (by simp)⟩,
+    by simp [NB], hc.E.noB, by simp [NB], hc.b.noB, by simp [NB], hc.u.noB, tailVR_noB vs hvs⟩
+
+
+theorem outLoop (n : Nat) (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (hm : c.m = 0) (hn : c.n = n)
+    (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (s wE : Nat) (hwE : 2 ≤ wE) :
+    ∀ (r a : Nat) (p : Nat × Nat) (e : Nat) (vs : List VR), (∀ w ∈ vs, w.Ok) → 1 ≤ p.2 → 1 ≤ e → e ≤ wE →
+    znttLogic.Reach
+      (hd QNTT.RFL (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2) ++ tailB pre ++
+        [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2 ++ List.replicate (r + 1) 3 ++ List.replicate s 2 ++
+        1 :: (fld wE e ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))) [])
+      (hd QNTT.RFL (Wf ++ 1 :: (List.replicate (sAdv (r * n) p).1 2 ++ List.replicate (sAdv (r * n) p).2 3 ++
+        1 :: P2) ++ tailB pre ++ [1, 1, 3, 3, c.P, 1] ++ List.replicate (a + r) 2 ++ List.replicate 1 3 ++
+        List.replicate s 2 ++ 1 :: (fld wE (eAdv wE (r * n) e) ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (stepN r vs))))) [])
+  | 0, a, p, e, vs, hvs, hq, he, hew => by
+    simpa [sAdv, eAdv, stepN] using LTM.Reach.refl znttLogic _
+  | r + 1, a, p, e, vs, hvs, hq, he, hew => by
+    have hElen := hc.Elen
+    have hc' : ({ c with E := fld wE e } : VR).Ok :=
+      { F := hc.F, O := hc.O, P := hc.P, k1 := hc.k1, kw := hc.kw, E := fld_bits _ _,
+        Elen := by show 2 ≤ (fld wE e).length; rw [fld_len _ _ hew]; exact hwE }
+    have hG := goodW_reg Wf (List.replicate p.1 2 ++ List.replicate p.2 3) P2 hW
+      (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)))
+      (by obtain ⟨q', hq'⟩ : ∃ q', p.2 = q' + 1 := ⟨p.2 - 1, by omega⟩; simp [hq', List.replicate_succ]) hP2
+    have h0 := rflScan (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2) ++ tailB pre ++
+        [1, 1, 3, 3, c.P, 1] ++ List.replicate a 2 ++ List.replicate (r + 1 + 1) 3 ++ List.replicate s 2 ++
+        1 :: (fld wE e ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR vs)))) []
+      (outTape_noB { c with E := fld wE e } hc' _ hG pre hpre a (r + 1) s vs hvs) Sym4.nil
+    have h1 := rfO { c with E := fld wE e } hc' hF hO _ hG pre hpre a (r + 1) s vs hvs
+    have h2 := outUnit n { c with E := fld wE e } hc' hF hO Wf hW p.1 p.2 hq P2 hP2 pre hpre a r s vs hvs wE e he hew rfl hn
+    have hb := eAdv_bounds wE n e he hew
+    have hq' := sAdv_pos n p hq
+    have hIH := outLoop n c hc hF hO hm hn Wf hW P2 hP2 pre hpre s wE hwE r (a + 1)
+      (sAdv n p) (eAdv wE n e) (stepList vs) (stepList_ok vs hvs) hq' hb.1 hb.2
+    simp only [List.append_assoc, List.cons_append, List.nil_append, List.append_nil, VR.b, VR.u, hm, hn, Nat.zero_add] at h0 h1 h2 hIH ⊢
+    have e1 : (r + 1) * n = n + r * n := by rw [Nat.add_mul, Nat.one_mul, Nat.add_comm]
+    have e2 : a + 1 + r = a + (r + 1) := by omega
+    have e3 : ∀ x : List Nat, ({ c with E := x, m := 0, n := c.m + n } : VR).b = c.b := by
+      intro x; simp [VR.b, hm, hn]
+    refine (h0.trans (h1.trans (h2.trans hIH))).of_eq rfl ?_
+    rw [e1, sAdv_add, eAdv_add, e2]
+    simp [stepN]
+
 end ZP.NTT
 
