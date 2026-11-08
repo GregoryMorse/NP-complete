@@ -5607,5 +5607,143 @@ theorem suOk (Wf S Kf Cf Nl recs : List Nat) (hW : BitsD Wf) (hS : BitsD S) (hK 
   exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans (h7.trans (h8.trans (h9.trans (h10.trans (h11.trans (h12.trans (h13.trans (h14.trans (h15.trans (h16.trans (h17.trans (h18.trans h19)))))))))))))))))
 
 
+
+/-! ### Beep: `BX*` (`C += 1`) -/
+
+theorem suxOne (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.SUX (A ++ [3]) R) (hdR QNTT.BX1 (A ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bx1M (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BX1 A (1 :: R)) (hd QNTT.BX2 A (3 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bx2Ones (A R : List Nat) (k : Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.BX2 (A ++ List.replicate k 3) R) (hd QNTT.BX2 A (List.replicate k 3 ++ R)) := by
+  have hV : Valid [ALL, [3], ALL] [A, List.replicate k 3, R] :=
+    Valid.cons hA (Valid.cons (repSet k 3) (Valid.cons hR (Valid.nil _)))
+  simpa using checkTT (env := [A, List.replicate k 3, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .blk 1 .id]) (rs := [.blk 2 .id]) (ls' := [.blk 0 .id]) (rs' := [.blk 1 .id, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bx2M (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.BX2 (A ++ [1]) R) (hdR QNTT.BX3 (A ++ [3]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id]) (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem bx3One (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.BX3 A (3 :: R)) (hd QNTT.SU6 A (1 :: R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- `SU1` over the parameters, erase the records: ends in `SUX` on the last cell of `Nn`. -/
+theorem suPre (Pm recs : List Nat) (hP : GoodW Pm) (hrecs : NoB recs) :
+    znttLogic.Reach (hdR QNTT.SU1 [] (Pm ++ 1 :: 1 :: recs))
+      (hd QNTT.SUX Pm (1 :: List.replicate (recs.length + 1) 0)) := by
+  have sP := hP.sym4
+  have sR : Sym4 recs := hrecs.sym4
+  have a0 : (0 : Nat) ∈ ALL := by simp [ALL]
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have h1 := su1Good hP [] (1 :: 1 :: recs) Sym4.nil (by simp [*])
+  have h2 := su1M ([] ++ Pm) (1 :: recs) (by simp [*]) (by simp [*])
+  have h3 := su2Erase ([] ++ Pm ++ [1]) recs (by simp [*]) sR
+  have h4 := su3Sweep ([] ++ Pm ++ [1] ++ [0]) recs (by simp [*]) hrecs
+  have h5 := su4Blanks (Pm ++ [1]) [] (recs.length + 1) (by simp [*]) Sym4.nil
+  have h6 := su4M Pm (List.replicate (recs.length + 1) 0 ++ []) sP (by simp [a0])
+  simp only [List.nil_append, List.append_assoc, List.cons_append, List.length_append, List.length_singleton,
+    List.replicate_succ, List.append_nil, List.length_map] at h1 h2 h3 h4 h5 h6 ⊢
+  exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans h6))))
+
+/-- From the last cell of `C` (`SU6`) to `PA0`: erase `W`, `S`, `P := 1`. -/
+theorem suTail (Wf S Kf Cf R : List Nat) (hW : BitsD Wf) (hS : BitsD S) (hK : BitsD Kf) (hC : BitsD Cf)
+    (hR : Sym4 R) :
+    znttLogic.Reach (hd QNTT.SU6 (Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: Cf))) R)
+      (hdR QNTT.PA0 [3] (1 :: (Kf ++ 1 :: (Cf ++ R)))) := by
+  have sW := hW.sym4
+  have sS := hS.sym4
+  have sK := hK.sym4
+  have sC := hC.sym4
+  have a0 : (0 : Nat) ∈ ALL := by simp [ALL]
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have sZ : ∀ n, Sym4 (List.replicate n 0) := fun n => by
+    intro x hx; simp [List.mem_replicate] at hx; simp [hx, ALL]
+  have h11 := su6Block (Wf ++ 1 :: (S ++ 1 :: (Kf ++ [1]))) Cf R (by simp [*]) hC hR
+  have h12 := su6M (Wf ++ 1 :: (S ++ 1 :: Kf)) (Cf ++ R) (by simp [*]) (by simp [*])
+  have h13 := su7Block (Wf ++ 1 :: (S ++ [1])) Kf (1 :: (Cf ++ R)) (by simp [*]) hK (by simp [*])
+  have h14 := su7M (Wf ++ 1 :: S) (Kf ++ 1 :: (Cf ++ R)) (by simp [*]) (by simp [*])
+  have nf : NoB (Wf ++ 1 :: S) := by
+    intro x hx; simp only [List.mem_append, List.mem_cons] at hx
+    rcases hx with hx | rfl | hx
+    · exact hW.noB x hx
+    · simp [NB]
+    · exact hS.noB x hx
+  have h15 := su8Erase [] (Wf ++ 1 :: S) (1 :: (Kf ++ 1 :: (Cf ++ R))) Sym4.nil nf (by simp [*])
+  have h16 := su8End (List.replicate (Wf ++ 1 :: S).length 0 ++ 1 :: (Kf ++ 1 :: (Cf ++ R))) (by simp [*])
+  have h17 := su9Blanks [] (1 :: (Kf ++ 1 :: (Cf ++ R))) (Wf ++ 1 :: S).length Sym4.nil (by simp [*])
+  have h18 := su9M (List.replicate (Wf ++ 1 :: S).length 0) (Kf ++ 1 :: (Cf ++ R)) (sZ _) (by simp [*])
+  obtain ⟨m, hm⟩ : ∃ m, (Wf ++ 1 :: S).length = m + 1 := ⟨(Wf ++ 1 :: S).length - 1, by simp; omega⟩
+  rw [hm] at h15 h16 h17 h18
+  have h19 := su10Set (List.replicate m 0) (1 :: (Kf ++ 1 :: (Cf ++ R))) (sZ _) (by simp [*])
+  rw [← List.replicate_succ'] at h19
+  have h20 := ZP.F.hdR_zeros QNTT.PA0 (List.replicate m 0) [3] (1 :: (Kf ++ 1 :: (Cf ++ R))) (fun a ha => by
+    simp [List.mem_replicate] at ha; simp [ZP.F.B0, ha])
+  rw [h20] at h19
+  simp only [List.nil_append, List.append_assoc, List.cons_append, List.length_append, List.length_singleton,
+    List.replicate_succ] at h11 h12 h13 h14 h15 h16 h17 h18 h19 ⊢
+  exact h11.trans (h12.trans (h13.trans (h14.trans (h15.trans (h16.trans (h17.trans (h18.trans h19)))))))
+
+
+/-- Beep (`Nn` all ones, unmarked): `C += 1`, `Nn` shifts right by one cell; then as in the success case. -/
+theorem beepOk (Wf S Kf Cf recs : List Nat) (L : Nat) (hW : BitsD Wf) (hS : BitsD S) (hK : BitsD Kf) (hC : BitsD Cf)
+    (hP : GoodW (Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: (Cf ++ 1 :: List.replicate (L + 1) 3)))))
+    (hrecs : NoB recs) :
+    znttLogic.Reach (hdR QNTT.SU1 [] (Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: (Cf ++ 1 :: List.replicate (L + 1) 3))) ++ 1 :: 1 :: recs))
+      (hdR QNTT.PA0 [3] (1 :: (Kf ++ 1 :: ((Cf ++ [3]) ++ 1 :: (List.replicate (L + 1) 3 ++ List.replicate (recs.length + 1) 0))))) := by
+  have sW := hW.sym4
+  have sS := hS.sym4
+  have sK := hK.sym4
+  have sC := hC.sym4
+  have a0 : (0 : Nat) ∈ ALL := by simp [ALL]
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have a3 : (3 : Nat) ∈ ALL := by simp [ALL]
+  have sZ : ∀ n, Sym4 (List.replicate n 0) := fun n => by
+    intro x hx; simp [List.mem_replicate] at hx; simp [hx, ALL]
+  have s3 : ∀ n, Sym4 (List.replicate n 3) := fun n => (BitsD.rep n 3 (by simp)).sym4
+  have hz3 : ∀ (n : Nat) (Z : List Nat), List.replicate n 3 ++ 3 :: Z = 3 :: (List.replicate n 3 ++ Z) := by
+    intro n Z; induction n with
+    | zero => simp
+    | succ n ih => simp [List.replicate_succ, ih]
+  have h1 := suPre _ recs hP hrecs
+  have e0 : Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: (Cf ++ 1 :: List.replicate (L + 1) 3))) =
+      (Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: (Cf ++ [1])))) ++ List.replicate L 3 ++ [3] := by
+    simp [List.replicate_succ', List.append_assoc]
+  rw [e0] at h1
+  have h2 := suxOne ((Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: (Cf ++ [1])))) ++ List.replicate L 3) (1 :: List.replicate (recs.length + 1) 0)
+    (by simp [*]) (by simp [*])
+  have h3 := bx1M ((Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: (Cf ++ [1])))) ++ List.replicate L 3 ++ [3]) (List.replicate (recs.length + 1) 0)
+    (by simp [*]) (sZ _)
+  have h4 := bx2Ones (Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: (Cf ++ [1])))) (3 :: List.replicate (recs.length + 1) 0) (L + 1)
+    (by simp [*]) (by simp [*])
+  have h5 := bx2M (Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: Cf))) (List.replicate (L + 1) 3 ++ 3 :: List.replicate (recs.length + 1) 0)
+    (by simp [*]) (by simp [*])
+  have h6 := bx3One (Wf ++ 1 :: (S ++ 1 :: (Kf ++ 1 :: Cf)) ++ [3]) (List.replicate L 3 ++ 3 :: List.replicate (recs.length + 1) 0)
+    (by simp [*]) (by simp [*])
+  have h7 := suTail Wf S Kf (Cf ++ [3]) (1 :: (List.replicate L 3 ++ 3 :: List.replicate (recs.length + 1) 0)) hW hS hK
+    (by intro x hx; simp at hx; rcases hx with hx | rfl; exact hC x hx; simp) (by simp [*])
+  simp only [List.nil_append, List.append_assoc, List.cons_append, List.replicate_succ, hz3, List.append_nil] at h1 h2 h3 h4 h5 h6 h7 ⊢
+  exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans h7)))))
+
+
 end ZP.NTT
 

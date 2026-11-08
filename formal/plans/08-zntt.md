@@ -222,3 +222,5 @@ iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odo
   (blank cells), `Nn := 1^(|Nn|+1)`, `W` and `S` are erased and `P := 1`; ends at `hdR PA0 [3] (1 :: K ++ 1 :: C ++ 1 :: Nn' ++ 0^(|recs|+1))`
   (leading blanks are normalised with `ZP.F.hdR_zeros`). Next: beep path (`SUX` on `1`, `BX*`), failure branches into `ODL`, odometer `OD*`, then the
   primality phase restarts (`PA0`, existing `PrimeNTT`/`RulerNTT`), semantic layer.
+- Beep path proved (`suxOne`, `bx1M` … `bx3One`, `suPre`, `suTail`, `beepOk`): `Nn` all ones: `C += 1`, `Nn` shifted right by one, then the same erase of `W`,`S` and `P := 1`, ending at `PA0`.
+  Remaining: failure branches into `ODL` (`SC2` on `0`, `FL2` on `1`), the odometer `OD*`/`WI*`, the pass loop and the semantic layer.
