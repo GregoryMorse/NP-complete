@@ -7662,5 +7662,76 @@ theorem scStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
     (hpre r2 (mem r2 (Or.inr (Or.inr (Or.inl rfl))))).1 post (fun x hx => (hpre x (mem x (Or.inr (Or.inr (Or.inr hx))))).1)
   rw [he]; exact this
 
+
+/-- The pass start from `RZ1` at the left end. -/
+theorem passStartRZ1 (Pm : List Nat) (hP : GoodW Pm) (r : Rc) (hr : r.PS)
+    (rs : List Rc) (hrs : ∀ x ∈ rs, x.PS) :
+    znttLogic.Reach (hdR QNTT.RZ1 [] (Pm ++ 1 :: 1 :: (r.body ++ tailB rs)))
+      (hd QNTT.FAL (Pm ++ [1, 1] ++ r.ps.body ++ tailP rs) []) := by
+  have sT : Sym4 (r.body ++ tailB rs) :=
+    (r.body_sym4 hr.ok).app (tailB_sym4 rs (fun x hx => (hrs x hx).ok))
+  have h2 := rz1Good hP [] (1 :: 1 :: (r.body ++ tailB rs)) Sym4.nil (sym4_M (sym4_M sT))
+  have h3 := rz1MM Pm (r.body ++ tailB rs) hP.sym4 sT
+  have h4 := passStart rs hrs r hr (Pm ++ [1, 1]) (hP.sym4.app (sym4_M (sym4_M Sym4.nil)))
+  simp only [List.nil_append, List.append_assoc, List.cons_append, List.append_nil] at h2 h3 h4 ⊢
+  exact h2.trans (h3.trans h4)
+
+
+theorem Rc.PS.withPf {r : Rc} (h : r.PS) (x : Nat) (hx : x ∈ [2, 3]) : ({ r with Pf := x } : Rc).PS :=
+  { ok := { h.ok with Pf := hx }, acc2 := h.acc2, rest := h.rest }
+
+/-- From `SC` after a pass with `S = 0` to the start of the next pass (`FAL`). -/
+theorem scStart (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+    (pre : List Rc) (hps : ∀ x ∈ pre, x.PS) (j : Nat) (l : List Nat)
+    (hfl : pre.map Rc.Pf = List.replicate j 2 ++ 3 :: l) (hl : l ≠ []) (hq : 1 ≤ q) :
+    ∃ pre0 r r2 post r0 rs, pre = pre0 ++ r :: r2 :: post ∧
+      pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post = r0 :: rs ∧
+      znttLogic.Reach
+        (hd QNTT.SC (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: Q) ++ List.replicate a 3)
+          (3 :: 2 :: (List.replicate b 2 ++ tailB pre)))
+        (hd QNTT.FAL ((Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2))) ++
+          [1, 1] ++ r0.ps.body ++ tailP rs) []) := by
+  obtain ⟨pre0, r, r2, post, he, h1⟩ := scStep Wf hW Q a b q hP2 pre
+    (fun x hx => ⟨(hps x hx).ok, fun h => by have := (hps x hx).acc2; simp [h] at this⟩) j l hfl hl
+  have mem : ∀ x, (x ∈ pre0 ∨ x = r ∨ x = r2 ∨ x ∈ post) → x ∈ pre := by
+    intro x hx; rw [he]; simpa using hx
+  have hpsN : ∀ x ∈ pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post, x.PS := by
+    intro x hx
+    simp only [List.mem_append, List.mem_cons] at hx
+    rcases hx with hx | rfl | rfl | hx
+    · exact hps x (mem x (Or.inl hx))
+    · exact (hps r (mem r (Or.inr (Or.inl rfl)))).withPf 2 (by simp)
+    · exact (hps r2 (mem r2 (Or.inr (Or.inr (Or.inl rfl))))).withPf 3 (by simp)
+    · exact hps x (mem x (Or.inr (Or.inr (Or.inr hx))))
+  obtain ⟨r0, rs, hr0⟩ : ∃ r0 rs, pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post = r0 :: rs := by
+    cases pre0 with
+    | nil => exact ⟨_, _, rfl⟩
+    | cons x xs => exact ⟨x, xs ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post, rfl⟩
+  refine ⟨pre0, r, r2, post, r0, rs, he, hr0, ?_⟩
+  have hGP : GoodW (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2))) := by
+    have hG : GoodW (1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := by
+      have := goodW_swap_tail (1 :: (Q ++ List.replicate a 3)).length (1 :: (Q ++ List.replicate a 3)) 3 3
+        (3 :: List.replicate b 2) (2 :: List.replicate b 2) rfl (by simp) (by simp)
+        (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)
+        (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)
+        (by
+          have e : (1 :: (Q ++ List.replicate a 3)) ++ 3 :: 3 :: List.replicate b 2 =
+              1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) := by
+            simp only [List.replicate_succ, List.cons_append, List.append_assoc, List.nil_append]
+            have key : ∀ (a : Nat) (L : List Nat), List.replicate a 3 ++ 3 :: L = 3 :: (List.replicate a 3 ++ L) := by
+              intro a L; induction a with
+              | zero => simp
+              | succ a ih => simp [List.replicate_succ, ih]
+            rw [key, key]
+          rw [e]; exact hP2)
+      simpa [List.append_assoc] using this
+    exact goodW_reg Wf (List.replicate q 3) _ hW (BitsD.rep q 3 (by simp))
+      (by intro h; have := congrArg List.length h; simp at this; omega) hG
+  have h2 := passStartRZ1 _ hGP r0 (hpsN r0 (by rw [hr0]; simp)) rs (fun x hx => hpsN x (by rw [hr0]; simp [hx]))
+  rw [hr0] at h1
+  simp only [tailB, List.append_assoc, List.cons_append] at h1 h2 ⊢
+  exact h1.trans h2
+
 end ZP.NTT
 
