@@ -696,4 +696,82 @@ theorem backExh (n : Nat) (W : List Nat) (d : Nat) (ds : List Nat) (j : Nat) (hW
     refine (h1.ofEq (by simp [Dt, bitsOf]) rfl).trans (h2.ofEq (by simp) ?_)
     exact hd_one _ _ _ (by intro x hx; simp at hx; rcases hx with ⟨-, h⟩ | h <;> exact h)
 
+/-! ## The search -/
+
+/-- The start of a run attempt: fuel erased to zeros, the choices `Dl` behind it. -/
+def S0 (n : Nat) (ds0 W : List Nat) (Dl : List Bool) : ZC :=
+  hdR Q.GRB (1 :: (W ++ [1])) (List.replicate (FWr n ds0).length 0 ++ 0 :: Dt [] Dl)
+
+theorem searchC (n : Nat) (ds0 : List Nat) (hds0 : Dig n ds0) (hne : ds0 ≠ [])
+    (W W1 Vq R0 : List Nat) (Pb Xb : List Bool)
+    (hV : 1 :: W1 = Vq ++ [1]) (hVq : NoB Vq) (hR0 : Sym4 R0) (hW : NoB W)
+    (hWF : ∀ F Dw, W1 ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: (R0 ++ (F ++ 0 :: Dw)))) =
+      W ++ 1 :: (F ++ 0 :: Dw))
+    (hBuild : ∀ Dw, NoB Dw → zconpLogic.Reach
+      (hdR Q.GRB (1 :: (W ++ [1])) (List.replicate (FWr n ds0).length 0 ++ 0 :: Dw))
+      (hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1])))
+        (bitsOf Xb ++ 1 :: (R0 ++ (FWr n ds0 ++ 0 :: Dw)))))
+    (hDP : ∀ F Dw, NoB F → NoB Dw → zconpLogic.Reach (hdR Q.DP10 [1] (W ++ 1 :: (F ++ 0 :: Dw)))
+      (hd QConp.BT (1 :: (W ++ 1 :: (F ++ 0 :: Dw))) [])) :
+    ∀ N Dl, padv (valr n ds0 + 1) Dl = N →
+      Dl.length ≤ (runChoice (core Pb) Xb (valr n ds0) Dl).2.length →
+      (acc (core Pb) Xb (valr n ds0) Dl →
+        ∃ u r ds', Dig n ds' ∧ ds'.length = ds0.length ∧
+          zconpLogic.Reach (S0 n ds0 W Dl) (RE true W (FWr n ds') (Dt u r))) ∧
+      (¬ acc (core Pb) Xb (valr n ds0) Dl →
+        zconpLogic.Reach (S0 n ds0 W Dl) (hd QConp.EX3 (1 :: W) [1])) := by
+  intro N
+  induction N using Nat.strongRecOn with
+  | _ N ih =>
+  intro Dl hN hup
+  have hR : Sym4 (R0 ++ (FWr n ds0 ++ 0 :: Dt [] Dl)) :=
+    hR0.app ((FWr_sym4 n _).app (Sym4.cons (by simp [ALL]) (Dt_sym4 _ _)))
+  obtain ⟨ds', hd', hl', hrun⟩ := runFromC n W1 Vq Pb Xb (R0 ++ (FWr n ds0 ++ 0 :: Dt [] Dl)) W ds0 Dl
+    hV hVq hR hW hds0 hne (hWF _ _)
+  have hS := (hBuild (Dt [] Dl) (Dt_noB _ _)).trans hrun
+  have hS' : zconpLogic.Reach (S0 n ds0 W Dl)
+      (RE (runChoice (core Pb) Xb (valr n ds0) Dl).1 W (FWr n ds')
+        (Dt (runChoice (core Pb) Xb (valr n ds0) Dl).2
+          (Dl.drop (runChoice (core Pb) Xb (valr n ds0) Dl).2.length))) := hS
+  by_cases ho : (runChoice (core Pb) Xb (valr n ds0) Dl).1 = true
+  · rw [ho] at hS'
+    exact ⟨fun _ => ⟨_, _, ds', hd', hl'.trans rfl, hS'⟩,
+      fun h => absurd (dfs_true _ _ _ _ ho) h⟩
+  · have hf : (runChoice (core Pb) Xb (valr n ds0) Dl).1 = false := by simpa using ho
+    rw [hf] at hS'
+    have hdrop : Dl.drop (runChoice (core Pb) Xb (valr n ds0) Dl).2.length = [] :=
+      List.drop_eq_nil_of_le hup
+    rw [hdrop] at hS'
+    obtain ⟨d, ds'', hds''⟩ : ∃ d ds'', ds' = d :: ds'' := by
+      cases ds' with
+      | nil => exact absurd (by simpa using hl'.symm) hne
+      | cons d ds'' => exact ⟨d, ds'', rfl⟩
+    have hBT := (hDP (FWr n ds') (Dt (runChoice (core Pb) Xb (valr n ds0) Dl).2 []) (FWr_noB _ _)
+      (Dt_noB _ _))
+    have hS2 : zconpLogic.Reach (S0 n ds0 W Dl)
+        (hd QConp.BT (1 :: (W ++ 1 :: (FWr n ds' ++ 0 :: Dt (runChoice (core Pb) Xb (valr n ds0) Dl).2 []))) []) :=
+      hS'.trans (hBT.ofEq (by simp [RE, dpOf, bn]) rfl)
+    rw [hds''] at hS2
+    cases hn : nxt (runChoice (core Pb) Xb (valr n ds0) Dl).2 with
+    | none =>
+      obtain ⟨j, hj⟩ := nxt_none_spec _ hn
+      rw [hj] at hS2
+      refine ⟨fun h => absurd h (dfs_none _ _ _ _ hup hf hn), fun _ => ?_⟩
+      exact hS2.trans (backExh n W d ds'' j hW)
+    | some Dl' =>
+      obtain ⟨hiff, hlt, hup'⟩ := dfs_some _ _ _ _ _ hup hf hn
+      obtain ⟨rr, j, hU, hDl'⟩ := nxt_some_spec _ _ hn
+      rw [hU] at hS2
+      have hB := backOk n W d ds'' rr j hW
+      have hlen : (FWr n (d :: ds'')).length = (FWr n ds0).length := by
+        rw [FWr_length n _ (hds'' ▸ hd'), FWr_length n ds0 hds0, ← hds'', hl']
+      have hS3 : zconpLogic.Reach (S0 n ds0 W Dl) (S0 n ds0 W Dl') := by
+        refine hS2.trans (hB.ofEq rfl ?_)
+        unfold S0
+        rw [hlen, hDl']
+      obtain ⟨ih1, ih2⟩ := ih _ (by omega) Dl' rfl hup'
+      refine ⟨fun h => ?_, fun h => hS3.trans (ih2 (fun h' => h (hiff.mpr h')))⟩
+      obtain ⟨u, r, ds3, h1, h2, h3⟩ := ih1 (hiff.mp h)
+      exact ⟨u, r, ds3, h1, h2, hS3.trans h3⟩
+
 end ZP.Conp
