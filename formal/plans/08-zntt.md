@@ -517,3 +517,11 @@ circuit assignment). Remaining: connect to `hasCircuit_iff`/`assignLoop` outputs
 records `initFrom p 0 Os` (`loopSt`, `Os = 2^(n+1-nr) 3^nr`, `c*nr = n+1`, `pr nr = p`).
 Remaining: bridge assembly (PA0 → prime ruler → WX → buildEntry → assignLoop; beep in the `beeps` window),
 abstract spec, Challenge/Solution entries with `PrimeEx`.
+
+### Stage note: generalized bridge (`ZP/GenStep.lean`)
+The NTT step `(c,n) ↦ (c,n+1) | (c+1,n)` is not `absStepC`, so the bridge is restated for an arbitrary beep
+sequence: `LMacroSimB`/`MacroSimB bp`, `quasihalts_iff_of_macroSimB` (`Quasihalts ↔ ∃ N, ∀ n ≥ N, ¬ bp n`),
+`Cert.macroSimB_of_logic` (copy of `beeps_iff`), and `PairDataN L bad` (pair lemma only along the trajectory:
+`lay k` to `lay (k+1)`, beep iff `bad k`), with `PairDataN.macroSim`. Remaining: define `layNTT c n`, prove the NTT pair
+lemma (PA0 → prime ruler → WX → `buildEntry` → `assign_circuit`; both continuations land in `layNTT`), then the
+top theorem with `PrimeEx` and the Challenge/Solution entries.

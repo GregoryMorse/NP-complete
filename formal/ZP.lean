@@ -28,6 +28,7 @@ public import ZP.Interp
 public import ZP.Run
 public import ZP.Pair
 public import ZP.LogicalG
+public import ZP.GenStep
 public import ZP.Logical
 public import ZP.Compile
 public import ZP.Checks
