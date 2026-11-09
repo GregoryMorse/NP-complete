@@ -10175,5 +10175,152 @@ theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (
         · rw [hdos, ← hD, List.map_cons, ← hdgs]; simp [VR.dg]
         · rw [hLR, hT]
 
+
+theorem outRec_EF (c : VR) (hc : CurInv c) (r : Nat) : EF (outRec c r) := by
+  intro h3
+  unfold outRec at h3 ⊢
+  by_cases h2 : c.O = 2
+  · simp [h2] at h3
+  · have hO3 : c.O = 3 := by have := hc.1.O; simp at this; omega
+    obtain ⟨_, e, he1, he2, hE⟩ := hc.2.2 hO3
+    simp only [h2, if_false] at h3 ⊢
+    have hc3 : c.E.count 3 = e := by rw [hE, count3_fld _ _ he2]
+    have hb := eAdv_bounds c.E.length (r * c.n) e he1 he2
+    rw [hc3]
+    have hl : (fld c.E.length (eAdv c.E.length (r * c.n) e)).length = c.E.length := fld_len _ _ hb.2
+    exact ⟨eAdv c.E.length (r * c.n) e, hb.1, by simp only [hl]; exact hb.2, by simp only [hl]⟩
+
+theorem loopRun_EF : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat),
+    CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → vs.length = n →
+    (∀ t ∈ (loopRun n c vs r s p).cs, EF t.1) ∧
+    EF (outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r') := by
+  intro n
+  induction n with
+  | zero =>
+    intro c vs r s p hc hvs hom hl
+    simp only [loopRun]
+    exact ⟨by simp, outRec_EF c hc r⟩
+  | succ n ih =>
+    intro c vs r s p hc hvs hom hl
+    have hlen' := stepN_length r vs
+    obtain ⟨w, ws, hw⟩ : ∃ w ws, stepN r vs = w :: ws := by
+      cases h : stepN r vs with
+      | nil => rw [h] at hlen'; simp at hlen'; omega
+      | cons w ws => exact ⟨w, ws, rfl⟩
+    have hok := stepN_ok r vs hvs
+    rw [hw] at hok
+    have hwOk : w.Ok := hok w (by simp)
+    have hout := stepN_outM r vs hom
+    rw [hw] at hout
+    have hwm : w.O = 3 → w.m = 0 := hout w (by simp)
+    have hwsOk' : ∀ x ∈ ws.map VR.dec, x.Ok := by
+      intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx
+      exact y.dec_ok (hok y (by simp [hy]))
+    have homws : OutM (ws.map VR.dec) := dec_outM ws (fun x hx => hout x (by simp [hx]))
+    have hlenws : (ws.map VR.dec).length = n := by
+      rw [hw] at hlen'; simp at hlen'; simp; omega
+    have ih' := ih w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p) (curG_inv w hwOk hwm) hwsOk' homws hlenws
+    simp only [loopRun, hw]
+    refine ⟨?_, ih'.2⟩
+    intro t ht
+    simp only [List.mem_cons] at ht
+    rcases ht with rfl | ht
+    · exact outRec_EF c hc r
+    · exact ih'.1 t ht
+
+
+theorem faGF (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (w : VR) (hw : w.Ok) (ws : List VR)
+    (hws : ∀ x ∈ ws, x.Ok) (hwO : w.O = 3) (e z : Nat) (he : 1 ≤ e) (hE : w.E = fld (e + z) e) (hne : e ≠ w.k)
+    (hLe : L = Pm ++ 1 :: 1 :: ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws))) :
+    ∃ (L' R' acc2 E2 : List Nat), BitsD acc2 ∧ BitsD E2 ∧ acc2.length = w.w ∧ E2.length = w.E.length ∧
+      znttLogic.Reach (hd QNTT.FAL L []) (hd QNTT.ODL L' R') ∧
+      L' ++ R' = Pm ++ [1, 1, 3, w.O, w.P, 1] ++ (acc2 ++ 1 :: (E2 ++ 1 :: (w.b ++ 1 :: (w.u ++ tailVR ws)))) := by
+  have sPm := hP.sym4
+  have sMM : Sym4 (Pm ++ [1, 1]) := sPm.app (sym4_M (sym4_M Sym4.nil))
+  have sB : Sym4 ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) :=
+    hw.hdr3.sym4.app (sym4_M (hw.tl_sym4.app (tailVR_sym4 ws hws)))
+  have h1 := falScan L [] hL Sym4.nil
+  rw [hLe] at h1
+  have h2 := fasGood hP [] (1 :: 1 :: ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws))) Sym4.nil (sym4_M (sym4_M sB))
+  have h3 := fasMM Pm ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) sPm sB
+  obtain ⟨L', R', a2, E2, k1, k2, k3, k4, h4, hLR⟩ := fa0GFail (Pm ++ [1, 1]) w hw ws hws sMM hwO e z he hE hne
+  refine ⟨L', R', a2, E2, k1, k2, k3, k4, ?_, ?_⟩
+  · simp only [List.append_nil, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 ⊢
+    rw [hLe]
+    simp only [List.append_nil, List.append_assoc, List.cons_append, List.nil_append]
+    exact h1.trans (h2.trans (h3.trans h4))
+  · rw [hLR]; simp
+
+theorem failSep' (Pm : List Nat) (w : VR) (hw : w.Ok) (hwm : w.m = 0) (ws : List VR) (hws : ∀ y ∈ ws, y.Ok)
+    (hwsm : ∀ y ∈ ws, y.m = 0) (acc2 E2 : List Nat) (hacc : BitsD acc2) (hE2 : BitsD E2) (hl1 : acc2.length = w.w)
+    (hl2 : E2.length = w.E.length) :
+    ∃ os : List ORec, (∀ y ∈ os, y.Ok) ∧ os.map ORec.dgO = w.dg :: ws.map VR.dg ∧
+      Pm ++ [1, 1, 3, w.O, w.P, 1] ++ (acc2 ++ 1 :: (E2 ++ 1 :: (w.b ++ 1 :: (w.u ++ tailVR ws)))) = Pm ++ sepRest os := by
+  let w' : ORec := ⟨3, w.O, w.P, acc2, E2, w.n, w.n + 1 + w.s, w.a, w.c + 1, w.t⟩
+  have hw'ok : w'.Ok := by
+    refine { hF := ?_, acc := hacc, E := hE2, d := by simp [w'], k := by simp [w'], Elen := ?_ }
+    · have h2 := hw.O; have h3 := hw.P
+      simp at h2 h3
+      simp [w']; omega
+    · show 2 ≤ E2.length
+      rw [hl2]; exact hw.Elen
+  refine ⟨w' :: ws.map VR.toOc, ?_, ?_, ?_⟩
+  · intro y hy
+    simp only [List.mem_cons, List.mem_map] at hy
+    rcases hy with rfl | ⟨v, hv, rfl⟩
+    · exact hw'ok
+    · exact VR.toOc_ok v (hws v hv)
+  · have e2 : w'.dgO = w.dg := by simp [w', ORec.dgO, VR.dg, hl1]; omega
+    have e3 : ws.map (ORec.dgO ∘ VR.toOc) = ws.map VR.dg :=
+      List.map_congr_left (fun v hv => VR.toOc_dg v (hws v hv))
+    simp only [List.map_cons, List.map_map]
+    rw [e2, e3]
+  · have hb : w.b = therm w.n (w.n + 1 + w.s) := by simp [VR.b, therm, hwm]
+    have hu : w.u = winStr w.a (w.c + 1) w.t := by simp [VR.u, winStr]
+    rw [tailVR_sepRest ws hwsm]
+    simp only [sepRest, List.append_assoc, List.cons_append, List.nil_append, ORec.tape, w', hb, hu]
+
+theorem faNextF (Pm : List Nat) (hP : GoodW Pm) (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat))
+    (h : ∀ p ∈ t0 :: ts, p.1.1.Ok ∧ p.1.2.1 + 1 + p.1.2.2 = p.1.1.w ∧ 2 ≤ p.1.1.w ∧ p.2 ∈ [2, 3])
+    (hm : ∀ p ∈ t0 :: ts, p.1.1.m = 0)
+    (hwO : (t0.1.1.nextPass t0.2).O = 3) (e z : Nat) (he : 1 ≤ e) (hE : (t0.1.1.nextPass t0.2).E = fld (e + z) e)
+    (hne : e ≠ (t0.1.1.nextPass t0.2).k) :
+    ∃ (L' R' : List Nat) (os : List ORec), (∀ y ∈ os, y.Ok) ∧
+      os.map ORec.dgO = (t0 :: ts).map (fun q => q.1.1.dg) ∧
+      znttLogic.Reach
+        (hd QNTT.FAL (Pm ++ [1, 1] ++ (t0.1.1.doneX t0.1.2.1 t0.1.2.2 t0.2).ps.body ++
+          tailP (ts.map fun p => p.1.1.doneX p.1.2.1 p.1.2.2 p.2)) [])
+        (hd QNTT.ODL L' R') ∧ L' ++ R' = Pm ++ sepRest os := by
+  have h0 := h t0 (by simp)
+  have hws : ∀ x ∈ ts.map (fun p => p.1.1.nextPass p.2), x.Ok := by
+    intro x hx; simp only [List.mem_map] at hx; obtain ⟨p, hp, rfl⟩ := hx
+    have := h p (by simp [hp]); exact VR.nextPass_ok _ this.1 _ this.2.2.2 this.2.2.1
+  have hw := VR.nextPass_ok _ h0.1 _ h0.2.2.2 h0.2.2.1
+  have hwsm : ∀ x ∈ ts.map (fun p => p.1.1.nextPass p.2), x.m = 0 := by
+    intro x hx; simp only [List.mem_map] at hx; obtain ⟨p, hp, rfl⟩ := hx
+    simpa [VR.nextPass] using hm p (by simp [hp])
+  have hwm : (t0.1.1.nextPass t0.2).m = 0 := by simpa [VR.nextPass] using hm t0 (by simp)
+  have e1 := done_ps_vr t0.1.1 h0.1 t0.1.2.1 t0.1.2.2 t0.2 h0.2.1 h0.2.2.1 h0.2.2.2
+  have e2 := tailVR_doneX ts (fun p hp => h p (by simp [hp]))
+  have hLe : Pm ++ 1 :: 1 :: ([(t0.1.1.nextPass t0.2).F, (t0.1.1.nextPass t0.2).O, (t0.1.1.nextPass t0.2).P] ++
+      1 :: ((t0.1.1.nextPass t0.2).tl ++ tailVR (ts.map fun p => p.1.1.nextPass p.2))) =
+      Pm ++ [1, 1] ++ (t0.1.1.doneX t0.1.2.1 t0.1.2.2 t0.2).ps.body ++
+        tailP (ts.map fun p => p.1.1.doneX p.1.2.1 p.1.2.2 p.2) := by
+    rw [e2]
+    have := congrArg (fun l => Pm ++ l ++ tailVR (ts.map fun p => p.1.1.nextPass p.2)) e1
+    simp only [VR.recd, List.append_assoc, List.cons_append, List.nil_append] at this ⊢
+    simpa using this.symm
+  have hL : NoB (Pm ++ 1 :: 1 :: ([(t0.1.1.nextPass t0.2).F, (t0.1.1.nextPass t0.2).O, (t0.1.1.nextPass t0.2).P] ++
+      1 :: ((t0.1.1.nextPass t0.2).tl ++ tailVR (ts.map fun p => p.1.1.nextPass p.2)))) := by
+    have := NoB_app_iff.2 ⟨hP.noB, NoB_app_iff.2 ⟨hw.recd_noB, tailVR_noB _ hws⟩⟩
+    simpa [VR.recd, List.append_assoc] using this
+  rw [← hLe]
+  obtain ⟨L', R', a2, E2, k1, k2, k3, k4, hr, hLR⟩ := faGF _ Pm hL hP _ hw _ hws hwO e z he hE hne rfl
+  have hn : ∀ x ∈ ts.map (fun p => p.1.1.nextPass p.2), x.m = 0 := hwsm
+  obtain ⟨os, hos, hdos, hT⟩ := failSep' Pm (t0.1.1.nextPass t0.2) hw hwm _ hws hwsm a2 E2 k1 k2 k3 k4
+  refine ⟨L', R', os, hos, ?_, hr, by rw [hLR, hT]⟩
+  rw [hdos]
+  simp [dg_nextPass, List.map_map, Function.comp_def]
+
 end ZP.NTT
 

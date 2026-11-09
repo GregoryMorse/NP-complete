@@ -383,3 +383,8 @@ Next: `colAdvanceGF`, `colStepNF/OF`, `passLoopF` (parse mid-pass tape via `VR.t
 (mid-pass tape parses as `sepRest` of ORecs with the same digits) and `passLoopF`: if `¬PassCmp` then the pass loop reaches `ODL` with tape
 `Pm' ++ sepRest os`, `os.map dgO = D`. Next: the same split in `passCycle`/`passStep` (compare of the first record of the next pass,
 `faNext`) and `passesRun`, producing `OdOut'` and dropping `Sem`.
+
+### First-record compare failure (done)
+`loopRun_EF`/`outRec_EF` (every finished record keeps `E = fld len e`), `faGF`, `failSep'`, `faNextF` (mismatch at the first record of the next pass
+→ `ODL`, tape `Pm ++ sepRest os`). Next: `odOutF` (convert to `OdOut'`) and `passesRunF`, a `Sem`-free `passesRun` doing the case splits
+(`PassCmp` → `passLoopF`; first-record compare → `faNextF`; otherwise `passStep`).
