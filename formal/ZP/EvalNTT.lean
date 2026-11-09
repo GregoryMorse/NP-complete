@@ -8234,14 +8234,15 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
         (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts →
       (t0.1.1.nextPass t0.2).O = 3 → ∃ z, 1 ≤ (t0.1.1.nextPass t0.2).k ∧
         (t0.1.1.nextPass t0.2).E = fld ((t0.1.1.nextPass t0.2).k + z) (t0.1.1.nextPass t0.2).k) :
-    (∃ k q, znttLogic.Reach
+    (∀ t ∈ ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+        (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]), t.1.Ok) ∧ ((∃ k q, znttLogic.Reach
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
           [] c 0 r s vs) [])
         (hd QNTT.ODL (Wf ++ [1]) (2 :: (List.replicate k 2 ++ List.replicate q 3 ++
           1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: (List.replicate b 2 ++
             tailB (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
               (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).map fun t => t.1.done t.2.1 t.2.2))))))) ∨
-    (∃ (q : Nat) (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat)), 1 ≤ q ∧
+    (∃ (q : Nat) (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat)), 1 ≤ q ∧ q = (outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p').2 ∧
       (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
         (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts ∧
       znttLogic.Reach
@@ -8251,7 +8252,7 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
           [] (nxtC t0) 0 (nxtR t0) (nxtS t0) (nxtVs ts)) []) ∧
       nxtR t0 + 1 + nxtS t0 = (nxtC t0).w ∧ (nxtVs ts).length = n ∧ CurInv (nxtC t0) ∧ (∀ x ∈ nxtVs ts, x.Ok) ∧ OutM (nxtVs ts) ∧
       2 ≤ (nxtC t0).w ∧ (∀ x ∈ nxtVs ts, 2 ≤ x.w) ∧
-      (nxtC t0).P :: (nxtVs ts).map VR.P = List.replicate (j + 1) 2 ++ 3 :: l') := by
+      (nxtC t0).P :: (nxtVs ts).map VR.P = List.replicate (j + 1) 2 ++ 3 :: l')) := by
   obtain ⟨p', cs, hp', hcs, hPc, hLo, hcyc⟩ := passCycle Wf hW Q a b hP2 n vs c p r s hrs hlen hc hvs hom hp hcmp hcw hvw j y l' hfl
   obtain ⟨lo, hlo, hcsEq, hpEq⟩ := hLo
   rw [hlo, ← hcsEq] at hcmpN ⊢
@@ -8278,6 +8279,7 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
       rcases h1 with rfl | ⟨v, hv, rfl⟩
       · exact hc.1.P
       · exact (hvs v hv).P
+  refine ⟨fun t ht => (hcs t ht).1, ?_⟩
   rcases hcyc with ⟨hk, t0, ts, hz, hfal⟩ | ⟨k, hk, hodl⟩
   · right
     have hzl : (cs.zip (List.replicate (j + 1) 2 ++ 3 :: l')).length = n + 1 := by
@@ -8302,7 +8304,7 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
     have hmz : (t0.1.1.nextPass t0.2).O = 3 → (t0.1.1.nextPass t0.2).m = 0 := by
       intro h3
       exact hMz t0.1 (List.of_mem_zip (hmem t0 (by simp))).1 (by simpa [VR.nextPass] using h3)
-    refine ⟨p'.2, t0, ts, hp', hz, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨p'.2, t0, ts, hp', by rw [hpEq], hz, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     all_goals try simp only [nxtC, nxtW, nxtR, nxtS, nxtVs]
     · simp only [List.replicate_zero, List.nil_append]
       exact hfal.trans hfn
