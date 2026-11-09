@@ -888,4 +888,45 @@ theorem vSearch (j : List Nat) (hj : Bits j) (Sb : List Bool) :
       exact h.ofEq (by simp) (by simp))
   exact this
 
+theorem dSearch (Jb Sb : List Bool) (t : Nat) (ht : t ∈ bits) :
+    (runND Jb Sb (clock Jb Sb) → ∃ F' Dw', NoB F' ∧ NoB Dw' ∧
+        zconpLogic.Reach
+          (hdR Q.GRB (1 :: ((bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t])) ++ [1])) [])
+          (hdR Q.DP11 [1] ((bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t])) ++ 1 :: (F' ++ 0 :: Dw')))) ∧
+    (¬ runND Jb Sb (clock Jb Sb) →
+        zconpLogic.Reach
+          (hdR Q.GRB (1 :: ((bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t])) ++ [1])) [])
+          (hd QConp.EX3 (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t]))) [1])) := by
+  have hj := Bits.ofB Jb
+  have hs := Bits.ofB Sb
+  have hbl : (bitsOf Sb).length = Sb.length := bitsOf_len Sb
+  have hbj : (bitsOf Jb).length = Jb.length := bitsOf_len Jb
+  have hW : NoB (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t])) :=
+    hj.noB.app (NoB.cons one_nb (hs.noB.app (NoB.cons one_nb (NoB.cons
+      (by have := bits_all ht; simp [ALL, NB, bits] at this ht ⊢; omega) NoB.nil))))
+  have hR0 : Sym4 [t, 1] := Sym4.cons (bits_all ht) (Sym4.cons (by simp [ALL]) Sym4.nil)
+  have hv : valr Sb.length (List.replicate (Jb.length + 1) (Sb.length + 1)) = clock Jb Sb := by
+    have := valr_full Sb.length (Jb.length + 1)
+    unfold clock
+    omega
+  have hdig : Dig Sb.length (List.replicate (Jb.length + 1) (Sb.length + 1)) := fun d hd => by
+    rw [List.eq_of_mem_replicate hd]; exact Nat.le_refl _
+  have := searchTop Sb.length (List.replicate (Jb.length + 1) (Sb.length + 1)) hdig (by simp)
+    (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t])) [] [] [t, 1] Jb Sb (by simp) NoB.nil hR0 hW
+    (by intro F Dw; simp)
+    (fun Dw hD => by
+      have h := decFuelY (bitsOf Sb) t Sb.length hbl hs ht Dw hD (bitsOf Jb) [] 0 Bits.nil hj
+      have e : (FWr Sb.length (List.replicate (Jb.length + 1) (Sb.length + 1))).length =
+          ((bitsOf Jb).length + 1) * (Sb.length + 2) := by
+        rw [FWr_length _ _ hdig, List.length_replicate, hbj]
+      rw [e]
+      refine h.ofEq (by simp [FWr]) ?_
+      rw [hbj]
+      simp)
+    (fun F Dw hF hD => by
+      have h := dp0d (bitsOf Jb) (bitsOf Sb) F Dw t hj hs hF hD ht
+      exact h.ofEq (by simp) (by simp))
+  rw [hv] at this
+  exact this
+
 end ZP.Conp
