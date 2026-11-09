@@ -543,4 +543,50 @@ theorem setupC (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W F Dw : List Nat)
       rw [hrr, ← eV]
       simp [cellN_some, bitsOf, List.replicate_succ, rep_cons_comm]
 
+theorem inv0 (Pb : List Bool) : InvR (rot (Pb.reverse ++ [false])) := by
+  apply inv_rot
+  refine ⟨by simp, fun hl => ?_, fun hl => ?_⟩
+  · rcases Pb with _ | ⟨a, Pb⟩
+    · rfl
+    · simp at hl
+  · rcases Pb with _ | ⟨a, _ | ⟨b, Pb⟩⟩
+    · simp at hl
+    · simp
+    · simp at hl
+
+theorem runChoice_zp (P Xb : List Bool) (T : Nat) (D : List Bool) :
+    runChoice P Xb T D = runChoiceAux T (rot (P.reverse ++ [false]))
+      (⟨[], Xb.head?, Xb.tail⟩ : Zp).tape 0 (0 + Xb.tail.length) D [] := by
+  cases Xb with
+  | nil => rfl
+  | cons x xt =>
+    unfold runChoice
+    have : (fun i => (x :: xt)[i]?) = (⟨[], (x :: xt).head?, (x :: xt).tail⟩ : Zp).tape := rfl
+    have e2 : (x :: xt).length - 1 = 0 + xt.length := by simp
+    simp only [this, e2]
+    rfl
+
+/-- One guest run from the setup position, to the dispatch state. -/
+theorem runFromC (n : Nat) (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W : List Nat) (ds : List Nat)
+    (D : List Bool)
+    (hV : 1 :: W1 = Vq ++ [1]) (hVq : NoB Vq) (hR : Sym4 Rest) (hW : NoB W)
+    (hds : Dig n ds) (hne : ds ≠ [])
+    (hWF : W1 ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) = W ++ 1 :: (FWr n ds ++ 0 :: Dt [] D)) :
+    ∃ ds', Dig n ds' ∧ ds'.length = ds.length ∧
+      zconpLogic.Reach (hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1]))) (bitsOf Xb ++ 1 :: Rest))
+        (RE (runChoice (core Pb) Xb (valr n ds) D).1 W (FWr n ds')
+          (Dt (runChoice (core Pb) Xb (valr n ds) D).2
+            (D.drop (runChoice (core Pb) Xb (valr n ds) D).2.length))) := by
+  obtain ⟨g, hg, h1⟩ := setupC W1 Vq Pb Xb Rest W (FWr n ds) (Dt [] D) hV hVq hR hW (FWr_noB n ds)
+    (fw_bit n ds hne) (Dt_sym4 _ _) hWF
+  have hz : (⟨[], Xb.head?, Xb.tail⟩ : Zp).WF := by
+    unfold Zp.WF
+    cases Xb with
+    | nil => intro _; rfl
+    | cons x xt => intro h; simp at h
+  obtain ⟨ds', hd', hl', h2⟩ := runC n W hW D _ _ g _ ds [] (inv0 (core Pb)) hg hz hds hne rfl
+  refine ⟨ds', hd', hl', h1.trans ?_⟩
+  rw [runChoice_zp]
+  exact h2
+
 end ZP.Conp
