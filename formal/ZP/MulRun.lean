@@ -476,4 +476,130 @@ theorem rtwSweep (A R : List Nat) (n : Nat) (hA : Sym4 A) (hR : Sym4 R) :
     (ls' := [.blk 0 .id]) (rs' := [.blk 1 (.const 0), .blk 2 .id])
     (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
+
+/-! ## The switch step -/
+
+theorem _root_.ZP.LTM.Reach.tr {M : LTM} {a b c d : ZC} (h1 : M.Reach a b) (h2 : M.Reach c d)
+    (e : b = c) : M.Reach a d := h1.trans (e ▸ h2)
+
+theorem stext_snoc (q : List (List Bool)) (st : List Bool) :
+    stext (q ++ [st]) = 1 :: bitsOf st ++ (q.reverse.map stxt).flatten := by
+  simp [stext, stxt]
+
+/-- The guest tape after a switch that brings the stack `f` back. -/
+def zsw (z : Zp) (f : List Bool) : Zp := ⟨z.Rt, f.reverse.head?, f.reverse.tail⟩
+
+theorem bitsOf_reverse (w : List Bool) : (bitsOf w).reverse = bitsOf w.reverse := by
+  simp [bitsOf, List.map_reverse]
+
+theorem Lw_len (z : Zp) : z.Lw.length = z.Lt.length := by
+  simp [Zp.Lw, bitsOf]
+
+
+theorem switchStep (r0 : Bool) (rest : List Bool) (g : Nat) (z : Zp) (W F : List Nat)
+    (hW : NoB W) (hF : NoB F) (hFb : ∃ a ∈ F, a ∈ bits) (hf : false ∈ r0 :: true :: false :: rest)
+    (f0 : List Bool) (rq : List (List Bool)) (hcap : Cap (f0 :: rq) (g + z.Lw.length)) :
+    ∃ g', g + z.Lw.length ≤ g' + (zsw z f0).Lw.length ∧ 1 ≤ g' ∧ zmulLogic.Reach
+      (hd Q.FBACK ((bitsOf (r0 :: true :: false :: rest)).reverse ++ List.replicate g 0 ++ 0 :: (z.Lw ++ [0]))
+        (1 :: (z.Rw ++ 1 :: (W ++ 1 :: (F ++ 0 :: stext (f0 :: rq))))))
+      (Bd (rotN (entryOnes (r0 :: true :: false :: rest) + 1) (rot (r0 :: true :: false :: rest))) g'
+        (zsw z f0) W F (stext (rq ++ [z.Lt]))) := by
+  have h1' : (1 : Nat) ∈ NB := by simp [NB]
+  have hrest : Bits (bitsOf rest).reverse := bitsOf_rev rest
+  have hLw : Bits z.Lw := Bits.ofB _
+  have hRw : Bits z.Rw := Bits.ofB _
+  have hcode : (bitsOf (r0 :: true :: false :: rest)).reverse = (bitsOf rest).reverse ++ [2, 3, bn r0] := by
+    rw [bits3]; rfl
+  have hST0 : NoB (rq.reverse.map stxt).flatten := by
+    have := stext_noB (rq ++ [z.Lt])
+    rw [stext_snoc] at this
+    intro a ha
+    exact this a (List.mem_cons_of_mem _ (List.mem_append_right _ ha))
+  rw [hcode, stext_cons, stext_snoc]
+  generalize (rq.reverse.map stxt).flatten = ST0 at hST0 ⊢
+  have hST : NoB (ST0 ++ 1 :: bitsOf f0) :=
+    hST0.app (NoB.cons h1' (Bits.ofB f0).noB)
+  have h1 := segSw (bitsOf rest).reverse z.Lw z.Rw W F (ST0 ++ 1 :: bitsOf f0) g (bn r0)
+    (mem_bits (bn_bits r0)) hrest hLw hRw hW hF hST
+  have hZf : NoB (1 :: (z.Rw ++ 1 :: (W ++ 1 :: F))) :=
+    NoB.cons h1' (hRw.noB.app (NoB.cons h1' (hW.app (NoB.cons h1' hF))))
+  have hQc : Sym4 ((bitsOf rest).reverse ++ [2, 3, bn r0]) :=
+    hrest.sym4.app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL])
+      (Sym4.cons (by rcases mem_bits (bn_bits r0) with h | h <;> rw [h] <;> simp [ALL]) Sym4.nil)))
+  have hcap' : (bitsOf f0).length ≤ g + z.Lw.length + 1 := by
+    have := hcap f0 (List.mem_cons_self ..)
+    simp [bitsOf] at this ⊢
+    omega
+  have h2 := switchCore ((bitsOf rest).reverse ++ [2, 3, bn r0]) z.Lw
+    (1 :: (z.Rw ++ 1 :: (W ++ 1 :: F))) ST0 (bitsOf f0) g hQc hLw hZf hST0 (Bits.ofB _) hcap'
+  have hLwr : z.Lw.reverse = bitsOf z.Lt := by simp [Zp.Lw, bitsOf, List.map_reverse]
+  have hV0 : NoB (z.Rw ++ 1 :: (W ++ 1 :: F)) := hRw.noB.app (NoB.cons h1' (hW.app (NoB.cons h1' hF)))
+  have hT : Sym4 (0 :: ((1 :: (bitsOf z.Lt ++ ST0)) ++ [0])) :=
+    Sym4.cons (by simp [ALL]) ((Sym4.cons (by simp [ALL]) ((Bits.ofB _).sym4.app hST0.sym4)).app Sym4.zero)
+  obtain ⟨p, b, X2, hV, hb, hX2⟩ := mb2 _ _ hV0 hT (by
+    obtain ⟨a, ha, hab⟩ := hFb
+    exact ⟨a, List.mem_append_right _ (List.mem_cons_of_mem _ (List.mem_append_right _
+      (List.mem_cons_of_mem _ ha))), hab⟩)
+  rw [hLwr] at h2
+  have hZV : Sym4 (z.Rw ++ 1 :: (W ++ 1 :: F) ++ 0 :: ((1 :: (bitsOf z.Lt ++ ST0)) ++ [0])) :=
+    hV0.sym4.app hT
+  have hcodeS : Sym4 ((bitsOf rest).reverse ++ [2, 3, bn r0]) := hQc
+  rcases List.eq_nil_or_concat f0 with rfl | ⟨Lt0, c0, rfl⟩
+  · -- the front stack is empty
+    have e0 : bitsOf ([] : List Bool) = [] := rfl
+    rw [e0] at h1 h2 ⊢
+    simp only [List.length_nil, Nat.sub_zero, List.nil_append] at h2 ⊢
+    have hRs : Sym4 (0 :: 1 :: (z.Rw ++ 1 :: (W ++ 1 :: F) ++ 0 :: ((1 :: (bitsOf z.Lt ++ ST0)) ++ [0]))) :=
+      Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) hZV)
+    have h3 := rtwSweep ((bitsOf rest).reverse ++ [2, 3, bn r0]) _ (g + z.Lw.length + 1) hcodeS hRs
+    obtain ⟨g', hg', h4⟩ := post (r0 :: true :: false :: rest) hf [] 0 p b X2 (g + z.Lw.length) Bits.nil
+      (Or.inl rfl) hb hX2
+    have hl : (zsw z []).Lw.length = 0 := by simp [zsw, Zp.Lw, bitsOf]
+    refine ⟨g', by omega, by omega, ?_⟩
+    rw [hcode] at h4
+    have hch := ((h1.tr h2 (by simp)).tr h3 (by simp)).tr (lift h4) ?_
+    · refine hch.ofEq ?_ ?_
+      · simp
+      · rw [← hV]
+        have e : 1 :: (z.Rw ++ 1 :: (W ++ 1 :: F) ++ 0 :: (1 :: (bitsOf z.Lt ++ ST0) ++ [0])) =
+            (1 :: (z.Rw ++ 1 :: (W ++ 1 :: (F ++ 0 :: (1 :: bitsOf z.Lt ++ ST0))))) ++ List.replicate 1 0 := by
+          simp
+        rw [e, hd_pad]
+        simp [Bd, zsw, Zp.Lw, Zp.Rw, bitsOf, cellN]
+    · rw [← hV]
+      simp [List.replicate_succ']
+  · -- the front stack is `Lt0 ++ [c0]`
+    simp only [List.concat_eq_append] at h1 h2 hcap hST ⊢
+    have hlen : Lt0.length + 1 ≤ g + z.Lw.length := by
+      have := hcap (Lt0 ++ [c0]) (List.mem_cons_self ..)
+      simpa using this
+    have eb : bitsOf (Lt0 ++ [c0]) = bitsOf Lt0 ++ [bn c0] := by simp [bitsOf, bn]
+    have hn : g + z.Lw.length + 1 - (bitsOf (Lt0 ++ [c0])).length = g + z.Lw.length - Lt0.length := by
+      simp [bitsOf]
+    rw [hn] at h2
+    have hRs : Sym4 (0 :: (bitsOf Lt0 ++ bn c0 :: 1 :: (z.Rw ++ 1 :: (W ++ 1 :: F) ++
+        0 :: ((1 :: (bitsOf z.Lt ++ ST0)) ++ [0])))) :=
+      Sym4.cons (by simp [ALL]) (((Bits.ofB Lt0).sym4).app (Sym4.cons (by
+        rcases mem_bits (bn_bits c0) with h | h <;> rw [h] <;> simp [ALL])
+        (Sym4.cons (by simp [ALL]) hZV)))
+    have h3 := rtwSweep ((bitsOf rest).reverse ++ [2, 3, bn r0]) _ (g + z.Lw.length - Lt0.length) hcodeS hRs
+    obtain ⟨g', hg', h4⟩ := post (r0 :: true :: false :: rest) hf (bitsOf Lt0) (bn c0) p b X2
+      (g + z.Lw.length - Lt0.length) (Bits.ofB _) (bn_cases c0) hb hX2
+    have hl : (zsw z (Lt0 ++ [c0])).Lw.length = Lt0.length := by simp [zsw, Zp.Lw, bitsOf]
+    refine ⟨g', by omega, by omega, ?_⟩
+    rw [hcode] at h4
+    have hch := ((h1.tr h2 (by simp)).tr h3 (by simp [eb])).tr (lift h4) ?_
+    · refine hch.ofEq ?_ ?_
+      · simp
+      · rw [← hV]
+        have e : 1 :: (z.Rw ++ 1 :: (W ++ 1 :: F) ++ 0 :: (1 :: (bitsOf z.Lt ++ ST0) ++ [0])) =
+            (1 :: (z.Rw ++ 1 :: (W ++ 1 :: (F ++ 0 :: (1 :: bitsOf z.Lt ++ ST0))))) ++ List.replicate 1 0 := by
+          simp
+        rw [e, hd_pad]
+        have hzLw : (zsw z (Lt0 ++ [c0])).Lw = bitsOf Lt0 := by simp [zsw, Zp.Lw, bitsOf]
+        have hzc : (zsw z (Lt0 ++ [c0])).c = some c0 := by simp [zsw]
+        have hzRw : (zsw z (Lt0 ++ [c0])).Rw = z.Rw := rfl
+        simp only [Bd, hzLw, hzc, hzRw, cellN_some]
+    · rw [← hV]
+
 end ZP.Mul
