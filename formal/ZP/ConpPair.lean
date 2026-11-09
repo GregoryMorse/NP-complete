@@ -829,4 +829,63 @@ theorem ReachPos {M : LTM} {c c' : ZC} (h : M.Reach c c') (hq : c.q ≠ c'.q) : 
     exact absurd (by rw [this]) hq
   | succ n => exact ⟨n, hn⟩
 
+theorem hdR_zeros (q : Nat) (A X : List Nat) (hX : ∀ x ∈ X, x = 0) : hdR q A X = hdR q A [] := by
+  have e : X = List.replicate X.length 0 := List.eq_replicate_iff.mpr ⟨rfl, hX⟩
+  calc hdR q A X = hdR q A ([] ++ List.replicate X.length 0) := by rw [← e]; rfl
+    _ = hdR q A [] := hdR_pad q A [] _
+
+theorem searchTop (n : Nat) (ds0 : List Nat) (hds0 : Dig n ds0) (hne : ds0 ≠ [])
+    (W W1 Vq R0 : List Nat) (Pb Xb : List Bool)
+    (hV : 1 :: W1 = Vq ++ [1]) (hVq : NoB Vq) (hR0 : Sym4 R0) (hW : NoB W)
+    (hWF : ∀ F Dw, W1 ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: (R0 ++ (F ++ 0 :: Dw)))) =
+      W ++ 1 :: (F ++ 0 :: Dw))
+    (hBuild : ∀ Dw, NoB Dw → zconpLogic.Reach
+      (hdR Q.GRB (1 :: (W ++ [1])) (List.replicate (FWr n ds0).length 0 ++ 0 :: Dw))
+      (hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1])))
+        (bitsOf Xb ++ 1 :: (R0 ++ (FWr n ds0 ++ 0 :: Dw)))))
+    (hDP : ∀ F Dw, NoB F → NoB Dw → zconpLogic.Reach (hdR Q.DP10 [1] (W ++ 1 :: (F ++ 0 :: Dw)))
+      (hd QConp.BT (1 :: (W ++ 1 :: (F ++ 0 :: Dw))) [])) :
+    (runND Pb Xb (valr n ds0) → ∃ F' Dw', NoB F' ∧ NoB Dw' ∧
+        zconpLogic.Reach (hdR Q.GRB (1 :: (W ++ [1])) [])
+          (hdR Q.DP11 [1] (W ++ 1 :: (F' ++ 0 :: Dw')))) ∧
+    (¬ runND Pb Xb (valr n ds0) →
+        zconpLogic.Reach (hdR Q.GRB (1 :: (W ++ [1])) []) (hd QConp.EX3 (1 :: W) [1])) := by
+  have h0 : S0 n ds0 W [] = hdR Q.GRB (1 :: (W ++ [1])) [] := by
+    unfold S0
+    apply hdR_zeros
+    intro x hx
+    simp [Dt] at hx
+    rcases hx with ⟨-, h⟩ | h <;> exact h
+  have hs := searchC n ds0 hds0 hne W W1 Vq R0 Pb Xb hV hVq hR0 hW hWF hBuild hDP _ [] rfl (Nat.zero_le _)
+  rw [h0] at hs
+  have ti := top_iff Pb Xb (valr n ds0)
+  refine ⟨fun h => ?_, fun h => hs.2 (fun h' => h (ti.mpr h'))⟩
+  obtain ⟨u, r, ds', -, -, hr⟩ := hs.1 (ti.mp h)
+  exact ⟨FWr n ds', Dt u r, FWr_noB _ _, Dt_noB _ _, hr.ofEq rfl (by simp [RE, dpOf, bn])⟩
+
+theorem vSearch (j : List Nat) (hj : Bits j) (Sb : List Bool) :
+    (runND Sb [] (Sb.length + 1) → ∃ F' Dw', NoB F' ∧ NoB Dw' ∧
+        zconpLogic.Reach (hdR Q.GRB (1 :: ((j ++ 1 :: (bitsOf Sb ++ [1])) ++ [1])) [])
+          (hdR Q.DP11 [1] ((j ++ 1 :: (bitsOf Sb ++ [1])) ++ 1 :: (F' ++ 0 :: Dw')))) ∧
+    (¬ runND Sb [] (Sb.length + 1) →
+        zconpLogic.Reach (hdR Q.GRB (1 :: ((j ++ 1 :: (bitsOf Sb ++ [1])) ++ [1])) [])
+          (hd QConp.EX3 (1 :: (j ++ 1 :: (bitsOf Sb ++ [1]))) [1])) := by
+  have hs := Bits.ofB Sb
+  have hjn : NoB j := hj.noB
+  have hW : NoB (j ++ 1 :: (bitsOf Sb ++ [1])) :=
+    hjn.app (NoB.cons one_nb (hs.noB.app (NoB.cons one_nb NoB.nil)))
+  have hbl : (bitsOf Sb).length = Sb.length := bitsOf_len Sb
+  have := searchTop Sb.length [Sb.length + 1] (by intro d hd; simp at hd; omega) (by simp)
+    (j ++ 1 :: (bitsOf Sb ++ [1])) (j ++ [1]) (1 :: j) [] Sb [] (by simp)
+    (NoB.cons one_nb hjn) Sym4.nil hW (by intro F Dw; simp [bitsOf])
+    (fun Dw hD => by
+      have h := vBuild j (bitsOf Sb) Dw hj hs hD
+      rw [hbl] at h
+      refine h.ofEq (by simp [FWr, blkW]) ?_
+      simp [FWr, blkW, bitsOf])
+    (fun F Dw hF hD => by
+      have h := dp0v j (bitsOf Sb) F Dw hj hs hF hD
+      exact h.ofEq (by simp) (by simp))
+  exact this
+
 end ZP.Conp
