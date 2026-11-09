@@ -320,3 +320,9 @@ Remaining: `passMore2`'s `pre'` has to be shown to have the form `pre0 ++ r :: r
 `VR.nextPass_ok`, `tailVR_doneX`, `faNext` (`FAL` on the finished records `doneX` -> `RFL` at the first cursor of the next pass, given the compare hypothesis).
 So the cycle `passMore2 -> scStart -> faNext -> passMore2` is now composable; the induction over passes (state invariant: `PassCmp`, flags, `Nn` counter) is what remains,
 plus the last pass (`passLast2 -> flOk` / failure leaves), the semantics (`PassCmp` = `evaluate`), `PA0` restart, entries.
+
+### Progress: one-pass cycle (`ZP/EvalNTT.lean`, no sorry)
+`passLoop2` / `passMore2` / `passLast2` now also track the input-flag list (`cs.map P = c.P :: vs.map P`), the widths (`2 ≤ w`), and `1 ≤ p'.2`.
+`scChain`: `SC` with `S = 0` on the finished `done` records goes to `FAL` of the next pass (records `doneX` with the moved flags).
+`passCycle`: one whole non-final pass from `RFL` either refutes (`S ≠ 0`, `ODL`) or reaches the next pass's `FAL`. `faNext` then reaches its first cursor `RFL`.
+Remaining: the induction over `a` passes (carrying `PassCmp` and the next-pass invariants `CurInv`/`OutM`/`Ok`, with `a-1`, `b+1`), the last pass (`passLast2` -> `flOk`/failure leaves), the `PassCmp` semantics = `evaluate`, `PA0` restart, entries.
