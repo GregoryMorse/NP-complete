@@ -297,3 +297,14 @@ For chaining, `passLoop` must additionally expose the invariant `r + 1 + s = c.w
 ### Progress: pass-level wrappers
 `passMore2` / `passLast2` (in `ZP/EvalNTT.lean`) wrap `passMore` / `passLast` over `passLoop2`. They expose the done records `cs`, with `pre' = pre ++ cs.map done`.
 Remaining: chain `scPm` -> `passStartAll` -> `faG'` -> next pass; `PassCmp` semantics and the tie to `evaluate`; compose the failure leaves into the odometer; `PA0` restart; Challenge/Solution entries.
+
+### Design note: `passMore2` -> `scPm` bridge
+After `passMore2` the tape is `Wf 1 (2^p1 3^p2 1 Q) 3^a 3 2 2^b tailB pre'`.
+The block `2^p1 3^p2` is `S`:
+- `p1 = 0` means `S = 0`: this is exactly `scPm`'s `3^q` (with `q = p2`), and `P2 = Q ++ 3^a ++ 3 :: 2 :: 2^b`.
+- `p1 > 0` is the `sc2Zero` failure leaf, which goes to the odometer scan.
+
+To prove, per pass:
+1. case split on `p'.1`;
+2. `GoodW (1 :: Q ++ 3^(a+2) 2^b)` implies `GoodW (1 :: Q ++ 3^a ++ 3 :: 2 :: 2^b)`;
+3. split `pre'` as `pre0 ++ r :: r2 :: post` with `r.Pf = 3`, `r.acc ≠ []`, `pre0` all `Pf = 2`. This needs `PreOk` to record where the input flag sits.
