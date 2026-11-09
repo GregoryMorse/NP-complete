@@ -503,3 +503,10 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 `diters_lift` lifts a `DIterS` chain to `Rt OS` with every non-final state refuted;
 `diters_refute` concludes that a terminating refuted iteration refutes every `Fit` assignment (`setD`),
 via `odo_all_visited`. Remaining: derive `hasCircuit`/`¬hasCircuit` from `assignLoop`, then the bridge assembly.
+
+### Stage note: loop outcome ↔ circuit assignment
+`AtF`/`AtL`/`rt_atL`: every odometer state reachable from the initial records is `setD` of an in-range
+assignment. `initFrom p 0 Os` gives the canonical initial records (`recO (p-1) (O, i+1)`), `initFrom_fit`
+identifies `Fit` with `DigOk ∧ length`. `setD_spec`: `AOkD` of the digit tuples ↔ `evalC nr p (decRecs πs ds)`.
+`loop_none` (terminal refuted iteration ⇒ no circuit assignment) and `loop_some` (a successful state ⇒ a
+circuit assignment). Remaining: connect to `hasCircuit_iff`/`assignLoop` outputs, then bridge assembly.

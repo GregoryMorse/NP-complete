@@ -13263,6 +13263,252 @@ theorem diters_refute (m n s : Nat) (os : List ORec) (hok : ∀ x ∈ os, x.Ok)
   · exact h
 
 
+
+/-- `x` is the record of `y` at some digits `(π, d)` in range. -/
+def AtF (y x : ORec) : Prop := ∃ π d, π ≤ y.m ∧ d < y.r ∧ x = y.at π d
+
+theorem next_at (y x : ORec) (h0 : y.z = 0) (h1 : y.k = 1) (hx : AtF y x) :
+    (∀ x', x.next = Sum.inl x' → AtF y x') ∧ (∀ x', x.next = Sum.inr x' → AtF y x') := by
+  obtain ⟨π, d, hπ, hd, rfl⟩ := hx
+  have key : ∀ π d, (y.at π d).z = 0 ∧ (y.at π d).k = π + 1 ∧ (y.at π d).d = d ∧ (y.at π d).r = y.r ∧
+      (y.at π d).m = y.m - π := by
+    intro π d; simp [ORec.at, h0, h1]
+  obtain ⟨k0, k1, k2, k3, k4⟩ := key π d
+  constructor
+  · intro x' hx'
+    unfold ORec.next at hx'
+    rw [k2, k3] at hx'
+    by_cases c1 : d + 1 < y.r
+    · rw [if_pos c1] at hx'; cases hx'
+      exact ⟨π, d + 1, hπ, c1, by simp [ORec.at]⟩
+    · rw [if_neg c1] at hx'
+      by_cases c2 : 1 ≤ (y.at π d).m
+      · rw [if_pos c2] at hx'; cases hx'
+        refine ⟨π + 1, 0, by omega, by omega, ?_⟩
+        simp [ORec.at, h0, h1]; omega
+      · rw [if_neg c2] at hx'; cases hx'
+  · intro x' hx'
+    unfold ORec.next at hx'
+    rw [k2, k3] at hx'
+    by_cases c1 : d + 1 < y.r
+    · rw [if_pos c1] at hx'; cases hx'
+    · rw [if_neg c1] at hx'
+      by_cases c2 : 1 ≤ (y.at π d).m
+      · rw [if_pos c2] at hx'; cases hx'
+      · rw [if_neg c2] at hx'; cases hx'
+        refine ⟨0, 0, by omega, by omega, ?_⟩
+        simp [ORec.at, h0, h1]
+        omega
+
+/-- Pointwise `AtF` against the initial list. -/
+def AtL : List ORec → List ORec → Prop
+  | [], [] => True
+  | y :: ys, x :: xs => AtF y x ∧ AtL ys xs
+  | _, _ => False
+
+theorem odo_atL : ∀ (os es es' : List ORec), (∀ x ∈ os, x.z = 0 ∧ x.k = 1) → AtL os es →
+    odoStepR es = some es' → AtL os es'
+  | [], [], _, _, _, h => by simp [odoStepR] at h
+  | [], _ :: _, _, _, h, _ => by simp [AtL] at h
+  | _ :: _, [], _, _, h, _ => by simp [AtL] at h
+  | y :: ys, e :: es, es', hI, hA, h => by
+    obtain ⟨hy, hys⟩ := hA
+    obtain ⟨a0, a1⟩ := hI y (by simp)
+    have nx := next_at y e a0 a1 hy
+    unfold odoStepR at h
+    cases hn : e.next with
+    | inl a =>
+      rw [hn] at h; cases h
+      exact ⟨nx.1 a hn, hys⟩
+    | inr a =>
+      rw [hn] at h
+      simp only [Option.map_eq_some_iff] at h
+      obtain ⟨u, hu, rfl⟩ := h
+      exact ⟨nx.2 a hn, odo_atL ys es u (fun x hx => hI x (by simp [hx])) hys hu⟩
+
+theorem atL_refl : ∀ (os : List ORec), (∀ x ∈ os, 1 ≤ x.r) → (∀ x ∈ os, x.d = 0 ∧ x.z = 0 ∧ x.k = 1) → AtL os os
+  | [], _, _ => trivial
+  | y :: ys, h1, h2 => by
+    refine ⟨⟨0, 0, by omega, h1 y (by simp), ?_⟩, atL_refl ys (fun x hx => h1 x (by simp [hx])) (fun x hx => h2 x (by simp [hx]))⟩
+    obtain ⟨a, b, c⟩ := h2 y (by simp)
+    cases y; simp_all [ORec.at]
+
+theorem rt_atL (os : List ORec) (hI : ∀ x ∈ os, x.z = 0 ∧ x.k = 1) {e : List ORec} (h : Rt OS os e) (h0 : AtL os os) : AtL os e := by
+  induction h with
+  | refl => exact h0
+  | tail _ hs ih => exact odo_atL os _ _ hI ih hs
+
+theorem atL_setD : ∀ (os es : List ORec), AtL os es → ∃ πs ds, Fit os πs ds ∧ es = setD os πs ds
+  | [], [], _ => ⟨[], [], trivial, rfl⟩
+  | [], _ :: _, h => by simp [AtL] at h
+  | _ :: _, [], h => by simp [AtL] at h
+  | y :: ys, e :: es, h => by
+    obtain ⟨⟨π, d, h1, h2, rfl⟩, h3⟩ := h
+    obtain ⟨πs, ds, hF, rfl⟩ := atL_setD ys es h3
+    exact ⟨π :: πs, d :: ds, ⟨h1, h2, hF⟩, rfl⟩
+
+theorem setD_map (f : ORec → Nat) (hf : ∀ o π d, f (o.at π d) = f o) :
+    ∀ (os : List ORec) (πs ds : List Nat), Fit os πs ds → (setD os πs ds).map f = os.map f
+  | [], πs, ds, h => by cases πs <;> cases ds <;> first | rfl | (simp [Fit] at h)
+  | _ :: _, [], _, h => by simp [Fit] at h
+  | _ :: _, _ :: _, [], h => by simp [Fit] at h
+  | o :: os, π :: πs, d :: ds, h => by
+    simp only [setD, List.map_cons, hf]
+    rw [setD_map f hf os πs ds h.2.2]
+
+theorem setD_pi : ∀ (os : List ORec) (πs ds : List Nat), Fit os πs ds →
+    ((setD os πs ds).map ORec.dgO).map (fun g => g.2.2.1) = πs ∧
+    ((setD os πs ds).map ORec.dgO).map (fun g => g.1) = ds
+  | [], πs, ds, h => by cases πs <;> cases ds <;> first | exact ⟨rfl, rfl⟩ | (simp [Fit] at h)
+  | _ :: _, [], _, h => by simp [Fit] at h
+  | _ :: _, _ :: _, [], h => by simp [Fit] at h
+  | o :: os, π :: πs, d :: ds, h => by
+    have ih := setD_pi os πs ds h.2.2
+    simp only [setD, List.map_cons, ORec.dgO, ORec.at]
+    refine ⟨?_, ?_⟩
+    · rw [ih.1]; simp
+    · rw [ih.2]
+
+/-- Initial records of the width-`p` circuit variables, numbered from `i`. -/
+def initFrom (p : Nat) : Nat → List Nat → List ORec
+  | _, [] => []
+  | i, O :: Os => recO (p - 1) (O, i + 1) :: initFrom p (i + 1) Os
+
+theorem initFrom_len (p : Nat) : ∀ i Os, (initFrom p i Os).length = Os.length
+  | _, [] => rfl
+  | i, _ :: Os => by simp [initFrom, initFrom_len p (i + 1) Os]
+
+theorem initFrom_I (p : Nat) (hp : 1 ≤ p) : ∀ i Os, ∀ x ∈ initFrom p i Os, x.z = 0 ∧ x.k = 1 ∧ x.d = 0 ∧ 1 ≤ x.r
+  | _, [] => by simp [initFrom]
+  | i, O :: Os => by
+    intro x hx
+    simp only [initFrom, List.mem_cons] at hx
+    rcases hx with rfl | hx
+    · simp [recO] <;> omega
+    · exact initFrom_I p hp (i + 1) Os x hx
+
+theorem initFrom_Ok (p : Nat) (hp : 2 ≤ p) : ∀ i Os, (∀ O ∈ Os, O = 2 ∨ O = 3) → ∀ x ∈ initFrom p i Os, x.Ok
+  | _, [], _ => by simp [initFrom]
+  | i, O :: Os, hO => by
+    intro x hx
+    simp only [initFrom, List.mem_cons] at hx
+    rcases hx with rfl | hx
+    · have hO0 := hO O (by simp)
+      refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      · simp [recO] <;> omega
+      · intro y hy; simp [recO, List.mem_replicate] at hy; rcases hy with rfl | ⟨_, rfl⟩ <;> simp
+      · intro y hy; simp [recO, List.mem_replicate] at hy; rcases hy with rfl | ⟨_, rfl⟩ <;> simp
+      · simp [recO] <;> omega
+      · simp [recO]
+      · simp [recO] <;> omega
+      · simp [recO]
+    · exact initFrom_Ok p hp (i + 1) Os (fun O h => hO O (by simp [h])) x hx
+
+theorem initFrom_fit (p : Nat) (hp : 1 ≤ p) : ∀ i Os πs ds, Fit (initFrom p i Os) πs ds ↔ DigOk p i πs ds ∧ πs.length = Os.length
+  | i, [], πs, ds => by
+    cases πs <;> cases ds <;> simp [initFrom, Fit, DigOk]
+  | i, O :: Os, πs, ds => by
+    cases πs with
+    | nil => cases ds <;> simp [initFrom, Fit, DigOk]
+    | cons π πs =>
+      cases ds with
+      | nil => simp [initFrom, Fit, DigOk]
+      | cons d ds =>
+        have ih := initFrom_fit p hp (i + 1) Os πs ds
+        simp only [initFrom, Fit, DigOk, recO, List.length_cons, ih]
+        constructor
+        · rintro ⟨a, b, c, d'⟩; exact ⟨⟨a, by omega, c⟩, by omega⟩
+        · rintro ⟨⟨a, b, c⟩, d'⟩; exact ⟨a, by omega, c, by omega⟩
+
+theorem initFrom_mem (p : Nat) (hp : 1 ≤ p) : ∀ i Os, ∀ x ∈ initFrom p i Os, x.acc.length = p ∧ x.O ∈ Os
+  | _, [] => by simp [initFrom]
+  | i, O :: Os => by
+    intro x hx
+    simp only [initFrom, List.mem_cons] at hx
+    rcases hx with rfl | hx
+    · simp [recO]; omega
+    · have := initFrom_mem p hp (i + 1) Os x hx
+      exact ⟨this.1, by simp [this.2]⟩
+
+theorem initFrom_O (p : Nat) : ∀ i Os, (initFrom p i Os).map ORec.O = Os
+  | _, [] => rfl
+  | i, O :: Os => by simp [initFrom, recO, initFrom_O p (i + 1) Os]
+
+theorem atL_len : ∀ (os es : List ORec), AtL os es → es.length = os.length
+  | [], [], _ => rfl
+  | [], _ :: _, h => by simp [AtL] at h
+  | _ :: _, [], h => by simp [AtL] at h
+  | y :: ys, e :: es, h => by simp [atL_len ys es h.2]
+
+theorem setD_len : ∀ (os : List ORec) (πs ds : List Nat), Fit os πs ds → (setD os πs ds).length = os.length
+  | [], πs, ds, h => by cases πs <;> cases ds <;> first | rfl | (simp [Fit] at h)
+  | _ :: _, [], _, h => by simp [Fit] at h
+  | _ :: _, _ :: _, [], h => by simp [Fit] at h
+  | o :: os, π :: πs, d :: ds, h => by simp [setD, setD_len os πs ds h.2.2]
+
+theorem setD_spec (p nr n : Nat) (Os : List Nat) (hp : 2 ≤ p) (hnr : 1 ≤ nr) (hnrN : nr ≤ n + 1)
+    (hOl : Os.length = n + 1) (hOs : Os = List.replicate (n + 1 - nr) 2 ++ List.replicate nr 3)
+    (πs ds : List Nat) (hF : Fit (initFrom p 0 Os) πs ds) :
+    AOkD (nr - 1) n ((setD (initFrom p 0 Os) πs ds).map ORec.dgO) p ↔ evalC nr p (decRecs πs ds) = true := by
+  have hO23 : ∀ O ∈ Os, O = 2 ∨ O = 3 := by
+    intro O hO; rw [hOs] at hO; simp [List.mem_replicate] at hO; omega
+  have hlen := setD_len _ _ _ hF
+  have e1 := setD_map (fun x => x.acc.length) (fun o π d => by simp [ORec.at]) _ _ _ hF
+  have e2 := setD_map ORec.O (fun o π d => by simp [ORec.at]) _ _ _ hF
+  have hpd := setD_pi _ _ _ hF
+  have key := AOkD_evalC p nr n ((setD (initFrom p 0 Os) πs ds).map ORec.dgO) hp
+    (by simp [hlen, initFrom_len, hOl]) hnr hnrN
+  rw [hpd.1, hpd.2] at key
+  apply key
+  · rw [List.map_map]
+    have : ((fun g : DG => g.2.2.2.2.2) ∘ ORec.dgO) = ORec.O := by funext x; simp [ORec.dgO]
+    rw [this, e2, initFrom_O, hOs]
+  · intro g hg
+    simp only [List.mem_map] at hg
+    obtain ⟨x, hx, rfl⟩ := hg
+    have h1 : x.acc.length ∈ (initFrom p 0 Os).map (fun x => x.acc.length) := by
+      rw [← e1]; exact List.mem_map.2 ⟨x, hx, rfl⟩
+    have h2 : x.O ∈ (initFrom p 0 Os).map ORec.O := by
+      rw [← e2]; exact List.mem_map.2 ⟨x, hx, rfl⟩
+    obtain ⟨y, hy, hy2⟩ := List.mem_map.1 h1
+    rw [initFrom_O] at h2
+    refine ⟨?_, hO23 _ h2⟩
+    simp only [ORec.dgO]
+    rw [← hy2]; exact (initFrom_mem p (by omega) 0 Os y hy).1
+
+/-- Failure of the loop refutes every digit assignment. -/
+theorem loop_none (p nr n : Nat) (Os : List Nat) (hp : 2 ≤ p) (hnr : 1 ≤ nr) (hnrN : nr ≤ n + 1)
+    (hOl : Os.length = n + 1) (hOs : Os = List.replicate (n + 1 - nr) 2 ++ List.replicate nr 3)
+    {D : List DG} (hit : DIterS (nr - 1) n p ((initFrom p 0 Os).map ORec.dgO) D)
+    (hterm : StepNone D) (hno : ¬ AOkD (nr - 1) n D p) :
+    ¬ ∃ πs ds, DigOk p 0 πs ds ∧ πs.length = n + 1 ∧ evalC nr p (decRecs πs ds) = true := by
+  have hO23 : ∀ O ∈ Os, O = 2 ∨ O = 3 := by
+    intro O hO; rw [hOs] at hO; simp [List.mem_replicate] at hO; omega
+  rintro ⟨πs, ds, h1, h2, h3⟩
+  have hF : Fit (initFrom p 0 Os) πs ds := (initFrom_fit p (by omega) 0 Os πs ds).2 ⟨h1, by omega⟩
+  exact diters_refute (nr - 1) n p _ (initFrom_Ok p hp 0 Os hO23) (initFrom_I p (by omega) 0 Os) hit hterm hno
+    πs ds hF ((setD_spec p nr n Os hp hnr hnrN hOl hOs πs ds hF).2 h3)
+
+/-- Success of the loop yields a circuit assignment. -/
+theorem loop_some (p nr n : Nat) (Os : List Nat) (hp : 2 ≤ p) (hnr : 1 ≤ nr) (hnrN : nr ≤ n + 1)
+    (hOl : Os.length = n + 1) (hOs : Os = List.replicate (n + 1 - nr) 2 ++ List.replicate nr 3)
+    {D : List DG} (hit : DIterS (nr - 1) n p ((initFrom p 0 Os).map ORec.dgO) D)
+    (hs : AOkD (nr - 1) n D p) :
+    ∃ πs ds, DigOk p 0 πs ds ∧ πs.length = n + 1 ∧ evalC nr p (decRecs πs ds) = true := by
+  have hO23 : ∀ O ∈ Os, O = 2 ∨ O = 3 := by
+    intro O hO; rw [hOs] at hO; simp [List.mem_replicate] at hO; omega
+  obtain ⟨es3, hok3, hd3, hr3, _⟩ := diters_lift (nr - 1) n p hit _ (initFrom_Ok p hp 0 Os hO23) rfl
+  have hI := initFrom_I p (by omega) 0 Os
+  have hA := rt_atL _ (fun x hx => ⟨(hI x hx).1, (hI x hx).2.1⟩) hr3
+    (atL_refl _ (fun x hx => (hI x hx).2.2.2) (fun x hx => ⟨(hI x hx).2.2.1, (hI x hx).1, (hI x hx).2.1⟩))
+  obtain ⟨πs, ds, hF, rfl⟩ := atL_setD _ _ hA
+  subst hd3
+  refine ⟨πs, ds, ((initFrom_fit p (by omega) 0 Os πs ds).1 hF).1, ?_, (setD_spec p nr n Os hp hnr hnrN hOl hOs πs ds hF).1 hs⟩
+  have := ((initFrom_fit p (by omega) 0 Os πs ds).1 hF).2
+  omega
+
+
 end ZP.NTT
+
 
 
