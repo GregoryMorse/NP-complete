@@ -7647,14 +7647,14 @@ theorem scStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
     (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
     (pre : List Rc) (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ []) (j : Nat) (l : List Nat)
     (hfl : pre.map Rc.Pf = List.replicate j 2 ++ 3 :: l) (hl : l ≠ []) :
-    ∃ pre0 r r2 post, pre = pre0 ++ r :: r2 :: post ∧
+    ∃ pre0 r r2 post, pre = pre0 ++ r :: r2 :: post ∧ (∀ x ∈ pre0, x.Pf = 2) ∧ r.Pf = 3 ∧
       znttLogic.Reach
         (hd QNTT.SC (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: Q) ++ List.replicate a 3)
           (3 :: 2 :: (List.replicate b 2 ++ tailB pre)))
         (hdR QNTT.RZ1 [] (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) ++
           tailB (pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post))) := by
   obtain ⟨pre0, r, r2, post, he, h0, h3⟩ := flagSplit j pre l hfl hl
-  refine ⟨pre0, r, r2, post, he, ?_⟩
+  refine ⟨pre0, r, r2, post, he, h0, h3, ?_⟩
   have mem : ∀ x, x ∈ pre0 ∨ x = r ∨ x = r2 ∨ x ∈ post → x ∈ pre := by
     intro x hx; rw [he]; simpa using hx
   have := scBridge Wf hW Q a b q hP2 pre0 (fun x hx => ⟨(hpre x (mem x (Or.inl hx))).1, (hpre x (mem x (Or.inl hx))).2, h0 x hx⟩)
@@ -7685,14 +7685,14 @@ theorem scStart (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
     (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
     (pre : List Rc) (hps : ∀ x ∈ pre, x.PS) (j : Nat) (l : List Nat)
     (hfl : pre.map Rc.Pf = List.replicate j 2 ++ 3 :: l) (hl : l ≠ []) (hq : 1 ≤ q) :
-    ∃ pre0 r r2 post r0 rs, pre = pre0 ++ r :: r2 :: post ∧
+    ∃ pre0 r r2 post r0 rs, pre = pre0 ++ r :: r2 :: post ∧ (∀ x ∈ pre0, x.Pf = 2) ∧ r.Pf = 3 ∧
       pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post = r0 :: rs ∧
       znttLogic.Reach
         (hd QNTT.SC (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: Q) ++ List.replicate a 3)
           (3 :: 2 :: (List.replicate b 2 ++ tailB pre)))
         (hd QNTT.FAL ((Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2))) ++
           [1, 1] ++ r0.ps.body ++ tailP rs) []) := by
-  obtain ⟨pre0, r, r2, post, he, h1⟩ := scStep Wf hW Q a b q hP2 pre
+  obtain ⟨pre0, r, r2, post, he, hp0, hp3, h1⟩ := scStep Wf hW Q a b q hP2 pre
     (fun x hx => ⟨(hps x hx).ok, fun h => by have := (hps x hx).acc2; simp [h] at this⟩) j l hfl hl
   have mem : ∀ x, (x ∈ pre0 ∨ x = r ∨ x = r2 ∨ x ∈ post) → x ∈ pre := by
     intro x hx; rw [he]; simpa using hx
@@ -7708,7 +7708,7 @@ theorem scStart (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
     cases pre0 with
     | nil => exact ⟨_, _, rfl⟩
     | cons x xs => exact ⟨x, xs ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post, rfl⟩
-  refine ⟨pre0, r, r2, post, r0, rs, he, hr0, ?_⟩
+  refine ⟨pre0, r, r2, post, r0, rs, he, hp0, hp3, hr0, ?_⟩
   have hGP : GoodW (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2))) := by
     have hG : GoodW (1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := by
       have := goodW_swap_tail (1 :: (Q ++ List.replicate a 3)).length (1 :: (Q ++ List.replicate a 3)) 3 3
@@ -7786,6 +7786,114 @@ theorem faNext (Pm : List Nat) (hP : GoodW Pm) (t0 : (VR × Nat × Nat) × Nat) 
     simpa [VR.recd, List.append_assoc] using this
   rw [← hLe]
   exact faG' _ Pm hL hP _ hw _ hws hcmp rfl
+
+
+def retagPf (r : Rc) (x : Nat) : Rc := { r with Pf := x }
+
+theorem retag_self : ∀ post : List Rc, List.zipWith retagPf post (post.map Rc.Pf) = post
+  | [] => rfl
+  | x :: xs => by simp [List.zipWith, retagPf, retag_self xs]
+
+theorem retagMove : ∀ (pre0 : List Rc) (j : Nat), pre0.map Rc.Pf = List.replicate j 2 →
+    ∀ (r r2 : Rc) (post : List Rc) (l' : List Nat), post.map Rc.Pf = l' →
+    List.zipWith retagPf (pre0 ++ r :: r2 :: post) (List.replicate (j + 1) 2 ++ 3 :: l') =
+      pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post
+  | [], j, h, r, r2, post, l', hp => by
+    have : j = 0 := by have := congrArg List.length h; simpa using this.symm
+    subst this
+    simp [List.zipWith, retagPf, ← hp, retag_self]
+  | x :: xs, j, h, r, r2, post, l', hp => by
+    cases j with
+    | zero => simp at h
+    | succ j =>
+      simp only [List.map_cons, List.replicate_succ, List.cons.injEq] at h
+      obtain ⟨hx, hxs⟩ := h
+      have ih := retagMove xs j (by simpa [List.replicate_succ] using hxs) r r2 post l' hp
+      simp only [List.replicate_succ, List.cons_append, List.zipWith_cons_cons, List.cons_append] at ih ⊢
+      rw [ih]
+      have hx' : ({ x with Pf := 2 } : Rc) = x := by
+        rcases x with ⟨F, O, Pf, acc, E, b0, br, u0, ur⟩
+        simp at hx; subst hx; rfl
+      simp [retagPf, hx']
+
+theorem doneX_zip : ∀ (cs : List (VR × Nat × Nat)) (xs : List Nat), cs.length = xs.length →
+    ((cs.zip xs).map fun p => p.1.1.doneX p.1.2.1 p.1.2.2 p.2) =
+      List.zipWith retagPf (cs.map fun t => t.1.done t.2.1 t.2.2) xs
+  | [], [], _ => rfl
+  | [], _ :: _, h => by simp at h
+  | _ :: _, [], h => by simp at h
+  | c :: cs, x :: xs, h => by
+    have ih := doneX_zip cs xs (by simpa using h)
+    simp only [List.zip_cons_cons, List.map_cons, List.zipWith_cons_cons]
+    rw [ih]
+    simp [retagPf, VR.doneX, VR.done, VR.toRcA]
+
+
+theorem flags_split : ∀ (pre0 : List Rc), (∀ x ∈ pre0, x.Pf = 2) → ∀ (j : Nat) (rest rest' : List Nat),
+    pre0.map Rc.Pf ++ 3 :: rest = List.replicate j 2 ++ 3 :: rest' →
+    pre0.map Rc.Pf = List.replicate j 2 ∧ rest = rest'
+  | [], _, j, rest, rest', h => by
+    cases j with
+    | zero => simp at h; exact ⟨rfl, h⟩
+    | succ j => simp [List.replicate_succ] at h
+  | x :: xs, hx, j, rest, rest', h => by
+    cases j with
+    | zero => have := hx x (by simp); simp at h; omega
+    | succ j =>
+      simp only [List.map_cons, List.cons_append, List.replicate_succ, List.cons.injEq] at h
+      have ih := flags_split xs (fun y hy => hx y (by simp [hy])) j rest rest' h.2
+      refine ⟨?_, ih.2⟩
+      simp [List.replicate_succ, ih.1, hx x (by simp)]
+
+theorem VR.done_ps (c : VR) (hc : c.Ok) (r s : Nat) (hrs : r + 1 + s = c.w) (hw2 : 2 ≤ c.w) : (c.done r s).PS :=
+  { ok := c.done_ok hc r s,
+    acc2 := by simp [VR.done, VR.toRcA]; omega,
+    rest := by
+      have := VR.toRcA_rest c (List.replicate r 2 ++ 3 :: List.replicate s 2)
+      simpa [VR.done, VR.toRcA, Rc.Rest] using this }
+
+/-- `SC` after a non-final pass with `S = 0`, from the finished (`done`) records: the next pass starts at `FAL`
+on the records with the moved input flags. -/
+theorem scChain (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+    (cs : List (VR × Nat × Nat)) (hcs : ∀ t ∈ cs, t.1.Ok ∧ t.2.1 + 1 + t.2.2 = t.1.w ∧ 2 ≤ t.1.w)
+    (j : Nat) (y : Nat) (l' : List Nat)
+    (hfl : cs.map (fun t => t.1.P) = List.replicate j 2 ++ 3 :: y :: l') (hq : 1 ≤ q) :
+    ∃ t0 ts, (cs.zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts ∧
+      znttLogic.Reach
+        (hd QNTT.SC (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: Q) ++ List.replicate a 3)
+          (3 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2))))
+        (hd QNTT.FAL ((Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2))) ++
+          [1, 1] ++ (t0.1.1.doneX t0.1.2.1 t0.1.2.2 t0.2).ps.body ++
+            tailP (ts.map fun p => p.1.1.doneX p.1.2.1 p.1.2.2 p.2)) []) := by
+  have hlen : cs.length = (List.replicate (j + 1) 2 ++ 3 :: l').length := by
+    have := congrArg List.length hfl
+    simp at this ⊢; omega
+  obtain ⟨pre0, r, r2, post, r0, rs, he, hp0, hp3, hr0, h⟩ := scStart Wf hW Q a b q hP2
+    (cs.map fun t => t.1.done t.2.1 t.2.2)
+    (fun x hx => by
+      simp only [List.mem_map] at hx; obtain ⟨t, ht, rfl⟩ := hx
+      exact VR.done_ps _ (hcs t ht).1 _ _ (hcs t ht).2.1 (hcs t ht).2.2)
+    j (y :: l') (by simpa [VR.done, VR.toRcA, Function.comp_def] using hfl) (by simp) hq
+  have hfl' : pre0.map Rc.Pf ++ 3 :: r2.Pf :: post.map Rc.Pf = List.replicate j 2 ++ 3 :: y :: l' := by
+    have := congrArg (List.map Rc.Pf) he
+    rw [← hfl]
+    simpa [VR.done, VR.toRcA, hp3, Function.comp_def] using this.symm
+  obtain ⟨hP0, hrest⟩ := flags_split pre0 hp0 j _ _ hfl'
+  have hPost : post.map Rc.Pf = l' := (by simpa using hrest : r2.Pf = y ∧ post.map Rc.Pf = l').2
+  have hmove := retagMove pre0 j hP0 r r2 post l' hPost
+  rw [← he, ← doneX_zip cs _ hlen] at hmove
+  rw [hr0] at hmove
+  obtain ⟨t0, ts, hz⟩ : ∃ t0 ts, cs.zip (List.replicate (j + 1) 2 ++ 3 :: l') = t0 :: ts := by
+    cases hz : cs.zip (List.replicate (j + 1) 2 ++ 3 :: l') with
+    | nil => rw [hz] at hmove; simp at hmove
+    | cons t ts => exact ⟨t, ts, rfl⟩
+  refine ⟨t0, ts, hz, ?_⟩
+  rw [hz] at hmove
+  simp only [List.map_cons, List.cons.injEq] at hmove
+  obtain ⟨h1, h2⟩ := hmove
+  rw [h1, h2]
+  exact h
 
 end ZP.NTT
 
