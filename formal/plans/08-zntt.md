@@ -452,3 +452,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: S register value of a pass
 `ctrS`, `outP_val`, `loopRun_pval`, `passPOf_val`: after a pass the S-register's first component is `(s0 + Σ_{O=3 records} r·n) mod P` (`P = p.1+p.2`). With the compare (`r` = node value = E value) this is the reference `Σ E'` check. Next: tie `r` of each finished record to `vals`, then chain passes.
+
+### Stage note: S sum in terms of node values
+`loopRs` (loopVals plus the `r` components), `SumOD`, `passCs_sum`: `Σ ctrS` over a pass equals `Σ_{O=3} val_i·d_i`, the reference `Σ E'` once compare holds. Remaining for `AOkD ↔ evalC`: E-register update, chaining via `FOk`, and relating `vals` to `valsAux`.

@@ -11738,5 +11738,112 @@ theorem passPOf_val (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Na
   simp only [List.map_append, List.sum_append, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, ctrS, hO, hn]
   congr 1; omega
 
+theorem loopRs (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : ValsOk p t N πs ds vals) :
+    ∀ (n j : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × Nat), vs.length = n → j + n + 1 = N →
+      ColInv p t j πs ds vals (c :: vs) → r = c.k - 1 →
+      (loopRun n c vs r s pp).cs.map (fun x => x.1.k - 1) = (List.range n).map (fun i => vals.getD (j + i) 0) ∧
+      (loopRun n c vs r s pp).c'.k - 1 = vals.getD (j + n) 0 ∧
+      (loopRun n c vs r s pp).cs.map (fun x => x.2.1) = (List.range n).map (fun i => vals.getD (j + i) 0) ∧
+      (loopRun n c vs r s pp).r' = vals.getD (j + n) 0 := by
+  intro n
+  induction n with
+  | zero =>
+    intro j c vs r s pp hl hN hI hr
+    have hvs : vs = [] := List.length_eq_zero_iff.1 hl
+    subst hvs
+    have hcv := cursor_val p t N πs ds vals hV j c [] (by omega) hI
+    simp only [loopRun, List.range_zero, List.map_nil, true_and, Nat.add_zero]
+    exact ⟨hcv, by rw [hr]; exact hcv⟩
+  | succ n ih =>
+    intro j c vs r s pp hl hN hI hr
+    obtain ⟨v0, vs', rfl⟩ : ∃ v0 vs', vs = v0 :: vs' := by
+      cases vs with
+      | nil => simp at hl
+      | cons a b => exact ⟨a, b, rfl⟩
+    have hrj : r = vals.getD j 0 := by
+      rw [hr]; exact cursor_val p t N πs ds vals hV j c _ (by omega) hI
+    have h0 := hI 1 v0 (by simp)
+    simp only [show ¬ ((1:Nat) = 0) from by decide, if_false] at h0
+    have hhead := recI_head p _ j _ _ vals v0 r hp h0 hrj
+    have hI' : ColInv p t (j + 1) πs ds vals
+        (VR.curG (incVisN r v0) :: (vs'.map (visN r)).map VR.dec) := by
+      intro idx x hx
+      cases idx with
+      | zero =>
+        simp only [List.getElem?_cons_zero, Option.some.injEq] at hx
+        subst hx
+        have e : (if (0:Nat) = 0 then (if j + 1 = 0 then 0 else vals.getD (j + 1 - 1) 0) else 0) = r := by
+          simp [hrj]
+        rw [e]; exact hhead
+      | succ idx =>
+        simp only [List.getElem?_cons_succ, List.getElem?_map, Option.map_eq_some_iff] at hx
+        obtain ⟨y, ⟨z, hz, rfl⟩, rfl⟩ := hx
+        have hz' : (c :: v0 :: vs')[idx + 2]? = some z := by simpa using hz
+        have h1 := hI (idx + 2) z hz'
+        have e : j + 1 + (idx + 1) = j + (idx + 2) := by omega
+        rw [e]
+        simp only [show ¬ (idx + 2 = 0) from by omega, if_false] at h1
+        simp only [show ¬ (idx + 1 = 0) from by omega, if_false]
+        exact recI_tail p _ j _ _ vals z r hp h1 hrj
+    obtain ⟨g1, g2, g3, g4, g5, g6⟩ := curG_f (incVisN r v0) (incVisN_val r v0 h0.1).1
+    have df := dec_fields' (incVisN r v0)
+    have hr' : (incVisN r v0).k - 1 = (VR.curG (incVisN r v0)).k - 1 := by rw [g3, df.2.2.1]
+    have hl' : ((vs'.map (visN r)).map VR.dec).length = n := by simp at hl ⊢; omega
+    have IH := ih (j + 1) (VR.curG (incVisN r v0)) _ ((incVisN r v0).k - 1) ((incVisN r v0).w - (incVisN r v0).k)
+      (outP c r pp) hl' (by omega) hI' hr'
+    have hk : (outRec c r).k = c.k := by unfold outRec; split <;> rfl
+    simp only [loopRun, stepN_cons]
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · rw [List.range_succ_eq_map, List.map_cons, List.map_cons]
+      refine List.cons_eq_cons.2 ⟨?_, ?_⟩
+      · simp only [hk, Nat.add_zero]; rw [← hr]; exact hrj.symm ▸ rfl
+      · rw [IH.1, List.map_map]
+        apply List.map_congr_left
+        intro i _
+        simp only [Function.comp]
+        congr 1; omega
+    · have := IH.2.1
+      rw [this]; congr 1; omega
+    · rw [List.range_succ_eq_map, List.map_cons, List.map_cons]
+      refine List.cons_eq_cons.2 ⟨?_, ?_⟩
+      · simp only [Nat.add_zero]; exact hrj
+      · rw [IH.2.2.1, List.map_map]
+        apply List.map_congr_left
+        intro i _
+        simp only [Function.comp]
+        congr 1; omega
+    · have := IH.2.2.2
+      rw [this]; congr 1; omega
+
+
+
+
+/-- `Σ` of `value * digit` over the output records. -/
+def SumOD : List DG → List Nat → Nat
+  | g :: gs, v :: vl => (if g.2.2.2.2.2 = 2 then 0 else v * g.1) + SumOD gs vl
+  | _, _ => 0
+
+theorem ctrS_sumOD : ∀ ts : List (VR × Nat × Nat),
+    (ts.map ctrS).sum = SumOD (ts.map fun t => t.1.dg) (ts.map fun t => t.2.1)
+  | [] => rfl
+  | t :: ts => by
+    simp only [List.map_cons, List.sum_cons, SumOD, ctrS, VR.dg, ctrS_sumOD ts]
+
+theorem passCs_sum (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : ValsOk p t N πs ds vals)
+    (n j : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × Nat) (hl : vs.length = n) (hN : j + n + 1 = N)
+    (hI : ColInv p t j πs ds vals (c :: vs)) (hr : r = c.k - 1) (hc : c.m = 0) (hvs : ∀ x ∈ vs, x.m = 0) :
+    ((passCsOf n c vs r s pp).map ctrS).sum =
+      SumOD ((c :: vs).map VR.dg) ((List.range (n + 1)).map fun i => vals.getD (j + i) 0) := by
+  have h1 := dg_runAll_pos n c vs r s pp hc hvs hl
+  have h2 := loopRs p t N πs ds vals hp hV n j c vs r s pp hl hN hI hr
+  rw [ctrS_sumOD]
+  unfold passCsOf
+  have h3 : ((loopRun n c vs r s pp).cs ++ [(outRec (loopRun n c vs r s pp).c' (loopRun n c vs r s pp).r',
+        (loopRun n c vs r s pp).r', (loopRun n c vs r s pp).s')]).map (fun t => t.2.1) =
+      (List.range (n + 1)).map fun i => vals.getD (j + i) 0 := by
+    rw [List.map_append, h2.2.2.1, List.range_succ, List.map_append]
+    simp [h2.2.2.2]
+  rw [h3, h1]
+
 end ZP.NTT
 
