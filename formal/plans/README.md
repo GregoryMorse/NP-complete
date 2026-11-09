@@ -2,7 +2,7 @@
 
 Status: `Quasihalts zpMachine ↔ Sentence` and `Sentence ↔ P = NP` are proved
 (`ZP.zp_quasihalts_iff_sentence`, `ZP.Cx.sentence_iff_PeqNP`). These plans cover the
-other native machines. Twin primes (not golfed) and NP = coNP are out of scope.
+other native machines, the native twin-prime beeper (09) and Z_coNP (10).
 
 | # | plan | machine | depends on | size (lines) | difficulty |
 |---|---|---|---|---|---|
@@ -15,8 +15,10 @@ other native machines. Twin primes (not golfed) and NP = coNP are out of scope.
 | 06 | [Z_PSPACE](06-zps.md) | 291 states | 01 (02) | 1200–2000 | easy-medium: one game-tree induction |
 | 07 | [Z_MUL](07-zmul.md) | 403 states | 01 (03) | 5000–7000 | hard: new guest model (queue of stacks) |
 | 08 | [Z_NTT](08-zntt.md) | 469 states | 01 | 7000–10000+ | hardest: new everything + primes ≡ 1 (mod n) |
+| 09 | [twin primes](09-twin.md) | 19 states | — | 800–1200 | easy: a 2-symbol machine, no interpreter |
+| 10 | [Z_coNP](10-zconp.md) | 317 states | 01 (06, 07's base lesson) | 4000–6000 | medium-hard: choices at fresh cells, DFS = ∃ |
 
-**Order:** 01 → 02 → 06 → 03 → 04 → 05 → 07 → 08. Plans 02 and 06 are the cheapest
+**Order:** 01 → 02 → 06 → 03 → 04 → 05 → 07 → 08; 07, 09 and 10 are independent of each other. Plans 02 and 06 are the cheapest
 wins and exercise the refactor. 06 can move earlier or later freely.
 
 **Targets.** Each machine X gets `Quasihalts xMachine ↔ Sentence_X`, the advertised,
@@ -62,5 +64,7 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [x] 03 Z_FACTOR (`ZP.zfacQuasihalts_iff_sentence`, `zfac_quasihalts_iff_InP`; comparator-checked)
 - [x] 04 Z_DLOG (`ZP.zdlQuasihalts_iff_sentence`, `zdl_quasihalts_iff_InP`; comparator-checked)
 - [x] 05 Z_GI (`ZP.zgiQuasihalts_iff_sentence`, `zgi_quasihalts_iff_InP`; axioms checked, `lake comparator` not run here: no `bwrap`)
-- [ ] 07 Z_MUL
-- [ ] 08 Z_NTT (prime-existence question settled with the user first)
+- [ ] 07 Z_MUL (branch `lean-n3-p07`; the capacity obstruction is resolved, see the plan's last status section)
+- [x] 08 Z_NTT (`ZP.zntt_quasihalts_iff_sentence`, hypothesis `PrimeEx`; comparator-checked)
+- [ ] 09 twin primes (`ZP.twin_quasihalts_iff`; table generated)
+- [ ] 10 Z_coNP (`ZP.zconp_quasihalts_iff_sentence`; table, logic, certificate and `zcBase` done)

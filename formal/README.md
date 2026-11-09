@@ -69,6 +69,10 @@ Plans for the rest are in `plans/`.
 | Z_GI (415) | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
 | Z_NTT (550) | `ZP.zntt_quasihalts_iff_sentence` (hypothesis `ZP.PrimeEx`) | `DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
 
+In progress (plans 07, 09, 10): Z_MUL on branch `lean-n3-p07`; the 19-state twin-prime beeper (`TableTwin`);
+Z_coNP (`TableConp LogicConp LogicBaseConp CompileConp ExtChecksConp`: table, logical machine, compilation
+certificate and its base `zcBase` are done).
+
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
 transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair
 lemma), `Compile` (generic over a `Cert`), `GenericP` (any truth function).

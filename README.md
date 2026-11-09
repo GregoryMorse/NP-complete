@@ -24,7 +24,8 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_MUL (counter-machine compile) | 3623 | `machines/zmul.txt` |
 | **Z_NTT native (quasihalts iff the number-theoretic transform has linear-size linear circuits)** | **469** | `machines/zntt_native.txt` (`native/zntt.py`, ref `ref/zntt_ref.py`) |
 | Z_NTT (counter-machine compile) | 6106 | `machines/zntt.txt` |
-| twin-prime beeper (quasihalts iff finitely many twin primes) | 265 | `machines/twinprime.txt` |
+| **twin-prime beeper native (quasihalts iff finitely many twin primes)** | **19** | `machines/twinprime_native.txt` (`twin/`; 18 with a beep transition, tying the best known) |
+| twin-prime beeper (counter-machine compile) | 265 | `machines/twinprime.txt` |
 
 Z_P v2 is designed directly as a tape machine (`native/`, spec `docs/native.md`) and is
 tested beep-for-beep against its Python reference `ref/zp2_ref.py`. The other rows are
@@ -89,14 +90,14 @@ See `docs/spec.md` §5. In brief:
 - **TM vs counter machine:** lockstep at every instruction boundary.
 - **Controlled candidate lists:** exactly the predicted beeps, then silence.
 - **P-language swaps:** beep-for-beep agreement.
-- **Twin-prime beeper:** beeps exactly on the twin pairs.
+- **Twin-prime beeper:** beeps exactly on the twin pairs (native: `twin/test_twin.py` checks every round).
 - **Z_FACTOR, Z_GI:** the brute-force deciders agree with the reference on every instance
   up to the tested size. Both machines agree beep-for-beep with the reference prefix.
   The theorem for general A is in `docs/spec.md` §2.1.
 
 ## Layout
 `docs/` spec and history · `formal/` Lean project (Palomar layout) ·
-`machines/` build outputs · `tests/` · `ref/` · `compiler/` · `sim/`
+`machines/` build outputs · `tests/` · `ref/` · `compiler/` · `sim/` · `twin/` native twin-prime beeper
 
 ## Credits
 Gregory Morse (project brief, design decisions); construction, compiler and tests were

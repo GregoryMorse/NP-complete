@@ -35,6 +35,9 @@ public import ZP.Checks
 public import ZP.DefsPP
 public import ZP.ChecksPP
 public import ZP.CompilePP
+public import ZP.CompileConp
+public import ZP.ExtChecksConp
+public import ZP.TableTwin
 public import ZP.Count
 public import ZP.PairPP
 public import ZP.MainPP
