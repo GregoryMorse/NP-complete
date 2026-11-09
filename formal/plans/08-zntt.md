@@ -372,3 +372,8 @@ So `odFail` (`ODL` -> next assignment `WI0` / overflow `BEEP`) now applies direc
 `cmpLt`/`cpLtEnd`/`cmpAccLt` (acc smaller than `E`: refuted at `CPE3`), `cmpGt`/`cpGtEnd`/`cmpAccGt` (acc larger: refuted at `CP5`),
 and the `FA0` wrappers `fa0OLt`/`fa0OGt` reach `ODL` with an explicit tape. Remaining: parse these mid-pass tapes as `OdOut`
 (records beyond the cursor are in cursor form, not `done` form), then thread through `colAdvance`/`passStep` to drop `PassCmp`.
+
+### Generalised refuted outcome and VR-level compare failure
+`OdOut'` (whole tape, `Nn = 3^a' 2^b'`, so mid-pass tapes fit), `odlNext3` (same continuations as `odlNext2` from any `ODL` split),
+`OdOut.to'`, `fa0GFail` (mismatching `E`-mark count at the next output record → `ODL` with explicit tape, new `acc`/`E` bit-strings of unchanged lengths).
+Next: `colAdvanceGF`, `colStepNF/OF`, `passLoopF` (parse mid-pass tape via `VR.toOc`, `sepRest`), then drop `PassCmp`.

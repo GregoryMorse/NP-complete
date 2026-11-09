@@ -9684,5 +9684,144 @@ theorem fa0OGt (A : List Nat) (w : Rc) (hw : w.DE) (hO : w.O = 3) (e d s z : Nat
   refine h4.trans (h5.trans (h6.trans (h7.of_eq rfl ?_)))
   simp [Rc.tl, hacc, List.replicate_succ, Nat.add_comm, Nat.add_left_comm]
 
+
+/-- The refuted outcome, generalised: the parameter region `Nn` is `3^a' 2^b'`, and the tape is given whole. -/
+def OdOut' (D : List (Nat × Nat × Nat × Nat × Nat)) (Wf Qp : List Nat) (N : Nat) (T : List Nat) : Prop :=
+  ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ a' + b' = N ∧ 1 ≤ N ∧
+    GoodW (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ List.replicate b' 2))) ∧
+    (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧
+    T = (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ List.replicate b' 2))) ++ sepRest (o :: os)
+
+theorem OdOut'.toO {D Wf Qp N T} (h : OdOut' D Wf Qp N T) : TapeOutO T := by
+  obtain ⟨S0, a', b', o, os, a, b, c, c1, g, ok, d, e⟩ := h
+  exact ⟨_, o, os, g, ok, e⟩
+
+theorem OdOut'.noB {D Wf Qp N T} (h : OdOut' D Wf Qp N T) : NoB T := by
+  obtain ⟨S0, a', b', o, os, a, b, c, c1, g, ok, d, e⟩ := h
+  rw [e]
+  have sr : sepRest (o :: os) = 1 :: 1 :: tapeL (o :: os) := rfl
+  refine NoB_app_iff.2 ⟨g.noB, ?_⟩
+  rw [sr]
+  exact fun x hx => by
+    simp only [List.mem_cons] at hx
+    rcases hx with rfl | rfl | hx
+    · simp [NB]
+    · simp [NB]
+    · exact tapeL_noB _ ok x hx
+
+theorem OdOut.to' {D Wf Qp N R'} (h : OdOut D Wf Qp N R') : OdOut' D Wf Qp N ((Wf ++ [1]) ++ R') := by
+  obtain ⟨S0, a', b', o, os, hS, hne, hN, hg, hos, hd, e⟩ := h
+  refine ⟨S0, a', b' + 1, o, os, hS, hne, by omega, by omega, by simpa [List.replicate_succ] using hg, hos, hd, ?_⟩
+  simpa [List.replicate_succ] using e
+
+theorem odlNext3 (D : List (Nat × Nat × Nat × Nat × Nat)) (Wf Kf Cf : List Nat) (hW : BitsD Wf) (hK : BitsD Kf) (hC : BitsD Cf)
+    (N : Nat) (L R' : List Nat) (hT : OdOut' D Wf ((Kf ++ 1 :: Cf) ++ [1]) N (L ++ R')) :
+    (∃ u v os' X R'', Rest u v ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
+      znttLogic.Reach (hd QNTT.ODL L R') (hd QNTT.WI0 X (3 :: R''))) ∨
+    (∃ (A : List Nat) (n0 : Nat), znttLogic.Reach (hd QNTT.ODL L R') (hd QNTT.BEEP A []) ∧
+      ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
+        znttLogic.Reach X (hdR QNTT.PA0 [3] (1 :: (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+          ((Cf.map (fun x => if x = 1 then 1 else 3) ++ [3]) ++ 1 :: (List.replicate N 3 ++ List.replicate (n0 + 1) 0)))))) := by
+  have hT' := hT.toO
+  have sT := tapeOutO_sym4 hT'
+  have hR : Sym4 R' := (Sym4_app_iff.1 sT).2
+  have hL : NoB L := (NoB_app_iff.1 hT.noB).1
+  obtain ⟨S0, a', b', o, os, hS0, hS0ne, hN, hN1, hg, hos, hdg, hXY⟩ := hT
+  have hXY' : L ++ R' = (Wf ++ 1 :: (S0 ++ 1 :: ((Kf ++ 1 :: Cf) ++ [1] ++ List.replicate a' 3 ++ List.replicate b' 2))) ++
+      1 :: 1 :: tapeL (o :: os) := hXY
+  obtain ⟨v, hv, h1, h2⟩ := odFail _ hg o os hos _ _ hXY' hL hR
+  cases hs : odoStepR (o :: os) with
+  | some os' =>
+    obtain ⟨X, R'', e, hr⟩ := h1 os' hs
+    exact Or.inl ⟨_, v, os', X, R'', hv, e, hr⟩
+  | none =>
+    right
+    have hb := h2 hs
+    have hvm := rest_map hv
+    have hgv : GoodW v := hv.goodW
+    have hrep : List.replicate a' 3 ++ List.replicate b' 3 = List.replicate N 3 := by
+      subst hN
+      rw [List.replicate_append_replicate]
+    have hvE : v = Wf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (S0.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+        (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (Cf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: List.replicate N 3))) := by
+      rw [hvm, ← hrep]
+      simp [List.map_append, List.map_replicate, List.append_assoc]
+    obtain ⟨L0, rfl⟩ : ∃ L0, N = L0 + 1 := ⟨N - 1, by omega⟩
+    have hrk : ∀ x ∈ resetAll (o :: os), x.Ok := resetAll_ok _ hos
+    have hnb : NoB (tapeL (resetAll (o :: os))) := tapeL_noB _ hrk
+    have hAeq : (v ++ [1, 1]) ++ tapeL (resetAll (o :: os)) =
+        (Wf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (S0.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+          (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (Cf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+            List.replicate (L0 + 1) 3)))) ++ 1 :: 1 :: tapeL (resetAll (o :: os)) := by
+      rw [hvE]; simp [List.append_assoc]
+    have hnbA : NoB ((v ++ [1, 1]) ++ tapeL (resetAll (o :: os))) := by
+      have h1 : NoB v := hgv.noB
+      exact NoB_app_iff.2 ⟨NoB_app_iff.2 ⟨h1, by intro x hx; simp at hx; simp [hx, NB]⟩, hnb⟩
+    have hne : (v ++ [1, 1]) ++ tapeL (resetAll (o :: os)) ≠ [] := by simp
+    obtain ⟨X, hX, hXr⟩ := beepToSU1 _ hnbA hne
+    have hbo := beepOk (Wf.map (fun x => if x = 1 then 1 else 3)) (S0.map (fun x => if x = 1 then 1 else 3))
+      (Kf.map (fun x => if x = 1 then 1 else 3)) (Cf.map (fun x => if x = 1 then 1 else 3))
+      (tapeL (resetAll (o :: os))) L0 (bits_map hW) (bits_map hS0) (bits_map hK) (bits_map hC)
+      (by rw [← hvE]; exact hgv) hnb
+    refine ⟨_, (tapeL (resetAll (o :: os))).length, hb, X, hX, ?_⟩
+    rw [hAeq] at hXr
+    exact hXr.trans hbo
+
+
+
+theorem VR.toRc_bu (v : VR) (hv : v.Ok) :
+    v.toRc.b0 :: (v.toRc.br ++ 1 :: v.toRc.u0 :: v.toRc.ur) = v.b ++ 1 :: v.u := by
+  obtain ⟨b0, br, hB⟩ := List.exists_cons_of_ne_nil hv.bne
+  obtain ⟨u0, ur, hU⟩ := List.exists_cons_of_ne_nil hv.une
+  simp [VR.toRc, VR.toRcA, hB, hU]
+
+theorem fa0GFail (A : List Nat) (w : VR) (hw : w.Ok) (ws : List VR) (hws : ∀ x ∈ ws, x.Ok) (hA : Sym4 A)
+    (hO : w.O = 3) (e z : Nat) (he : 1 ≤ e) (hE : w.E = fld (e + z) e) (hne : e ≠ w.k) :
+    ∃ (L R acc2 E2 : List Nat), BitsD acc2 ∧ BitsD E2 ∧ acc2.length = w.w ∧ E2.length = w.E.length ∧
+      znttLogic.Reach (hdR QNTT.FA0 A ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws))) (hd QNTT.ODL L R) ∧
+      L ++ R = A ++ [3, w.O, w.P] ++ 1 :: (acc2 ++ 1 :: (E2 ++ 1 :: (w.b ++ 1 :: (w.u ++ tailVR ws)))) := by
+  have hwd : w.toRc.DE := ⟨w.toRcA_ok hw _ (fld_bits _ _), w.toRcA_rest _⟩
+  have hws' : ∀ x ∈ ws.map VR.toRc, x.DE := by
+    intro x hx; simp only [List.mem_map] at hx
+    obtain ⟨v, hv, rfl⟩ := hx
+    exact ⟨v.toRcA_ok (hws v hv) _ (fld_bits _ _), v.toRcA_rest _⟩
+  have hkw := hw.kw
+  have hk1 := hw.k1
+  obtain ⟨n, hn⟩ : ∃ n, w.k = n + 1 := ⟨w.k - 1, by omega⟩
+  have hbu := VR.toRc_bu w hw
+  have hO' : w.toRc.O = 3 := by simpa [VR.toRc, VR.toRcA] using hO
+  rcases Nat.lt_or_gt_of_ne hne with hlt | hgt
+  · -- e < k: E is smaller
+    obtain ⟨d, hd⟩ : ∃ d, w.k = e + d + 1 := ⟨w.k - e - 1, by omega⟩
+    obtain ⟨e', he'⟩ : ∃ e', e = e' + 1 := ⟨e - 1, by omega⟩
+    have b6 := fa0OGt A w.toRc hwd hO' e' d (w.w - w.k) z
+      (by have hk : w.k = e' + d + 2 := by omega
+          simp [VR.toRc, VR.toRcA, fld, hk]) (by simp [VR.toRc, VR.toRcA, hE, fld, he'])
+      (ws.map VR.toRc) hws' hA
+    rw [VR.toRc_tl w hw, tailB_toRc ws hws, hbu] at b6
+    have hlen : w.E.length = e + z := by rw [hE]; simp [fld]
+    refine ⟨_, _, List.replicate e' 2 ++ 2 :: 3 :: (List.replicate d 3 ++ List.replicate (w.w - w.k) 2),
+      3 :: List.replicate (z + e') 2, ?_, ?_, ?_, ?_, b6.of_eq rfl rfl, ?_⟩
+    · exact bd_app (BitsD.rep _ _ (by simp)) (BitsD.cons (by simp) (BitsD.cons (by simp)
+        (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)))))
+    · exact BitsD.cons (by simp) (BitsD.rep _ _ (by simp))
+    · simp; omega
+    · simp [hlen]; omega
+    · simp [VR.toRc, VR.toRcA, hO, List.append_assoc]
+  · obtain ⟨d, hd⟩ : ∃ d, e = w.k + d + 1 := ⟨e - w.k - 1, by omega⟩
+    have b6 := fa0OLt A w.toRc hwd hO' n d (w.w - w.k) z
+      (by simp [VR.toRc, VR.toRcA, fld, hn]) (by have he2 : e = n + d + 2 := by omega
+                                                 simp [VR.toRc, VR.toRcA, hE, fld, he2])
+      (ws.map VR.toRc) hws' hA
+    rw [VR.toRc_tl w hw, tailB_toRc ws hws, hbu] at b6
+    have hlen : w.E.length = e + z := by rw [hE]; simp [fld]
+    refine ⟨_, _, List.replicate n 2 ++ 3 :: List.replicate (w.w - w.k) 2,
+      3 :: 3 :: (List.replicate d 3 ++ List.replicate (z + n) 2), ?_, ?_, ?_, ?_, b6.of_eq rfl rfl, ?_⟩
+    · exact bd_app (BitsD.rep _ _ (by simp)) (BitsD.cons (by simp) (BitsD.rep _ _ (by simp)))
+    · exact BitsD.cons (by simp) (BitsD.cons (by simp) (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))))
+    · simp; omega
+    · simp [hlen]; omega
+    · simp [VR.toRc, VR.toRcA, hO, List.append_assoc]
+
 end ZP.NTT
 
