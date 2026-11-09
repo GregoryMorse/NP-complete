@@ -449,3 +449,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: pass compare as node values
 `CmpE`/`passCmp_iff`: under `ColInv`, `PassCmp n r vs` is exactly the pointwise check of each `O=3` record's carried E register against the node value `vals[j+i+1]` (same induction as `loopVals`). Next: E-register update `E' = E·d`, S-register check, chaining over passes in `FOk`.
+
+### Stage note: S register value of a pass
+`ctrS`, `outP_val`, `loopRun_pval`, `passPOf_val`: after a pass the S-register's first component is `(s0 + Σ_{O=3 records} r·n) mod P` (`P = p.1+p.2`). With the compare (`r` = node value = E value) this is the reference `Σ E'` check. Next: tie `r` of each finished record to `vals`, then chain passes.

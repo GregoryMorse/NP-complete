@@ -11693,5 +11693,50 @@ theorem passCmp_iff (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : Va
     obtain ⟨_, _, _, _, _, _, hO, hE, _, _⟩ := iv
     rw [hO, hE, hkv]
 
+
+/-- Contribution of a finished record to the `S` register: `r * n` for output records. -/
+def ctrS (t : VR × Nat × Nat) : Nat := if t.1.O = 2 then 0 else t.2.1 * t.1.n
+
+theorem outP_val (c : VR) (r : Nat) (p : Nat × Nat) (hp : 1 ≤ p.2) :
+    (outP c r p).1 = (p.1 + (if c.O = 2 then 0 else r * c.n)) % (p.1 + p.2) := by
+  unfold outP
+  split
+  · rename_i h; rw [Nat.add_zero]; exact (Nat.mod_eq_of_lt (by omega)).symm
+  · exact (sAdv_val _ p hp).2.2
+
+theorem loopRun_pval : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat), 1 ≤ p.2 →
+    (loopRun n c vs r s p).p'.1 =
+      (p.1 + ((loopRun n c vs r s p).cs.map ctrS).sum) % (p.1 + p.2)
+  | 0, c, vs, r, s, p, hp => by
+    simp [loopRun]; exact (Nat.mod_eq_of_lt (by omega)).symm
+  | n + 1, c, vs, r, s, p, hp => by
+    unfold loopRun
+    split
+    · simp; exact (Nat.mod_eq_of_lt (by omega)).symm
+    · rename_i w ws hw
+      have ih := loopRun_pval n w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p) (outP_pos c r p hp)
+      have hs := outP_sum c r p hp
+      have hv := outP_val c r p hp
+      simp only [List.map_cons, List.sum_cons]
+      rw [ih, hs, hv, Nat.mod_add_mod]
+      have hO : (outRec c r).O = c.O := by unfold outRec; split <;> rfl
+      have hn : (outRec c r).n = c.n := by unfold outRec; split <;> rfl
+      simp only [ctrS, hO, hn]
+      congr 1; omega
+
+theorem passPOf_val (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) (hp : 1 ≤ p.2) :
+    (passPOf n c vs r s p).1 = (p.1 + ((passCsOf n c vs r s p).map ctrS).sum) % (p.1 + p.2) := by
+  have h1 := loopRun_pval n c vs r s p hp
+  have h2 := loopRun_psum n c vs r s p hp
+  have h3 := outP_val (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p' h2.1
+  unfold passPOf; rw [h3, h2.2, h1, Nat.mod_add_mod]
+  unfold passCsOf
+  have hO : (outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r').O = (loopRun n c vs r s p).c'.O := by
+    unfold outRec; split <;> rfl
+  have hn : (outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r').n = (loopRun n c vs r s p).c'.n := by
+    unfold outRec; split <;> rfl
+  simp only [List.map_append, List.sum_append, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, ctrS, hO, hn]
+  congr 1; omega
+
 end ZP.NTT
 
