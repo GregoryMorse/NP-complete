@@ -3,6 +3,7 @@ module
 public import ZP.ConpRot
 public import ZP.ConpFuel
 public import ZP.ConpInterp
+public import ZP.DefsConp
 
 @[expose] public section
 
@@ -673,3 +674,129 @@ theorem peek (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (hg : 1 ≤ g) (z : Zp) 
           refine ⟨g', by omega, (hm.ofEq (hd_eq ?_ rfl) rfl).trans ((lift hp).ofEq rfl ?_)⟩
           · simp [Zp.Lw, bitsOf, bitsOf_snoc, bn]
           · simp [Bd, Zp.mv, Zp.Lw, Zp.Rw, bitsOf, cellN_some, bitsOf_snoc, bn]
+
+/-! ## Bookkeeping lemmas for the run -/
+
+theorem Zp.mv_sum_false (z : Zp) (w : Bool) :
+    (z.mv w false).Rt.length + (z.mv w false).Lt.length = z.Rt.length + z.Lt.length := by
+  rcases z with ⟨_ | ⟨r, Rt⟩, c, Lt⟩ <;> simp [Zp.mv] <;> omega
+
+theorem Zp.mv_sum_true (z : Zp) (w : Bool) (h : z.Lt ≠ []) :
+    (z.mv w true).Rt.length + (z.mv w true).Lt.length = z.Rt.length + z.Lt.length := by
+  rcases z with ⟨Rt, c, _ | ⟨x, Lt⟩⟩
+  · exact absurd rfl h
+  · simp [Zp.mv]; omega
+
+theorem headD_drop (D : List Bool) (k : Nat) : (D.drop k).headD true = D.getD k true := by
+  rw [List.headD_eq_head?_getD, List.head?_drop, List.getD_eq_getElem?_getD]
+
+theorem tail_drop' (D : List Bool) (k : Nat) : (D.drop k).tail = D.drop (k + 1) := by
+  rw [List.tail_drop]
+
+/-! ## The whole run -/
+
+theorem runC (n : Nat) (W : List Nat) (hW : NoB W) (D : List Bool) :
+    ∀ T R g z ds used, InvR R → 1 ≤ g → z.WF → Dig n ds → ds ≠ [] → valr n ds = T →
+      ∃ ds', Dig n ds' ∧ ds'.length = ds.length ∧
+        zconpLogic.Reach (Bd R g z W (FWr n ds) (Dt used (D.drop used.length)))
+          (RE (runChoiceAux T R z.tape z.Rt.length (z.Rt.length + z.Lt.length) D used).1 W (FWr n ds')
+            (Dt (runChoiceAux T R z.tape z.Rt.length (z.Rt.length + z.Lt.length) D used).2
+              (D.drop (runChoiceAux T R z.tape z.Rt.length (z.Rt.length + z.Lt.length) D used).2.length)))
+  | T, R, g, z, ds, used, hR, hg, hz, hds, hne, hv => by
+    have h1 : (1 : Nat) ∈ NB := by simp [NB]
+    have hDw : Sym4 (Dt used (D.drop used.length)) := Dt_sym4 _ _
+    have hV0 : NoB (z.Rw ++ 1 :: (W ++ 1 :: FWr n ds)) :=
+      (Bits.ofB _).noB.app (NoB.cons h1 (hW.app (NoB.cons h1 (FWr_noB n ds))))
+    have hVb : ∃ a ∈ z.Rw ++ 1 :: (W ++ 1 :: FWr n ds), a ∈ bits := by
+      obtain ⟨a, ha, hab⟩ := fw_bit n ds hne
+      exact ⟨a, List.mem_append_right _ (List.mem_cons_of_mem _ (List.mem_append_right _
+        (List.mem_cons_of_mem _ ha))), hab⟩
+    obtain ⟨p, b, X, eV, hb, hX⟩ := mb2 _ (0 :: Dt used (D.drop used.length)) hV0
+      (Sym4.cons (by simp [ALL]) hDw) hVb
+    obtain ⟨g1, hg1, hcd⟩ := countdown R hR g z.Lw (z.Rw ++ 1 :: (W ++ 1 :: (FWr n ds ++ 0 :: Dt used (D.drop used.length))))
+      z.c (Bits.ofB _) (by simpa using (hV0.sym4.app (Sym4.cons (by simp [ALL]) hDw)))
+      ⟨p, b, X, by simpa using eV, hb, hX⟩
+    have hR1 : InvR (rotN (iota z.c) R) := inv_rotN hR _
+    have hD := dec n ds hds (bitsOf (rotN (iota z.c) R)).reverse z.Lw z.Rw W (Dt used (D.drop used.length)) g1
+      (bitsOf_rev _) (Bits.ofB _) (Bits.ofB _) hW hDw
+    cases T with
+    | zero =>
+      refine ⟨ds.map fun _ => n + 1, fun d hd => ?_, by simp, ?_⟩
+      · obtain ⟨_, -, rfl⟩ := List.mem_map.mp hd
+        exact Nat.le_refl _
+      · have hE := hD.2 hv
+        obtain ⟨r, rest, e⟩ : ∃ r rest, rotN (iota z.c) R = r :: rest := by
+          cases h : rotN (iota z.c) R with
+          | nil => rw [h] at hR1; exact absurd hR1.1 (by simp)
+          | cons r rest => exact ⟨r, rest, rfl⟩
+        rw [e, bits1] at hE hcd
+        have hx := segExh (bitsOf rest).reverse z.Lw z.Rw
+          (W ++ 1 :: (FWr n (ds.map fun _ => n + 1) ++ 0 :: Dt used (D.drop used.length))) g1 (bn r)
+          (bn_bits r) (bitsOf_rev _) (Bits.ofB _) (Bits.ofB _)
+          (hW.sym4.app (Sym4.cons (by simp [ALL]) ((FWr_noB n _).sym4.app (Sym4.cons (by simp [ALL]) hDw))))
+        exact ((lift hcd).trans ((lift hE).trans (lift hx))).ofEq rfl (by simp [RE, runChoiceAux, dpOf, bn])
+    | succ T =>
+      obtain ⟨ds1, hd1, hl1, hv1, hdec⟩ := hD.1 (by omega)
+      have hne1 : ds1 ≠ [] := by
+        intro h; rw [h] at hl1; exact hne (List.length_eq_zero_iff.mp hl1.symm)
+      have hP := peek (rotN (iota z.c) R) hR1 g1 (by omega) z W (FWr n ds1) used (D.drop used.length) hW
+        (FWr_noB n ds1) (fw_bit n ds1 hne1)
+      simp only [runChoiceAux]
+      rw [Zp.tape_head hz]
+      have hst := (lift hcd).trans (lift hdec)
+      cases h2 : (rotN (iota z.c) R).getD 2 false with
+      | false =>
+        simp only [Bool.false_eq_true, ↓reduceIte]
+        exact ⟨ds1, hd1, hl1, hst.trans (hP.1 h2)⟩
+      | true =>
+        simp only [↓reduceIte]
+        obtain ⟨g', hg', hm⟩ := hP.2 h2
+        cases hdir : (rotN (iota z.c) R).getD 1 false with
+        | false =>
+          rw [hdir] at hm
+          have hs : stepD z ((rotN (iota z.c) R).getD 0 false) false used (D.drop used.length) =
+              (z.mv ((rotN (iota z.c) R).getD 0 false) false, used, D.drop used.length) := by simp [stepD]
+          rw [hs] at hm
+          dsimp only at hm
+          simp only [Bool.false_eq_true, ↓reduceIte]
+          obtain ⟨ds2, hd2, hl2, ih⟩ := runC n W hW D T _ g' (z.mv ((rotN (iota z.c) R).getD 0 false) false) ds1
+            used (inv_rotN (inv_rot hR1) _) (by omega) (Zp.mv_WF _ _ _) hd1 hne1 (by omega)
+          rw [Zp.mv_sum_false, Zp.mv_tape hz, Zp.mv_len] at ih
+          simp only [Bool.false_eq_true, ↓reduceIte] at ih
+          exact ⟨ds2, hd2, hl2.trans hl1, hst.trans (hm.trans ih)⟩
+        | true =>
+          rw [hdir] at hm
+          by_cases hlt : z.Lt = []
+          · have hs : stepD z ((rotN (iota z.c) R).getD 0 false) true used (D.drop used.length) =
+                (z.mvc ((rotN (iota z.c) R).getD 0 false) (D.getD used.length true),
+                  used ++ [D.getD used.length true], D.drop (used.length + 1)) := by
+              simp [stepD, hlt, headD_drop, tail_drop']
+            rw [hs] at hm
+            dsimp only at hm
+            have hcond : z.Rt.length + z.Lt.length < z.Rt.length + 1 := by rw [hlt]; simp
+            simp only [hcond, ↓reduceIte]
+            obtain ⟨ds2, hd2, hl2, ih⟩ := runC n W hW D T _ g'
+              (z.mvc ((rotN (iota z.c) R).getD 0 false) (D.getD used.length true)) ds1
+              (used ++ [D.getD used.length true]) (inv_rotN (inv_rot hR1) _) (by omega) (Zp.mvc_WF _ _ _) hd1
+              hne1 (by omega)
+            rw [Zp.mvc_tape hz hlt, Zp.mvc_len] at ih
+            have e0 : (z.mvc ((rotN (iota z.c) R).getD 0 false) (D.getD used.length true)).Lt = [] := rfl
+            rw [e0] at ih
+            simp only [List.length_nil, Nat.add_zero, List.length_append, List.length_singleton] at ih
+            exact ⟨ds2, hd2, hl2.trans hl1, hst.trans (hm.trans ih)⟩
+          · have hs : stepD z ((rotN (iota z.c) R).getD 0 false) true used (D.drop used.length) =
+                (z.mv ((rotN (iota z.c) R).getD 0 false) true, used, D.drop used.length) := by
+              simp [stepD, hlt]
+            rw [hs] at hm
+            dsimp only at hm
+            have hcond : ¬ (z.Rt.length + z.Lt.length < z.Rt.length + 1) := by
+              have : z.Lt.length ≠ 0 := fun h => hlt (List.length_eq_zero_iff.mp h)
+              omega
+            simp only [hcond, ↓reduceIte]
+            obtain ⟨ds2, hd2, hl2, ih⟩ := runC n W hW D T _ g'
+              (z.mv ((rotN (iota z.c) R).getD 0 false) true) ds1
+              used (inv_rotN (inv_rot hR1) _) (by omega) (Zp.mv_WF _ _ _) hd1 hne1 (by omega)
+            rw [Zp.mv_sum_true _ _ hlt, Zp.mv_tape hz, Zp.mv_len] at ih
+            simp only [↓reduceIte] at ih
+            exact ⟨ds2, hd2, hl2.trans hl1, hst.trans (hm.trans ih)⟩
+  termination_by T => T
