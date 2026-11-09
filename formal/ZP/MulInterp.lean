@@ -22,10 +22,17 @@ theorem rep_rep (a b x : Nat) (l : List Nat) :
 macro "wsimp" : tactic =>
   `(tactic| simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app, rep_rep])
 
-def isets : Env := [bits, ALL, bits, bits, NB, NB]
+def isets : Env := [bits, ALL, bits, bits, ALL, ALL]
 
 theorem ivalid {Qw G Lw Rw W F : List Nat} (hQ : Bits Qw) (hG : Sym4 G) (hL : Bits Lw)
-    (hR : Bits Rw) (hW : NoB W) (hF : NoB F) : Valid isets [Qw, G, Lw, Rw, W, F] :=
+    (hR : Bits Rw) (hW : Sym4 W) (hF : Sym4 F) : Valid isets [Qw, G, Lw, Rw, W, F] :=
+  Valid.cons hQ (Valid.cons hG (Valid.cons hL (Valid.cons hR (Valid.cons hW (Valid.cons hF
+    (Valid.nil _))))))
+
+def csets : Env := [bits, ALL, bits, bits, NB, NB]
+
+theorem cvalid {Qw G Lw Rw W F : List Nat} (hQ : Bits Qw) (hG : Sym4 G) (hL : Bits Lw)
+    (hR : Bits Rw) (hW : NoB W) (hF : NoB F) : Valid csets [Qw, G, Lw, Rw, W, F] :=
   Valid.cons hQ (Valid.cons hG (Valid.cons hL (Valid.cons hR (Valid.cons hW (Valid.cons hF
     (Valid.nil _))))))
 
@@ -61,10 +68,10 @@ def dpOf (b : Nat) : Nat := if b = 3 then Q.DP11 else Q.DP10
 /-! ## Count-down: `BK2` on a bit, to `TW` on `Q`'s right end -/
 
 theorem segA (Qw Lw W : List Nat) (g ch : Nat) (hch : ch ∈ bits) (hQ : Bits Qw) (hL : Bits Lw)
-    (hW : NoB W) :
+    (hW : Sym4 W) :
     zmBase.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [ch])) (1 :: W))
       (hd Q.TW Qw (List.replicate g 0 ++ 0 :: (Lw ++ cdn ch :: 1 :: W))) := by
-  have hv := ivalid hQ (zeros4 g) hL Bits.nil hW NoB.nil
+  have hv := ivalid hQ (zeros4 g) hL Bits.nil hW Sym4.nil
   rcases mem_bits hch with rfl | rfl
   · exact checkTT (env := [Qw, List.replicate g 0, Lw, [], W, []]) (E := []) (k := 8) hv trivial
       (ls := [.blk 0 .id, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 2]) (rs := [.sym 1, .blk 4 .id])
@@ -135,7 +142,7 @@ theorem segC (Qw Lw Rw W F : List Nat) (g : Nat) (hQ : Bits Qw) (hL : Bits Lw) (
     (hW : NoB W) (hF : NoB F) :
     zmBase.Reach (hd Q.BK2 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: (W ++ 1 :: F))))
       (hd Q.DEC1 (Qw ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]) ++ 1 :: (Rw ++ 1 :: W) ++ [1] ++ F) []) := by
-  have hv := ivalid hQ (zeros4 g) hL hR hW hF
+  have hv := cvalid hQ (zeros4 g) hL hR hW hF
   exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, F]) (E := []) (k := 12) hv trivial
     (ls := [.blk 0 .id, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
     (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id])
@@ -146,10 +153,10 @@ theorem segC (Qw Lw Rw W F : List Nat) (g : Nat) (hQ : Bits Qw) (hL : Bits Lw) (
 /-! ## Time-out: `EXH` on the blank `ch`, cleanup, result 0 -/
 
 theorem segExh (Qw Lw Rw W : List Nat) (g r : Nat) (hr : r ∈ bits) (hQ : Bits Qw) (hL : Bits Lw)
-    (hR : Bits Rw) (hW : NoB W) :
+    (hR : Bits Rw) (hW : Sym4 W) :
     zmBase.Reach (hd Q.EXH (Qw ++ [r] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
       (hdR Q.DP10 [1] W) := by
-  have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid hQ (zeros4 g) hL hR hW Sym4.nil
   rcases mem_bits hr with rfl | rfl
   · exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 24) hv trivial
         (ls := [.blk 0 .id, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
@@ -166,11 +173,11 @@ theorem segExh (Qw Lw Rw W : List Nat) (g r : Nat) (hr : r ∈ bits) (hQ : Bits 
 
 /-- Halting peek, `w = 0`, `d = 0`, `t = 0`: outcome 0 (as in `zp2`). -/
 theorem segHalt0 (Qw Lw Rw W : List Nat) (g : Nat)
-    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : Sym4 W) :
     zmBase.Reach (hd Q.FBACK (Qw ++ [2, 2, 2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
         (1 :: (Rw ++ 1 :: W)))
       (hdR Q.DP10 [1] W) := by
-  have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid hQ (zeros4 g) hL hR hW Sym4.nil
   exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 64) hv trivial
         (ls := [.blk 0 .id, .sym 2, .sym 2, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
         (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
@@ -179,21 +186,21 @@ theorem segHalt0 (Qw Lw Rw W : List Nat) (g : Nat)
 
 /-- Halting peek, `w = 1`, `d = 0`, `t = 0`: the output check starts at `mK1`; `Rw` is the output. -/
 theorem segHalt1 (Qw Lw Rw W : List Nat) (g : Nat)
-    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : Sym4 W) :
     zmulLogic.Reach (hd Q.FBACK (Qw ++ [2, 2, 3] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
         (1 :: (Rw ++ 1 :: W)))
       (hdR QMul.mK1 [2] (Rw ++ 1 :: W)) := by
-  have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid hQ (zeros4 g) hL hR hW Sym4.nil
   exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 40) hv trivial
         (ls := [.blk 0 .id, .sym 2, .sym 2, .sym 3, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
         (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
         (ls' := [.sym 2]) (rs' := [.blk 3 .id, .sym 1, .blk 4 .id])
         (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
-theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : Sym4 W) :
     zmBase.Reach (hd Q.FBACK ([2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
       (hdR Q.DP10 [1] W) := by
-  have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid Bits.nil (zeros4 g) hL hR hW Sym4.nil
   exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 32) hv trivial
     (ls := [.sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
     (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
@@ -201,10 +208,10 @@ theorem segShort1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (
     (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-- Short entry `[false, false]`: outcome 0. -/
-theorem segShort2_0 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+theorem segShort2_0 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : Sym4 W) :
     zmBase.Reach (hd Q.FBACK ([2, 2] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
       (hdR Q.DP10 [1] W) := by
-  have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid Bits.nil (zeros4 g) hL hR hW Sym4.nil
   exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 64) hv trivial
     (ls := [.sym 2, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
     (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
@@ -212,10 +219,10 @@ theorem segShort2_0 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw)
     (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
 
 /-- Short entry `[true, false]`: the output check starts. -/
-theorem segShort2_1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+theorem segShort2_1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw) (hW : Sym4 W) :
     zmulLogic.Reach (hd Q.FBACK ([2, 3] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)))
       (hdR QMul.mK1 [2] (Rw ++ 1 :: W)) := by
-  have hv := ivalid Bits.nil (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid Bits.nil (zeros4 g) hL hR hW Sym4.nil
   exact checkTF (env := [[], List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 64) hv trivial
     (ls := [.sym 2, .sym 3, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
     (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
@@ -226,10 +233,10 @@ theorem segShort2_1 (Lw Rw W : List Nat) (g : Nat) (hL : Bits Lw) (hR : Bits Rw)
 
 /-- Guest left move at cell 0: the head stays. -/
 theorem segMv0e (Qw Lw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hQ : Bits Qw) (hL : Bits Lw)
-    (hW : NoB W) :
+    (hW : Sym4 W) :
     zmBase.Reach (hd Q.FBACK (Qw ++ [3, 2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0])) (1 :: 1 :: W))
       (hd Q.RTW (Qw ++ [3, 2, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ r0 :: 1 :: 1 :: W))) := by
-  have hv := ivalid hQ (zeros4 g) hL Bits.nil hW NoB.nil
+  have hv := ivalid hQ (zeros4 g) hL Bits.nil hW Sym4.nil
   rcases mem_bits h0 with rfl | rfl
   · exact checkTT (env := [Qw, List.replicate g 0, Lw, [], W, []]) (E := []) (k := 26) hv trivial
         (ls := [.blk 0 .id, .sym 3, .sym 2, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
@@ -246,11 +253,11 @@ theorem segMv0e (Qw Lw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits) (hQ : Bits 
 
 /-- Guest left move onto the cell `c`. -/
 theorem segMv0c (Qw Lw Rw W : List Nat) (g r0 c : Nat) (h0 : r0 ∈ bits) (hc : c ∈ bits)
-    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : Sym4 W) :
     zmBase.Reach (hd Q.FBACK (Qw ++ [3, 2, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
         (1 :: c :: (Rw ++ 1 :: W)))
       (hd Q.RTW (Qw ++ [3, 2, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ r0 :: c :: 1 :: (Rw ++ 1 :: W)))) := by
-  have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid hQ (zeros4 g) hL hR hW Sym4.nil
   rcases mem_bits h0 with rfl | rfl <;> rcases mem_bits hc with rfl | rfl
   · exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 26) hv trivial
         (ls := [.blk 0 .id, .sym 3, .sym 2, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
@@ -279,11 +286,11 @@ theorem segMv0c (Qw Lw Rw W : List Nat) (g r0 c : Nat) (h0 : r0 ∈ bits) (hc : 
 
 /-- Guest right move. -/
 theorem segMv1 (Qw Lw Rw W : List Nat) (g r0 : Nat) (h0 : r0 ∈ bits)
-    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) :
+    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : Sym4 W) :
     zmBase.Reach (hd Q.FBACK (Qw ++ [3, 3, r0] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
         (1 :: (Rw ++ 1 :: W)))
       (hd Q.RTW (Qw ++ [3, 3, r0]) (List.replicate g 0 ++ 0 :: (Lw ++ 1 :: r0 :: (Rw ++ 1 :: W)))) := by
-  have hv := ivalid hQ (zeros4 g) hL hR hW NoB.nil
+  have hv := ivalid hQ (zeros4 g) hL hR hW Sym4.nil
   rcases mem_bits h0 with rfl | rfl
   · exact checkTT (env := [Qw, List.replicate g 0, Lw, Rw, W, []]) (E := []) (k := 22) hv trivial
         (ls := [.blk 0 .id, .sym 3, .sym 3, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
