@@ -414,3 +414,6 @@ Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the 
 `nextPass_start`: a finished record (with `RecI`) yields a `StartRec` for the next pass (`a = 0`, `a + c = π`, `k = [flag = 3] + 1`, `n`, `w` kept). Remaining: lift to the list (flags `2^(t+1) 3 2..`), compare/power-sum, chaining, `evalC`, `hasCircuit`, bridge.
 
 `passVals`: from a start list satisfying `StartRec` per index and `ValsOk` (the node recurrence, supplied by `valsAux_get`), `loopRun` returns finished records whose values are `vals[0..N-2]` and a last cursor with value `vals[N-1]`. Note: the abstract program (`AbstractNTT.lean`: `abstractQN_iff`, `sentenceN_iff` under `PrimeEx`), padding (`PadNTT`) and the small facts are already proved; the open part is the machine-to-`evalC` link and the bridge.
+
+### Stage: digit decoder (`hasCircuit_iff`)
+`decRecs πs ds` decodes digits to records (`ptrOf π`: none for `π ≤ 1`, `some (π-2)` otherwise); `DigOk` (`π_i ≤ i+1`, `d_i < p`, matching the build: record `i` has pointer window width `i+1`, coefficient range `p`); `mem_allRecs` and `hasCircuit_iff`: `hasCircuit pr c n` iff some in-range digit assignment of length `c*n` satisfies `evalC` on `decRecs`. The duplicate none digits `π = 0, 1` are harmless. Remaining: machine run on a digit assignment ↔ `evalC`, odometer enumerates all in-range digit assignments, bridge.

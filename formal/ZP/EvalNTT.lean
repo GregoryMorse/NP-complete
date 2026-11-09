@@ -11538,5 +11538,67 @@ theorem passVals (p t : Nat) (πs ds vals : List Nat) (hp : 2 ≤ p) (y0 : VR) (
     (y0.curG.k - 1) s pp (by simp) (by omega) hI rfl
   simpa using this
 
+
+def decRecs : List Nat → List Nat → List Rec
+  | π :: πs, d :: ds => (ptrOf π, d) :: decRecs πs ds
+  | _, _ => []
+
+def DigOk (p : Nat) : Nat → List Nat → List Nat → Prop
+  | _, [], [] => True
+  | j, π :: πs, d :: ds => π ≤ j + 1 ∧ d < p ∧ DigOk p (j + 1) πs ds
+  | _, _, _ => False
+
+theorem mem_recChoices (j p : Nat) (r : Rec) :
+    r ∈ recChoices j p ↔ ∃ π d, π ≤ j + 1 ∧ d < p ∧ r = (ptrOf π, d) := by
+  unfold recChoices
+  simp only [List.mem_append, List.mem_map, List.mem_range, List.mem_flatMap]
+  constructor
+  · rintro (⟨b, hb, rfl⟩ | ⟨u, hu, b, hb, rfl⟩)
+    · exact ⟨0, b, by omega, hb, by simp [ptrOf]⟩
+    · exact ⟨u + 2, b, by omega, hb, by simp [ptrOf]⟩
+  · rintro ⟨π, d, h1, h2, rfl⟩
+    by_cases h : 2 ≤ π
+    · right; exact ⟨π - 2, by omega, d, h2, by simp [ptrOf, h]⟩
+    · left; exact ⟨d, h2, by simp [ptrOf, h]⟩
+
+theorem mem_allRecs (p : Nat) : ∀ (N j : Nat) (recs : List Rec), recs ∈ allRecs p N j ↔
+    ∃ πs ds, DigOk p j πs ds ∧ πs.length = N ∧ decRecs πs ds = recs
+  | 0, j, recs => by
+    simp only [allRecs, List.mem_singleton]
+    constructor
+    · rintro rfl; exact ⟨[], [], trivial, rfl, rfl⟩
+    · rintro ⟨πs, ds, h, hl, rfl⟩
+      have : πs = [] := List.length_eq_zero_iff.1 hl
+      subst this
+      cases ds <;> simp [DigOk, decRecs] at h ⊢
+  | N + 1, j, recs => by
+    simp only [allRecs, List.mem_flatMap, List.mem_map]
+    constructor
+    · rintro ⟨r, hr, rs, hrs, rfl⟩
+      obtain ⟨π, d, h1, h2, rfl⟩ := (mem_recChoices j p r).1 hr
+      obtain ⟨πs, ds, hd, hl, rfl⟩ := (mem_allRecs p N (j + 1) rs).1 hrs
+      exact ⟨π :: πs, d :: ds, ⟨h1, h2, hd⟩, by simp [hl], rfl⟩
+    · rintro ⟨πs, ds, hd, hl, rfl⟩
+      cases πs with
+      | nil => simp at hl
+      | cons π πs =>
+        cases ds with
+        | nil => simp [DigOk] at hd
+        | cons d ds =>
+          obtain ⟨h1, h2, hd'⟩ := hd
+          refine ⟨(ptrOf π, d), (mem_recChoices j p _).2 ⟨π, d, h1, h2, rfl⟩, decRecs πs ds,
+            (mem_allRecs p N (j + 1) _).2 ⟨πs, ds, hd', by simpa using hl, rfl⟩, rfl⟩
+
+theorem hasCircuit_iff (pr : Nat → Nat) (c n : Nat) : hasCircuit pr c n = true ↔
+    ∃ πs ds, DigOk (pr n) 0 πs ds ∧ πs.length = c * n ∧ evalC n (pr n) (decRecs πs ds) = true := by
+  unfold hasCircuit
+  rw [List.any_eq_true]
+  constructor
+  · rintro ⟨recs, hm, he⟩
+    obtain ⟨πs, ds, h1, h2, rfl⟩ := (mem_allRecs _ _ _ recs).1 hm
+    exact ⟨πs, ds, h1, h2, he⟩
+  · rintro ⟨πs, ds, h1, h2, he⟩
+    exact ⟨_, (mem_allRecs _ _ _ _).2 ⟨πs, ds, h1, h2, rfl⟩, he⟩
+
 end ZP.NTT
 
