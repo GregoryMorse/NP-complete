@@ -479,3 +479,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: pass facts in digit terms
 `pass_setup`, `pass_cmp` (`PassCmp ↔ CmpD` on the tails), `pass_sum` (`passPOf.1 = SumOD D vl % S`). Remaining: `foks_step` assembling these with `passNext` and the `hcm` clause.
+
+### Stage note: `foks_step`
+`foks_step`: for `t+1 ≤ n`, `L' = replicate (n-t-1) 2`, `S = p`: `FOkS (m+1) n D es t (y::L') S` ⇔ compare of records ≥1 (`CmpD`) ∧ `Σ val·digit ≡ 0 (mod p)` ∧ record-0 clause for the next pass (`H0z`) ∧ `FOkS m n D es' (t+1) L' S`, with `es' = esN …`. Next: the base case (`FOkS 0`), the induction over `m` against `evalFrom`, and `vals` of the next pass.

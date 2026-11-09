@@ -12594,5 +12594,122 @@ theorem pass_sum (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (y0
   simp
 
 
+
+def H0z (D : List DG) (es : List Nat) : Prop :=
+  ∀ g e, D.head? = some g → es.head? = some e → g.2.2.2.2.2 = 3 → e = 0
+
+theorem foks_step (p t m n : Nat) (D : List DG) (es L' : List Nat) (y S : Nat) (hD : DOk p D es) (hS : S = p)
+    (hn : D.length = n + 1) (ht : t + 1 ≤ n) (hL : L' = List.replicate (n - t - 1) 2) :
+    FOkS (m + 1) n D es t (y :: L') S ↔
+      (CmpD D.tail es.tail (valsL p t D).tail ∧ SumOD D (valsL p t D) % S = 0 ∧
+        H0z D (esN p D es (valsL p t D)) ∧ FOkS m n D (esN p D es (valsL p t D)) (t + 1) L' S) := by
+  have hlen := hD.1
+  have hp := hD.2.1
+  obtain ⟨g, gs, rfl⟩ : ∃ g gs, D = g :: gs := by
+    cases D with
+    | nil => simp at hn
+    | cons a b => exact ⟨a, b, rfl⟩
+  obtain ⟨e, es2, rfl⟩ : ∃ e es2, es = e :: es2 := by
+    cases es with
+    | nil => simp at hlen
+    | cons a b => exact ⟨a, b, rfl⟩
+  have hy : mkSL t 0 (g :: gs) (e :: es2) = mkStart g (fl t 0) e :: mkSL t 1 gs es2 := rfl
+  generalize hy0 : mkStart g (fl t 0) e = y0 at hy
+  generalize hys : mkSL t 1 gs es2 = ys at hy
+  have hnys : ys.length = n := by
+    have := (pass_setup p t _ _ hD y0 ys hy).2.2.2.2
+    simp only [List.length_cons] at this hn; omega
+  subst hnys
+  have hflag : List.replicate (t + 1) 2 ++ 3 :: L' = (List.range' 0 (ys.length + 1)).map (fl (t + 1)) := by
+    rw [flags_eq (t) (ys.length + 1) (by omega), hL]
+    congr 3; omega
+  have hnext := passNext p t _ _ hD y0 ys hy S
+  have hcl : (passCsOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).length = ys.length + 1 := by
+    have := loopRun_cs_length ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) (by simp)
+    unfold passCsOf; simp [this]
+  obtain ⟨t0, ts, hz⟩ : ∃ t0 ts, (passCsOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).zip
+      (List.replicate (t + 1) 2 ++ 3 :: L') = t0 :: ts := by
+    rw [hflag]
+    generalize (passCsOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)) = qs at hcl ⊢
+    cases qs with
+    | nil => simp at hcl
+    | cons q qs => exact ⟨_, _, by rw [List.range'_succ, List.map_cons, List.zip_cons_cons]⟩
+  have hvl : valsL p t (g :: gs) = (List.range (ys.length + 1)).map fun i =>
+      (valsAux t p 0 (decRecs ((g :: gs).map fun g => g.2.2.1) ((g :: gs).map fun g => g.1)) []).getD i 0 := by
+    unfold valsL
+    have : (g :: gs).length = ys.length + 1 := by simp only [List.length_cons] at hn ⊢; omega
+    rw [this]
+  rw [← hflag, hz, ← hvl] at hnext
+  simp only [List.map_cons] at hnext
+  have hnx : mkSL (t + 1) 0 (g :: gs) (esN p (g :: gs) (e :: es2) (valsL p t (g :: gs))) =
+      nxtW t0 :: (ts.map fun q => q.1.1.nextPass q.2) := hnext.symm
+  have hF : FOkS m ys.length (g :: gs) (esN p (g :: gs) (e :: es2) (valsL p t (g :: gs))) (t + 1) L' S ↔
+      FOk m ys.length (nxtC t0) (nxtVs ts) (nxtR t0) (nxtS t0) (0, S) (t + 1) L' := by
+    unfold FOkS; rw [hnx]; rfl
+  rw [hF]
+  have hl0 : FOkS (m + 1) ys.length (g :: gs) (e :: es2) t (y :: L') S ↔
+      FOk (m + 1) ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) t (y :: L') := by
+    unfold FOkS; rw [hy]
+  rw [hl0]
+  simp only [FOk, List.tail_cons]
+  have hcmp := pass_cmp p t _ _ hD y0 ys hy
+  have hsum := pass_sum p t _ _ hD y0 ys hy S (by omega)
+  simp only [List.tail_cons] at hcmp
+  have hps := passPOf_sum ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) (by simp; omega)
+  have hw := DOk_w hD
+  -- head of the next pass
+  have hv0 : ∃ v0 vl0, valsL p t (g :: gs) = v0 :: vl0 := by
+    unfold valsL
+    simp only [List.length_cons]
+    rw [List.range_succ_eq_map]; simp
+  obtain ⟨v0, vl0, hv0⟩ := hv0
+  have hhd : nxtW t0 = mkStart g 2 (if g.2.2.2.2.2 = 2 then e else (v0 * g.1) % p) := by
+    rw [hv0] at hnx
+    simp only [esN, mkSL] at hnx
+    have := (List.cons.inj hnx).1.symm
+    rw [this]; simp [fl]
+  have he0 : (if g.2.2.2.2.2 = 2 then e else (v0 * g.1) % p) < p := by
+    split
+    · exact hw.2 e (by simp)
+    · exact Nat.mod_lt _ (by omega)
+  have hcmiff : ((nxtW t0).O = 3 → ∃ z, 1 ≤ (nxtW t0).k ∧ (nxtW t0).E = fld ((nxtW t0).k + z) (nxtW t0).k) ↔
+      H0z (g :: gs) (esN p (g :: gs) (e :: es2) (valsL p t (g :: gs))) := by
+    rw [hhd, hv0]
+    have hfc := fld_cmp p (if g.2.2.2.2.2 = 2 then e else (v0 * g.1) % p) 0 he0 (by omega)
+    simp only [mkStart, esN, H0z, List.head?_cons, Option.some.injEq]
+    simp only [Nat.zero_add] at hfc
+    rw [hw.1 g (by simp)]
+    have e2 : (if (2:Nat) = 3 then 2 else 1) = 1 := by decide
+    rw [e2]
+    generalize (if g.2.2.2.2.2 = 2 then e else (v0 * g.1) % p) = E0 at hfc he0 ⊢
+    constructor
+    · intro h g' e' hg' he' hO
+      subst hg'; subst he'
+      obtain ⟨z, h1, h2⟩ := h hO
+      exact hfc.1 ⟨z, h1, h2⟩
+    · intro h hO
+      exact hfc.2 (h g E0 rfl rfl hO)
+  have hS0 : (passPOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).1 = 0 ↔
+      SumOD (g :: gs) (valsL p t (g :: gs)) % S = 0 := by rw [hsum]
+  rw [hcmp]
+  constructor
+  · rintro ⟨hc, h0, hall⟩
+    obtain ⟨hcm, hf⟩ := hall t0 ts hz
+    have h2 : (passPOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).2 = S := by
+      have := hps.2; rw [h0] at this; simpa using this
+    rw [h2] at hf
+    exact ⟨hc, hS0.1 h0, hcmiff.1 hcm, hf⟩
+  · rintro ⟨hc, hs, h0z, hf⟩
+    have h0 := hS0.2 hs
+    have h2 : (passPOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).2 = S := by
+      have := hps.2; rw [h0] at this; simpa using this
+    refine ⟨hc, h0, fun t0' ts' hz' => ?_⟩
+    have := hz.symm.trans hz'
+    obtain ⟨h1, h3⟩ := List.cons.inj this
+    subst h1; subst h3
+    rw [h2]
+    exact ⟨hcmiff.2 h0z, hf⟩
+
+
 end ZP.NTT
 
