@@ -5925,5 +5925,30 @@ theorem beepStepZ (A R : List Nat) :
   rw [← e1, ← e2]
   exact cstep_zstep (by decide +kernel)
 
+/-- The restoring walk from the parameters to the first record separator. -/
+theorem od0Walk {u v : List Nat} (h : Rest u v) :
+    ∀ (A R : List Nat), Sym4 A → Sym4 R →
+    znttLogic.Reach (hdR QNTT.OD0 A (u ++ R)) (hdR QNTT.OD0 (A ++ v) R) := by
+  induction h with
+  | nil => intro A R _ _; simpa using LTM.Reach.refl znttLogic _
+  | @bit b u v hb h ih =>
+    intro A R hA hR
+    have h1 : znttLogic.Reach (hdR QNTT.OD0 A (b :: (u ++ R))) (hdR QNTT.OD0 (A ++ [3]) (u ++ R)) := by
+      simp at hb; rcases hb with rfl | rfl
+      · exact od0Bit2 A _ hA (h.sym4_src.app hR)
+      · exact od0Bit3 A _ hA (h.sym4_src.app hR)
+    have h2 := ih (A ++ [3]) R (hA.app (by intro y hy; simp at hy; subst hy; simp [ALL])) hR
+    simpa using h1.trans h2
+  | @mb b u v hb h ih =>
+    intro A R hA hR
+    have h1 := od0M A (b :: (u ++ R)) hA (Sym4.cons (by simp at hb; rcases hb with rfl | rfl <;> simp [ALL]) (h.sym4_src.app hR))
+    have hA1 : Sym4 (A ++ [1]) := hA.app (by intro y hy; simp at hy; subst hy; simp [ALL])
+    have h1' : znttLogic.Reach (hdR QNTT.OD0m (A ++ [1]) (b :: (u ++ R))) (hdR QNTT.OD0 (A ++ [1] ++ [3]) (u ++ R)) := by
+      simp at hb; rcases hb with rfl | rfl
+      · exact od0mBit2 _ _ hA1 (h.sym4_src.app hR)
+      · exact od0mBit3 _ _ hA1 (h.sym4_src.app hR)
+    have h2 := ih (A ++ [1] ++ [3]) R (hA1.app (by intro y hy; simp at hy; subst hy; simp [ALL])) hR
+    simpa using h1.trans (h1'.trans h2)
+
 end ZP.NTT
 
