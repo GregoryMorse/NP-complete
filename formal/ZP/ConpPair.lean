@@ -484,4 +484,63 @@ theorem qsToTW (Vq : List Nat) (Pb : List Bool) (X Rest : List Nat) (hVq : NoB V
       h2.ofEq rfl (by simp)
     exact (h1'.trans h2').trans (h3.ofEq (by simp) (by simp))
 
+theorem setupC (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W F Dw : List Nat)
+    (hV : 1 :: W1 = Vq ++ [1]) (hVq : NoB Vq) (hR : Sym4 Rest) (hW : NoB W) (hF : NoB F)
+    (hFb : ∃ a ∈ F, a ∈ bits) (hDw : Sym4 Dw)
+    (hWF : W1 ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) = W ++ 1 :: (F ++ 0 :: Dw)) :
+    ∃ g, 1 ≤ g ∧ zconpLogic.Reach (hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1]))) (bitsOf Xb ++ 1 :: Rest))
+      (Bd (rot ((core Pb).reverse ++ [false])) g ⟨[], Xb.head?, Xb.tail⟩ W F Dw) := by
+  have hVn : NoB (Vq ++ [1]) := hVq.app (NoB.cons (by simp [NB]) NoB.nil)
+  have hP : Bits (bitsOf Pb) := Bits.ofB Pb
+  have hX : Bits (bitsOf Xb) := Bits.ofB Xb
+  have hXr : Bits (bitsOf Xb).reverse := bitsOf_rev Xb
+  obtain ⟨k0, hk0, hcc⟩ := bitsOf_core_split Pb
+  have h1 := gcLoop (Vq ++ [1]) (bitsOf Pb) Rest hVn hP hR (bitsOf Xb) [] Bits.nil hX
+  have h2 := gcEndS (bitsOf Xb).reverse (Vq ++ [1]) (bitsOf Pb) (bitsOf Xb) Rest hXr hVn hP hX hR
+  have h4 := qsToTW Vq Pb (bitsOf Xb) Rest hVq hX hR k0 hk0 hcc
+  have e0 : hdR Q.GC (1 :: (1 :: W1 ++ (bitsOf Pb ++ [1]))) (bitsOf Xb ++ 1 :: Rest) =
+      hdR Q.GC (([] : List Nat).reverse ++ 1 :: ((Vq ++ [1]) ++ (bitsOf Pb ++ 1 :: [])))
+        (bitsOf Xb ++ 1 :: Rest) := by
+    rw [hV]; simp
+  have hA := (h1.ofEq e0.symm (by simp)).trans (h2.trans h4)
+  have hG : Sym4 (0 :: ((bitsOf Xb).reverse ++ 1 :: (Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest))))) :=
+    Sym4.cons (by simp [ALL]) (hXr.sym4.app (Sym4.cons (by simp [ALL]) (hVq.sym4.app (Sym4.cons (by simp [ALL])
+      (hP.sym4.app (Sym4.cons (by simp [ALL]) (hX.sym4.app (Sym4.cons (by simp [ALL]) hR))))))))
+  obtain ⟨R', H, hrot, hH, -, hr⟩ := rotate rotNormal ((core Pb).reverse ++ [false]) (by simp) _ hG
+  rw [rst_hd, rnav_hd] at hr
+  have hcode : (bitsOf ((core Pb).reverse ++ [false])).reverse = 2 :: bitsOf (core Pb) := by
+    simp [bitsOf]
+  have hB0 := hA.trans (lift (hr.ofEq (by rw [hcode]) rfl))
+  have eT : Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) = 1 :: (W ++ 1 :: (F ++ 0 :: Dw)) := by
+    have e : Vq ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) =
+        (Vq ++ [1]) ++ (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: Rest)) := by simp
+    rw [e, ← hV, List.cons_append, hWF]
+  have hVt : NoB (1 :: (W ++ 1 :: F)) := NoB.cons (by simp [NB]) (hW.app (NoB.cons (by simp [NB]) hF))
+  obtain ⟨p, b, X', eV0, hb, hX'⟩ := mb2 _ (0 :: Dw) hVt (Sym4.cons (by simp [ALL]) hDw) (by
+    obtain ⟨a, ha, hab⟩ := hFb
+    exact ⟨a, List.mem_cons_of_mem _ (List.mem_append_right _ (List.mem_cons_of_mem _ ha)), hab⟩)
+  have eV : 1 :: (W ++ 1 :: (F ++ 0 :: Dw)) = List.replicate p 1 ++ b :: X' := by
+    rw [← eV0]; simp
+  have hRr := bits_of_eq hrot
+  have hrr : (bitsOf (rot ((core Pb).reverse ++ [false]))).reverse = 2 :: R'.reverse := by rw [hrot]; simp
+  obtain ⟨k, hk⟩ : ∃ k, H.length = k + 1 := ⟨entryOnes ((core Pb).reverse ++ [false]) + 1, by omega⟩
+  cases Xb with
+  | nil =>
+    have hB := segB R'.reverse [] X' k 0 p 0 b (Or.inl rfl) hb hRr Bits.nil hX'
+    refine ⟨k + 1, by omega, hB0.trans (lift (hB.ofEq ?_ ?_))⟩
+    · rw [eT, eV, hk]
+      simp [List.replicate_succ, rep_cons_comm, bitsOf]
+    · unfold Bd Zp.Lw Zp.Rw
+      rw [hrr, ← eV]
+      simp [cellN, bitsOf, List.replicate_succ, rep_cons_comm]
+  | cons x xt =>
+    have hB := segB R'.reverse (bitsOf xt.reverse) X' (k + 1) 0 p (bn x) b (bn_cases x) hb hRr
+      (Bits.ofB _) hX'
+    refine ⟨k + 1 + 1, by omega, hB0.trans (lift (hB.ofEq ?_ ?_))⟩
+    · rw [eT, eV, hk, bitsOf_cons, bitsOf_reverse]
+      simp
+    · unfold Bd Zp.Lw Zp.Rw
+      rw [hrr, ← eV]
+      simp [cellN_some, bitsOf, List.replicate_succ, rep_cons_comm]
+
 end ZP.Conp
