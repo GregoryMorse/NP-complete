@@ -6260,5 +6260,81 @@ theorem odRecToJ (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (n : Nat) (R :
   have h5 := odjOnes _ R n hA4 hR
   simpa [List.replicate_succ] using h1.trans (h2.trans (h3.trans (h4.trans h5)))
 
+theorem bitsD_winStr (z k m : Nat) : BitsD (winStr z k m) := by
+  intro y hy; simp [winStr, List.mem_replicate] at hy; rcases hy with ⟨_, rfl⟩ | ⟨_, rfl⟩ | ⟨_, rfl⟩ <;> simp
+
+/-- `ODM` on the first cell of a window `u` with a zero left to flip: increment (`m ≥ 1`). -/
+theorem odmWinInc (P0 : List Nat) (z k m : Nat) (R : List Nat) (hk : 1 ≤ k) (hP : Sym4 P0) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODM P0 (winStr z k (m + 1) ++ R))
+      (hd QNTT.WI0 (P0 ++ List.replicate z 2 ++ List.replicate k 3) (3 :: (List.replicate m 2 ++ R))) := by
+  obtain ⟨o, rfl⟩ : ∃ o, k = o + 1 := ⟨k - 1, by omega⟩
+  have hrep : ∀ j a, a ∈ ALL → Sym4 (List.replicate j a) := fun j a h => sym4_rep j a h
+  have hU : Sym4 (List.replicate o 3 ++ 2 :: (List.replicate m 2 ++ R)) :=
+    (hrep o 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) ((hrep m 2 (by simp [ALL])).app hR))
+  cases z with
+  | zero =>
+    have h1 := odm3 P0 (List.replicate o 3 ++ 2 :: (List.replicate m 2 ++ R)) hP hU
+    have hA : Sym4 (P0 ++ [3]) := hP.app (fun y hy => by simp at hy; subst hy; simp [ALL])
+    have h2 := odjOnes _ (2 :: (List.replicate m 2 ++ R)) o hA (Sym4.cons (by simp [ALL]) ((hrep m 2 (by simp [ALL])).app hR))
+    have hA2 : Sym4 (P0 ++ [3] ++ List.replicate o 3) := hA.app (hrep o 3 (by simp [ALL]))
+    have h3 := odjZero _ (List.replicate m 2 ++ R) hA2 ((hrep m 2 (by simp [ALL])).app hR)
+    simpa [winStr, List.replicate_succ] using h1.trans (h2.trans h3)
+  | succ s =>
+    have hU' : Sym4 (List.replicate s 2 ++ 3 :: (List.replicate o 3 ++ 2 :: (List.replicate m 2 ++ R))) :=
+      (hrep s 2 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hU)
+    have h1 := odm2 P0 (List.replicate s 2 ++ 3 :: (List.replicate o 3 ++ 2 :: (List.replicate m 2 ++ R))) hP hU'
+    have hA : Sym4 (P0 ++ [2]) := hP.app (fun y hy => by simp at hy; subst hy; simp [ALL])
+    have h2 := odInc (P0 ++ [2]) s o (List.replicate m 2 ++ R) hA ((hrep m 2 (by simp [ALL])).app hR)
+    simpa [winStr, List.replicate_succ] using h1.trans h2
+
+/-- Scan a whole window `u` (any `m`-free part) from `ODM` to `ODJ` on the cell after it. -/
+theorem odmToJ (A : List Nat) (z k : Nat) (R : List Nat) (hk : 1 ≤ k) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODM A (List.replicate z 2 ++ List.replicate k 3 ++ R))
+      (hdR QNTT.ODJ (A ++ List.replicate z 2 ++ List.replicate k 3) R) := by
+  obtain ⟨o, rfl⟩ : ∃ o, k = o + 1 := ⟨k - 1, by omega⟩
+  have hrep : ∀ j a, a ∈ ALL → Sym4 (List.replicate j a) := fun j a h => sym4_rep j a h
+  have hO : Sym4 (List.replicate o 3 ++ R) := (hrep o 3 (by simp [ALL])).app hR
+  cases z with
+  | zero =>
+    have h1 := odm3 A (List.replicate o 3 ++ R) hA hO
+    have hA1 : Sym4 (A ++ [3]) := hA.app (fun y hy => by simp at hy; subst hy; simp [ALL])
+    have h2 := odjOnes _ R o hA1 hR
+    simpa [List.replicate_succ] using h1.trans h2
+  | succ s =>
+    have hU : Sym4 (List.replicate s 2 ++ 3 :: (List.replicate o 3 ++ R)) :=
+      (hrep s 2 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hO)
+    have h1 := odm2 A _ hA hU
+    have hA1 : Sym4 (A ++ [2]) := hA.app (fun y hy => by simp at hy; subst hy; simp [ALL])
+    have h2 := odiZeros _ (3 :: (List.replicate o 3 ++ R)) s hA1 (Sym4.cons (by simp [ALL]) hO)
+    have hA2 : Sym4 (A ++ [2] ++ List.replicate s 2) := hA1.app (hrep s 2 (by simp [ALL]))
+    have h3 := odi3 _ (List.replicate o 3 ++ R) hA2 hO
+    have hA3 : Sym4 (A ++ [2] ++ List.replicate s 2 ++ [3]) := hA2.app (fun y hy => by simp at hy; subst hy; simp [ALL])
+    have h4 := odjOnes _ R o hA3 hR
+    simpa [List.replicate_succ] using h1.trans (h2.trans (h3.trans h4))
+
+/-- A full `u` window carries into the next record. -/
+theorem odmWinNext (P0 : List Nat) (z k : Nat) (R : List Nat) (hk : 1 ≤ k) (hP : Sym4 P0) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODM (P0 ++ [1]) (winStr z k 0 ++ 1 :: 1 :: R))
+      (hdR QNTT.ODH (P0 ++ 1 :: 3 :: List.replicate (z + k - 1) 2 ++ [1, 1]) R) := by
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hP1 : Sym4 (P0 ++ [1]) := hP.app (fun y hy => by simp at hy; subst hy; exact a1)
+  have h1 := odmToJ (P0 ++ [1]) z k (1 :: 1 :: R) hk hP1 (Sym4.cons a1 (Sym4.cons a1 hR))
+  have h2 := odCarryNext P0 (List.replicate z 2 ++ List.replicate k 3) R (z + k - 1) hP
+    (by intro y hy; simp [List.mem_replicate] at hy; rcases hy with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;> simp)
+    (by simp; omega) hR
+  simpa [winStr] using h1.trans (by simpa using h2)
+
+/-- A full `u` window at the last record overflows: beep. -/
+theorem odmWinEnd (P0 : List Nat) (z k : Nat) (hk : 1 ≤ k) (hP : Sym4 P0) :
+    znttLogic.Reach (hdR QNTT.ODM (P0 ++ [1]) (winStr z k 0))
+      (hd QNTT.BEEP (P0 ++ 1 :: 3 :: List.replicate (z + k - 1) 2) []) := by
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hP1 : Sym4 (P0 ++ [1]) := hP.app (fun y hy => by simp at hy; subst hy; exact a1)
+  have h1 := odmToJ (P0 ++ [1]) z k [] hk hP1 Sym4.nil
+  have h2 := odCarryEnd P0 (List.replicate z 2 ++ List.replicate k 3) (z + k - 1) hP
+    (by intro y hy; simp [List.mem_replicate] at hy; rcases hy with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;> simp)
+    (by simp; omega)
+  simpa [winStr] using h1.trans (by simpa using h2)
+
 end ZP.NTT
 
