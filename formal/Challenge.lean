@@ -13,6 +13,8 @@ public import ZP.DefsTwin
 public import ZP.TableTwin
 public import ZP.DefsMul
 public import ZP.TableMul
+public import ZP.DefsConp
+public import ZP.TableConp
 
 public section
 
@@ -56,6 +58,11 @@ theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
 
 /-- Z_MUL: the guest also has a queue of stacks; the output must be numbers `z, x, y` with `z = x y`. -/
 theorem ZP.zmul_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmulMachine ↔ ZP.SentenceMul := by
+  sorry
+
+/-- Z_coNP: the guest is `zp2` with nondeterministic choices at fresh cells; `J` is a verifier for the complement
+of `L`. -/
+theorem ZP.zconp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zconpMachine ↔ ZP.SentenceConp := by
   sorry
 
 /-- The 19-state twin-prime beeper: it quasihalts iff there are finitely many twin primes. -/
