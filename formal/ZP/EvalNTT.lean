@@ -6405,5 +6405,38 @@ theorem odRecCarryInc (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (n z k m 
   have key := h1'.trans (h2'.trans h3)
   simpa only [List.append_assoc, List.cons_append, List.singleton_append, List.nil_append] using key
 
+/-- The last record with both digits maximal: the odometer overflows and beeps. -/
+theorem odRecCarryEnd (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (n z k : Nat)
+    (hk : 1 ≤ k) (hA : Sym4 A) (hF : [F, O, Pf].all (· ∈ [2, 3]) = true) (hacc : BitsD acc) (hE : BitsD E) :
+    znttLogic.Reach
+      (hdR QNTT.ODH A ([F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: (List.replicate (n + 1) 3 ++
+        1 :: winStr z k 0)))))
+      (hd QNTT.BEEP (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: (3 :: List.replicate n 2 ++
+        1 :: 3 :: List.replicate (z + k - 1) 2)))) []) := by
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hf : BitsD [F, O, Pf] := by
+    intro y hy; simp at hF hy; rcases hy with rfl | rfl | rfl <;> simp [hF]
+  have hU : Sym4 (winStr z k 0) := (bitsD_winStr z k 0).sym4
+  have h1 := odRecToJ A F O Pf acc E n (1 :: winStr z k 0) hA hF hacc hE (Sym4.cons a1 hU)
+  have hP0 : Sym4 (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: E)) :=
+    (hA.app hf.sym4).app (Sym4.cons a1 (hacc.sym4.app (Sym4.cons a1 hE.sym4)))
+  have h2 := odCarry (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: E)) (List.replicate (n + 1) 3)
+    (winStr z k 0) n hP0 (bitsD_rep3 _) (by simp) hU
+  have hP1 : Sym4 (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: E) ++ 1 :: 3 :: List.replicate n 2) :=
+    hP0.app (Sym4.cons a1 (Sym4.cons (by simp [ALL]) (sym4_rep n 2 (by simp [ALL]))))
+  have h3 := odmWinEnd (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: E) ++ 1 :: 3 :: List.replicate n 2) z k hk hP1
+  have h1' : znttLogic.Reach
+      (hdR QNTT.ODH A ([F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: (List.replicate (n + 1) 3 ++
+        1 :: winStr z k 0)))))
+      (hdR QNTT.ODJ (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: E) ++ 1 :: List.replicate (n + 1) 3)
+        (1 :: winStr z k 0)) := by simpa using h1
+  have h2' : znttLogic.Reach
+      (hdR QNTT.ODJ (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: E) ++ 1 :: List.replicate (n + 1) 3)
+        (1 :: winStr z k 0))
+      (hdR QNTT.ODM (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: E) ++ 1 :: 3 :: List.replicate n 2 ++ [1])
+        (winStr z k 0)) := by simpa using h2
+  have key := h1'.trans (h2'.trans h3)
+  simpa only [List.append_assoc, List.cons_append, List.singleton_append, List.nil_append] using key
+
 end ZP.NTT
 
