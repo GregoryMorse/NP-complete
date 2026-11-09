@@ -6090,5 +6090,44 @@ theorem odCarryInc0 (P0 f R : List Nat) (n o : Nat) (hP : Sym4 P0) (hf : BitsD f
   have h4 := odjZero _ R hA3 hR
   simpa using h1.trans (h2.trans (h3.trans h4))
 
+/-- Carry out of the last string of a record into the next record's header (`ODH`). -/
+theorem odCarryNext (P0 f R : List Nat) (n : Nat) (hP : Sym4 P0) (hf : BitsD f) (hn : f.length = n + 1)
+    (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODJ (P0 ++ 1 :: f) (1 :: 1 :: R))
+      (hdR QNTT.ODH (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1, 1]) R) := by
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have h1 := odCarry P0 f (1 :: R) n hP hf hn (Sym4.cons a1 hR)
+  have hA : Sym4 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1]) := by
+    have h3 : Sym4 (3 :: List.replicate n 2) :=
+      Sym4.cons (by simp [ALL]) (sym4_rep n 2 (by simp [ALL]))
+    have h4 : Sym4 [1] := fun y hy => by simp at hy; subst hy; exact a1
+    simpa using (hP.app (Sym4.cons a1 h3)).app h4
+  have h2 := odmM _ R hA hR
+  simpa using h1.trans h2
+
+/-- Carry out of the very last string of the tape: the odometer has overflowed and beeps. -/
+theorem odCarryEnd (P0 f : List Nat) (n : Nat) (hP : Sym4 P0) (hf : BitsD f) (hn : f.length = n + 1) :
+    znttLogic.Reach (hdR QNTT.ODJ (P0 ++ 1 :: f) [])
+      (hd QNTT.BEEP (P0 ++ 1 :: 3 :: List.replicate n 2) []) := by
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hrep : ∀ k, Sym4 (List.replicate k 2) := fun k => sym4_rep k 2 (by simp [ALL])
+  have hA : Sym4 (P0 ++ 1 :: f) := hP.app (Sym4.cons a1 (fun y hy => by
+    have := hf y hy; simp at this; rcases this with rfl | rfl <;> simp [ALL]))
+  have hP1 : Sym4 (P0 ++ [1]) := hP.app (fun y hy => by simp at hy; subst hy; exact a1)
+  have h1 := odjEnd (P0 ++ 1 :: f) hA
+  have h1' : znttLogic.Reach (hdR QNTT.ODJ (P0 ++ 1 :: f) []) (hd QNTT.ODR (P0 ++ [1] ++ f) []) := by
+    simpa using h1
+  have h2 := odrBits (P0 ++ [1]) f [] hP1 hf Sym4.nil
+  have h3 := odrM P0 (List.replicate f.length 2) hP (hrep _)
+  rw [hn, List.replicate_succ] at h3 h2
+  rw [List.append_nil] at h2
+  have h4 := odw2 (P0 ++ [1]) (List.replicate n 2) hP1 (hrep _)
+  have hP2 : Sym4 (P0 ++ [1] ++ [3]) := hP1.app (fun y hy => by simp at hy; subst hy; simp [ALL])
+  have h5 := odnZeros (P0 ++ [1] ++ [3]) [] n hP2 Sym4.nil
+  rw [List.append_nil] at h5
+  have hP3 : Sym4 (P0 ++ [1] ++ [3] ++ List.replicate n 2) := hP2.app (hrep _)
+  have h6 := odnEnd _ hP3
+  simpa using h1'.trans (h2.trans (h3.trans (h4.trans (h5.trans h6))))
+
 end ZP.NTT
 
