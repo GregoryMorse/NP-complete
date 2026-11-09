@@ -7,6 +7,8 @@ public import ZP.DefsPS
 public import ZP.DefsF
 public import ZP.DefsD
 public import ZP.DefsG
+public import ZP.DefsNTT
+public import ZP.TableNTT
 
 public section
 
@@ -41,4 +43,9 @@ theorem ZP.zdl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zdlMachine ↔ ZP.Sent
   sorry
 
 theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.SentenceG := by
+  sorry
+
+/-- Z_NTT: the prime `1 + n i` is supplied by the hypothesis `PrimeEx` (Dirichlet for `≡ 1 mod n`). -/
+theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
+    ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN := by
   sorry

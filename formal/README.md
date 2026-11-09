@@ -67,6 +67,7 @@ Plans for the rest are in `plans/`.
 | Z_FACTOR (324) | `ZP.zfacQuasihalts_iff_sentence`, `ZP.zfac_quasihalts_iff_InP` | `DefsF ChecksF TableF LogicF CompileF PairF MainF` |
 | Z_DLOG (400) | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
 | Z_GI (415) | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
+| Z_NTT (550) | `ZP.zntt_quasihalts_iff_sentence` (hypothesis `ZP.PrimeEx`) | `DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
 
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
 transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair

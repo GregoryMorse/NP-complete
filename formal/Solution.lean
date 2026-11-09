@@ -28,3 +28,7 @@ theorem ZP.zdl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zdlMachine ↔ ZP.Sent
 
 theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.SentenceG :=
   ZP.zgiQuasihalts_iff_sentence
+
+theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
+    ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN :=
+  ZP.NTT.znttQuasihalts_iff_sentence h

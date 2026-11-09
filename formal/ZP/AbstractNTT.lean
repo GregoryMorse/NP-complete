@@ -99,8 +99,6 @@ def absN (pr : Nat → Nat) : Nat → Nat × Nat
 
 def AbstractQN (pr : Nat → Nat) : Prop := ∃ N, ∀ k, N ≤ k → hasCircuit pr (absN pr k).1 (absN pr k).2 = true
 
-def SentenceN (pr : Nat → Nat) : Prop := ∃ c, ∀ n, 1 ≤ n → hasCircuit pr c n = true
-
 theorem absN_inv (pr : Nat → Nat) (k : Nat) : 1 ≤ (absN pr k).1 ∧ 1 ≤ (absN pr k).2 := by
   induction k with
   | zero => exact ⟨Nat.le_refl _, Nat.le_refl _⟩
@@ -255,28 +253,6 @@ theorem abstractQN_iff (pr : Nat → Nat) (hp : NPrime pr) : AbstractQN pr ↔ S
 
 
 /-! ## The prime `p ≡ 1 (mod n)`, under the existence hypothesis -/
-
-def isPrimeN (p : Nat) : Bool := decide (2 ≤ p) && (List.range p).all fun d => decide (d < 2) || decide (p % d ≠ 0)
-
-/-- The hypothesis: every `n ≥ 1` has a prime `1 + n i` with `i ≥ 1` (Dirichlet for `≡ 1 (mod n)`). -/
-def PrimeEx : Prop := ∀ n, 1 ≤ n → ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true
-
-theorem exists_least (P : Nat → Prop) (h : ∃ i, P i) : ∃ i, P i ∧ ∀ j, P j → i ≤ j := by
-  obtain ⟨i0, hi0⟩ := h
-  induction i0 using Nat.strongRecOn with
-  | _ i ih =>
-    by_cases hl : ∃ j, j < i ∧ P j
-    · obtain ⟨j, hj, hpj⟩ := hl
-      exact ih j hj hpj
-    · refine ⟨i, hi0, fun j hj => ?_⟩
-      exact Nat.le_of_not_lt fun hlt => hl ⟨j, hlt, hj⟩
-
-open Classical in
-/-- `ref.prime`: the least prime `1 + n i`, `i ≥ 1`. -/
-noncomputable def primeN (n : Nat) : Nat :=
-  if h : ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true then
-    1 + n * Classical.choose (exists_least (fun i => 1 ≤ i ∧ isPrimeN (1 + n * i) = true) h)
-  else 0
 
 theorem primeN_spec (n : Nat) (h : ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true) :
     ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true ∧ primeN n = 1 + n * i ∧

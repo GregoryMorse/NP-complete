@@ -82,6 +82,7 @@ public import ZP.RulerNTT
 public import ZP.RecordNTT
 public import ZP.EvalNTT
 public import ZP.PrimeNTT
+public import ZP.MainNTT
 public import ZP.Complexity
 public import ZP.GuestTM
 public import ZP.GuestCompile

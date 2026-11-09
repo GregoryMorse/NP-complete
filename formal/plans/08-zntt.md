@@ -525,3 +525,12 @@ sequence: `LMacroSimB`/`MacroSimB bp`, `quasihalts_iff_of_macroSimB` (`Quasihalt
 `lay k` to `lay (k+1)`, beep iff `bad k`), with `PairDataN.macroSim`. Remaining: define `layNTT c n`, prove the NTT pair
 lemma (PA0 → prime ruler → WX → `buildEntry` → `assign_circuit`; both continuations land in `layNTT`), then the
 top theorem with `PrimeEx` and the Challenge/Solution entries.
+
+### Stage note: bridge assembly and headline theorem (plan 08 done)
+`ZP/MainNTT.lean`: `layNTT c n` (PA0, P=1, K=3, C=c, Nn=n; `zntt_h0`: `znttLogic.zconf 20 = layNTT 1 1`),
+`pair_front` (prime ruler + `buildEntry`, with `roundsPs_mk`/`initFrom_mkPs` identifying the build's records with
+`initFrom`), `pair_ntt` (both outcomes of `assign_circuit` land in `layNTT` of `stepN primeN (c,n)`, the beep step
+inside the segment), `zntPairData : PairDataN`, `znttQuasihalts_iff_sentence (hex : PrimeEx)`.
+`SentenceN`, `isPrimeN`, `PrimeEx`, `primeN` moved to the trusted `DefsNTT`. `Challenge.lean`/`Solution.lean`/
+`comparator.json` carry `ZP.zntt_quasihalts_iff_sentence (h : PrimeEx)`; axioms: propext, Classical.choice, Quot.sound.
+Full `lake build` green, 0 open sorries outside `Challenge.lean`.
