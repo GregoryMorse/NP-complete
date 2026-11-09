@@ -348,4 +348,33 @@ theorem switchCore (Qc Lw Zf ST0 F : List Nat) (g : Nat) (hQ : Sym4 Qc) (hL : Bi
   simp only [List.append_assoc, List.cons_append, List.nil_append, List.singleton_append] at h1 h2 h3 h4 h5 h6 ⊢
   exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans h6))))
 
+/-! ## The switch peek -/
+
+def swsets : Env := [bits, ALL, bits, bits, NB, NB, NB]
+
+theorem segSw (Qw Lw Rw W Fw ST : List Nat) (g w : Nat) (hw : w = 2 ∨ w = 3)
+    (hQ : Bits Qw) (hL : Bits Lw) (hR : Bits Rw) (hW : NoB W) (hFw : NoB Fw) (hS : NoB ST) :
+    zmulLogic.Reach
+      (hd Q.FBACK (Qw ++ [2, 3, w] ++ List.replicate g 0 ++ 0 :: (Lw ++ [0]))
+        (1 :: (Rw ++ 1 :: W ++ 1 :: Fw ++ 0 :: ST)))
+      (hdR QMul.mTK (Qw ++ [2, 3, w] ++ List.replicate (g + 1) 0)
+        (Lw ++ 1 :: (1 :: (Rw ++ 1 :: W ++ 1 :: Fw)) ++ 0 :: ST)) := by
+  have hv : Valid swsets [Qw, List.replicate g 0, Lw, Rw, W, Fw, ST] :=
+    Valid.cons hQ (Valid.cons (zeros4 g) (Valid.cons hL (Valid.cons hR (Valid.cons hW
+      (Valid.cons hFw (Valid.cons hS (Valid.nil _)))))))
+  rw [List.replicate_succ']
+  rcases hw with rfl | rfl
+  · exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, Fw, ST]) (E := []) (k := 60) hv trivial
+      (ls := [.blk 0 .id, .sym 2, .sym 3, .sym 2, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+      (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id, .sym 0, .blk 6 .id])
+      (ls' := [.blk 0 .id, .sym 2, .sym 3, .sym 2, .blk 1 (.const 0), .sym 0])
+      (rs' := [.blk 2 .id, .sym 1, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id, .sym 0, .blk 6 .id])
+      (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+  · exact checkTF (env := [Qw, List.replicate g 0, Lw, Rw, W, Fw, ST]) (E := []) (k := 60) hv trivial
+      (ls := [.blk 0 .id, .sym 2, .sym 3, .sym 3, .blk 1 (.const 0), .sym 0, .blk 2 .id, .sym 0])
+      (rs := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id, .sym 0, .blk 6 .id])
+      (ls' := [.blk 0 .id, .sym 2, .sym 3, .sym 3, .blk 1 (.const 0), .sym 0])
+      (rs' := [.blk 2 .id, .sym 1, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id, .sym 0, .blk 6 .id])
+      (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) (by wsimp)
+
 end ZP.Mul
