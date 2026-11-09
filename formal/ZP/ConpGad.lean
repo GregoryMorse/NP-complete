@@ -134,5 +134,365 @@ theorem blkDecLastYn (Jl : List Nat) (s : List Nat) (Y : List Nat) (Bp : List Na
       (ls' := [.blk 0 .id, .sym 1]) (rs' := [.sym 1, .blk 1 .id, .sym 1, .sym 3, .sym 1, .blk 3 .id, .sym 3, .sym 1, .blk 1 (.const 3), .sym 3, .blk 2 .id])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+/-- Code copy: one bit into `Q` (skipped trailing ones `S` stay). -/
+theorem qcBodyS (Qc : List Nat) (Xr : List Nat) (V : List Nat) (v : List Nat) (X : List Nat) (Rest : List Nat) (S : List Nat) (c : Nat) (hQc : Bits Qc) (hXr : Bits Xr) (hV : NoB V) (hv : Bits v) (hX : Bits X) (hRest : Sym4 Rest) (hS : ∀ a ∈ S, a ∈ T3) (hc : c ∈ bits) :
+    zconpLogic.Reach (hd Q.QC (Qc ++ (1 :: (Xr ++ (1 :: (V ++ (v ++ ([c]))))))) (Qc ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))
+      (hd Q.QC (c :: (Qc ++ (1 :: (Xr ++ (1 :: (V ++ (v))))))) (c :: (Qc ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))) := by
+  have hV : Valid [bits, bits, NB, bits, bits, ALL, T3] [Qc, Xr, V, v, X, Rest, S] := Valid.cons hQc (Valid.cons hXr (Valid.cons hV (Valid.cons hv (Valid.cons hX (Valid.cons hRest (Valid.cons hS (Valid.nil _)))))))
+  rcases mem_bits hc with rfl | rfl
+  · exact checkTT (env := [Qc, Xr, V, v, X, Rest, S]) (E := []) (k := 15) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .blk 3 .id, .sym 2]) (rs := [.blk 0 .id, .blk 6 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id])
+      (ls' := [.sym 2, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .blk 3 .id]) (rs' := [.sym 2, .blk 0 .id, .blk 6 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTT (env := [Qc, Xr, V, v, X, Rest, S]) (E := []) (k := 15) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .blk 3 .id, .sym 3]) (rs := [.blk 0 .id, .blk 6 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id])
+      (ls' := [.sym 3, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .blk 3 .id]) (rs' := [.sym 3, .blk 0 .id, .blk 6 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The last `0` of the code. -/
+theorem qsBody0 (Qc : List Nat) (Xr : List Nat) (V : List Nat) (v : List Nat) (X : List Nat) (Rest : List Nat) (S : List Nat) (hQc : Bits Qc) (hXr : Bits Xr) (hV : NoB V) (hv : Bits v) (hX : Bits X) (hRest : Sym4 Rest) (hS : ∀ a ∈ S, a ∈ T3) :
+    zconpLogic.Reach (hd QConp.QS (Qc ++ (1 :: (Xr ++ (1 :: (V ++ (v ++ ([2]))))))) (Qc ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))
+      (hd Q.QC (2 :: (Qc ++ (1 :: (Xr ++ (1 :: (V ++ (v))))))) (2 :: (Qc ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))) := by
+  have hV : Valid [bits, bits, NB, bits, bits, ALL, T3] [Qc, Xr, V, v, X, Rest, S] := Valid.cons hQc (Valid.cons hXr (Valid.cons hV (Valid.cons hv (Valid.cons hX (Valid.cons hRest (Valid.cons hS (Valid.nil _)))))))
+  exact checkTT (env := [Qc, Xr, V, v, X, Rest, S]) (E := []) (k := 15) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .blk 3 .id, .sym 2]) (rs := [.blk 0 .id, .blk 6 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id])
+    (ls' := [.sym 2, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .blk 3 .id]) (rs' := [.sym 2, .blk 0 .id, .blk 6 .id, .sym 1, .blk 4 .id, .sym 1, .blk 5 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Code copied: the sentinel `0`, one rotation. -/
+theorem qsEndS (P : List Nat) (Xr : List Nat) (Vq : List Nat) (X : List Nat) (Rest : List Nat) (S : List Nat) (hP : Bits P) (hXr : Bits Xr) (hVq : NoB Vq) (hX : Bits X) (hRest : Sym4 Rest) (hS : ∀ a ∈ S, a ∈ T3) :
+    zconpLogic.Reach (hd QConp.QS (P ++ (1 :: (Xr ++ (1 :: (Vq ++ ([1])))))) (P ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))
+      (hd Q.TW (2 :: (P)) (0 :: (Xr ++ (1 :: (Vq ++ (1 :: (P ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))))))) := by
+  have hV : Valid [bits, bits, NB, bits, ALL, T3] [P, Xr, Vq, X, Rest, S] := Valid.cons hP (Valid.cons hXr (Valid.cons hVq (Valid.cons hX (Valid.cons hRest (Valid.cons hS (Valid.nil _))))))
+  exact checkTT (env := [P, Xr, Vq, X, Rest, S]) (E := []) (k := 9) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1]) (rs := [.blk 0 .id, .blk 5 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+    (ls' := [.sym 2, .blk 0 .id]) (rs' := [.sym 0, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .blk 0 .id, .blk 5 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Code copied: the sentinel `0`, one rotation. -/
+theorem qcEndS (P : List Nat) (Xr : List Nat) (Vq : List Nat) (X : List Nat) (Rest : List Nat) (S : List Nat) (hP : Bits P) (hXr : Bits Xr) (hVq : NoB Vq) (hX : Bits X) (hRest : Sym4 Rest) (hS : ∀ a ∈ S, a ∈ T3) :
+    zconpLogic.Reach (hd Q.QC (P ++ (1 :: (Xr ++ (1 :: (Vq ++ ([1])))))) (P ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))
+      (hd Q.TW (2 :: (P)) (0 :: (Xr ++ (1 :: (Vq ++ (1 :: (P ++ (S ++ (1 :: (X ++ (1 :: (Rest)))))))))))) := by
+  have hV : Valid [bits, bits, NB, bits, ALL, T3] [P, Xr, Vq, X, Rest, S] := Valid.cons hP (Valid.cons hXr (Valid.cons hVq (Valid.cons hX (Valid.cons hRest (Valid.cons hS (Valid.nil _))))))
+  exact checkTT (env := [P, Xr, Vq, X, Rest, S]) (E := []) (k := 9) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1]) (rs := [.blk 0 .id, .blk 5 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+    (ls' := [.sym 2, .blk 0 .id]) (rs' := [.sym 0, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .blk 0 .id, .blk 5 .id, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Drop a trailing `1` of the code. -/
+theorem qsSkip (A : List Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    zconpLogic.Reach (hd QConp.QS (A ++ ([3])) (R))
+      (hd QConp.QS (A) (3 :: (R))) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [A, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Input copied: the code scan starts. -/
+theorem gcEndS (Xr : List Nat) (V : List Nat) (P : List Nat) (X : List Nat) (Rest : List Nat) (hXr : Bits Xr) (hV : NoB V) (hP : Bits P) (hX : Bits X) (hRest : Sym4 Rest) :
+    zconpLogic.Reach (hdR Q.GC (Xr ++ (1 :: (V ++ (P ++ (1 :: (X)))))) (1 :: (Rest)))
+      (hd QConp.QS (1 :: (Xr ++ (1 :: (V ++ (P))))) (1 :: (X ++ (1 :: (Rest))))) := by
+  have hV : Valid [bits, NB, bits, bits, ALL] [Xr, V, P, X, Rest] := Valid.cons hXr (Valid.cons hV (Valid.cons hP (Valid.cons hX (Valid.cons hRest (Valid.nil _)))))
+  exact checkFT (env := [Xr, V, P, X, Rest]) (E := []) (k := 17) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .blk 2 .id, .sym 1, .blk 3 .id]) (rs := [.sym 1, .blk 4 .id])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .blk 2 .id]) (rs' := [.sym 1, .blk 3 .id, .sym 1, .blk 4 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EX1` erases a block (to its `M`). -/
+theorem exA (L : List Nat) (Bk : List Nat) (R : List Nat) (hL : Sym4 L) (hBk : Bits Bk) (hR : Sym4 R) :
+    zconpLogic.Reach (hd QConp.EX1 (L ++ (1 :: (Bk))) (R))
+      (hd QConp.EX2 (L) (List.replicate Bk.length 0 ++ (0 :: (R)))) := by
+  have hV : Valid [ALL, bits, ALL] [L, Bk, R] := Valid.cons hL (Valid.cons hBk (Valid.cons hR (Valid.nil _)))
+  exact checkTT (env := [L, Bk, R]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `ER3` erases a block (to its `M`). -/
+theorem erA (L : List Nat) (Bk : List Nat) (R : List Nat) (hL : Sym4 L) (hBk : Bits Bk) (hR : Sym4 R) :
+    zconpLogic.Reach (hd QConp.ER3 (L ++ (1 :: (Bk))) (R))
+      (hd QConp.ER4 (L) (List.replicate Bk.length 0 ++ (0 :: (R)))) := by
+  have hV : Valid [ALL, bits, ALL] [L, Bk, R] := Valid.cons hL (Valid.cons hBk (Valid.cons hR (Valid.nil _)))
+  exact checkTT (env := [L, Bk, R]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.blk 1 (.const 0), .sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Next block, from its last bit. -/
+theorem exB (L : List Nat) (Bk : List Nat) (R : List Nat) (c : Nat) (hL : Sym4 L) (hBk : Bits Bk) (hR : Sym4 R) (hc : c ∈ bits) :
+    zconpLogic.Reach (hd QConp.EX2 (L ++ (1 :: (Bk ++ ([c])))) (R))
+      (hd QConp.EX2 (L) (List.replicate Bk.length 0 ++ (0 :: (0 :: (R))))) := by
+  have hV : Valid [ALL, bits, ALL] [L, Bk, R] := Valid.cons hL (Valid.cons hBk (Valid.cons hR (Valid.nil _)))
+  rcases mem_bits hc with rfl | rfl
+  · exact checkTT (env := [L, Bk, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs := [.blk 2 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.blk 1 (.const 0), .sym 0, .sym 0, .blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTT (env := [L, Bk, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3]) (rs := [.blk 2 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.blk 1 (.const 0), .sym 0, .sym 0, .blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Next block, from its last bit. -/
+theorem erB (L : List Nat) (Bk : List Nat) (R : List Nat) (c : Nat) (hL : Sym4 L) (hBk : Bits Bk) (hR : Sym4 R) (hc : c ∈ bits) :
+    zconpLogic.Reach (hd QConp.ER4 (L ++ (1 :: (Bk ++ ([c])))) (R))
+      (hd QConp.ER4 (L) (List.replicate Bk.length 0 ++ (0 :: (0 :: (R))))) := by
+  have hV : Valid [ALL, bits, ALL] [L, Bk, R] := Valid.cons hL (Valid.cons hBk (Valid.cons hR (Valid.nil _)))
+  rcases mem_bits hc with rfl | rfl
+  · exact checkTT (env := [L, Bk, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs := [.blk 2 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.blk 1 (.const 0), .sym 0, .sym 0, .blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTT (env := [L, Bk, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3]) (rs := [.blk 2 .id])
+      (ls' := [.blk 0 .id]) (rs' := [.blk 1 (.const 0), .sym 0, .sym 0, .blk 2 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EX2` at `M_3`. -/
+theorem exEnd (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zconpLogic.Reach (hd QConp.EX2 (L ++ ([1])) (R))
+      (hd QConp.EX3 (L) (1 :: (R))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `ER4` at `M_3`. -/
+theorem erEnd (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zconpLogic.Reach (hd QConp.ER4 (L ++ ([1])) (R))
+      (hdR Q.GRB (L ++ ([1])) (R)) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Verifier accepted: truth bit `1`. -/
+theorem vAccA (j : List Nat) (s : List Nat) (F : List Nat) (Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hDw : NoB Dw) :
+    zconpLogic.Reach (hdR Q.DP11 ([1]) (j ++ (1 :: (s ++ (1 :: (1 :: (F ++ (0 :: (Dw)))))))))
+      (hdR Q.EAs (1 :: (j ++ (1 :: (s ++ (1 :: ([3])))))) (F ++ (0 :: (Dw)))) := by
+  have hV : Valid [bits, bits, NB, NB] [j, s, F, Dw] := Valid.cons hj (Valid.cons hs (Valid.cons hF (Valid.cons hDw (Valid.nil _))))
+  exact checkFF (env := [j, s, F, Dw]) (E := []) (k := 5) hV trivial
+    (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 3]) (rs' := [.blk 2 .id, .sym 0, .blk 3 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Decider accepted, `s ∉ L`: correct. -/
+theorem dAcc2A (j : List Nat) (s : List Nat) (F : List Nat) (Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hDw : NoB Dw) :
+    zconpLogic.Reach (hdR Q.DP11 ([1]) (j ++ (1 :: (s ++ (1 :: (2 :: (1 :: (F ++ (0 :: (Dw))))))))))
+      (hdR Q.EAs (1 :: (j ++ (1 :: (s ++ (1 :: ([0])))))) (1 :: (F ++ (0 :: (Dw))))) := by
+  have hV : Valid [bits, bits, NB, NB] [j, s, F, Dw] := Valid.cons hj (Valid.cons hs (Valid.cons hF (Valid.cons hDw (Valid.nil _))))
+  exact checkFF (env := [j, s, F, Dw]) (E := []) (k := 5) hV trivial
+    (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 0]) (rs' := [.sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Decider accepted, `s ∈ L`: beep. -/
+theorem dAcc3 (j : List Nat) (s : List Nat) (F : List Nat) (Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hDw : NoB Dw) :
+    zconpLogic.Reach (hdR Q.DP11 ([1]) (j ++ (1 :: (s ++ (1 :: (3 :: (1 :: (F ++ (0 :: (Dw))))))))))
+      (hdR Q.BEEP (1 :: (j ++ (1 :: (s ++ (1 :: ([2])))))) (1 :: (F ++ (0 :: (Dw))))) := by
+  have hV : Valid [bits, bits, NB, NB] [j, s, F, Dw] := Valid.cons hj (Valid.cons hs (Valid.cons hF (Valid.cons hDw (Valid.nil _))))
+  exact checkFF (env := [j, s, F, Dw]) (E := []) (k := 5) hV trivial
+    (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 3, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2]) (rs' := [.sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Verifier rejected: to the end of `D`. -/
+theorem dp0v (j : List Nat) (s : List Nat) (F : List Nat) (Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hDw : NoB Dw) :
+    zconpLogic.Reach (hdR Q.DP10 ([1]) (j ++ (1 :: (s ++ (1 :: (1 :: (F ++ (0 :: (Dw)))))))))
+      (hd QConp.BT (1 :: (j ++ (1 :: (s ++ (1 :: (1 :: (F ++ (0 :: (Dw))))))))) ([])) := by
+  have hV : Valid [bits, bits, NB, NB] [j, s, F, Dw] := Valid.cons hj (Valid.cons hs (Valid.cons hF (Valid.cons hDw (Valid.nil _))))
+  exact checkFT (env := [j, s, F, Dw]) (E := []) (k := 9) hV trivial
+    (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Decider rejected: to the end of `D`. -/
+theorem dp0d (j : List Nat) (s : List Nat) (F : List Nat) (Dw : List Nat) (t : Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hDw : NoB Dw) (ht : t ∈ bits) :
+    zconpLogic.Reach (hdR Q.DP10 ([1]) (j ++ (1 :: (s ++ (1 :: (t :: (1 :: (F ++ (0 :: (Dw))))))))))
+      (hd QConp.BT (1 :: (j ++ (1 :: (s ++ (1 :: (t :: (1 :: (F ++ (0 :: (Dw)))))))))) ([])) := by
+  have hV : Valid [bits, bits, NB, NB] [j, s, F, Dw] := Valid.cons hj (Valid.cons hs (Valid.cons hF (Valid.cons hDw (Valid.nil _))))
+  rcases mem_bits ht with rfl | rfl
+  · exact checkFT (env := [j, s, F, Dw]) (E := []) (k := 10) hV trivial
+      (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+      (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id]) (rs' := [])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFT (env := [j, s, F, Dw]) (E := []) (k := 10) hV trivial
+      (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 3, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
+      (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 3, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id]) (rs' := [])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Verifier exhausted: `t = 0`. -/
+theorem vExh (j : List Nat) (s : List Nat) (hj : Bits j) (hs : Bits s) :
+    zconpLogic.Reach (hd QConp.EX3 (1 :: (j ++ (1 :: (s ++ ([1]))))) ([1]))
+      (hdR Q.GRB (1 :: (j ++ (1 :: (s ++ (1 :: (2 :: ([1]))))))) ([])) := by
+  have hV : Valid [bits, bits] [j, s] := Valid.cons hj (Valid.cons hs (Valid.nil _))
+  exact checkTF (env := [j, s]) (E := []) (k := 3) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs := [.sym 1])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Decider exhausted with `t = 1`: correct. -/
+theorem dExh3A (j : List Nat) (s : List Nat) (hj : Bits j) (hs : Bits s) :
+    zconpLogic.Reach (hd QConp.EX3 (1 :: (j ++ (1 :: (s ++ (1 :: ([3])))))) ([1]))
+      (hdR Q.EAs (1 :: (j ++ (1 :: (s ++ (1 :: ([0])))))) ([1])) := by
+  have hV : Valid [bits, bits] [j, s] := Valid.cons hj (Valid.cons hs (Valid.nil _))
+  exact checkTF (env := [j, s]) (E := []) (k := 1) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 3]) (rs := [.sym 1])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 0]) (rs' := [.sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Decider exhausted with `t = 0`: beep. -/
+theorem dExh2 (j : List Nat) (s : List Nat) (hj : Bits j) (hs : Bits s) :
+    zconpLogic.Reach (hd QConp.EX3 (1 :: (j ++ (1 :: (s ++ (1 :: ([2])))))) ([1]))
+      (hdR Q.BEEP (1 :: (j ++ (1 :: (s ++ (1 :: ([2])))))) ([1])) := by
+  have hV : Valid [bits, bits] [j, s] := Valid.cons hj (Valid.cons hs (Valid.nil _))
+  exact checkTF (env := [j, s]) (E := []) (k := 1) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2]) (rs := [.sym 1])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2]) (rs' := [.sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EAs` erases a block. -/
+theorem eaF (L : List Nat) (F : List Nat) (R : List Nat) (hL : Sym4 L) (hF : NoB F) (hR : Sym4 R) :
+    zconpLogic.Reach (hdR Q.EAs (L) (F ++ (R)))
+      (hdR Q.EAs (L ++ (List.replicate F.length 0)) (R)) := by
+  have hV : Valid [ALL, NB, ALL] [L, F, R] := Valid.cons hL (Valid.cons hF (Valid.cons hR (Valid.nil _)))
+  exact checkFF (env := [L, F, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 (.const 0)]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EAs` at a blank. -/
+theorem eaSep (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zconpLogic.Reach (hdR Q.EAs (L) (0 :: (R)))
+      (hdR QConp.EAs2 (L ++ ([0])) (R)) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 0, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EAs2` on `M`. -/
+theorem ea2M (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zconpLogic.Reach (hdR QConp.EAs2 (L) (1 :: (R)))
+      (hdR Q.EAs (L ++ ([0])) (R)) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EAs2` on a bit. -/
+theorem ea2b (L : List Nat) (R : List Nat) (c : Nat) (hL : Sym4 L) (hR : Sym4 R) (hc : c ∈ bits) :
+    zconpLogic.Reach (hdR QConp.EAs2 (L) (c :: (R)))
+      (hdR Q.EAs (L ++ ([0])) (R)) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  rcases mem_bits hc with rfl | rfl
+  · exact checkFF (env := [L, R]) (E := []) (k := 1) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 0]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFF (env := [L, R]) (E := []) (k := 1) hV trivial
+      (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 0]) (rs' := [.blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EAs2` at the end. -/
+theorem ea2End (L : List Nat) (hL : Sym4 L) :
+    zconpLogic.Reach (hdR QConp.EAs2 (L) ([]))
+      (hd Q.EBs (L) ([])) := by
+  have hV : Valid [ALL] [L] := Valid.cons hL (Valid.nil _)
+  exact checkFT (env := [L]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id]) (rs := [])
+    (ls' := [.blk 0 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EBs` finds `t = 1`: decider phase. -/
+theorem ebs3 (A : List Nat) (K : List Nat) (hA : Sym4 A) (hK : Bits K) :
+    zconpLogic.Reach (hd Q.EBs (A ++ (3 :: (List.replicate K.length 0 ++ ([0])))) ([]))
+      (hdR Q.GRB (A ++ (3 :: ([1]))) ([])) := by
+  have hV : Valid [ALL, bits] [A, K] := Valid.cons hA (Valid.cons hK (Valid.nil _))
+  exact checkTF (env := [A, K]) (E := []) (k := 5) hV trivial
+    (ls := [.blk 0 .id, .sym 3, .blk 1 (.const 0), .sym 0]) (rs := [])
+    (ls' := [.blk 0 .id, .sym 3, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EBs` finds `M_2`: `s`++. -/
+theorem ebsM (A : List Nat) (K : List Nat) (hA : Sym4 A) (hK : Bits K) :
+    zconpLogic.Reach (hd Q.EBs (A ++ (1 :: (List.replicate K.length 0 ++ ([0])))) ([]))
+      (hd Q.SINC (A) ([])) := by
+  have hV : Valid [ALL, bits] [A, K] := Valid.cons hA (Valid.cons hK (Valid.nil _))
+  exact checkTT (env := [A, K]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 (.const 0), .sym 0]) (rs := [])
+    (ls' := [.blk 0 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `EBs` finds the beep mark: `J`++. -/
+theorem ebs0 (j : List Nat) (s : List Nat) (K : List Nat) (hj : Bits j) (hs : Bits s) (hK : Bits K) :
+    zconpLogic.Reach (hd Q.EBs (1 :: (j ++ (1 :: (s ++ (1 :: (2 :: (List.replicate K.length 0 ++ ([0])))))))) ([]))
+      (hd Q.JINC (1 :: (j)) ([1])) := by
+  have hV : Valid [bits, bits, bits] [j, s, K] := Valid.cons hj (Valid.cons hs (Valid.cons hK (Valid.nil _)))
+  exact checkTT (env := [j, s, K]) (E := []) (k := 6) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2, .blk 2 (.const 0), .sym 0]) (rs := [])
+    (ls' := [.sym 1, .blk 0 .id]) (rs' := [.sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Backtrack: the last `1` of `D` becomes the pointer. -/
+theorem btOk (L : List Nat) (A : List Nat) (Z : List Nat) (hL : Sym4 L) (hA : Bits A) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd QConp.BT (L ++ (A ++ (3 :: (Z ++ ([1]))))) ([]))
+      (hd QConp.RS2 (L ++ (A ++ ([1]))) ([2])) := by
+  have hV : Valid [ALL, bits, Z2] [L, A, Z] := Valid.cons hL (Valid.cons hA (Valid.cons hZ (Valid.nil _)))
+  exact checkTT (env := [L, A, Z]) (E := []) (k := 5) hV trivial
+    (ls := [.blk 0 .id, .blk 1 .id, .sym 3, .blk 2 .id, .sym 1]) (rs := [])
+    (ls' := [.blk 0 .id, .blk 1 .id, .sym 1]) (rs' := [.sym 2])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `D` exhausted (only `0`s). -/
+theorem btEx1 (L : List Nat) (Z : List Nat) (hL : Sym4 L) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd QConp.BT (L ++ (0 :: (Z ++ ([1])))) ([]))
+      (hd QConp.EX1 (L) (0 :: (List.replicate Z.length 0 ++ ([0])))) := by
+  have hV : Valid [ALL, Z2] [L, Z] := Valid.cons hL (Valid.cons hZ (Valid.nil _))
+  exact checkTT (env := [L, Z]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 0, .blk 1 .id, .sym 1]) (rs := [])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 0, .blk 1 (.const 0), .sym 0])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- `D` empty: exhausted. -/
+theorem btEx0 (L : List Nat) (hL : Sym4 L) :
+    zconpLogic.Reach (hd QConp.BT (L ++ ([0])) ([]))
+      (hd QConp.EX1 (L) ([0])) := by
+  have hV : Valid [ALL] [L] := Valid.cons hL (Valid.nil _)
+  exact checkTT (env := [L]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 0]) (rs := [])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 0])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The pointer moves one bit to the front. -/
+theorem rsStep (L : List Nat) (R : List Nat) (c : Nat) (hL : Sym4 L) (hR : Sym4 R) (hc : c ∈ bits) :
+    zconpLogic.Reach (hd QConp.RS2 (L ++ (c :: ([1]))) (R))
+      (hd QConp.RS2 (L ++ ([1])) (c :: (R))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  rcases mem_bits hc with rfl | rfl
+  · exact checkTT (env := [L, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 2, .sym 1]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 1]) (rs' := [.sym 2, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTT (env := [L, R]) (E := []) (k := 3) hV trivial
+      (ls := [.blk 0 .id, .sym 3, .sym 1]) (rs := [.blk 1 .id])
+      (ls' := [.blk 0 .id, .sym 1]) (rs' := [.sym 3, .blk 1 .id])
+      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The pointer is at the front: to the fuel. -/
+theorem rsEnd (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zconpLogic.Reach (hd QConp.RS2 (L ++ (0 :: ([1]))) (R))
+      (hd QConp.ER3 (L) (0 :: (1 :: (R)))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [L, R]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id, .sym 0, .sym 1]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 0, .sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 
 end ZP.Conp
