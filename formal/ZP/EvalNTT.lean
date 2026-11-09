@@ -13508,7 +13508,76 @@ theorem loop_some (p nr n : Nat) (Os : List Nat) (hp : 2 ≤ p) (hnr : 1 ≤ nr)
   omega
 
 
+
+/-- Loop outcome gives the circuit verdict together with the machine continuation. -/
+theorem lp_circuit (pr : Nat → Nat) (c nr n p : Nat) (Os : List Nat) (hpr : pr nr = p) (hcn : c * nr = n + 1)
+    (hp : 2 ≤ p) (hnr : 1 ≤ nr) (hnrN : nr ≤ n + 1)
+    (hOl : Os.length = n + 1) (hOs : Os = List.replicate (n + 1 - nr) 2 ++ List.replicate nr 3)
+    (Wf Kf Cf : List Nat) (st : ZC) {D : List DG}
+    (hit : DIterS (nr - 1) n p ((initFrom p 0 Os).map ORec.dgO) D)
+    (hl : LpOut Wf Kf Cf (nr - 1) n st D p) :
+    (hasCircuit pr c nr = false ∧ ∃ (A : List Nat) (n0 : Nat), znttLogic.Reach st (hd QNTT.BEEP A []) ∧
+      ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
+        znttLogic.Reach X (hdR QNTT.PA0 [3] (1 :: (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+          ((Cf.map (fun x => if x = 1 then 1 else 3) ++ [3]) ++ 1 ::
+            (List.replicate (nr - 1 + 1 + 0) 3 ++ List.replicate (n0 + 1) 0)))))) ∨
+    (hasCircuit pr c nr = true ∧ ∃ N : Nat, ∃ T, SuOut D Wf (Kf ++ 1 :: Cf) (0 + (nr - 1) + 1) T ∧
+      znttLogic.Reach st (hdR QNTT.SU1 [] T) ∧
+      znttLogic.Reach (hdR QNTT.SU1 [] T) (hdR QNTT.PA0 [3] (1 :: (Kf ++ 1 :: (Cf ++ 1 :: (List.replicate (0 + (nr - 1) + 1 + 1) 3 ++
+        List.replicate (N + 1) 0)))))) := by
+  have hiff := hasCircuit_iff pr c nr
+  rw [hpr, hcn] at hiff
+  rcases hl with ⟨A, n0, hT, hno, hr, X, hX, hr2⟩ | ⟨N, T, hs, hf, h1, h3⟩
+  · left
+    refine ⟨?_, A, n0, hr, X, hX, hr2⟩
+    cases hh : hasCircuit pr c nr with
+    | false => rfl
+    | true =>
+      exact absurd (hiff.1 hh) (loop_none p nr n Os hp hnr hnrN hOl hOs hit hT hno)
+  · right
+    refine ⟨?_, N, T, hs, h1, h3⟩
+    exact hiff.2 (loop_some p nr n Os hp hnr hnrN hOl hOs hit hf)
+
+theorem initFrom_cons (p n : Nat) (Os : List Nat) (hOl : Os.length = n + 1) :
+    ∃ o os, initFrom p 0 Os = o :: os ∧ os.length = n := by
+  cases Os with
+  | nil => simp at hOl
+  | cons O Os' => exact ⟨_, _, rfl, by simpa [initFrom_len] using hOl⟩
+
+/-- The assignment loop started at the canonical initial records decides `hasCircuit`. -/
+theorem assign_circuit (pr : Nat → Nat) (c nr n p : Nat) (Os : List Nat) (hpr : pr nr = p) (hcn : c * nr = n + 1)
+    (hp : 2 ≤ p) (hnr : 1 ≤ nr) (hnrN : nr ≤ n + 1)
+    (hOl : Os.length = n + 1) (hOs : Os = List.replicate (n + 1 - nr) 2 ++ List.replicate nr 3)
+    (a k c' : Nat) (hk : 1 ≤ k) (hc' : 1 ≤ c') (o : ORec) (os : List ORec) (ho : initFrom p 0 Os = o :: os)
+    (hlen : os.length = n) :
+    (hasCircuit pr c nr = false ∧ ∃ (A : List Nat) (n0 : Nat),
+      znttLogic.Reach (loopSt (List.replicate a 3) (List.replicate k 3) (List.replicate c' 3) (nr - 1) p o os)
+        (hd QNTT.BEEP A []) ∧
+      ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
+        znttLogic.Reach X (hdR QNTT.PA0 [3] (1 :: ((List.replicate k 3).map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+          (((List.replicate c' 3).map (fun x => if x = 1 then 1 else 3) ++ [3]) ++ 1 ::
+            (List.replicate (nr - 1 + 1 + 0) 3 ++ List.replicate (n0 + 1) 0)))))) ∨
+    (hasCircuit pr c nr = true ∧ ∃ (D : List DG) (N : Nat) (T : List Nat),
+      SuOut D (List.replicate a 3) (List.replicate k 3 ++ 1 :: List.replicate c' 3) (0 + (nr - 1) + 1) T ∧
+      znttLogic.Reach (loopSt (List.replicate a 3) (List.replicate k 3) (List.replicate c' 3) (nr - 1) p o os)
+        (hdR QNTT.SU1 [] T) ∧
+      znttLogic.Reach (hdR QNTT.SU1 [] T) (hdR QNTT.PA0 [3] (1 :: (List.replicate k 3 ++ 1 :: (List.replicate c' 3 ++ 1 ::
+        (List.replicate (0 + (nr - 1) + 1 + 1) 3 ++ List.replicate (N + 1) 0)))))) := by
+  have hO23 : ∀ O ∈ Os, O = 2 ∨ O = 3 := by
+    intro O hO; rw [hOs] at hO; simp [List.mem_replicate] at hO; omega
+  have hok : ∀ x ∈ o :: os, x.Ok := by rw [← ho]; exact initFrom_Ok p hp 0 Os hO23
+  have hacc : ∀ x ∈ o :: os, 2 ≤ x.acc.length := by
+    intro x hx; rw [← ho] at hx; rw [(initFrom_mem p (by omega) 0 Os x hx).1]; exact hp
+  obtain ⟨D, hit, hl⟩ := assignLoop a k c' hk hc' n (nr - 1) (by omega) _ p o os rfl (by omega) hlen hok hacc
+  rw [← ho] at hit
+  rcases lp_circuit pr c nr n p Os hpr hcn hp hnr hnrN hOl hOs (List.replicate a 3) (List.replicate k 3)
+    (List.replicate c' 3) _ hit hl with h | ⟨h1, N, T, h2⟩
+  · exact Or.inl h
+  · exact Or.inr ⟨h1, D, N, T, h2⟩
+
+
 end ZP.NTT
+
 
 
 

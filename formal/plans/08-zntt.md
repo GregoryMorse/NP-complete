@@ -510,3 +510,10 @@ assignment. `initFrom p 0 Os` gives the canonical initial records (`recO (p-1) (
 identifies `Fit` with `DigOk ∧ length`. `setD_spec`: `AOkD` of the digit tuples ↔ `evalC nr p (decRecs πs ds)`.
 `loop_none` (terminal refuted iteration ⇒ no circuit assignment) and `loop_some` (a successful state ⇒ a
 circuit assignment). Remaining: connect to `hasCircuit_iff`/`assignLoop` outputs, then bridge assembly.
+
+### Stage note: `assignLoop` ⇒ `hasCircuit` verdict
+`lp_circuit`: a `DIterS`/`LpOut` outcome gives `hasCircuit pr c nr = false` (with the BEEP→PA0 continuation) or
+`= true` (with the SU1→PA0 continuation). `assign_circuit` instantiates `assignLoop` at the canonical initial
+records `initFrom p 0 Os` (`loopSt`, `Os = 2^(n+1-nr) 3^nr`, `c*nr = n+1`, `pr nr = p`).
+Remaining: bridge assembly (PA0 → prime ruler → WX → buildEntry → assignLoop; beep in the `beeps` window),
+abstract spec, Challenge/Solution entries with `PrimeEx`.
