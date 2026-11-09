@@ -7267,5 +7267,42 @@ theorem faG' (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (w : VR) (hw : w.Ok)
   simpa [tailB] using h
 
 
+/-- A finished record, re-armed for the next pass with input flag `x`. -/
+def VR.nextPass (c : VR) (x : Nat) : VR :=
+  { F := 2, O := c.O, P := x, w := c.w, k := if x = 3 then 2 else 1, E := c.E, m := c.m, n := c.n, s := c.s,
+    a := 0, c := c.a + c.c, t := c.t }
+
+def VR.doneX (c : VR) (r s x : Nat) : Rc :=
+  { F := 2, O := c.O, Pf := x, acc := List.replicate r 2 ++ 3 :: List.replicate s 2, E := c.E,
+    b0 := c.b.headD 2, br := c.b.tail, u0 := c.u.headD 2, ur := c.u.tail }
+
+theorem doneX_eq (c : VR) (r s x : Nat) : ({ c.done r s with Pf := x } : Rc) = c.doneX r s x := rfl
+
+theorem done_ps_vr (c : VR) (hc : c.Ok) (r s x : Nat) (hrs : r + 1 + s = c.w) (hw2 : 2 ≤ c.w) (hx : x ∈ [2, 3]) :
+    1 :: 1 :: (c.doneX r s x).ps.body = (c.nextPass x).recd := by
+  have hrest : (c.doneX r s x).Rest := by
+    have := VR.toRcA_rest c (List.replicate r 2 ++ 3 :: List.replicate s 2)
+    simpa [VR.doneX, VR.toRcA, Rc.Rest] using this
+  rw [Rc.ps_body _ hrest]
+  have hB : (c.doneX r s x).b0 :: (c.doneX r s x).br = c.b := by
+    obtain ⟨b0, br, hB⟩ := List.exists_cons_of_ne_nil hc.bne
+    simp [VR.doneX, hB]
+  have hU : (c.doneX r s x).u0 :: (c.doneX r s x).ur = c.u := by
+    obtain ⟨u0, ur, hU⟩ := List.exists_cons_of_ne_nil hc.une
+    simp [VR.doneX, hU]
+  have hu : c.u = winStr c.a (c.c + 1) c.t := by simp [VR.u, winStr]
+  have hlen : (c.doneX r s x).acc.length = c.w := by
+    simp [VR.doneX]; omega
+  have e1 : (c.doneX r s x).b0 :: ((c.doneX r s x).br ++ 1 :: restoreU ((c.doneX r s x).u0 :: (c.doneX r s x).ur)) =
+      c.b ++ 1 :: (List.replicate (c.a + c.c + 1) 3 ++ List.replicate c.t 2) := by
+    rw [hU, hu, restoreU_win _ _ _ (by omega)]
+    rw [← hB]; simp; omega
+  have hE : (c.doneX r s x).E = c.E := rfl
+  have hO : (c.doneX r s x).O = c.O := rfl
+  have hP : (c.doneX r s x).Pf = x := rfl
+  rw [hE, hO, hP, hlen, accI_fld x _ hx hw2, e1]
+  simp [VR.recd, VR.tl, VR.nextPass, VR.b, VR.u, List.replicate_succ]
+
+
 end ZP.NTT
 

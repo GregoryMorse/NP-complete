@@ -287,3 +287,9 @@ Remaining, in order:
 `ORec.toRc o x` (record after `witnessInit`, flag `x`), `ORec.vr o x` (cursor form), `restoreU_win`, `accI_fld`, and
 `toRc_ps_vr : 1 :: 1 :: (o.toRc x).ps.body = (o.vr x).recd`. Next: lift to lists (`tailP (os.map toRc) = tailVR (os.map vr)`
 and the first-record entry `faN/faO` ↔ `curTapeG`), then chain `scPm → passStartAll → FAL → RFL → passMore/passLast`.
+
+### Progress: first-record entry and pass re-arming
+`faG`/`faG'` (first record as cursor, `VR` form, ends in the `curTapeG` shape of `passLoop`), `curTapeG_tl`, `curG_kw`,
+`VR.nextPass`/`VR.doneX`/`done_ps_vr` (a finished record, with the new input flag, passes through `Rc.ps` to the next pass's `VR`).
+For chaining, `passLoop` must additionally expose the invariant `r + 1 + s = c.w` for the `done` records (`r = c.k - 1`,
+`s = c.w - c.k`), then: `scPm` → `passStartAll` on `done` records → `faG'` with `VR.nextPass` records → `passMore`/`passLast`.
