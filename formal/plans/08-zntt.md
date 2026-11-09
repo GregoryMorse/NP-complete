@@ -417,3 +417,6 @@ Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the 
 
 ### Stage: digit decoder (`hasCircuit_iff`)
 `decRecs πs ds` decodes digits to records (`ptrOf π`: none for `π ≤ 1`, `some (π-2)` otherwise); `DigOk` (`π_i ≤ i+1`, `d_i < p`, matching the build: record `i` has pointer window width `i+1`, coefficient range `p`); `mem_allRecs` and `hasCircuit_iff`: `hasCircuit pr c n` iff some in-range digit assignment of length `c*n` satisfies `evalC` on `decRecs`. The duplicate none digits `π = 0, 1` are harmless. Remaining: machine run on a digit assignment ↔ `evalC`, odometer enumerates all in-range digit assignments, bridge.
+
+### Stage: odometer coverage (`cover`)
+`Rt` (reflexive-transitive closure), `ORec.at o π d` (record at digits `(π, d)` of a cycle), `head_reach` (a record cycles through all `(π, d)` by `next = inl` steps), `cyc` (a full head cycle plus overflow advances the tail one `odoStepR` step and restores the initial head), and `cover`: from records in initial form, every in-range digit assignment `setD os πs ds` is reachable by `odoStepR` iteration. Remaining: determinism (reachable states precede the terminal one), multi-pass semantics ↔ `evalC`, bridge.

@@ -11600,5 +11600,115 @@ theorem hasCircuit_iff (pr : Nat → Nat) (c n : Nat) : hasCircuit pr c n = true
   · rintro ⟨πs, ds, h1, h2, he⟩
     exact ⟨_, (mem_allRecs _ _ _ _).2 ⟨πs, ds, h1, h2, rfl⟩, he⟩
 
+
+inductive Rt {α : Type} (R : α → α → Prop) : α → α → Prop
+  | refl (a : α) : Rt R a a
+  | tail {a b c : α} : Rt R a b → R b c → Rt R a c
+
+theorem Rt.trans {α : Type} {R : α → α → Prop} {a b c : α} (h1 : Rt R a b) (h2 : Rt R b c) : Rt R a c := by
+  induction h2 with
+  | refl => exact h1
+  | tail _ h ih => exact Rt.tail ih h
+
+theorem Rt.single {α : Type} {R : α → α → Prop} {a b : α} (h : R a b) : Rt R a b := Rt.tail (Rt.refl a) h
+
+/-- The odometer record at digits `(π, d)` of a cycle started at an initial record. -/
+def ORec.at (o : ORec) (π d : Nat) : ORec :=
+  { o with d := d, z := 0, k := π + 1, m := o.z + o.k - 1 + o.m - π }
+
+def NI (a b : ORec) : Prop := a.next = Sum.inl b
+
+theorem at_d (o : ORec) (π d : Nat) (h0 : o.z = 0) (h1 : o.k = 1) (hd : d + 1 < o.r) (hπ : π ≤ o.m) :
+    NI (o.at π d) (o.at π (d + 1)) := by
+  unfold NI ORec.next ORec.at
+  simp only
+  rw [if_pos hd]
+
+theorem at_k (o : ORec) (π : Nat) (h0 : o.z = 0) (h1 : o.k = 1) (hd : 1 ≤ o.r) (hπ : π + 1 ≤ o.m) :
+    NI (o.at π (o.r - 1)) (o.at (π + 1) 0) := by
+  unfold NI ORec.next ORec.at
+  simp only
+  rw [if_neg (by omega), if_pos (by omega)]
+  simp [h0, h1]
+  omega
+
+theorem head_reach (o : ORec) (h0 : o.z = 0) (h1 : o.k = 1) (hd0 : o.d = 0) (hr : 1 ≤ o.r) :
+    ∀ π d, π ≤ o.m → d < o.r → Rt NI o (o.at π d) := by
+  have e0 : o = o.at 0 0 := by
+    cases o
+    simp_all [ORec.at]
+  intro π
+  induction π with
+  | zero =>
+    intro d _ hdr
+    induction d with
+    | zero => rw [← e0]; exact Rt.refl _
+    | succ d ih => exact Rt.tail (ih (by omega)) (at_d o 0 d h0 h1 (by omega) (by omega))
+  | succ π ih =>
+    intro d hπ hdr
+    have hA : Rt NI o (o.at π (o.r - 1)) := ih _ (by omega) (by omega)
+    have hB : Rt NI o (o.at (π + 1) 0) := Rt.tail hA (at_k o π h0 h1 hr (by omega))
+    induction d with
+    | zero => exact hB
+    | succ d ih2 => exact Rt.tail (ih2 (by omega)) (at_d o (π + 1) d h0 h1 (by omega) hπ)
+
+def OS (a b : List ORec) : Prop := odoStepR a = some b
+
+theorem lift_head (S : List ORec) {a b : ORec} (h : Rt NI a b) : Rt OS (a :: S) (b :: S) := by
+  induction h with
+  | refl => exact Rt.refl _
+  | tail _ hn ih =>
+    refine Rt.tail ih ?_
+    unfold OS odoStepR
+    unfold NI at hn
+    rw [hn]
+
+theorem cyc (o : ORec) (h0 : o.z = 0) (h1 : o.k = 1) (hd0 : o.d = 0) (hr : 1 ≤ o.r) (S S2 : List ORec)
+    (hS : odoStepR S = some S2) : Rt OS (o :: S) (o :: S2) := by
+  have h := lift_head S (head_reach o h0 h1 hd0 hr o.m (o.r - 1) (Nat.le_refl _) (by omega))
+  refine h.tail ?_
+  unfold OS odoStepR
+  have : (o.at o.m (o.r - 1)).next = Sum.inr o := by
+    unfold ORec.next ORec.at
+    simp only
+    rw [if_neg (by omega), if_neg (by simp [h0, h1])]
+    cases o
+    simp_all
+  rw [this]
+  simp [hS]
+
+def Fit : List ORec → List Nat → List Nat → Prop
+  | [], [], [] => True
+  | o :: os, π :: πs, d :: ds => π ≤ o.m ∧ d < o.r ∧ Fit os πs ds
+  | _, _, _ => False
+
+def setD : List ORec → List Nat → List Nat → List ORec
+  | o :: os, π :: πs, d :: ds => o.at π d :: setD os πs ds
+  | _, _, _ => []
+
+theorem cover : ∀ (os : List ORec) (πs ds : List Nat),
+    (∀ x ∈ os, x.z = 0 ∧ x.k = 1 ∧ x.d = 0 ∧ 1 ≤ x.r) → Fit os πs ds → Rt OS os (setD os πs ds)
+  | [], πs, ds, _, h => by
+    cases πs <;> cases ds <;> simp [Fit] at h
+    exact Rt.refl _
+  | o :: os, πs, ds, hI, h => by
+    cases πs with
+    | nil => simp [Fit] at h
+    | cons π πs =>
+      cases ds with
+      | nil => simp [Fit] at h
+      | cons d ds =>
+        obtain ⟨h1, h2, h3⟩ := h
+        obtain ⟨a0, a1, a2, a3⟩ := hI o (by simp)
+        have ih := cover os πs ds (fun x hx => hI x (by simp [hx])) h3
+        have hT : Rt OS (o :: os) (o :: setD os πs ds) := by
+          clear h1 h2 h3
+          generalize setD os πs ds = T at ih
+          induction ih with
+          | refl => exact Rt.refl _
+          | tail _ hs ih2 => exact ih2.trans (cyc o a0 a1 a2 a3 _ _ hs)
+        have hH := lift_head (setD os πs ds) (head_reach o a0 a1 a2 a3 π d h1 h2)
+        exact hT.trans hH
+
 end ZP.NTT
 
