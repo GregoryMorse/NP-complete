@@ -377,3 +377,9 @@ and the `FA0` wrappers `fa0OLt`/`fa0OGt` reach `ODL` with an explicit tape. Rema
 `OdOut'` (whole tape, `Nn = 3^a' 2^b'`, so mid-pass tapes fit), `odlNext3` (same continuations as `odlNext2` from any `ODL` split),
 `OdOut.to'`, `fa0GFail` (mismatching `E`-mark count at the next output record → `ODL` with explicit tape, new `acc`/`E` bit-strings of unchanged lengths).
 Next: `colAdvanceGF`, `colStepNF/OF`, `passLoopF` (parse mid-pass tape via `VR.toOc`, `sepRest`), then drop `PassCmp`.
+
+### Mid-pass compare failure (done)
+`colAdvanceGF`, `colStepNF/OF`, `EF` (output `E` is `fld len e`) with `stepN_EF`, `EF_mismatch`, `VR.toOc`/`tailVR_sepRest`/`failSep`
+(mid-pass tape parses as `sepRest` of ORecs with the same digits) and `passLoopF`: if `¬PassCmp` then the pass loop reaches `ODL` with tape
+`Pm' ++ sepRest os`, `os.map dgO = D`. Next: the same split in `passCycle`/`passStep` (compare of the first record of the next pass,
+`faNext`) and `passesRun`, producing `OdOut'` and dropping `Sem`.

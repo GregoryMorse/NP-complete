@@ -9823,5 +9823,357 @@ theorem fa0GFail (A : List Nat) (w : VR) (hw : w.Ok) (ws : List VR) (hws : ∀ x
     · simp [hlen]; omega
     · simp [VR.toRc, VR.toRcA, hO, List.append_assoc]
 
+
+theorem colAdvanceGF (c w : VR) (ws : List VR) (hc : c.Ok) (hw : w.Ok) (hws : ∀ x ∈ ws, x.Ok) (hF : c.F = 3)
+    (hO : c.O = 2 ∨ c.O = 3) (hwO : w.O = 3) (e z : Nat) (he : 1 ≤ e) (hE : w.E = fld (e + z) e) (hne : e ≠ w.k)
+    (Pm : List Nat) (hP : GoodW Pm) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (a s : Nat) :
+    ∃ (L R acc2 E2 : List Nat), BitsD acc2 ∧ BitsD E2 ∧ acc2.length = w.w ∧ E2.length = w.E.length ∧
+      znttLogic.Reach (hd QNTT.RFL (curTapeG Pm pre c a 0 s (w :: ws)) []) (hd QNTT.ODL L R) ∧
+      L ++ R = Pm ++ tailB (pre ++ [c.done a s]) ++ [1, 1, 3, w.O, w.P, 1] ++
+        (acc2 ++ 1 :: (E2 ++ 1 :: (w.b ++ 1 :: (w.u ++ tailVR ws)))) := by
+  have hvs : ∀ x ∈ w :: ws, x.Ok := fun x hx => by
+    simp at hx; rcases hx with rfl | hx
+    · exact hw
+    · exact hws x hx
+  have sPm := hP.sym4
+  have sPre : Sym4 (tailB pre) := tailB_sym4 pre (fun x hx => (hpre x hx).1)
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have hA := curToCA0 c hc hF hO Pm hP pre hpre a s (w :: ws) hvs
+  have sU := hc.u.sym4
+  have sB := hc.b.sym4
+  have sE := hc.E.sym4
+  have sW : Sym4 ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) :=
+    hw.hdr3.sym4.app (sym4_M (hw.tl_sym4.app (tailVR_sym4 ws hws)))
+  have sT : Sym4 (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))) := by
+    refine sE.app (sym4_M (sB.app (sym4_M (sU.app ?_))))
+    exact tailVR_sym4 (w :: ws) hvs
+  have b4 := ca0Sweep (Pm ++ tailB pre ++ [1, 1, 3, c.O, c.P]) (List.replicate a 2 ++ [3])
+    (List.replicate s 2 ++ 1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ tailVR (w :: ws)))))
+    ((sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B hc.O (sym4_B hc.P Sym4.nil))))))
+    (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; simp [hx])) ((s2 s).app (sym4_M sT))
+  have b5 := caNext c hc (Pm ++ tailB pre) (List.replicate a 2 ++ 3 :: List.replicate s 2)
+    ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) (sPm.app sPre)
+    (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all))
+    (by cases a <;> simp [List.replicate_succ]) sW
+  obtain ⟨L, R, acc2, E2, h1, h2, h3, h4, b6, hLR⟩ := fa0GFail
+    (Pm ++ tailB pre ++ [1, 1, 2, c.O, c.P, 1] ++ (List.replicate a 2 ++ 3 :: List.replicate s 2) ++
+      1 :: (c.E ++ 1 :: (c.b ++ 1 :: (c.u ++ [1, 1])))) w hw ws hws
+    (((((sPm.app sPre).app (sym4_M (sym4_M (sym4_B (by simp) (sym4_B hc.O (sym4_B hc.P (sym4_M Sym4.nil))))))).app
+      (BitsD.sym4 (bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)))).app
+      (sym4_M (sE.app (sym4_M (sB.app (sym4_M (sU.app (sym4_M (sym4_M Sym4.nil))))))))))
+    hwO e z he hE hne
+  have hdone : (c.done a s).body = [2, c.O, c.P] ++ 1 :: ((List.replicate a 2 ++ 3 :: List.replicate s 2) ++
+      1 :: (c.E ++ 1 :: (c.b ++ 1 :: c.u))) := by
+    have e : (c.done a s).tl = (c.toRcA (List.replicate a 2 ++ 3 :: List.replicate s 2)).tl := rfl
+    rw [Rc.body_eq, e, VR.toRcA_tl c hc]
+    rfl
+  refine ⟨L, R, acc2, E2, h1, h2, h3, h4, ?_, ?_⟩
+  · simp only [tailB_append, tailB, hdone, List.append_nil, curTapeG, List.append_assoc, List.cons_append,
+      List.nil_append, List.replicate_succ] at hA b4 b5 b6 ⊢
+    exact hA.trans (b4.trans (b5.trans b6))
+  · rw [hLR]
+    simp [tailB_append, tailB, hdone, List.append_assoc]
+
+
+theorem colStepNF (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 2) (Pm : List Nat) (hP : GoodW Pm)
+    (pre : List Rc) (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (r s : Nat) (vs : List VR)
+    (hvs : ∀ x ∈ vs, x.Ok) (w : VR) (ws : List VR) (hw : stepN r vs = w :: ws)
+    (hwO : w.O = 3) (e z : Nat) (he : 1 ≤ e) (hE : w.E = fld (e + z) e) (hne : e ≠ w.k) :
+    ∃ (L R acc2 E2 : List Nat), BitsD acc2 ∧ BitsD E2 ∧ acc2.length = w.w ∧ E2.length = w.E.length ∧
+      znttLogic.Reach (hd QNTT.RFL (curTapeG Pm pre c 0 r s vs) []) (hd QNTT.ODL L R) ∧
+      L ++ R = Pm ++ tailB (pre ++ [c.done r s]) ++ [1, 1, 3, w.O, w.P, 1] ++
+        (acc2 ++ 1 :: (E2 ++ 1 :: (w.b ++ 1 :: (w.u ++ tailVR ws)))) := by
+  have h1 := cursorLoop c hc hF hO Pm hP pre hpre s r 0 vs hvs
+  rw [hw, Nat.zero_add] at h1
+  have hok := stepN_ok r vs hvs
+  rw [hw] at hok
+  obtain ⟨L, R, a2, E2, k1, k2, k3, k4, hr, hLR⟩ := colAdvanceGF c w ws hc (hok w (by simp))
+    (fun x hx => hok x (by simp [hx])) hF (Or.inl hO) hwO e z he hE hne Pm hP pre hpre r s
+  rw [curTapeG_eq _ _ _ hO]
+  rw [curTapeG_eq _ _ _ hO] at hr
+  exact ⟨L, R, a2, E2, k1, k2, k3, k4, h1.trans hr, hLR⟩
+
+theorem colStepOF (n : Nat) (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (hm : c.m = 0) (hn : c.n = n)
+    (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) (pre : List Rc)
+    (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2) (s wE : Nat) (hwE : 2 ≤ wE)
+    (r : Nat) (p : Nat × Nat) (e0 : Nat) (hp : 1 ≤ p.2) (he0 : 1 ≤ e0) (hew : e0 ≤ wE) (hE0 : c.E = fld wE e0)
+    (vs : List VR) (hvs : ∀ x ∈ vs, x.Ok) (w : VR) (ws : List VR) (hw : stepN r vs = w :: ws)
+    (hwO : w.O = 3) (e z : Nat) (he : 1 ≤ e) (hE : w.E = fld (e + z) e) (hne : e ≠ w.k) :
+    ∃ (L R acc2 E2 : List Nat), BitsD acc2 ∧ BitsD E2 ∧ acc2.length = w.w ∧ E2.length = w.E.length ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2)) pre c 0 r s vs) [])
+        (hd QNTT.ODL L R) ∧
+      L ++ R = (Wf ++ 1 :: (List.replicate (sAdv (r * n) p).1 2 ++ List.replicate (sAdv (r * n) p).2 3 ++ 1 :: P2)) ++
+        tailB (pre ++ [({ c with E := fld wE (eAdv wE (r * n) e0) } : VR).done r s]) ++ [1, 1, 3, w.O, w.P, 1] ++
+        (acc2 ++ 1 :: (E2 ++ 1 :: (w.b ++ 1 :: (w.u ++ tailVR ws)))) := by
+  have h1 := outLoop n c hc hF hO hm hn Wf hW P2 hP2 pre hpre s wE hwE r 0 p e0 vs hvs hp he0 hew
+  have hb := eAdv_bounds wE (r * n) e0 he0 hew
+  have hElen := hc.Elen
+  rw [hE0, fld_len _ _ hew] at hElen
+  have hc' : ({ c with E := fld wE (eAdv wE (r * n) e0) } : VR).Ok :=
+    { F := hc.F, O := hc.O, P := hc.P, k1 := hc.k1, kw := hc.kw, E := fld_bits _ _,
+      Elen := by show 2 ≤ (fld wE (eAdv wE (r * n) e0)).length; rw [fld_len _ _ hb.2]; exact hElen }
+  have hG := goodW_reg Wf (List.replicate (sAdv (r * n) p).1 2 ++ List.replicate (sAdv (r * n) p).2 3) P2 hW
+    (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)))
+    (by have := sAdv_pos (r * n) p hp; obtain ⟨q', hq'⟩ : ∃ q', (sAdv (r * n) p).2 = q' + 1 := ⟨(sAdv (r * n) p).2 - 1, by omega⟩
+        simp [hq', List.replicate_succ]) hP2
+  have hok := stepN_ok r vs hvs
+  rw [hw] at hok
+  obtain ⟨L, R, a2, E2, k1, k2, k3, k4, hr, hLR⟩ := colAdvanceGF ({ c with E := fld wE (eAdv wE (r * n) e0) } : VR) w ws hc'
+    (hok w (by simp)) (fun x hx => hok x (by simp [hx])) hF (Or.inr hO) hwO e z he hE hne _ hG pre hpre r s
+  rw [hw, Nat.zero_add] at h1
+  refine ⟨L, R, a2, E2, k1, k2, k3, k4, (LTM.Reach.of_eq h1 ?_ ?_).trans hr, hLR⟩
+  · simp [curTapeG, hE0, hO, List.append_assoc]
+  · simp [curTapeG, hO, VR.b, VR.u, List.append_assoc]
+
+
+/-- The output-node `E` register is a unary-marked string. -/
+def EF (x : VR) : Prop := x.O = 3 → ∃ e, 1 ≤ e ∧ e ≤ x.E.length ∧ x.E = fld x.E.length e
+
+theorem EF_of {x y : VR} (hE : x.E = y.E) (hO : x.O = y.O) (h : EF y) : EF x := by
+  intro h3
+  rw [hO] at h3
+  obtain ⟨e, h1, h2, h4⟩ := h h3
+  exact ⟨e, h1, by rw [hE]; exact h2, by rw [hE]; exact h4⟩
+
+theorem vis_EO (v : VR) : v.vis.E = v.E ∧ v.vis.O = v.O := by unfold VR.vis; split <;> simp
+theorem dec_EO (v : VR) : v.dec.E = v.E ∧ v.dec.O = v.O := by unfold VR.dec; split <;> simp
+
+theorem stepList_EF : ∀ vs : List VR, (∀ x ∈ vs, EF x) → ∀ x ∈ stepList vs, EF x
+  | [], _ => by simp [stepList]
+  | v :: vs, h => by
+    intro x hx
+    simp only [stepList, List.mem_cons, List.mem_map] at hx
+    rcases hx with rfl | ⟨y, hy, rfl⟩
+    · exact EF_of ((vis_EO _).1) ((vis_EO _).2) (EF_of rfl rfl (h v (by simp)) : EF v.inc)
+    · exact EF_of ((vis_EO _).1) ((vis_EO _).2) (h y (by simp [hy]))
+
+theorem stepN_EF (r : Nat) : ∀ vs : List VR, (∀ x ∈ vs, EF x) → ∀ x ∈ stepN r vs, EF x := by
+  induction r with
+  | zero => intro vs h; simpa [stepN] using h
+  | succ r ih => intro vs h; exact ih _ (stepList_EF vs h)
+
+theorem dec_EF (vs : List VR) (h : ∀ x ∈ vs, EF x) : ∀ x ∈ vs.map VR.dec, EF x := by
+  intro x hx
+  simp only [List.mem_map] at hx
+  obtain ⟨y, hy, rfl⟩ := hx
+  exact EF_of (dec_EO y).1 (dec_EO y).2 (h y hy)
+
+theorem EF_mismatch (w : VR) (hw : w.Ok) (hEF : EF w) (hO : w.O = 3)
+    (hn : ¬ (w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k)) :
+    ∃ e z, 1 ≤ e ∧ w.E = fld (e + z) e ∧ e ≠ w.k := by
+  obtain ⟨e, h1, h2, h3⟩ := hEF hO
+  have h5 : e + (w.E.length - e) = w.E.length := by omega
+  refine ⟨e, w.E.length - e, h1, by rw [h5]; exact h3, ?_⟩
+  intro hk
+  apply hn
+  intro _
+  subst hk
+  exact ⟨w.E.length - w.k, hw.k1, by rw [h5]; exact h3⟩
+
+/-- A cursor-form record as an odometer record (digits are `therm`/`winStr`). -/
+def VR.toOc (v : VR) : ORec :=
+  { F := v.F, O := v.O, Pf := v.P, acc := fld v.w v.k, E := v.E,
+    d := v.n, r := v.n + 1 + v.s, z := v.a, k := v.c + 1, m := v.t }
+
+theorem VR.recd_toOc (v : VR) (hm : v.m = 0) : v.recd = 1 :: 1 :: v.toOc.tape := by
+  have hb : v.b = therm v.n (v.n + 1 + v.s) := by simp [VR.b, therm, hm]
+  have hu : v.u = winStr v.a (v.c + 1) v.t := by simp [VR.u, winStr]
+  simp only [VR.recd, VR.tl, VR.toOc, ORec.tape, hb, hu]
+  simp
+
+theorem VR.toOc_ok (v : VR) (hv : v.Ok) : v.toOc.Ok :=
+  { hF := by
+      have h1 := hv.F; have h2 := hv.O; have h3 := hv.P
+      simp at h1 h2 h3
+      simp [VR.toOc]; omega,
+    acc := fld_bits _ _, E := hv.E, d := by simp [VR.toOc], k := by simp [VR.toOc], Elen := hv.Elen }
+
+theorem VR.toOc_dg (v : VR) (hv : v.Ok) : v.toOc.dgO = v.dg := by
+  have := fld_len v.w v.k hv.kw
+  simp [VR.toOc, ORec.dgO, VR.dg, this]; omega
+
+theorem sepRest_append : ∀ (l1 l2 : List ORec), sepRest (l1 ++ l2) = sepRest l1 ++ sepRest l2
+  | [], l2 => by simp [sepRest]
+  | o :: os, l2 => by simp [sepRest, sepRest_append os l2]
+
+theorem tailVR_sepRest : ∀ (vs : List VR), (∀ x ∈ vs, x.m = 0) → tailVR vs = sepRest (vs.map VR.toOc)
+  | [], _ => by simp [tailVR, sepRest]
+  | v :: vs, h => by
+    have := tailVR_sepRest vs (fun x hx => h x (by simp [hx]))
+    simp only [tailVR, List.map_cons, List.flatten_cons, sepRest] at this ⊢
+    rw [VR.recd_toOc v (h v (by simp)), this]
+    simp
+
+
+theorem failSep (Pm : List Nat) (pre : List Rc) (os0 : List ORec) (hpre : tailB pre = sepRest os0)
+    (hos0 : ∀ y ∈ os0, y.Ok) (x : VR) (hx : x.Ok) (hxm : x.m = 0) (r s : Nat) (hrs : r + 1 + s = x.w)
+    (w : VR) (hw : w.Ok) (hwm : w.m = 0) (ws : List VR) (hws : ∀ y ∈ ws, y.Ok) (hwsm : ∀ y ∈ ws, y.m = 0)
+    (acc2 E2 : List Nat) (hacc : BitsD acc2) (hE2 : BitsD E2) (hl1 : acc2.length = w.w) (hl2 : E2.length = w.E.length) :
+    ∃ os : List ORec, (∀ y ∈ os, y.Ok) ∧ os.map ORec.dgO = os0.map ORec.dgO ++ x.dg :: w.dg :: ws.map VR.dg ∧
+      Pm ++ tailB (pre ++ [x.done r s]) ++ [1, 1, 3, w.O, w.P, 1] ++
+        (acc2 ++ 1 :: (E2 ++ 1 :: (w.b ++ 1 :: (w.u ++ tailVR ws)))) = Pm ++ sepRest os := by
+  let w' : ORec := ⟨3, w.O, w.P, acc2, E2, w.n, w.n + 1 + w.s, w.a, w.c + 1, w.t⟩
+  have hw'ok : w'.Ok := by
+    refine { hF := ?_, acc := hacc, E := hE2, d := by simp [w'], k := by simp [w'], Elen := ?_ }
+    · have h2 := hw.O; have h3 := hw.P
+      simp at h2 h3
+      simp [w']; omega
+    · show 2 ≤ E2.length
+      rw [hl2]; exact hw.Elen
+  refine ⟨os0 ++ x.toO r s :: w' :: ws.map VR.toOc, ?_, ?_, ?_⟩
+  · intro y hy
+    simp only [List.mem_append, List.mem_cons, List.mem_map] at hy
+    rcases hy with hy | rfl | rfl | ⟨v, hv, rfl⟩
+    · exact hos0 y hy
+    · exact toO_ok x hx r s hrs
+    · exact hw'ok
+    · exact VR.toOc_ok v (hws v hv)
+  · simp only [List.map_append, List.map_cons, List.map_map]
+    have e1 := toO_dgO x r s hrs
+    have e2 : w'.dgO = w.dg := by simp [w', ORec.dgO, VR.dg, hl1]; omega
+    have e3 : ws.map (ORec.dgO ∘ VR.toOc) = ws.map VR.dg :=
+      List.map_congr_left (fun v hv => VR.toOc_dg v (hws v hv))
+    rw [e1, e2, e3]
+  · have hb : w.b = therm w.n (w.n + 1 + w.s) := by simp [VR.b, therm, hwm]
+    have hu : w.u = winStr w.a (w.c + 1) w.t := by simp [VR.u, winStr]
+    rw [tailVR_sepRest ws hwsm, tailB_append]
+    simp only [tailB, List.append_nil, hpre, sepRest_append, sepRest, List.append_assoc, List.cons_append,
+      List.nil_append, VR.done_body_toO x hx hxm r s, ORec.tape, w', hb, hu]
+
+
+theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) :
+    ∀ (n : Nat) (vs : List VR) (c : VR) (pre : List Rc) (p : Nat × Nat) (r s : Nat) (os0 : List ORec)
+      (D : List (Nat × Nat × Nat × Nat × Nat)),
+    vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → (∀ x ∈ vs, EF x) → PreOk pre → 1 ≤ p.2 →
+    r + 1 + s = c.w → c.m = 0 → (∀ x ∈ vs, x.m = 0) → tailB pre = sepRest os0 → (∀ y ∈ os0, y.Ok) →
+    os0.map ORec.dgO ++ (c :: vs).map VR.dg = D → ¬ PassCmp n r vs →
+    ∃ (L R : List Nat) (os : List ORec) (p' : Nat × Nat), (∀ y ∈ os, y.Ok) ∧ os.map ORec.dgO = D ∧ 1 ≤ p'.2 ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2)) pre c 0 r s vs) [])
+        (hd QNTT.ODL L R) ∧
+      L ++ R = (Wf ++ 1 :: (List.replicate p'.1 2 ++ List.replicate p'.2 3 ++ 1 :: P2)) ++ sepRest os := by
+  intro n
+  induction n with
+  | zero =>
+    intro vs c pre p r s os0 D _ _ _ _ _ _ _ _ _ _ _ _ _ hcmp
+    exact absurd trivial (by simpa [PassCmp] using hcmp)
+  | succ n ih =>
+    intro vs c pre p r s os0 D hlen hc hvs hom hEF hpre hp hrs hcm hvm hpos hos0 hD hcmp
+    obtain ⟨hcOk, hF, hOut⟩ := hc
+    have hlen' := stepN_length r vs
+    obtain ⟨w, ws, hw⟩ : ∃ w ws, stepN r vs = w :: ws := by
+      cases h : stepN r vs with
+      | nil => rw [h] at hlen'; simp at hlen'; omega
+      | cons w ws => exact ⟨w, ws, rfl⟩
+    have hok := stepN_ok r vs hvs
+    rw [hw] at hok
+    have hwOk : w.Ok := hok w (by simp)
+    have hwsOk : ∀ x ∈ ws, x.Ok := fun x hx => hok x (by simp [hx])
+    have hout := stepN_outM r vs hom
+    rw [hw] at hout
+    have hwm : w.O = 3 → w.m = 0 := hout w (by simp)
+    have hlenws : (ws.map VR.dec).length = n := by
+      rw [hw] at hlen'; simp at hlen'; simp; omega
+    obtain ⟨hdgs, hmz⟩ := dg_stepN_pos r vs hvm
+    rw [hw] at hdgs hmz
+    have hwm0 : w.m = 0 := hmz w (by simp)
+    have hwsm0 : ∀ x ∈ ws, x.m = 0 := fun x hx => hmz x (by simp [hx])
+    have hEFs := stepN_EF r vs hEF
+    rw [hw] at hEFs
+    have hPm := pm_good Wf P2 hW hP2 p hp
+    have hcmp2 : ¬ ((w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k) ∧ PassCmp n (w.k - 1) (ws.map VR.dec)) := by
+      simpa [PassCmp, hw] using hcmp
+    by_cases hh : (w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k)
+    · -- compare succeeds: continue
+      have hcmp3 : ¬ PassCmp n (w.k - 1) (ws.map VR.dec) := fun h => hcmp2 ⟨hh, h⟩
+      have hinv := curG_inv w hwOk hwm
+      have hwsOk' : ∀ x ∈ ws.map VR.dec, x.Ok := by
+        intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx; exact y.dec_ok (hwsOk y hy)
+      have homws : OutM (ws.map VR.dec) := dec_outM ws (fun x hx => hout x (by simp [hx]))
+      have hkw := curG_kw w
+      have hk1 := hwOk.k1; have hkw' := hwOk.kw
+      have hrs' : w.k - 1 + 1 + (w.w - w.k) = w.curG.w := by rw [hkw.2]; omega
+      have hm' : w.curG.m = 0 := curG_m0 w hwm0
+      have hvm' : ∀ x ∈ ws.map VR.dec, x.m = 0 := by
+        intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx; exact dec_m0 y (hwsm0 y hy)
+      have hdgE : (w.curG :: ws.map VR.dec).map VR.dg = (w :: ws).map VR.dg := by
+        simp only [List.map_cons, List.map_map]
+        rw [(dg_curG w).1]
+        congr 1
+        exact List.map_congr_left (fun y _ => (dg_dec y).1)
+      by_cases hO : c.O = 2
+      · have h1 := colStepN c hcOk hF hO _ hPm pre hpre r s vs hvs w ws hw hh
+        have hpo := preOk_done pre hpre c hcOk r s
+        have hos' : tailB (pre ++ [c.done r s]) = sepRest (os0 ++ [c.toO r s]) := by
+          rw [tailB_append, sepRest_append]
+          simp only [tailB, sepRest, List.append_nil, hpos, VR.done_body_toO c hcOk hcm r s]
+        have hD' : (os0 ++ [c.toO r s]).map ORec.dgO ++ (w.curG :: ws.map VR.dec).map VR.dg = D := by
+          rw [hdgE, hdgs, ← hD, List.map_append, List.map_cons, List.map_nil, toO_dgO c r s hrs]
+          simp
+        obtain ⟨L, R, os, p', k1, k2, k3, k4, k5⟩ :=
+          ih (ws.map VR.dec) w.curG (pre ++ [c.done r s]) p (w.k - 1) (w.w - w.k) (os0 ++ [c.toO r s]) D hlenws hinv
+            hwsOk' homws (dec_EF ws (fun x hx => hEFs x (by simp [hx]))) hpo hp hrs' hm' hvm' hos'
+            (by intro y hy; simp only [List.mem_append, List.mem_singleton] at hy
+                rcases hy with hy | rfl
+                · exact hos0 y hy
+                · exact toO_ok c hcOk r s hrs) hD' hcmp3
+        exact ⟨L, R, os, p', k1, k2, k3, h1.trans k4, k5⟩
+      · have hO3 : c.O = 3 := by have := hcOk.O; simp at this; omega
+        obtain ⟨hm, e, he, hew, hE⟩ := hOut hO3
+        have hElen := hcOk.Elen
+        have h1 := colStepO c.n c hcOk hF hO3 hm rfl Wf hW P2 hP2 pre hpre s c.E.length hElen r p e hp he hew hE vs hvs w ws
+          hw hh
+        have hb := eAdv_bounds c.E.length (r * c.n) e he hew
+        have hc' : ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).Ok :=
+          { F := hcOk.F, O := hcOk.O, P := hcOk.P, k1 := hcOk.k1, kw := hcOk.kw, E := fld_bits _ _,
+            Elen := by show 2 ≤ (fld c.E.length (eAdv c.E.length (r * c.n) e)).length; rw [fld_len _ _ hb.2]; exact hElen }
+        have hpo := preOk_done pre hpre _ hc' r s
+        have hrs'' : r + 1 + s = ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).w := hrs
+        have hcm' : ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).m = 0 := hcm
+        have hos' : tailB (pre ++ [({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).done r s]) =
+            sepRest (os0 ++ [({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).toO r s]) := by
+          rw [tailB_append, sepRest_append]
+          simp only [tailB, sepRest, List.append_nil, hpos, VR.done_body_toO _ hc' hcm' r s]
+        have hD' : (os0 ++ [({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).toO r s]).map ORec.dgO ++
+            (w.curG :: ws.map VR.dec).map VR.dg = D := by
+          rw [hdgE, hdgs, ← hD, List.map_append, List.map_cons, List.map_nil, toO_dgO _ r s hrs'']
+          simp [VR.dg]
+        obtain ⟨L, R, os, p', k1, k2, k3, k4, k5⟩ :=
+          ih (ws.map VR.dec) w.curG _ (sAdv (r * c.n) p) (w.k - 1) (w.w - w.k) _ D hlenws hinv
+            hwsOk' homws (dec_EF ws (fun x hx => hEFs x (by simp [hx]))) hpo (sAdv_pos _ p hp) hrs' hm' hvm' hos'
+            (by intro y hy; simp only [List.mem_append, List.mem_singleton] at hy
+                rcases hy with hy | rfl
+                · exact hos0 y hy
+                · exact toO_ok _ hc' r s hrs'') hD' hcmp3
+        exact ⟨L, R, os, p', k1, k2, k3, h1.trans k4, k5⟩
+    · -- compare fails now
+      have hwO : w.O = 3 := Classical.byContradiction fun h => hh (fun h' => absurd h' h)
+      obtain ⟨e, z, he, hE, hne⟩ := EF_mismatch w hwOk (hEFs w (by simp)) hwO hh
+      by_cases hO : c.O = 2
+      · obtain ⟨L, R, a2, E2, k1, k2, k3, k4, hr, hLR⟩ :=
+          colStepNF c hcOk hF hO _ hPm pre hpre r s vs hvs w ws hw hwO e z he hE hne
+        obtain ⟨os, hos, hdos, hT⟩ := failSep _ pre os0 hpos hos0 c hcOk hcm r s hrs w hwOk hwm0 ws hwsOk hwsm0 a2 E2 k1 k2 k3 k4
+        refine ⟨L, R, os, p, hos, ?_, hp, hr, ?_⟩
+        · rw [hdos, ← hD, List.map_cons, ← hdgs]; simp
+        · rw [hLR, hT]
+      · have hO3 : c.O = 3 := by have := hcOk.O; simp at this; omega
+        obtain ⟨hm, e0, he0, hew, hE0⟩ := hOut hO3
+        have hElen := hcOk.Elen
+        have hb := eAdv_bounds c.E.length (r * c.n) e0 he0 hew
+        have hc' : ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e0) } : VR).Ok :=
+          { F := hcOk.F, O := hcOk.O, P := hcOk.P, k1 := hcOk.k1, kw := hcOk.kw, E := fld_bits _ _,
+            Elen := by show 2 ≤ (fld c.E.length (eAdv c.E.length (r * c.n) e0)).length; rw [fld_len _ _ hb.2]; exact hElen }
+        have hrs'' : r + 1 + s = ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e0) } : VR).w := hrs
+        have hcm' : ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e0) } : VR).m = 0 := hcm
+        obtain ⟨L, R, a2, E2, k1, k2, k3, k4, hr, hLR⟩ :=
+          colStepOF c.n c hcOk hF hO3 hm rfl Wf hW P2 hP2 pre hpre s c.E.length hElen r p e0 hp he0 hew hE0 vs hvs w ws hw
+            hwO e z he hE hne
+        obtain ⟨os, hos, hdos, hT⟩ := failSep _ pre os0 hpos hos0 _ hc' hcm' r s hrs'' w hwOk hwm0 ws hwsOk hwsm0 a2 E2 k1 k2 k3 k4
+        refine ⟨L, R, os, sAdv (r * c.n) p, hos, ?_, sAdv_pos _ p hp, hr, ?_⟩
+        · rw [hdos, ← hD, List.map_cons, ← hdgs]; simp [VR.dg]
+        · rw [hLR, hT]
+
 end ZP.NTT
 
