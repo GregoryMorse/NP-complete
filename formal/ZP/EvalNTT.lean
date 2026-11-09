@@ -8981,5 +8981,166 @@ theorem firstEntry (L R Pm Pm' : List Nat) (hL : NoB L) (hRest : Rest Pm Pm') (h
   exact hwi.trans (hps.trans hf)
 
 
+
+/-- The record produced by the build, with header second cell `h1` and pointer size `j'`. -/
+def recRc (j h1 j' : Nat) : Rc :=
+  { F := 2, O := h1, Pf := 2, acc := 3 :: List.replicate j 2, E := 3 :: List.replicate j 2,
+    b0 := 3, br := List.replicate j 2, u0 := 3, ur := List.replicate j' 2 }
+
+theorem recH_body (j h1 j' : Nat) : recH h1 j j' 3 = 1 :: 1 :: (recRc j h1 j').body := by
+  simp [recH, recRc, Rc.body, Rc.tlr, Rc.tl0, Dcopy, List.replicate_succ]
+
+theorem recsFlat_tailB (j : Nat) (ps : List (Nat × Nat)) :
+    recsFlat j 3 ps = tailB (ps.map fun q => recRc j q.1 q.2) := by
+  induction ps with
+  | nil => simp [recsFlat, tailB]
+  | cons q ps ih =>
+    simp only [recsFlat, List.map_cons, List.flatten_cons, tailB] at ih ⊢
+    rw [ih, recH_body]; rfl
+
+/-- The odometer record of a build record (`d = 0`, window at the start). -/
+def recO (j : Nat) (q : Nat × Nat) : ORec :=
+  { F := 2, O := q.1, Pf := 2, acc := 3 :: List.replicate j 2, E := 3 :: List.replicate j 2,
+    d := 0, r := j + 1, z := 0, k := 1, m := q.2 }
+
+theorem recO_init (j : Nat) (q : Nat × Nat) (x : Nat) (hj : 1 ≤ j) :
+    (recRc j q.1 q.2).initB x = ((recO j q).toRc x).body := by
+  obtain ⟨i, rfl⟩ : ∃ i, j = i + 1 := ⟨j - 1, by omega⟩
+  simp [Rc.initB, Rc.body, Rc.tlr, Rc.tl0, recRc, recO, ORec.toRc, therm, winStr, List.replicate_succ]
+
+theorem recO_tail (j : Nat) (hj : 1 ≤ j) (ps : List (Nat × Nat)) :
+    tailI (ps.map fun q => recRc j q.1 q.2) = tailB (ps.map fun q => (recO j q).toRc 2) := by
+  induction ps with
+  | nil => simp [tailI, tailB]
+  | cons q ps ih =>
+    simp only [List.map_cons, tailI, tailB] at ih ⊢
+    rw [ih, recO_init j q 2 hj]
+
+
+theorem Rest.app {u v w z : List Nat} (h : Rest u v) (h2 : Rest w z) : Rest (u ++ w) (v ++ z) := by
+  induction h with
+  | nil => simpa using h2
+  | bit hb _ ih => exact Rest.bit hb ih
+  | mb hb _ ih => exact Rest.mb hb ih
+
+theorem Rest.goodW {u v : List Nat} (h : Rest u v) : GoodW v := by
+  induction h with
+  | nil => exact GoodW.nil
+  | bit hb _ ih => exact GoodW.bit (by simp) ih
+  | mb hb _ ih => exact GoodW.mb (by simp) ih
+
+theorem rest_rep (a : Nat) : Rest (List.replicate a 3) (List.replicate a 3) := by
+  induction a with
+  | zero => exact Rest.nil
+  | succ a ih => exact Rest.bit (by simp) ih
+
+theorem rest_blk (a : Nat) : Rest (1 :: List.replicate (a + 1) 3) (1 :: List.replicate (a + 1) 3) := by
+  simpa [List.replicate_succ] using Rest.mb (b := 3) (by simp) (rest_rep a)
+
+
+theorem bd32 (j : Nat) : BitsD (3 :: List.replicate j 2) := BitsD.cons (by simp) (BitsD.rep _ _ (by simp))
+
+theorem recRc_ok (j h1 j' : Nat) (hj : 1 ≤ j) (h : h1 ∈ [2, 3]) : (recRc j h1 j').Ok :=
+  { F := by simp [recRc], O := h, Pf := by simp [recRc], acc := bd32 j, E := bd32 j,
+    Elen := by simp [recRc]; omega, b0 := by simp [recRc], br := BitsD.rep _ _ (by simp),
+    u0 := by simp [recRc], ur := BitsD.rep _ _ (by simp) }
+
+theorem recO_ok (j : Nat) (q : Nat × Nat) (h : q.1 ∈ [2, 3]) : (recO j q).Ok :=
+  { hF := by simp [recO] at h ⊢; simpa using h, acc := bd32 j, E := bd32 j,
+    d := by simp [recO], k := by simp [recO] }
+
+theorem recO_ps (j : Nat) (q : Nat × Nat) (x : Nat) (hj : 1 ≤ j) (h : q.1 ∈ [2, 3]) (hx : x ∈ [2, 3]) :
+    ((recO j q).toRc x).PS := by
+  obtain ⟨i, rfl⟩ : ∃ i, j = i + 1 := ⟨j - 1, by omega⟩
+  have hk : 1 ≤ (recO (i + 1) q).k := by simp [recO]
+  refine ⟨⟨by simp [ORec.toRc, recO], by simpa [ORec.toRc, recO] using h, hx,
+      by simpa [ORec.toRc, recO] using bd32 (i + 1), ?_, by simp [ORec.toRc, recO],
+      by simp [ORec.toRc, recO, therm], ?_, by simp [ORec.toRc, recO, winStr], ?_⟩,
+    by simp [ORec.toRc, recO], toRc_rest _ x hk⟩
+  · intro y hy; simp [ORec.toRc, recO, List.mem_replicate] at hy
+    rcases hy with rfl | h
+    · simp
+    · simp [h.2]
+  · intro y hy; simp [ORec.toRc, recO, therm, List.mem_replicate] at hy; simp [hy]
+  · intro y hy; simp [ORec.toRc, recO, winStr, List.mem_replicate] at hy; simp [hy]
+
+theorem roundsPs_ne (n : Nat) : ∀ (c w0 : Nat) (ps : List (Nat × Nat)), (ps ≠ [] ∨ 0 < c) →
+    roundsPs n c w0 ps ≠ [] := by
+  intro c
+  induction c with
+  | zero =>
+    intro w0 ps h
+    rcases h with h | h
+    · simpa [roundsPs] using h
+    · omega
+  | succ c ih =>
+    intro w0 ps _
+    simp only [roundsPs]
+    refine ih _ _ (Or.inl ?_)
+    simp [newRecs]
+
+
+/-- From the record build to the first-pass cursor: the build's records are the odometer records `recO`. -/
+theorem buildEntry (j c n : Nat) (hj : 1 ≤ j) (hc : 0 < c) :
+    ∃ (o : ORec) (os : List ORec), o :: os = (roundsPs n c 1 []).map (recO j) ∧
+    znttLogic.Reach
+      (hd QNTT.WX [0, 3] (1 :: (List.replicate (j + 1) 3 ++ 1 :: (List.replicate (2 + 1) 3 ++ 1 ::
+        (List.replicate c 3 ++ 1 :: List.replicate (n + 1) 3)))))
+      (hd QNTT.RFL (curTapeG (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3 ++ 1 :: List.replicate (n + 1) 3) []
+        (o.vr 3).curG 0 ((o.vr 3).k - 1) ((o.vr 3).w - (o.vr 3).k) ((os.map fun x => x.vr 2).map VR.dec)) []) := by
+  have hb := recordBuild j 2 c n hc
+  have hok := roundsPs_ok n c 1 [] (by simp)
+  obtain ⟨q, ps, hqs⟩ : ∃ q ps, roundsPs n c 1 [] = q :: ps := by
+    cases h : roundsPs n c 1 [] with
+    | nil => exact absurd h (roundsPs_ne n c 1 [] (Or.inr hc))
+    | cons q ps => exact ⟨q, ps, rfl⟩
+  rw [hqs] at hb hok
+  have hq : ∀ x ∈ q :: ps, x.1 ∈ [2, 3] := hok
+  refine ⟨recO j q, ps.map (recO j), by simp [hqs], ?_⟩
+  have hRest : Rest (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3 ++ 1 :: List.replicate (n + 1) 3) (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3 ++ 1 :: List.replicate (n + 1) 3) := by
+    obtain ⟨c', rfl⟩ : ∃ c', c = c' + 1 := ⟨c - 1, by omega⟩
+    obtain ⟨j', rfl⟩ : ∃ j', j = j' + 1 := ⟨j - 1, by omega⟩
+    have := ((rest_rep (wEnd n (c' + 1) 1 + 1)).app (rest_blk (j' + 1))).app
+      ((rest_blk 2).app ((rest_blk c').app (rest_blk n)))
+    have e : Pfx (wEnd n (c' + 1) 1 + 1) (j' + 1) 2 ++ List.replicate (0 + (c' + 1)) 3 ++ 1 :: List.replicate (n + 1) 3 =
+        List.replicate (wEnd n (c' + 1) 1 + 1) 3 ++ (1 :: List.replicate (j' + 1 + 1) 3) ++
+          ((1 :: List.replicate (2 + 1) 3) ++ ((1 :: List.replicate (c' + 1) 3) ++ (1 :: List.replicate (n + 1) 3))) := by
+      simp [Pfx, List.append_assoc]
+    rw [e]; exact this
+  have hq0 : q.1 ∈ [2, 3] := hq q (by simp)
+  have hqs' : ∀ x ∈ ps, x.1 ∈ [2, 3] := fun x hx => hq x (by simp [hx])
+  have hrs : ∀ x ∈ ps.map (fun x => recRc j x.1 x.2), x.Ok := by
+    intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx
+    exact recRc_ok j _ _ hj (hqs' y hy)
+  have hL : NoB (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3) := by
+    simp only [Pfx, NoB_app_iff, NoB_cons_iff, NoB_rep_iff]; simp [NB]
+  have hLR : (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3) ++
+      (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (2 + 1) (q :: ps))) =
+      (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3 ++ 1 :: List.replicate (n + 1) 3) ++ 1 :: 1 :: ((recRc j q.1 q.2).body ++ tailB (ps.map fun x => recRc j x.1 x.2)) := by
+    rw [recsFlat_tailB]
+    simp [tailB, List.append_assoc]
+  have hos : ∀ x ∈ recO j q :: ps.map (recO j), x.Ok := by
+    intro x hx; simp only [List.mem_cons, List.mem_map] at hx
+    rcases hx with rfl | ⟨y, hy, rfl⟩
+    · exact recO_ok j q hq0
+    · exact recO_ok j y (hqs' y hy)
+  have hfe := firstEntry (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3)
+    (1 :: (List.replicate (n + 1) 3 ++ recsFlat j (2 + 1) (q :: ps))) (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3 ++ 1 :: List.replicate (n + 1) 3) (Pfx (wEnd n c 1 + 1) j 2 ++ List.replicate (0 + c) 3 ++ 1 :: List.replicate (n + 1) 3) hL hRest hRest.goodW
+    (recRc j q.1 q.2) (recRc_ok j _ _ hj hq0) (ps.map fun x => recRc j x.1 x.2) hrs hLR
+    (recO j q) (ps.map (recO j)) hos
+    (by intro x hx; simp only [List.mem_cons, List.mem_map] at hx
+        rcases hx with rfl | ⟨y, hy, rfl⟩ <;> simp [recO] <;> omega)
+    (by intro x hx; simp only [List.mem_cons, List.mem_map] at hx
+        rcases hx with rfl | ⟨y, hy, rfl⟩ <;> simp [recO])
+    (by intro x hx; simp only [List.mem_cons, List.mem_map] at hx
+        rcases hx with rfl | ⟨y, hy, rfl⟩ <;> simp [recO])
+    (recO_init j q 3 hj)
+    (by rw [recO_tail j hj ps]; simp [Function.comp_def])
+    (recO_ps j q 3 hj hq0 (by simp))
+    (by intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx
+        exact recO_ps j y 2 hj (hqs' y hy) (by simp))
+  exact hb.trans hfe
+
+
 end ZP.NTT
 
