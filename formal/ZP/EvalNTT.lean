@@ -6236,5 +6236,29 @@ theorem odWinInc (A : List Nat) (z k m : Nat) (R : List Nat) (hk : 1 ≤ k) (hA 
   have h := odInc A z o (List.replicate m 2 ++ R) hA ((sym4_rep m 2 (by simp [ALL])).app hR)
   simpa [winStr, List.replicate_succ] using h
 
+/-- Record header, `acc`, `E` skipped and a full `b = 1^(n+1)` scanned: `ODJ` stands on the `M` after `b`. -/
+theorem odRecToJ (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (n : Nat) (R : List Nat)
+    (hA : Sym4 A) (hF : [F, O, Pf].all (· ∈ [2, 3]) = true) (hacc : BitsD acc) (hE : BitsD E) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.ODH A ([F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: (List.replicate (n + 1) 3 ++ R)))))
+      (hdR QNTT.ODJ (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: List.replicate (n + 1) 3))) R) := by
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hf : BitsD [F, O, Pf] := by
+    intro y hy; simp at hF hy; rcases hy with rfl | rfl | rfl <;> simp [hF]
+  have hrep3 : ∀ k, Sym4 (List.replicate k 3) := fun k => sym4_rep k 3 (by simp [ALL])
+  have hZ : Sym4 (List.replicate (n + 1) 3 ++ R) := (hrep3 _).app hR
+  have hEs : Sym4 (E ++ 1 :: (List.replicate (n + 1) 3 ++ R)) := hE.sym4.app (Sym4.cons a1 hZ)
+  have hAs : Sym4 (acc ++ 1 :: (E ++ 1 :: (List.replicate (n + 1) 3 ++ R))) := hacc.sym4.app (Sym4.cons a1 hEs)
+  have h1 := odhSkip A [F, O, Pf] _ hA hf hAs
+  have hA1 : Sym4 (A ++ [F, O, Pf] ++ [1]) := (hA.app hf.sym4).app (fun y hy => by simp at hy; subst hy; exact a1)
+  have h2 := odaSkip _ acc _ hA1 hacc hEs
+  have hA2 : Sym4 (A ++ [F, O, Pf] ++ [1] ++ acc ++ [1]) := (hA1.app hacc.sym4).app (fun y hy => by simp at hy; subst hy; exact a1)
+  have h3 := odeSkip _ E _ hA2 hE hZ
+  have hA3 : Sym4 (A ++ [F, O, Pf] ++ [1] ++ acc ++ [1] ++ E ++ [1]) := (hA2.app hE.sym4).app (fun y hy => by simp at hy; subst hy; exact a1)
+  have h4 := odi3 _ (List.replicate n 3 ++ R) hA3 ((hrep3 _).app hR)
+  have hA4 : Sym4 (A ++ [F, O, Pf] ++ [1] ++ acc ++ [1] ++ E ++ [1] ++ [3]) := hA3.app (fun y hy => by simp at hy; subst hy; simp [ALL])
+  have h5 := odjOnes _ R n hA4 hR
+  simpa [List.replicate_succ] using h1.trans (h2.trans (h3.trans (h4.trans h5)))
+
 end ZP.NTT
 
