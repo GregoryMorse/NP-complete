@@ -24,14 +24,16 @@ The bridge is split in two.
 
 namespace ZP
 
-/-- A beep-exact simulation of the abstract program by `M`, one abstract step per
+/-- A beep-exact simulation of the abstract program of `C` by `M`, one abstract step per
 interval `[time n, time (n+1))`. -/
-structure MacroSim (M : TM) where
+structure MacroSimC (C : Nat → Nat → Prop) [∀ J S, Decidable (C J S)] (M : TM) where
   time : Nat → Nat
   mono : ∀ n, time n < time (n + 1)
   beeps : ∀ n,
     (∃ k, time n ≤ k ∧ k < time (n + 1) ∧ ∃ c, M.conf k = some c ∧ c.q = M.beep) ↔
-      ¬ Correct (absState n).1 (absState n).2
+      ¬ C (absStateC C n).1 (absStateC C n).2
+
+abbrev MacroSim (M : TM) : Type := MacroSimC Correct M
 
 theorem time_ge (time : Nat → Nat) (h : ∀ n, time n < time (n + 1)) (n : Nat) :
     time 0 + n ≤ time n := by
@@ -58,8 +60,8 @@ theorem time_interval (time : Nat → Nat) (h : ∀ n, time n < time (n + 1)) (N
   exact key (k + 1) (by omega)
 
 /-- A macro simulation transfers quasihalting. -/
-theorem quasihalts_iff_of_macroSim {M : TM} (S : MacroSim M) :
-    Quasihalts M ↔ AbstractQuasihalts := by
+theorem quasihalts_iff_of_macroSimC {C : Nat → Nat → Prop} [∀ J S, Decidable (C J S)] {M : TM}
+    (S : MacroSimC C M) : Quasihalts M ↔ AbstractQuasihaltsC C := by
   constructor
   · rintro ⟨N, hN⟩
     refine ⟨N, fun n hn => Classical.byContradiction fun hbad => ?_⟩
@@ -70,5 +72,8 @@ theorem quasihalts_iff_of_macroSim {M : TM} (S : MacroSim M) :
     refine ⟨S.time N, fun k hk c hc hq => ?_⟩
     obtain ⟨n, hn, h1, h2⟩ := time_interval S.time S.mono N k hk
     exact (S.beeps n).1 ⟨k, h1, h2, c, hc, hq⟩ (hN n hn)
+
+theorem quasihalts_iff_of_macroSim {M : TM} (S : MacroSim M) :
+    Quasihalts M ↔ AbstractQuasihalts := quasihalts_iff_of_macroSimC S
 
 end ZP

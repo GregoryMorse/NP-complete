@@ -2,6 +2,19 @@ module
 
 public import ZP.Defs
 public import ZP.Table
+public import ZP.DefsPP
+public import ZP.DefsPS
+public import ZP.DefsF
+public import ZP.DefsD
+public import ZP.DefsG
+public import ZP.DefsNTT
+public import ZP.TableNTT
+public import ZP.DefsTwin
+public import ZP.TableTwin
+public import ZP.DefsMul
+public import ZP.TableMul
+public import ZP.DefsConp
+public import ZP.TableConp
 
 public section
 
@@ -21,4 +34,37 @@ The further equivalence `ZP.Sentence ↔ P = NP` is proved on paper
 -/
 
 theorem ZP.zp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpMachine ↔ ZP.Sentence := by
+  sorry
+
+theorem ZP.zpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppMachine ↔ ZP.SentencePP := by
+  sorry
+
+theorem ZP.zps_quasihalts_iff_sentence : ZP.Quasihalts ZP.zpsMachine ↔ ZP.SentencePS := by
+  sorry
+
+theorem ZP.zfac_quasihalts_iff_sentence : ZP.Quasihalts ZP.zfacMachine ↔ ZP.SentenceF := by
+  sorry
+
+theorem ZP.zdl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zdlMachine ↔ ZP.SentenceD := by
+  sorry
+
+theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.SentenceG := by
+  sorry
+
+/-- Z_NTT: the prime `1 + n i` is supplied by the hypothesis `PrimeEx` (Dirichlet for `≡ 1 mod n`). -/
+theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
+    ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN := by
+  sorry
+
+/-- Z_MUL: the guest also has a queue of stacks; the output must be numbers `z, x, y` with `z = x y`. -/
+theorem ZP.zmul_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmulMachine ↔ ZP.SentenceMul := by
+  sorry
+
+/-- Z_coNP: the guest is `zp2` with nondeterministic choices at fresh cells; `J` is a verifier for the complement
+of `L`. -/
+theorem ZP.zconp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zconpMachine ↔ ZP.SentenceConp := by
+  sorry
+
+/-- The 19-state twin-prime beeper: it quasihalts iff there are finitely many twin primes. -/
+theorem ZP.twin_quasihalts_iff : ZP.Quasihalts ZP.twinMachine ↔ ¬ ZP.TwinPrimes := by
   sorry

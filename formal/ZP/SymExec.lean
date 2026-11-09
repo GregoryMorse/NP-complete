@@ -1333,4 +1333,97 @@ theorem LTM.Reach.inst {M : LTM} {env : Env} {E : List Nat} {σ : List (List Ite
   rw [den_of_norm hE h, ← den_inst, ← den_inst]
   exact hAB
 
+/-! ## Plain checks, and configurations given by two words -/
+
+/-- A segment check with the same variables at both ends. -/
+theorem checkE {M : LTM} {sets env : Env} {E : List Nat} {k : Nat} {c t : SC}
+    (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreachN M sets E k (c.norm E) t = true) : M.Reach (c.den env) (t.den env) := by
+  rw [← den_norm hE c]
+  exact mreachN_sound hv hE k _ _ h
+
+/-- State `q`, head on the last cell of `A`, then `R`. -/
+def atL (q : Nat) : SC := ⟨q, [.blk 0 .id], [.blk 1 .id], true⟩
+
+def hd (q : Nat) (A R : List Nat) : ZC := (atL q).den [A, R]
+
+/-- State `q`, `A`, head on the first cell of `R`. -/
+def atR (q : Nat) : SC := ⟨q, [.blk 0 .id], [.blk 1 .id], false⟩
+
+def hdR (q : Nat) (A R : List Nat) : ZC := (atR q).den [A, R]
+
+theorem dW_blk0 (A R : List Nat) : dL [A, R] [.blk 0 .id] = A.reverse := by
+  show (A.map Fn.id.app).reverse ++ [] = A.reverse
+  rw [map_id_app, List.append_nil]
+
+theorem dW_blk1 (A R : List Nat) : dR [A, R] [.blk 1 .id] = R := by
+  show R.map Fn.id.app ++ [] = R
+  rw [map_id_app, List.append_nil]
+
+/-- A symbolic configuration (left items in tape order) as `hd`. -/
+theorem den_tape {q : Nat} {env : Env} {ls rs : List Item} {A R : List Nat}
+    (hl : dR env ls = A) (hr : dR env rs = R) :
+    (⟨q, ls.reverse, rs, true⟩ : SC).den env = hd q A R := by
+  show (⟨q, stail (sapp (dL env ls.reverse) blank),
+      scons (sapp (dL env ls.reverse) blank 0) (sapp (dR env rs) blank)⟩ : ZC) =
+    ⟨q, stail (sapp (dL [A, R] [.blk 0 .id]) blank),
+      scons (sapp (dL [A, R] [.blk 0 .id]) blank 0) (sapp (dR [A, R] [.blk 1 .id]) blank)⟩
+  rw [dL_reverse, hl, hr, dW_blk0, dW_blk1]
+
+theorem den_tapeR {q : Nat} {env : Env} {ls rs : List Item} {A R : List Nat}
+    (hl : dR env ls = A) (hr : dR env rs = R) :
+    (⟨q, ls.reverse, rs, false⟩ : SC).den env = hdR q A R := by
+  show (⟨q, sapp (dL env ls.reverse) blank, sapp (dR env rs) blank⟩ : ZC) =
+    ⟨q, sapp (dL [A, R] [.blk 0 .id]) blank, sapp (dR [A, R] [.blk 1 .id]) blank⟩
+  rw [dL_reverse, hl, hr, dW_blk0, dW_blk1]
+
+/-- Segment checks between configurations given by words (`hd`: head left of the
+boundary, `hdR`: right of it). -/
+theorem checkTT {M : LTM} {sets env : Env} {E : List Nat} {k q q' : Nat}
+    {ls rs ls' rs' : List Item} {A R A' R' : List Nat} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreachN M sets E k ((⟨q, ls.reverse, rs, true⟩ : SC).norm E) ⟨q', ls'.reverse, rs', true⟩ = true)
+    (hl : dR env ls = A) (hr : dR env rs = R) (hl' : dR env ls' = A') (hr' : dR env rs' = R') :
+    M.Reach (hd q A R) (hd q' A' R') := by
+  have := checkE hv hE h
+  rw [den_tape hl hr, den_tape hl' hr'] at this
+  exact this
+
+theorem checkTF {M : LTM} {sets env : Env} {E : List Nat} {k q q' : Nat}
+    {ls rs ls' rs' : List Item} {A R A' R' : List Nat} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreachN M sets E k ((⟨q, ls.reverse, rs, true⟩ : SC).norm E) ⟨q', ls'.reverse, rs', false⟩ = true)
+    (hl : dR env ls = A) (hr : dR env rs = R) (hl' : dR env ls' = A') (hr' : dR env rs' = R') :
+    M.Reach (hd q A R) (hdR q' A' R') := by
+  have := checkE hv hE h
+  rw [den_tape hl hr, den_tapeR hl' hr'] at this
+  exact this
+
+theorem checkFT {M : LTM} {sets env : Env} {E : List Nat} {k q q' : Nat}
+    {ls rs ls' rs' : List Item} {A R A' R' : List Nat} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreachN M sets E k ((⟨q, ls.reverse, rs, false⟩ : SC).norm E) ⟨q', ls'.reverse, rs', true⟩ = true)
+    (hl : dR env ls = A) (hr : dR env rs = R) (hl' : dR env ls' = A') (hr' : dR env rs' = R') :
+    M.Reach (hdR q A R) (hd q' A' R') := by
+  have := checkE hv hE h
+  rw [den_tapeR hl hr, den_tape hl' hr'] at this
+  exact this
+
+theorem checkFF {M : LTM} {sets env : Env} {E : List Nat} {k q q' : Nat}
+    {ls rs ls' rs' : List Item} {A R A' R' : List Nat} (hv : Valid sets env) (hE : AllEmpty env E)
+    (h : mreachN M sets E k ((⟨q, ls.reverse, rs, false⟩ : SC).norm E) ⟨q', ls'.reverse, rs', false⟩ = true)
+    (hl : dR env ls = A) (hr : dR env rs = R) (hl' : dR env ls' = A') (hr' : dR env rs' = R') :
+    M.Reach (hdR q A R) (hdR q' A' R') := by
+  have := checkE hv hE h
+  rw [den_tapeR hl hr, den_tapeR hl' hr'] at this
+  exact this
+
+theorem map_const_rep (u a c : Nat) : (List.replicate u a).map (Fn.const c).app = List.replicate u c := by
+  rw [List.map_replicate]
+  rfl
+
+theorem rep_cons_comm {α : Type} (a : α) (X : List α) :
+    ∀ u : Nat, List.replicate u a ++ a :: X = a :: (List.replicate u a ++ X)
+  | 0 => rfl
+  | u + 1 => by
+    show a :: (List.replicate u a ++ a :: X) = a :: (a :: List.replicate u a ++ X)
+    exact congrArg (a :: ·) (rep_cons_comm a X u)
+
 end ZP
