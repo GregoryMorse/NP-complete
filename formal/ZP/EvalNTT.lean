@@ -8003,7 +8003,8 @@ theorem passCycle (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
     (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs)
     (hp : 1 ≤ p.2) (hcmp : PassCmp n r vs) (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w)
     (j y : Nat) (l' : List Nat) (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: y :: l') :
-    ∃ (p' : Nat × Nat) (cs : List (VR × Nat × Nat)), (∀ t ∈ cs, t.1.Ok ∧ t.2.1 + 1 + t.2.2 = t.1.w ∧ 2 ≤ t.1.w) ∧
+    ∃ (p' : Nat × Nat) (cs : List (VR × Nat × Nat)), 1 ≤ p'.2 ∧ (∀ t ∈ cs, t.1.Ok ∧ t.2.1 + 1 + t.2.2 = t.1.w ∧ 2 ≤ t.1.w) ∧
+      cs.map (fun t => t.1.P) = c.P :: vs.map VR.P ∧
       (∃ lo : LoopOut, loopRun n c vs r s p = lo ∧ cs = lo.cs ++ [(outRec lo.c' lo.r', lo.r', lo.s')] ∧
         p' = outP lo.c' lo.r' lo.p') ∧
       ((p'.1 = 0 ∧ ∃ t0 ts, cs.zip (List.replicate (j + 1) 2 ++ 3 :: l') = t0 :: ts ∧
@@ -8023,7 +8024,7 @@ theorem passCycle (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
     passMore2 Wf hW Q a b hP2 n vs c [] p r s hrs hlen hc hvs hom (by intro x hx; simp at hx) hp hcmp hcw hvw
   simp only [List.nil_append] at hpe
   subst hpe
-  refine ⟨p', cs, hcs, hLo, ?_⟩
+  refine ⟨p', cs, hp', hcs, hPc, hLo, ?_⟩
   rcases hk : p'.1 with _ | k
   · left
     refine ⟨rfl, ?_⟩
@@ -8191,6 +8192,136 @@ theorem loopRun_m : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat �
       rw [(outRec_m c r).1]
       exact (hc.2.2 h3).1
     · exact ih'.1 t ht
+
+
+theorem goodW_pmNext (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2))) (hq : 1 ≤ q) :
+    GoodW (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2))) := by
+  have hG : GoodW (1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := by
+    have := goodW_swap_tail (1 :: (Q ++ List.replicate a 3)).length (1 :: (Q ++ List.replicate a 3)) 3 3
+      (3 :: List.replicate b 2) (2 :: List.replicate b 2) rfl (by simp) (by simp)
+      (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)
+      (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)
+      (by
+        have e : (1 :: (Q ++ List.replicate a 3)) ++ 3 :: 3 :: List.replicate b 2 =
+            1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) := by
+          simp only [List.replicate_succ, List.cons_append, List.append_assoc, List.nil_append]
+          have key : ∀ (a : Nat) (L : List Nat), List.replicate a 3 ++ 3 :: L = 3 :: (List.replicate a 3 ++ L) := by
+            intro a L; induction a with
+            | zero => simp
+            | succ a ih => simp [List.replicate_succ, ih]
+          rw [key, key]
+        rw [e]; exact hP2)
+    simpa [List.append_assoc] using this
+  exact goodW_reg Wf (List.replicate q 3) _ hW (BitsD.rep q 3 (by simp))
+    (by intro h; have := congrArg List.length h; simp at this; omega) hG
+
+/-- One non-final pass followed by the start of the next: either refuted (`ODL`) or the next pass's first cursor
+with all invariants of the next pass. -/
+theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+    (n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s : Nat)
+    (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs)
+    (hp : 1 ≤ p.2) (hcmp : PassCmp n r vs) (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w)
+    (j y : Nat) (l' : List Nat) (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: y :: l')
+    (hcmpN : ∀ t0 ts, (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+        (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts →
+      (t0.1.1.nextPass t0.2).O = 3 → ∃ z, 1 ≤ (t0.1.1.nextPass t0.2).k ∧
+        (t0.1.1.nextPass t0.2).E = fld ((t0.1.1.nextPass t0.2).k + z) (t0.1.1.nextPass t0.2).k) :
+    (∃ k q, znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+          [] c 0 r s vs) [])
+        (hd QNTT.ODL (Wf ++ [1]) (2 :: (List.replicate k 2 ++ List.replicate q 3 ++
+          1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: (List.replicate b 2 ++
+            tailB (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+              (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).map fun t => t.1.done t.2.1 t.2.2))))))) ∨
+    (∃ (q : Nat) (c1 : VR) (vs1 : List VR) (r1 s1 : Nat), 1 ≤ q ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+          [] c 0 r s vs) [])
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate 0 2 ++ List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)))
+          [] c1 0 r1 s1 vs1) []) ∧
+      r1 + 1 + s1 = c1.w ∧ vs1.length = n ∧ CurInv c1 ∧ (∀ x ∈ vs1, x.Ok) ∧ OutM vs1 ∧ 2 ≤ c1.w ∧ (∀ x ∈ vs1, 2 ≤ x.w)) := by
+  obtain ⟨p', cs, hp', hcs, hPc, hLo, hcyc⟩ := passCycle Wf hW Q a b hP2 n vs c p r s hrs hlen hc hvs hom hp hcmp hcw hvw j y l' hfl
+  obtain ⟨lo, hlo, hcsEq, hpEq⟩ := hLo
+  rw [hlo, ← hcsEq] at hcmpN ⊢
+  have hMz : ∀ t ∈ cs, t.1.O = 3 → t.1.m = 0 := by
+    have hm := loopRun_m n c vs r s p hc hvs hom hlen
+    rw [hlo] at hm
+    intro t ht
+    rw [hcsEq] at ht
+    simp only [List.mem_append, List.mem_singleton] at ht
+    rcases ht with ht | rfl
+    · exact hm.1 t ht
+    · intro h3
+      rw [(outRec_m lo.c' lo.r').2] at h3
+      rw [(outRec_m lo.c' lo.r').1]
+      exact hm.2 h3
+  have hxs : ∀ x ∈ List.replicate (j + 1) 2 ++ 3 :: l', x ∈ [2, 3] := by
+    intro x hx
+    simp only [List.mem_append, List.mem_cons, List.mem_replicate] at hx
+    rcases hx with ⟨_, rfl⟩ | rfl | hx
+    · simp
+    · simp
+    · have h1 : x ∈ c.P :: vs.map VR.P := by rw [hfl]; simp [hx]
+      simp only [List.mem_cons, List.mem_map] at h1
+      rcases h1 with rfl | ⟨v, hv, rfl⟩
+      · exact hc.1.P
+      · exact (hvs v hv).P
+  rcases hcyc with ⟨hk, t0, ts, hz, hfal⟩ | ⟨k, hk, hodl⟩
+  · right
+    have hzl : (cs.zip (List.replicate (j + 1) 2 ++ 3 :: l')).length = n + 1 := by
+      have h1 := congrArg List.length hPc
+      have h2 := congrArg List.length hfl
+      simp at h1 h2 ⊢
+      omega
+    rw [hz] at hzl
+    simp only [List.length_cons] at hzl
+    have hmem : ∀ q ∈ t0 :: ts, q ∈ cs.zip (List.replicate (j + 1) 2 ++ 3 :: l') := by
+      intro q hq; rw [hz]; exact hq
+    have hh : ∀ q ∈ t0 :: ts, q.1.1.Ok ∧ q.1.2.1 + 1 + q.1.2.2 = q.1.1.w ∧ 2 ≤ q.1.1.w ∧ q.2 ∈ [2, 3] := by
+      intro q hq
+      have := List.of_mem_zip (hmem q hq)
+      have h3 := hcs q.1 this.1
+      exact ⟨h3.1, h3.2.1, h3.2.2, hxs _ this.2⟩
+    have h0 := hh t0 (by simp)
+    have hGP := goodW_pmNext Wf hW Q a b p'.2 hP2 hp'
+    have hcmp0 := hcmpN t0 ts hz
+    have hfn := faNext _ hGP t0 ts hh hcmp0
+    have hw := VR.nextPass_ok _ h0.1 _ h0.2.2.2 h0.2.2.1
+    have hmz : (t0.1.1.nextPass t0.2).O = 3 → (t0.1.1.nextPass t0.2).m = 0 := by
+      intro h3
+      exact hMz t0.1 (List.of_mem_zip (hmem t0 (by simp))).1 (by simpa [VR.nextPass] using h3)
+    refine ⟨p'.2, (t0.1.1.nextPass t0.2).curG, (ts.map fun q => q.1.1.nextPass q.2).map VR.dec,
+      (t0.1.1.nextPass t0.2).k - 1, (t0.1.1.nextPass t0.2).w - (t0.1.1.nextPass t0.2).k, hp', ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · simp only [List.replicate_zero, List.nil_append]
+      exact hfal.trans hfn
+    · have := (curG_kw (t0.1.1.nextPass t0.2)).2
+      have h1 := hw.k1; have h2 := hw.kw
+      omega
+    · simpa using hzl
+    · exact curG_inv _ hw hmz
+    · intro x hx
+      simp only [List.mem_map] at hx
+      obtain ⟨y, ⟨q, hq, rfl⟩, rfl⟩ := hx
+      have hq' := hh q (List.mem_cons_of_mem _ hq)
+      exact VR.dec_ok _ (VR.nextPass_ok _ hq'.1 _ hq'.2.2.2 hq'.2.2.1)
+    · apply dec_outM
+      intro x hx
+      simp only [List.mem_map] at hx
+      obtain ⟨q, hq, rfl⟩ := hx
+      intro h3
+      exact hMz q.1 (List.of_mem_zip (hmem q (List.mem_cons_of_mem _ hq))).1 (by simpa [VR.nextPass] using h3)
+    · rw [(curG_kw (t0.1.1.nextPass t0.2)).2]
+      simpa [VR.nextPass] using h0.2.2.1
+    · intro x hx
+      simp only [List.mem_map] at hx
+      obtain ⟨y, ⟨q, hq, rfl⟩, rfl⟩ := hx
+      have hq' := hh q (List.mem_cons_of_mem _ hq)
+      rw [dec_w]
+      simpa [VR.nextPass] using hq'.2.2.1
+  · left
+    exact ⟨k, p'.2, hodl⟩
 
 end ZP.NTT
 
