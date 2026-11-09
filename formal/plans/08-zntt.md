@@ -426,3 +426,7 @@ Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the 
 ### Stage: passStepF semantic exposure
 `passStepF` now also exposes the S register value (`OUT.1`) and the compare outcome (the `nextPass` E-check) in each
 of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to tie machine outcomes to `evalC`.
+
+### Stage: FOk through passesRunF
+`passPOf`, `FOk` (compare + S-register check of every pass), `FOk_succ`/`FOk_inv`. `passesRunF` now returns
+`¬FOk` with the refuted (ODL) outcome and `FOk` with the success (SU1) outcome.
