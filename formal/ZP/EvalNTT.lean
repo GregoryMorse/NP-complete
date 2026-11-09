@@ -8594,6 +8594,94 @@ theorem dg_outRec (c : VR) (r : Nat) : (outRec c r).dg = c.dg := by
 theorem dg_nextPass (c : VR) (x : Nat) : (c.nextPass x).dg = c.dg ∧ (c.nextPass x).m = c.m := by
   simp [VR.nextPass, VR.dg]
 
+
+theorem dg_stepList_pos : ∀ vs : List VR, (∀ x ∈ vs, x.m = 0) →
+    (stepList vs).map VR.dg = vs.map VR.dg ∧ ∀ x ∈ stepList vs, x.m = 0
+  | [], _ => by simp [stepList]
+  | v :: vs, h => by
+    have hv : v.m = 0 := h v (by simp)
+    have h1 := dg_vis v.inc (by show v.m = 0; exact hv)
+    refine ⟨?_, ?_⟩
+    · simp only [stepList, List.map_cons, List.map_map, h1.1]
+      rw [(dg_inc v).1]
+      congr 1
+      exact List.map_congr_left (fun y hy => (dg_vis y (h y (by simp [hy]))).1)
+    · intro x hx
+      simp only [stepList, List.mem_cons, List.mem_map] at hx
+      rcases hx with rfl | ⟨y, hy, rfl⟩
+      · exact h1.2
+      · exact (dg_vis y (h y (by simp [hy]))).2
+
+theorem dg_stepN_pos (r : Nat) : ∀ vs : List VR, (∀ x ∈ vs, x.m = 0) →
+    (stepN r vs).map VR.dg = vs.map VR.dg ∧ ∀ x ∈ stepN r vs, x.m = 0 := by
+  induction r with
+  | zero => intro vs h; exact ⟨by simp [stepN], by simpa [stepN] using h⟩
+  | succ r ih =>
+    intro vs h
+    have h1 := dg_stepList_pos vs h
+    have h2 := ih (stepList vs) h1.2
+    exact ⟨by rw [stepN, h2.1, h1.1], by rw [stepN]; exact h2.2⟩
+
+theorem dg_loopRun_pos : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat),
+    c.m = 0 → (∀ x ∈ vs, x.m = 0) → vs.length = n →
+    (loopRun n c vs r s p).cs.map (fun t => t.1.dg) ++ [(loopRun n c vs r s p).c'.dg] = (c :: vs).map VR.dg := by
+  intro n
+  induction n with
+  | zero =>
+    intro c vs r s p hc hvs hl
+    have : vs = [] := List.length_eq_zero_iff.mp hl
+    subst this; simp [loopRun]
+  | succ n ih =>
+    intro c vs r s p hc hvs hl
+    have hlen := stepN_length r vs
+    obtain ⟨hmap, hmz⟩ := dg_stepN_pos r vs hvs
+    unfold loopRun
+    split
+    · rename_i hw
+      rw [hw] at hlen; simp at hlen; omega
+    · rename_i w ws hw
+      rw [hw] at hmap hmz
+      have hwm : w.m = 0 := hmz w (by simp)
+      have hwsm : ∀ x ∈ ws, x.m = 0 := fun x hx => hmz x (by simp [hx])
+      have hlws : (ws.map VR.dec).length = n := by
+        rw [hw] at hlen; simp at hlen ⊢; omega
+      have := ih w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p)
+        (by rw [(dg_curG w).2]; exact hwm)
+        (by intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx
+            rw [(dg_dec y).2]; exact hwsm y hy) hlws
+      simp only [List.map_cons] at hmap
+      simp only [List.map_cons, List.cons_append, List.map_map] at this ⊢
+      rw [dg_outRec]
+      have e : ws.map (VR.dg ∘ VR.dec) = ws.map VR.dg := List.map_congr_left (fun y _ => (dg_dec y).1)
+      rw [(dg_curG w).1, e] at this
+      rw [this, ← hmap]
+
+
+theorem loopRun_cs_length : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat),
+    vs.length = n → (loopRun n c vs r s p).cs.length = n := by
+  intro n
+  induction n with
+  | zero => intro c vs r s p hl; simp [loopRun]
+  | succ n ih =>
+    intro c vs r s p hl
+    have hlen := stepN_length r vs
+    unfold loopRun
+    split
+    · rename_i hw; rw [hw] at hlen; simp at hlen; omega
+    · rename_i w ws hw
+      rw [hw] at hlen; simp at hlen
+      have := ih w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p) (by simp; omega)
+      simpa using this
+
+theorem dg_runAll_pos (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) (hc : c.m = 0)
+    (hvs : ∀ x ∈ vs, x.m = 0) (hl : vs.length = n) :
+    (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+        (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).map fun t => t.1.dg) = (c :: vs).map VR.dg := by
+  have h := dg_loopRun_pos n c vs r s p hc hvs hl
+  simp only [List.map_append, List.map_cons, List.map_nil, dg_outRec]
+  simpa using h
+
+
 /-- Digit data of an odometer record. -/
 def ORec.dgO (o : ORec) : Nat × Nat × Nat × Nat × Nat := (o.d, o.r - o.d - 1, o.z + o.k - 1, o.m, o.acc.length)
 
@@ -8681,27 +8769,40 @@ theorem tapeOutD_ex (D : List (Nat × Nat × Nat × Nat × Nat)) (cs : List (VR 
 def SuOut (D : List (Nat × Nat × Nat × Nat × Nat)) (Wf Q'' : List Nat) (b : Nat) (T : List Nat) : Prop :=
   ∃ (S0 : List Nat) (o : ORec) (os : List ORec), BitsD S0 ∧
     GoodW (Wf ++ 1 :: (S0 ++ 1 :: (Q'' ++ 1 :: List.replicate b 2))) ∧
-    (∀ x ∈ o :: os, x.Ok) ∧ (∀ x ∈ o :: os, x.dgO ∈ D) ∧
+    (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧
     T = (Wf ++ 1 :: (S0 ++ 1 :: (Q'' ++ 1 :: List.replicate b 2))) ++ sepRest (o :: os)
-
-theorem SuOut.mono {D D' Wf Q'' b T} (h : SuOut D Wf Q'' b T) (hs : ∀ x ∈ D, x ∈ D') : SuOut D' Wf Q'' b T := by
-  obtain ⟨S0, o, os, a, g, ok, d, e⟩ := h
-  exact ⟨S0, o, os, a, g, ok, fun x hx => hs _ (d x hx), e⟩
 
 /-- The refuted outcome: parameters `Wf 1 S0 1 Qp 3^a' 2 2^b'` (`a' + 1 + b' = N`), then the finished records. -/
 def OdOut (D : List (Nat × Nat × Nat × Nat × Nat)) (Wf Qp : List Nat) (N : Nat) (R' : List Nat) : Prop :=
   ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ a' + 1 + b' = N ∧
     GoodW (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ 2 :: List.replicate b' 2))) ∧
-    (∀ x ∈ o :: os, x.Ok) ∧ (∀ x ∈ o :: os, x.dgO ∈ D) ∧
+    (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧
     (Wf ++ [1]) ++ R' = (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ 2 :: List.replicate b' 2))) ++ sepRest (o :: os)
-
-theorem OdOut.mono {D D' Wf Qp N R'} (h : OdOut D Wf Qp N R') (hs : ∀ x ∈ D, x ∈ D') : OdOut D' Wf Qp N R' := by
-  obtain ⟨S0, a', b', o, os, a, b, c, g, ok, d, e⟩ := h
-  exact ⟨S0, a', b', o, os, a, b, c, g, ok, fun x hx => hs _ (d x hx), e⟩
 
 theorem OdOut.toO {D Wf Qp N R'} (h : OdOut D Wf Qp N R') : TapeOutO ((Wf ++ [1]) ++ R') := by
   obtain ⟨S0, a', b', o, os, a, b, c, g, ok, d, e⟩ := h
   exact ⟨_, o, os, g, ok, e⟩
+
+theorem tapeOutP_ex (cs : List (VR × Nat × Nat))
+    (hcs : ∀ t ∈ cs, t.1.Ok ∧ t.1.m = 0 ∧ t.2.1 + 1 + t.2.2 = t.1.w) (hne : cs ≠ []) :
+    ∃ (o : ORec) (os : List ORec), (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = cs.map (fun t => t.1.dg) ∧
+      tailB (cs.map fun t => t.1.done t.2.1 t.2.2) = sepRest (o :: os) := by
+  rw [tailB_toO cs (fun t ht => ⟨(hcs t ht).1, (hcs t ht).2.1⟩)]
+  cases cs with
+  | nil => exact absurd rfl hne
+  | cons t cs' =>
+    refine ⟨t.1.toO t.2.1 t.2.2, cs'.map fun t => t.1.toO t.2.1 t.2.2, ?_, ?_, by simp⟩
+    · intro x hx
+      simp only [List.mem_cons, List.mem_map] at hx
+      rcases hx with rfl | ⟨q, hq, rfl⟩
+      · exact toO_ok _ (hcs t (by simp)).1 _ _ (hcs t (by simp)).2.2
+      · exact toO_ok _ (hcs q (by simp [hq])).1 _ _ (hcs q (by simp [hq])).2.2
+    · simp only [List.map_cons, List.map_map]
+      congr 1
+      · exact toO_dgO _ _ _ (hcs t (by simp)).2.2
+      · apply List.map_congr_left
+        intro q hq
+        exact toO_dgO _ _ _ (hcs q (by simp [hq])).2.2
 
 theorem dg_runAll (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) (hc : c.m = 0)
     (hvs : ∀ x ∈ vs, x.m = 0) :
@@ -8760,9 +8861,9 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
       rcases ht with ht | rfl
       · exact hm.1 t ht
       · rw [(outRec_m lo.c' lo.r').1]; exact hm.2
-    have hD : ∀ t ∈ cs, t.1.dg ∈ (c :: vs).map VR.dg := by
+    have hD : cs.map (fun t => t.1.dg) = (c :: vs).map VR.dg := by
       obtain ⟨lo, hlo, hcsEq, _⟩ := hLo
-      have := dg_runAll n c vs r s p hm0 hvm
+      have := dg_runAll_pos n c vs r s p hm0 hvm hlen
       rw [hlo] at this; rw [hcsEq]; exact this
     have hcs' : ∀ t ∈ cs, t.1.Ok ∧ t.1.m = 0 ∧ t.2.1 + 1 + t.2.2 = t.1.w :=
       fun t ht => ⟨(hcs t ht).1, hmzs t ht, (hcs t ht).2.1⟩
@@ -8777,19 +8878,19 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
       have hu := goodW_reg Wf (List.replicate (k + 1) 2 ++ List.replicate p'.2 3) _ hW
         (bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)))
         (by intro h; have := congrArg List.length h; simp at this) hP2'
-      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutD_ex _ cs hcs' hne hD
+      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutP_ex cs hcs' hne
       refine ⟨_, ⟨List.replicate (k + 1) 2 ++ List.replicate p'.2 3, o, os,
-        bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)), ?_, hok, hdg, rfl⟩, ?_⟩
+        bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)), ?_, hok, hdg.trans hD, rfl⟩, ?_⟩
       · simpa [List.replicate_succ, List.append_assoc] using hu
       · rw [hex] at h1
         simpa [List.replicate_succ, List.append_assoc] using h1
     · left
       have hu := goodW_reg Wf (List.replicate p'.2 3) _ hW (BitsD.rep _ 3 (by simp))
         (by intro h; have := congrArg List.length h; simp at this; omega) hP2'
-      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutD_ex _ cs hcs' hne hD
+      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutP_ex cs hcs' hne
       refine ⟨(List.replicate p'.2 3 ++ 1 :: ((Q'' ++ [1]) ++ List.replicate 0 3 ++ 2 :: List.replicate b 2)) ++
         sepRest (o :: os), ⟨List.replicate p'.2 3, 0, b, o, os, BitsD.rep _ 3 (by simp),
-        by intro h; have := congrArg List.length h; simp at this; omega, by omega, ?_, hok, hdg, ?_⟩, ?_⟩
+        by intro h; have := congrArg List.length h; simp at this; omega, by omega, ?_, hok, hdg.trans hD, ?_⟩, ?_⟩
       · simpa [List.append_assoc] using hu
       · simp [List.append_assoc]
       · rw [hex] at h1
@@ -8815,12 +8916,12 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
         (by intro h; have := congrArg List.length h; simp at this) (by simpa [List.append_assoc] using hP2'')
       have hne : ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
           (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]) ≠ [] := by simp
-      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutD_ex _ _ hcsOk hne (dg_runAll n c vs r s p hm0 hvm)
+      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutP_ex _ hcsOk hne
       refine ⟨((2 :: List.replicate k 2) ++ List.replicate q 3 ++ 1 :: ((Q'' ++ [1]) ++ List.replicate (a + 1) 3 ++
           2 :: List.replicate b 2)) ++ sepRest (o :: os),
         ⟨(2 :: List.replicate k 2) ++ List.replicate q 3, a + 1, b, o, os,
           bd_app (BitsD.cons (by simp) (BitsD.rep _ 2 (by simp))) (BitsD.rep _ 3 (by simp)),
-          by intro h; have := congrArg List.length h; simp at this, by omega, ?_, hok, hdg, ?_⟩, ?_⟩
+          by intro h; have := congrArg List.length h; simp at this, by omega, ?_, hok, hdg.trans (dg_runAll_pos n c vs r s p hm0 hvm hlen), ?_⟩, ?_⟩
       · rw [List.replicate_succ' (n := a) (a := 3)]; simpa [List.append_assoc, List.replicate_succ] using hu
       · simp [List.append_assoc]
       · rw [hex] at h1
@@ -8835,18 +8936,22 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
         rw [List.append_assoc, nn_eq]
       rw [e2] at h1
       simp only [List.replicate_zero, List.nil_append] at h1 hih
-      have hDall := dg_runAll n c vs r s p hm0 hvm
-      have hzm : ∀ q ∈ t0 :: ts, q.1.1.dg ∈ (c :: vs).map VR.dg := by
-        intro q hq; rw [← hz] at hq; exact hDall _ (List.of_mem_zip hq).1
-      have hsub : ∀ x ∈ (nxtC t0 :: nxtVs ts).map VR.dg, x ∈ (c :: vs).map VR.dg := by
-        intro x hx
-        simp only [List.map_cons, List.mem_cons, nxtC, nxtVs, nxtW, List.mem_map] at hx
-        rcases hx with rfl | ⟨y, ⟨z, ⟨q, hq, rfl⟩, rfl⟩, rfl⟩
-        · rw [(dg_curG _).1, (dg_nextPass _ _).1]; exact hzm t0 (by simp)
-        · rw [(dg_dec _).1, (dg_nextPass _ _).1]; exact hzm q (by simp [hq])
+      have hEq : (nxtC t0 :: nxtVs ts).map VR.dg = (c :: vs).map VR.dg := by
+        have hcl : ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+            (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).length = n + 1 := by
+          simp [loopRun_cs_length n c vs r s p hlen]
+        have hzl : (List.replicate (j + 1) 2 ++ 3 :: l').length = n + 1 := by
+          have := congrArg List.length hfl
+          simp at this ⊢; omega
+        have hmf := List.map_fst_zip (l₁ := (loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+            (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]) (l₂ := List.replicate (j + 1) 2 ++ 3 :: l') (by omega)
+        rw [hz] at hmf
+        have hp := dg_runAll_pos n c vs r s p hm0 hvm hlen
+        rw [← hp, ← hmf]
+        simp [nxtC, nxtVs, nxtW, dg_curG, dg_nextPass, dg_dec, List.map_map, Function.comp_def]
       rcases hih with ⟨R', ho, hr⟩ | ⟨T, ho, hr⟩
-      · exact Or.inl ⟨R', by have := ho.mono hsub; rwa [show a + 1 + (b + 1) = a + 1 + 1 + b by omega] at this, h1.trans hr⟩
-      · exact Or.inr ⟨T, by have := ho.mono hsub; rwa [show b + 1 + a + 1 = b + (a + 1) + 1 by omega] at this, h1.trans hr⟩
+      · exact Or.inl ⟨R', by rw [hEq] at ho; rwa [show a + 1 + (b + 1) = a + 1 + 1 + b by omega] at ho, h1.trans hr⟩
+      · exact Or.inr ⟨T, by rw [hEq] at ho; rwa [show b + 1 + a + 1 = b + (a + 1) + 1 by omega] at ho, h1.trans hr⟩
 
 
 
