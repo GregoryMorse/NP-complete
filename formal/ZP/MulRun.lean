@@ -602,4 +602,133 @@ theorem switchStep (r0 : Bool) (rest : List Bool) (g : Nat) (z : Zp) (W F : List
         simp only [Bd, hzLw, hzc, hzRw, cellN_some]
     · rw [← hV]
 
+/-! ## The peek: halt, or write, move and rotate -/
+
+/-- The result state of a proper halt (`o = true`: the output check starts) or a failure. -/
+def REn (o : Bool) (Rw W F ST : List Nat) : ZC :=
+  if o then hdR QMul.mK1 [2] (Rw ++ 1 :: (W ++ 1 :: (F ++ 0 :: ST)))
+  else hdR (dpOf 2) [1] (W ++ 1 :: (F ++ 0 :: ST))
+
+theorem peekH (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (z : Zp) (W F ST : List Nat)
+    (hW : NoB W) (hF : NoB F) (hS : NoB ST) (h2 : R1.getD 2 false = false)
+    (h1 : R1.getD 1 false = false) :
+    zmulLogic.Reach
+      (hd Q.FBACK ((bitsOf R1).reverse ++ List.replicate g 0 ++ 0 :: (z.Lw ++ [0]))
+        (1 :: (z.Rw ++ 1 :: (W ++ 1 :: (F ++ 0 :: ST)))))
+      (REn (R1.getD 0 false) z.Rw W F ST) := by
+  have hLw : Bits z.Lw := Bits.ofB _
+  have hRw : Bits z.Rw := Bits.ofB _
+  have hW' : Sym4 (W ++ 1 :: (F ++ 0 :: ST)) :=
+    hW.sym4.app (Sym4.cons (by simp [ALL]) (hF.sym4.app (Sym4.cons (by simp [ALL]) hS.sym4)))
+  have hdp : dpOf 2 = Q.DP10 := rfl
+  rcases R1 with _ | ⟨r0, _ | ⟨r1, _ | ⟨r2, rest⟩⟩⟩
+  · exact absurd hR1.1 (by simp)
+  · have e := hR1.2.1 rfl
+    simp only [List.cons.injEq, and_true] at e
+    subst e
+    have h := lift (segShort1 z.Lw z.Rw _ g hLw hRw hW')
+    simpa [REn, hdp, bitsOf, bn] using h
+  · have e := hR1.2.2 rfl
+    simp only [List.getD, List.getElem?_cons_succ, List.getElem?_cons_zero, Option.getD_some] at e
+    subst e
+    cases r0
+    · have h := lift (segShort2_0 z.Lw z.Rw _ g hLw hRw hW')
+      simpa [REn, hdp, bitsOf, bn] using h
+    · have h := segShort2_1 z.Lw z.Rw _ g hLw hRw hW'
+      simpa [REn, bitsOf, bn] using h
+  · have hrest : Bits (bitsOf rest).reverse := bitsOf_rev rest
+    have h2' : r2 = false := h2
+    have h1' : r1 = false := h1
+    subst h2' h1'
+    have hcode : (bitsOf (r0 :: false :: false :: rest)).reverse = (bitsOf rest).reverse ++ [2, 2, bn r0] := by
+      rw [bits3]; rfl
+    rw [hcode]
+    cases r0
+    · have h := lift (segHalt0 (bitsOf rest).reverse z.Lw z.Rw _ g hrest hLw hRw hW')
+      simpa [REn, hdp, bn] using h
+    · have h := segHalt1 (bitsOf rest).reverse z.Lw z.Rw _ g hrest hLw hRw hW'
+      simpa [REn, bn] using h
+
+theorem peekN (R1 : List Bool) (hR1 : InvR R1) (g : Nat) (z : Zp) (W F ST : List Nat)
+    (hW : NoB W) (hF : NoB F) (hS : NoB ST) (hFb : ∃ a ∈ F, a ∈ bits) (hg : 1 ≤ g) (h2 : R1.getD 2 false = true) :
+    ∃ g', g + z.Lw.length ≤ g' + (z.mv (R1.getD 0 false) (R1.getD 1 false)).Lw.length ∧ 1 ≤ g' ∧
+      zmulLogic.Reach
+        (hd Q.FBACK ((bitsOf R1).reverse ++ List.replicate g 0 ++ 0 :: (z.Lw ++ [0]))
+          (1 :: (z.Rw ++ 1 :: (W ++ 1 :: (F ++ 0 :: ST)))))
+        (Bd (rotN (entryOnes R1 + 1) (rot R1)) g' (z.mv (R1.getD 0 false) (R1.getD 1 false)) W F ST) := by
+  have hLw : Bits z.Lw := Bits.ofB _
+  have hRw : Bits z.Rw := Bits.ofB _
+  have h1 : (1 : Nat) ∈ NB := by simp [NB]
+  have hWn : NoB (W ++ 1 :: F) := hW.app (NoB.cons h1 hF)
+  have hT : Sym4 (0 :: ST) := Sym4.cons (by simp [ALL]) hS.sym4
+  have hW' : Sym4 (W ++ 1 :: (F ++ 0 :: ST)) :=
+    hW.sym4.app (Sym4.cons (by simp [ALL]) (hF.sym4.app hT))
+  have hWb : ∃ a ∈ W ++ 1 :: F, a ∈ bits := by
+    obtain ⟨a, ha, hab⟩ := hFb
+    exact ⟨a, List.mem_append_right _ (List.mem_cons_of_mem _ ha), hab⟩
+  rcases R1 with _ | ⟨r0, _ | ⟨r1, _ | ⟨r2, rest⟩⟩⟩
+  · exact absurd hR1.1 (by simp)
+  · simp at h2
+  · simp at h2
+  · have hrest : Bits (bitsOf rest).reverse := bitsOf_rev rest
+    have hf : false ∈ r0 :: r1 :: r2 :: rest := hR1.1
+    have h2' : r2 = true := h2
+    subst h2'
+    have hcode : (bitsOf (r0 :: r1 :: true :: rest)).reverse = (bitsOf rest).reverse ++ [3, bn r1, bn r0] := by
+      rw [bits3]; rfl
+    rw [hcode]
+    have hLz : ∀ (Lt : List Bool), (bitsOf Lt).length = Lt.length := fun Lt => by simp [bitsOf]
+    rcases z with ⟨Rt, c, Lt⟩
+    cases r1 with
+    | false =>
+      cases Rt with
+      | nil =>
+        have hm := segMv0e (bitsOf rest).reverse (bitsOf Lt.reverse) _ g (bn r0) (bn_bits r0)
+          hrest hLw hW'
+        obtain ⟨p, b, X2, eX, hb, hX2⟩ := mb2 (1 :: (W ++ 1 :: F)) (0 :: ST) (NoB.cons h1 hWn) hT
+          (let ⟨a, ha, hab⟩ := hWb; ⟨a, List.mem_cons_of_mem _ ha, hab⟩)
+        obtain ⟨g', hg', hp⟩ := post (r0 :: false :: true :: rest) hf (bitsOf Lt.reverse) (bn r0) p b X2 g
+          hLw (bn_cases r0) hb hX2
+        rw [← eX, hcode] at hp
+        refine ⟨g', ?_, by omega, ?_⟩
+        · simp [Zp.mv, Zp.Lw, bitsOf] at hLw ⊢; omega
+        · refine ((lift hm).tr (lift hp) (hd_eq (by simp [bn]) (by simp))).ofEq rfl ?_
+          cases r0 <;> simp [Bd, Zp.mv, Zp.Lw, Zp.Rw, bitsOf, cellN, bn]
+      | cons r Rt =>
+        have hm := segMv0c (bitsOf rest).reverse (bitsOf Lt.reverse) (bitsOf Rt) _ g (bn r0) (bn r)
+          (bn_bits r0) (bn_bits r) hrest hLw (Bits.ofB _) hW'
+        obtain ⟨p, b, X2, eX, hb, hX2⟩ := mb2 (bitsOf Rt ++ 1 :: (W ++ 1 :: F)) (0 :: ST)
+          ((Bits.ofB Rt).noB.app (NoB.cons h1 hWn)) hT
+          (let ⟨a, ha, hab⟩ := hWb; ⟨a, List.mem_append_right _ (List.mem_cons_of_mem _ ha), hab⟩)
+        obtain ⟨g', hg', hp⟩ := post (r0 :: false :: true :: rest) hf (bitsOf Lt.reverse ++ [bn r0]) (bn r)
+          p b X2 g (hLw.snoc (bn_bits r0)) (bn_cases r) hb hX2
+        rw [← eX, hcode] at hp
+        refine ⟨g', ?_, by omega, ?_⟩
+        · simp [Zp.mv, Zp.Lw, bitsOf] at hLw ⊢; omega
+        · refine ((lift hm).tr (lift hp) (hd_eq (by simp [bn]) (by simp))).ofEq rfl ?_
+          cases r0 <;> cases r <;> simp [Bd, Zp.mv, Zp.Lw, Zp.Rw, bitsOf, cellN, bn, List.reverse_cons]
+    | true =>
+      have hm := segMv1 (bitsOf rest).reverse (bitsOf Lt.reverse) (bitsOf Rt) _ g (bn r0)
+        (bn_bits r0) hrest hLw (Bits.ofB _) hW'
+      have hX2 : Sym4 (bitsOf Rt ++ 1 :: (W ++ 1 :: (F ++ 0 :: ST))) :=
+        (Bits.ofB Rt).sym4.app (Sym4.cons (by simp [ALL]) hW')
+      cases Lt with
+      | nil =>
+        obtain ⟨g0, rfl⟩ : ∃ g0, g = g0 + 1 := ⟨g - 1, by omega⟩
+        obtain ⟨g', hg', hp⟩ := post (r0 :: true :: true :: rest) hf [] 0 0 (bn r0)
+          (bitsOf Rt ++ 1 :: (W ++ 1 :: (F ++ 0 :: ST))) g0 Bits.nil (Or.inl rfl) (bn_bits r0) hX2
+        rw [hcode] at hp
+        refine ⟨g', ?_, by omega, ?_⟩
+        · simp [Zp.mv, Zp.Lw, bitsOf] at hLw ⊢; omega
+        · refine ((lift hm).tr (lift hp) (hd_eq (by simp [bn]) (by simp [List.replicate_succ, rep_cons_comm, Zp.Lw, bitsOf]))).ofEq rfl ?_
+          cases r0 <;> simp [Bd, Zp.mv, Zp.Lw, Zp.Rw, bitsOf, cellN, bn]
+      | cons x Lt =>
+        obtain ⟨g', hg', hp⟩ := post (r0 :: true :: true :: rest) hf (bitsOf Lt.reverse) (bn x) 0 (bn r0)
+          (bitsOf Rt ++ 1 :: (W ++ 1 :: (F ++ 0 :: ST))) g (Bits.ofB _) (bn_cases x) (bn_bits r0) hX2
+        rw [hcode] at hp
+        refine ⟨g', ?_, by omega, ?_⟩
+        · simp [Zp.mv, Zp.Lw, bitsOf] at hLw ⊢; omega
+        · refine ((lift hm).tr (lift hp) (hd_eq (by simp [bn]) (by simp [bitsOf, bn]))).ofEq rfl ?_
+          cases r0 <;> cases x <;> simp [Bd, Zp.mv, Zp.Lw, Zp.Rw, bitsOf, cellN, bn]
+
 end ZP.Mul
