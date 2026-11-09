@@ -353,3 +353,5 @@ So `odFail` (`ODL` -> next assignment `WI0` / overflow `BEEP`) now applies direc
 - assignRun: one whole assignment (all passes) ends in the next assignment (WI0, via odlNext), the overflow BEEP, or success SU1 (TapeOutO). Remaining: digit-preservation invariants, Sem from evaluate, SU1 -> PA0 restart, first-assignment entry, Challenge/Solution wiring.
 
 - Digit preservation (pure part): `VR.dg = (n, s, a+c, t)` is preserved by inc/vis/dec/curG/stepN (given m = 0), and `dg_loopRun`: every finished record of a pass loop has the digits of some starting record. Next: thread this through passStep/passesRun so the final ORec digits equal the starting ones.
+
+- Digit preservation done: `passesRun`/`assignRun` outcomes are `TapeOutD D T` (D = digit data `VR.dg` of the starting records; every finished odometer record has `ORec.dgO ∈ D`). The odometer step (`odlNext`) then maps these to the next assignment. Remaining: odometer-step semantics on the digit list, `Sem` from `evaluate`, SU1 -> PA0, first-assignment entry, Challenge/Solution wiring.
