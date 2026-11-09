@@ -455,3 +455,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: S sum in terms of node values
 `loopRs` (loopVals plus the `r` components), `SumOD`, `passCs_sum`: `Σ ctrS` over a pass equals `Σ_{O=3} val_i·d_i`, the reference `Σ E'` once compare holds. Remaining for `AOkD ↔ evalC`: E-register update, chaining via `FOk`, and relating `vals` to `valsAux`.
+
+### Stage note: E register after a pass
+`Efin`, `finE`, `KEq`, `outRec_Efin`, `loopEs`: the finished records' E fields are `Efin v r` = `fld w (e'+1)` with `e'-1 = (r·n) mod w` for `O=3` records (unchanged for `O=2`), as a function of the start records and node values. Since `nextPass` is a field copy, next-pass records are `mkV`-shaped (dg, flag, E) — next: the one-pass transfer lemma and the induction over `FOk`.

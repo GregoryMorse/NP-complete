@@ -11845,5 +11845,121 @@ theorem passCs_sum (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : Val
     simp [h2.2.2.2]
   rw [h3, h1]
 
+
+/-- Final `E` register of a finished record with node value `r`. -/
+def Efin (v : VR) (r : Nat) : List Nat :=
+  if v.O = 2 then v.E else fld v.E.length (eAdv v.E.length (r * v.n) 1)
+
+def finE : List VR → List Nat → List (List Nat)
+  | v :: vs, r :: rs => Efin v r :: finE vs rs
+  | _, _ => []
+
+def KEq (v v' : VR) : Prop :=
+  v.O = v'.O ∧ v.n = v'.n ∧ v.E.length = v'.E.length ∧ (v.O = 2 → v.E = v'.E)
+
+theorem Efin_congr (v v' : VR) (h : KEq v v') (r : Nat) : Efin v r = Efin v' r := by
+  obtain ⟨h1, h2, h3, h4⟩ := h
+  unfold Efin
+  by_cases hO : v.O = 2
+  · rw [if_pos hO, if_pos (h1 ▸ hO), h4 hO]
+  · rw [if_neg hO, if_neg (h1 ▸ hO), h2, h3]
+
+theorem finE_congr : ∀ (vs vs' : List VR) (rs : List Nat), vs.length = vs'.length →
+    (∀ (i : Nat) (a b : VR), vs[i]? = some a → vs'[i]? = some b → KEq a b) → finE vs rs = finE vs' rs
+  | [], [], _, _, _ => rfl
+  | [], _ :: _, _, h, _ => by simp at h
+  | _ :: _, [], _, h, _ => by simp at h
+  | a :: vs, b :: vs', [], _, _ => by simp [finE]
+  | a :: vs, b :: vs', r :: rs, hl, h => by
+    simp only [finE]
+    rw [Efin_congr a b (h 0 a b (by simp) (by simp)) r,
+      finE_congr vs vs' rs (by simpa using hl) (fun i x y hx hy => h (i + 1) x y (by simpa using hx) (by simpa using hy))]
+
+theorem outRec_Efin (c : VR) (r : Nat) (hl : 1 ≤ c.E.length) (hO23 : c.O = 2 ∨ c.O = 3) (hE : c.O = 3 → c.E = fld c.E.length 1) :
+    (outRec c r).E = Efin c r := by
+  unfold outRec Efin
+  by_cases hO : c.O = 2
+  · simp [hO]
+  · simp only [if_neg hO]
+    have hc : c.E.count 3 = 1 := by
+      have h3 : c.O = 3 := by omega
+      rw [hE h3]; exact count3_fld' _ _ hl |>.trans rfl
+    rw [hc]
+
+
+theorem KEq_trans {a b c : VR} (h1 : KEq a b) (h2 : KEq b c) : KEq a c :=
+  ⟨h1.1.trans h2.1, h1.2.1.trans h2.2.1, h1.2.2.1.trans h2.2.2.1, fun h => (h1.2.2.2 h).trans (h2.2.2.2 (h1.1 ▸ h))⟩
+
+theorem curG_KEq (w : VR) (hl : 1 ≤ w.E.length) : KEq w.curG w := by
+  have h1 := dec_EO w
+  have h2 := dec_fields' w
+  unfold VR.curG VR.cur
+  by_cases hO : w.O = 3
+  · simp only [if_pos hO]
+    refine ⟨by simp [h1.2], by simp [h2.1], ?_, by simp [h1.2]; intro h; omega⟩
+    simp [fld, h1.1]; omega
+  · simp only [if_neg hO]
+    refine ⟨?_, ?_, ?_, ?_⟩ <;> simp [h1.1, h1.2, h2.1]
+
+theorem incVis_KEq (r : Nat) (v : VR) (h : VI v) : KEq (incVisN r v) v := by
+  obtain ⟨_, _, _, h3, _, _, h7, h8, _, _⟩ := incVisN_val r v h
+  exact ⟨h7, h3, by rw [h8], fun _ => h8⟩
+
+theorem decVis_KEq (r : Nat) (v : VR) (h : VI v) : KEq (VR.dec (visN r v)) v := by
+  obtain ⟨_, _, _, h3, _, _, h7, h8, _, _⟩ := visIter r v h
+  have h1 := dec_EO (visN r v)
+  have h2 := dec_fields' (visN r v)
+  exact ⟨by rw [h1.2, h7], by rw [h2.1, h3], by rw [h1.1, h8], fun _ => by rw [h1.1, h8]⟩
+
+theorem loopEs : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × Nat), vs.length = n → VI c →
+    (∀ x ∈ vs, VI x) → (c.O = 3 → c.E = fld c.E.length 1) →
+    (loopRun n c vs r s pp).cs.map (fun x => x.1.E) =
+      finE (c :: vs) ((loopRun n c vs r s pp).cs.map (fun x => x.2.1))
+  | 0, c, vs, r, s, pp, _, _, _, _ => by simp [loopRun, finE]
+  | n + 1, c, vs, r, s, pp, hl, hc, hvs, hcE => by
+    obtain ⟨v0, vs', rfl⟩ : ∃ v0 vs', vs = v0 :: vs' := by
+      cases vs with
+      | nil => simp at hl
+      | cons a b => exact ⟨a, b, rfl⟩
+    have hv0 : VI v0 := hvs v0 (by simp)
+    have hvs' : ∀ x ∈ vs', VI x := fun x hx => hvs x (by simp [hx])
+    have hI1 := (incVisN_val r v0 hv0).1
+    have hcg := curG_f _ hI1
+    have hl' : ((vs'.map (visN r)).map VR.dec).length = n := by simp at hl ⊢; omega
+    have hvs'' : ∀ x ∈ (vs'.map (visN r)).map VR.dec, VI x := by
+      intro x hx
+      simp only [List.mem_map] at hx
+      obtain ⟨y, ⟨z, hz, rfl⟩, rfl⟩ := hx
+      have := (visIter r z (hvs' z hz)).1
+      exact ⟨(visN r z).dec_ok this.1, by
+        have := dec_fields' (visN r z); rw [this.2.1]; exact (visIter r z (hvs' z hz)).1.2⟩
+    have hk0 := curG_KEq (incVisN r v0) (by have := hI1.1.Elen; omega)
+    have IH := loopEs n (VR.curG (incVisN r v0)) _ ((incVisN r v0).k - 1) ((incVisN r v0).w - (incVisN r v0).k)
+      (outP c r pp) hl' hcg.1 hvs'' (by
+        intro h3
+        have hO3 : (incVisN r v0).O = 3 := by rw [← hk0.1]; exact h3
+        have e1 : (incVisN r v0).curG.E = fld (incVisN r v0).E.length 1 := by simp [VR.curG, VR.cur, hO3, VR.dec]
+        have hl1 : 1 ≤ (incVisN r v0).E.length := by have := hI1.1.Elen; omega
+        rw [e1, fld_len _ _ hl1])
+    simp only [loopRun, stepN_cons]
+    simp only [List.map_cons, finE]
+    refine List.cons_eq_cons.2 ⟨?_, ?_⟩
+    · exact outRec_Efin c r (by have := hc.1.Elen; omega) (by have := hc.1.O; simpa using this) hcE
+    · rw [IH]
+      apply finE_congr
+      · simp [hl']
+      · intro i a b ha hb
+        cases i with
+        | zero =>
+          simp at ha hb; subst ha; subst hb
+          exact KEq_trans hk0 (incVis_KEq r v0 hv0)
+        | succ i =>
+          simp only [List.getElem?_cons_succ, List.getElem?_map, Option.map_eq_some_iff] at ha hb
+          obtain ⟨y, ⟨z, hz, rfl⟩, rfl⟩ := ha
+          have hb' : vs'[i]? = some b := by simpa using hb
+          have hzb : z = b := Option.some.inj (hz.symm.trans hb')
+          subst hzb
+          exact decVis_KEq r z (hvs' z (List.mem_of_getElem? hz))
+
 end ZP.NTT
 
