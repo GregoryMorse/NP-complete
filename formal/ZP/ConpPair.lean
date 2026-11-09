@@ -439,4 +439,49 @@ theorem qsSkipLoop (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
     refine (h1.ofEq (by simp [List.replicate_succ']) rfl).trans (h2.ofEq rfl ?_)
     simp [List.replicate_succ']
 
+theorem qsToTW (Vq : List Nat) (Pb : List Bool) (X Rest : List Nat) (hVq : NoB Vq) (hX : Bits X)
+    (hR : Sym4 Rest) (k : Nat) (hk : bitsOf Pb = bitsOf (core Pb) ++ List.replicate k 3)
+    (hc : core Pb = [] ∨ ∃ c0, core Pb = c0 ++ [false]) :
+    zconpLogic.Reach
+      (hd QConp.QS (1 :: (X.reverse ++ 1 :: ((Vq ++ [1]) ++ bitsOf Pb))) (1 :: (X ++ 1 :: Rest)))
+      (hd Q.TW (2 :: bitsOf (core Pb))
+        (0 :: (X.reverse ++ 1 :: (Vq ++ 1 :: (bitsOf Pb ++ 1 :: (X ++ 1 :: Rest)))))) := by
+  have hrep : ∀ a ∈ List.replicate k 3, a ∈ T3 := fun a h => by
+    rw [List.eq_of_mem_replicate h]; simp [T3]
+  have hBc : Bits (bitsOf (core Pb)) := Bits.ofB _
+  have hRest1 : Sym4 (1 :: (X ++ 1 :: Rest)) :=
+    Sym4.cons (by simp [ALL]) (Sym4.app hX.sym4 (Sym4.cons (by simp [ALL]) hR))
+  have hA : Sym4 (1 :: (X.reverse ++ 1 :: ((Vq ++ [1]) ++ bitsOf (core Pb)))) :=
+    Sym4.cons (by simp [ALL]) (Sym4.app hX.rev.sym4 (Sym4.cons (by simp [ALL])
+      (Sym4.app (Sym4.app hVq.sym4 (Sym4.cons (by simp [ALL]) Sym4.nil)) hBc.sym4)))
+  have hsk := qsSkipLoop _ _ hA hRest1 k
+  rw [hk]
+  refine (hsk.ofEq (by simp) rfl).trans ?_
+  rcases hc with hc | ⟨c0, hc⟩
+  · have h := qsEndS [] X.reverse Vq X Rest (List.replicate k 3) Bits.nil hX.rev hVq hX hR hrep
+    refine h.ofEq (by simp [hc, bitsOf]) (by simp [hc, bitsOf])
+  · have hb0 : Bits (bitsOf c0) := Bits.ofB _
+    have hbc : bitsOf (core Pb) = bitsOf c0 ++ [2] := by simp [hc, bitsOf]
+    have hV1 : NoB (Vq ++ [1]) := hVq.app (NoB.cons (by simp [NB]) NoB.nil)
+    have h1 := qsBody0 [] X.reverse (Vq ++ [1]) (bitsOf c0) X Rest (List.replicate k 3) Bits.nil hX.rev
+      hV1 hb0 hX hR hrep
+    have h2 := qcLoopS X.reverse (Vq ++ [1]) X Rest (List.replicate k 3) hX.rev
+      hV1 hX hR hrep (bitsOf c0).reverse [2]
+      (Bits.rev hb0) (Bits.cons (by simp [bits]) Bits.nil)
+    have h3 := qcEndS (bitsOf c0 ++ [2]) X.reverse Vq X Rest (List.replicate k 3)
+      (hb0.snoc (by simp [bits])) hX.rev hVq hX hR hrep
+    rw [hbc]
+    have h1' : zconpLogic.Reach
+      (hd QConp.QS (1 :: (X.reverse ++ 1 :: ((Vq ++ [1]) ++ (bitsOf c0 ++ [2])))) (List.replicate k 3 ++ 1 :: (X ++ 1 :: Rest)))
+      (hd Q.QC ([2] ++ 1 :: (X.reverse ++ 1 :: ((Vq ++ [1]) ++ (bitsOf c0).reverse.reverse)))
+        ([2] ++ (List.replicate k 3 ++ 1 :: (X ++ 1 :: Rest)))) :=
+      h1.ofEq (by simp) (by simp)
+    have h2' : zconpLogic.Reach
+      (hd Q.QC ([2] ++ 1 :: (X.reverse ++ 1 :: ((Vq ++ [1]) ++ (bitsOf c0).reverse.reverse)))
+        ([2] ++ (List.replicate k 3 ++ 1 :: (X ++ 1 :: Rest))))
+      (hd Q.QC (bitsOf c0 ++ [2] ++ 1 :: (X.reverse ++ 1 :: (Vq ++ [1])))
+        (bitsOf c0 ++ [2] ++ (List.replicate k 3 ++ 1 :: (X ++ 1 :: Rest)))) :=
+      h2.ofEq rfl (by simp)
+    exact (h1'.trans h2').trans (h3.ofEq (by simp) (by simp))
+
 end ZP.Conp
