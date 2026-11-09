@@ -243,3 +243,10 @@ ones, the first `0` becomes `1`) and a `u` string of length `j+1` (`ODM → ODI/
 `odCarryEnd` past the last one (beep). The semantic walk to prove: `odoNext` on the list of (digit, radix) pairs is a
 mixed-radix successor, visits every element of `∏ recChoices` exactly once, and the machine step lemmas
 (`odRecInc`, `odCarryInc`, `odCarryInc0`, `odCarryNext`, `odCarryEnd`) realise it.
+
+### Resolved: the `u` digit encoding
+`native/zntt.py` pass start (`RU`: `0→1`) and `WI1` (`0→1`) restore a string's leading zeros to ones; the pointer decrement of a
+pass eats `1`s from the left. So at odometer time a `b`/`u` string is a *window* `0^z 1^k 0^m` (`k ≥ 1`) and its digit is the
+right end `e = z + k ∈ [1, z+k+m]` of the run of ones; the increment (`odInc`, `odCarryInc`, `odCarryInc0`, `odRecInc`) moves it
+to `e + 1`, overflow resets to `1 0…` (`e = 1`) and carries. `b` strings are the case `z = 0` (`therm`). The `OR`/`odo` walk
+therefore matches `odoNext` on `(e - 1, L)` pairs; leading zeros are invisible to it because `WI1` normalises them.
