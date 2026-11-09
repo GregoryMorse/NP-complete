@@ -929,4 +929,43 @@ theorem dSearch (Jb Sb : List Bool) (t : Nat) (ht : t ∈ bits) :
   rw [hv] at this
   exact this
 
+/-! ## The three erasures that follow a phase -/
+
+theorem advE (j s F Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hD : NoB Dw) :
+    zconpLogic.Reach (hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 0]))) (F ++ 0 :: Dw))
+      (hd Q.SINC (1 :: (j ++ 1 :: s)) []) := by
+  obtain ⟨k, hk⟩ := eaAll (1 :: (j ++ 1 :: (s ++ [1, 0]))) F Dw
+    (Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL])
+      (hs.sym4.app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) Sym4.nil))))))
+    hF hD
+  have h2 := ebsM (1 :: (j ++ 1 :: s)) (List.replicate (k + 1) 2)
+    (Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL]) hs.sym4)))
+    (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits])
+  exact hk.trans (h2.ofEq (by simp [List.replicate_succ]) rfl)
+
+theorem badE (j s F Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hD : NoB Dw) :
+    zconpLogic.Reach (hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 2, 0]))) (F ++ 0 :: Dw))
+      (hd Q.JINC (1 :: j) [1]) := by
+  obtain ⟨k, hk⟩ := eaAll (1 :: (j ++ 1 :: (s ++ [1, 2, 0]))) F Dw
+    (Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL])
+      (hs.sym4.app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL])
+        (Sym4.cons (by simp [ALL]) Sym4.nil)))))))
+    hF hD
+  have h2 := ebs0 j s (List.replicate (k + 1) 2) hj hs
+    (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits])
+  exact hk.trans (h2.ofEq (by simp [List.replicate_succ]) rfl)
+
+theorem vaccE (j s F Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hD : NoB Dw) :
+    zconpLogic.Reach (hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 3]))) (F ++ 0 :: Dw))
+      (hdR Q.GRB (1 :: ((j ++ 1 :: (s ++ [1, 3])) ++ [1])) []) := by
+  obtain ⟨k, hk⟩ := eaAll (1 :: (j ++ 1 :: (s ++ [1, 3]))) F Dw
+    (Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL])
+      (hs.sym4.app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) Sym4.nil))))))
+    hF hD
+  have h2 := ebs3 (1 :: (j ++ 1 :: (s ++ [1]))) (List.replicate k 2)
+    (Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL])
+      (hs.sym4.app (Sym4.cons (by simp [ALL]) Sym4.nil)))))
+    (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits])
+  exact hk.trans (h2.ofEq (by simp) (by simp))
+
 end ZP.Conp
