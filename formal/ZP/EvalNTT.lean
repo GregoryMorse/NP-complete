@@ -8018,5 +8018,85 @@ theorem passCycle (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
     simp only [List.replicate_succ, List.cons_append, List.append_assoc] at h1 h2 ⊢
     exact h1.trans h2
 
+
+/-- The last pass from its start: `S ≠ 0` succeeds (`SU1`), `S = 0` refutes (`ODL`). -/
+theorem lastCycle (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (b : Nat)
+    (hP2 : GoodW (1 :: (Q ++ [1] ++ [3] ++ List.replicate b 2)))
+    (n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s : Nat)
+    (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs)
+    (hp : 1 ≤ p.2) (hcmp : PassCmp n r vs) (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w) :
+    ∃ (p' : Nat × Nat) (cs : List (VR × Nat × Nat)), (∀ t ∈ cs, t.1.Ok ∧ t.2.1 + 1 + t.2.2 = t.1.w ∧ 2 ≤ t.1.w) ∧
+      cs.map (fun t => t.1.P) = c.P :: vs.map VR.P ∧
+      ((∃ k, p'.1 = k + 1 ∧
+        znttLogic.Reach
+          (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ [1] ++ [3] ++ List.replicate b 2)))
+            [] c 0 r s vs) [])
+          (hdR QNTT.SU1 [] (Wf ++ 1 :: (List.replicate (k + 1) 2 ++ List.replicate p'.2 3 ++
+            1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2))))))) ∨
+       (p'.1 = 0 ∧
+        znttLogic.Reach
+          (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ [1] ++ [3] ++ List.replicate b 2)))
+            [] c 0 r s vs) [])
+          (hd QNTT.ODL (Wf ++ [1]) (List.replicate p'.2 3 ++
+            1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2))))))) := by
+  obtain ⟨p', pre', cs, hpre', hne, hp', hpe, hcs, hPc, h1⟩ :=
+    passLast2 Wf hW Q b hP2 n vs c [] p r s hrs hlen hc hvs hom (by intro x hx; simp at hx) hp hcmp hcw hvw
+  simp only [List.nil_append] at hpe
+  subst hpe
+  refine ⟨p', cs, hcs, hPc, ?_⟩
+  have n1 : (1 : Nat) ∈ NB := by simp [NB]
+  have n2 : (2 : Nat) ∈ NB := by simp [NB]
+  have n3 : (3 : Nat) ∈ NB := by simp [NB]
+  have nQ : NoB Q := fun x hx => hP2.noB x (by simp [hx])
+  have hQ : Sym4 Q := nQ.sym4
+  have s2 : ∀ j, Sym4 (List.replicate j 2) := fun j => (BitsD.rep j 2 (by simp)).sym4
+  have sT : Sym4 (tailB (cs.map fun t => t.1.done t.2.1 t.2.2)) := tailB_sym4 _ (fun x hx => (hpre' x hx).1)
+  have nT : NoB (tailB (cs.map fun t => t.1.done t.2.1 t.2.2)) := tailB_noB _ (fun x hx => (hpre' x hx).1)
+  have hY : Sym4 (1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2))) :=
+    Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) ((s2 b).app sT))
+  have hTn : NoB (1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)))) := by
+    simp only [NoB_cons_iff, NoB_app_iff]
+    exact ⟨n1, nQ, n1, n2, noB_rep b 2 (by simp), nT⟩
+  have hT : Sym4 (1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)))) :=
+    Sym4.cons (by simp [ALL]) (hQ.app hY)
+  have hX0 : ∀ S : List Nat, NoB S → NoB (Wf ++ 1 :: (S ++ 1 :: Q)) := fun S hS => by
+    simp only [NoB_cons_iff, NoB_app_iff]; exact ⟨hW.noB, n1, hS, n1, nQ⟩
+  have sR : ∀ S : List Nat, Sym4 S → Sym4 (S ++ 1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)))) :=
+    fun S hS => hS.app hT
+  rcases hk : p'.1 with _ | k
+  · right
+    refine ⟨rfl, ?_⟩
+    rw [hk] at h1
+    simp only [List.replicate_zero, List.nil_append] at h1
+    have hX := hX0 (List.replicate p'.2 3) (noB_rep _ 3 (by simp))
+    obtain ⟨q, hq⟩ : ∃ q, p'.2 = q + 1 := ⟨p'.2 - 1, by omega⟩
+    have h0 := fl0Scan (Wf ++ 1 :: (List.replicate p'.2 3 ++ 1 :: Q))
+      (1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2))) hX hY
+    have sR3 : Sym4 (List.replicate q 3 ++ 1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)))) :=
+      (BitsD.rep q 3 (by simp)).sym4.app hT
+    have b1 := fl1Block [] Wf (1 :: 3 :: (List.replicate q 3 ++ 1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)))))
+      Sym4.nil hW (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) sR3))
+    have b2 := fl1M ([] ++ Wf) (3 :: (List.replicate q 3 ++ 1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)))))
+      (by simpa using hW.sym4) (Sym4.cons (by simp [ALL]) sR3)
+    have b3 := fl2One ([] ++ Wf ++ [1]) (List.replicate q 3 ++ 1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2))))
+      (by simpa using hW.sym4.app (Sym4.cons (by simp [ALL]) Sym4.nil)) sR3
+    rw [hq] at h1 h0 ⊢
+    simp only [List.replicate_succ, List.cons_append, List.append_assoc, List.nil_append] at h0 b1 b2 b3 h1 ⊢
+    exact h1.trans (h0.trans (b1.trans (b2.trans b3)))
+  · left
+    refine ⟨k, rfl, ?_⟩
+    rw [hk] at h1
+    have hSn : NoB (List.replicate (k + 1) 2 ++ List.replicate p'.2 3) :=
+      NoB_app_iff.2 ⟨noB_rep _ 2 (by simp), noB_rep _ 3 (by simp)⟩
+    have h2 := flOk Wf hW (List.replicate (k + 1) 2 ++ List.replicate p'.2 3)
+      (1 :: (Q ++ 1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2))))
+      (Wf ++ 1 :: (List.replicate (k + 1) 2 ++ List.replicate p'.2 3 ++ 1 :: Q))
+      (1 :: 2 :: (List.replicate b 2 ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)))
+      (bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp))) hT 0
+      ⟨List.replicate k 2 ++ List.replicate p'.2 3, by simp [List.replicate_succ]⟩
+      (by simp) (hX0 _ hSn) hY hTn
+    simp only [List.append_assoc, List.cons_append] at h1 h2 ⊢
+    exact h1.trans h2
+
 end ZP.NTT
 

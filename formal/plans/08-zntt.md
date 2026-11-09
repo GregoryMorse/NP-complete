@@ -326,3 +326,7 @@ plus the last pass (`passLast2 -> flOk` / failure leaves), the semantics (`PassC
 `scChain`: `SC` with `S = 0` on the finished `done` records goes to `FAL` of the next pass (records `doneX` with the moved flags).
 `passCycle`: one whole non-final pass from `RFL` either refutes (`S ≠ 0`, `ODL`) or reaches the next pass's `FAL`. `faNext` then reaches its first cursor `RFL`.
 Remaining: the induction over `a` passes (carrying `PassCmp` and the next-pass invariants `CurInv`/`OutM`/`Ok`, with `a-1`, `b+1`), the last pass (`passLast2` -> `flOk`/failure leaves), the `PassCmp` semantics = `evaluate`, `PA0` restart, entries.
+
+### Progress: last pass (`ZP/EvalNTT.lean`, no sorry)
+`lastCycle`: the last pass from `RFL` ends in `SU1` (`S` starts with `0`: `s_n ≠ 0`, success) or in `ODL` (`S = 0`, via `fl0Scan`, `fl1Block`, `fl1M`, `fl2One`). It also exposes `cs` with its flags and widths.
+Remaining: the induction over passes (`passCycle` + `faNext`, then `lastCycle`), the `PassCmp` semantics = `evaluate`, `SU1` -> `PA0` (existing `suOk`), `ODL` -> `odFail`, restart, entries.
