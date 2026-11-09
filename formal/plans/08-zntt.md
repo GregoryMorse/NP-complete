@@ -282,3 +282,8 @@ Remaining, in order:
 2. *Semantics*: `PassCmp` and the value recursion (`stepN` = push evaluation `val`), power sums, tie to `evaluate` of `ref/zntt_ref.py`.
 3. Failure compositions into `ODL`, then `odlScan`/`od0Walk`/`odoWalk` → `WI0` (`witnessInit`) for the next assignment.
 4. `PA0` restart interface with `PrimeNTT`/`RulerNTT`, merge, pair lemma, `evalC`, Challenge/Solution entries.
+
+### Progress: bridge `ORec` → pass-start `VR`
+`ORec.toRc o x` (record after `witnessInit`, flag `x`), `ORec.vr o x` (cursor form), `restoreU_win`, `accI_fld`, and
+`toRc_ps_vr : 1 :: 1 :: (o.toRc x).ps.body = (o.vr x).recd`. Next: lift to lists (`tailP (os.map toRc) = tailVR (os.map vr)`
+and the first-record entry `faN/faO` ↔ `curTapeG`), then chain `scPm → passStartAll → FAL → RFL → passMore/passLast`.

@@ -7127,5 +7127,79 @@ theorem cpe3One (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
     (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id]) (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+/-! ## Bridge: odometer records to cursor records -/
+
+/-- The record of an odometer assignment right after witness initialisation, with input flag `x`. -/
+def ORec.toRc (o : ORec) (x : Nat) : Rc :=
+  { F := o.F, O := o.O, Pf := x, acc := o.acc, E := 3 :: 3 :: List.replicate (o.E.length - 2) 2,
+    b0 := (therm o.d o.r).headD 2, br := (therm o.d o.r).tail,
+    u0 := (winStr o.z o.k o.m).headD 2, ur := (winStr o.z o.k o.m).tail }
+
+/-- The same record in cursor form at the start of a pass. -/
+def ORec.vr (o : ORec) (x : Nat) : VR :=
+  { F := 2, O := o.O, P := x, w := o.acc.length, k := if x = 3 then 2 else 1,
+    E := 3 :: 3 :: List.replicate (o.E.length - 2) 2, m := 0, n := o.d, s := o.r - (o.d + 1),
+    a := 0, c := o.z + o.k - 1, t := o.m }
+
+theorem restoreU_win (z k m : Nat) (hk : 1 ≤ k) :
+    restoreU (winStr z k m) = List.replicate (z + k) 3 ++ List.replicate m 2 := by
+  obtain ⟨o, rfl⟩ : ∃ o, k = o + 1 := ⟨k - 1, by omega⟩
+  have h := restoreU_rep z (List.replicate o 3 ++ List.replicate m 2)
+  have e1 : winStr z (o + 1) m = List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ List.replicate m 2) := by
+    simp [winStr, List.replicate_succ]
+  rw [e1, h]
+  have : List.replicate (z + (o + 1)) 3 = List.replicate z 3 ++ 3 :: List.replicate o 3 := by
+    rw [← List.replicate_append_replicate]; simp [List.replicate_succ]
+  rw [this]; simp
+
+
+theorem toRc_rest (o : ORec) (x : Nat) (hk : 1 ≤ o.k) : (o.toRc x).Rest := by
+  obtain ⟨j, hj⟩ : ∃ j, o.k = j + 1 := ⟨o.k - 1, by omega⟩
+  refine ⟨o.z, List.replicate j 3 ++ List.replicate o.m 2, ?_⟩
+  have : (o.toRc x).u0 :: (o.toRc x).ur = winStr o.z o.k o.m := by
+    simp only [ORec.toRc]
+    cases h : winStr o.z o.k o.m with
+    | nil => simp [winStr, hj, List.replicate_succ] at h
+    | cons a l => simp
+  rw [this, hj]
+  simp [winStr, List.replicate_succ]
+
+theorem accI_fld (x L : Nat) (hx : x ∈ [2, 3]) (hL : 2 ≤ L) :
+    accI x L = fld L (if x = 3 then 2 else 1) := by
+  simp at hx
+  rcases hx with rfl | rfl
+  · obtain ⟨j, rfl⟩ : ∃ j, L = j + 1 := ⟨L - 1, by omega⟩
+    simp [accI, fld]
+  · obtain ⟨j, rfl⟩ : ∃ j, L = j + 2 := ⟨L - 2, by omega⟩
+    simp [accI, fld, List.replicate_succ]
+
+theorem toRc_ps_vr (o : ORec) (x : Nat) (hk : 1 ≤ o.k) (hacc : 2 ≤ o.acc.length) (hx : x ∈ [2, 3]) (hd : o.d + 1 ≤ o.r) :
+    1 :: 1 :: (o.toRc x).ps.body = (o.vr x).recd := by
+  rw [Rc.ps_body _ (toRc_rest o x hk)]
+  have hb : (o.toRc x).b0 :: (o.toRc x).br = therm o.d o.r := by
+    simp only [ORec.toRc]
+    cases h : therm o.d o.r with
+    | nil => simp [therm] at h
+    | cons a l => simp
+  have hu : (o.toRc x).u0 :: (o.toRc x).ur = winStr o.z o.k o.m := by
+    simp only [ORec.toRc]
+    cases h : winStr o.z o.k o.m with
+    | nil => obtain ⟨j, hj⟩ : ∃ j, o.k = j + 1 := ⟨o.k - 1, by omega⟩; simp [winStr, hj, List.replicate_succ] at h
+    | cons a l => simp
+  have e1 : (o.toRc x).b0 :: ((o.toRc x).br ++ 1 :: restoreU ((o.toRc x).u0 :: (o.toRc x).ur)) =
+      therm o.d o.r ++ 1 :: (List.replicate (o.z + o.k) 3 ++ List.replicate o.m 2) := by
+    rw [hu, restoreU_win _ _ _ hk]
+    have : (o.toRc x).b0 :: ((o.toRc x).br ++ 1 :: (List.replicate (o.z + o.k) 3 ++ List.replicate o.m 2)) =
+        ((o.toRc x).b0 :: (o.toRc x).br) ++ 1 :: (List.replicate (o.z + o.k) 3 ++ List.replicate o.m 2) := by simp
+    rw [this, hb]
+  obtain ⟨j, hj⟩ : ∃ j, o.k = j + 1 := ⟨o.k - 1, by omega⟩
+  have hu2 : o.z + o.k - 1 + 1 = o.z + o.k := by omega
+  simp only [VR.recd, VR.tl, VR.b, VR.u, ORec.vr, ORec.toRc] at e1 ⊢
+  simp only [List.cons_append, List.nil_append, List.replicate_zero, hu2]
+  rw [accI_fld x _ hx hacc]
+  rw [e1]
+  simp [therm]
+
+
 end ZP.NTT
 
