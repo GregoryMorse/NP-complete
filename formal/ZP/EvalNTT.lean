@@ -7304,5 +7304,74 @@ theorem done_ps_vr (c : VR) (hc : c.Ok) (r s x : Nat) (hrs : r + 1 + s = c.w) (h
   simp [VR.recd, VR.tl, VR.nextPass, VR.b, VR.u, List.replicate_succ]
 
 
+/-- `passLoop` with the bookkeeping needed to chain passes: the finished records are `done` records. -/
+theorem passLoop2 (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) :
+    ∀ (n : Nat) (vs : List VR) (c : VR) (pre : List Rc) (p : Nat × Nat) (r s : Nat),
+    r + 1 + s = c.w → vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → PreOk pre → 1 ≤ p.2 → PassCmp n r vs →
+    ∃ (p' : Nat × Nat) (pre' : List Rc) (c' : VR) (r' s' : Nat) (cs : List (VR × Nat × Nat)), CurInv c' ∧ PreOk pre' ∧
+      1 ≤ p'.2 ∧ r' + 1 + s' = c'.w ∧ pre' = pre ++ cs.map (fun t => t.1.done t.2.1 t.2.2) ∧
+      (∀ t ∈ cs, t.1.Ok ∧ t.2.1 + 1 + t.2.2 = t.1.w) ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2)) pre c 0 r s vs) [])
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p'.1 2 ++ List.replicate p'.2 3 ++ 1 :: P2)) pre' c' 0 r' s' []) []) := by
+  intro n
+  induction n with
+  | zero =>
+    intro vs c pre p r s hrs hlen hc hvs hom hpre hp hcmp
+    have : vs = [] := List.length_eq_zero_iff.mp hlen
+    subst this
+    exact ⟨p, pre, c, r, s, [], hc, hpre, hp, hrs, by simp, by simp, LTM.Reach.refl _ _⟩
+  | succ n ih =>
+    intro vs c pre p r s hrs hlen hc hvs hom hpre hp hcmp
+    obtain ⟨hcOk, hF, hOut⟩ := hc
+    have hlen' := stepN_length r vs
+    obtain ⟨w, ws, hw⟩ : ∃ w ws, stepN r vs = w :: ws := by
+      cases h : stepN r vs with
+      | nil => rw [h] at hlen'; simp at hlen'; omega
+      | cons w ws => exact ⟨w, ws, rfl⟩
+    have hok := stepN_ok r vs hvs
+    rw [hw] at hok
+    have hwOk : w.Ok := hok w (by simp)
+    have hwsOk : ∀ x ∈ ws, x.Ok := fun x hx => hok x (by simp [hx])
+    have hout := stepN_outM r vs hom
+    rw [hw] at hout
+    have hwm : w.O = 3 → w.m = 0 := hout w (by simp)
+    have hlenws : (ws.map VR.dec).length = n := by
+      rw [hw] at hlen'; simp at hlen'; simp; omega
+    have hcmp' : (w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k) ∧ PassCmp n (w.k - 1) (ws.map VR.dec) := by
+      have := hcmp; simp only [PassCmp, hw] at this; exact this
+    have hinv := curG_inv w hwOk hwm
+    have hrsw : w.k - 1 + 1 + (w.w - w.k) = w.curG.w := by
+      have := (curG_kw w).2; have h1 := hwOk.k1; have h2 := hwOk.kw; omega
+    have hwsOk' : ∀ x ∈ ws.map VR.dec, x.Ok := by
+      intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx; exact y.dec_ok (hwsOk y hy)
+    have homws : OutM (ws.map VR.dec) := dec_outM ws (fun x hx => hout x (by simp [hx]))
+    have hPm := pm_good Wf P2 hW hP2 p hp
+    by_cases hO : c.O = 2
+    · have h1 := colStepN c hcOk hF hO _ hPm pre hpre r s vs hvs w ws hw hcmp'.1
+      obtain ⟨p', pre', c', r', s', cs, hi, hp', hq, hrs', hpe, hcs, hr⟩ :=
+        ih (ws.map VR.dec) w.curG (pre ++ [c.done r s]) p (w.k - 1) (w.w - w.k) hrsw hlenws hinv hwsOk' homws
+          (preOk_done pre hpre c hcOk r s) hp hcmp'.2
+      exact ⟨p', pre', c', r', s', (c, r, s) :: cs, hi, hp', hq, hrs', by simp [hpe],
+        fun t ht => by simp at ht; rcases ht with rfl | ht; exact ⟨hcOk, hrs⟩; exact hcs t ht, h1.trans hr⟩
+    · have hO3 : c.O = 3 := by have := hcOk.O; simp at this; omega
+      obtain ⟨hm, e, he, hew, hE⟩ := hOut hO3
+      have hElen := hcOk.Elen
+      have h1 := colStepO c.n c hcOk hF hO3 hm rfl Wf hW P2 hP2 pre hpre s c.E.length hElen r p e hp he hew hE vs hvs w ws
+        hw hcmp'.1
+      have hb := eAdv_bounds c.E.length (r * c.n) e he hew
+      have hc' : ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).Ok :=
+        { F := hcOk.F, O := hcOk.O, P := hcOk.P, k1 := hcOk.k1, kw := hcOk.kw, E := fld_bits _ _,
+          Elen := by show 2 ≤ (fld c.E.length (eAdv c.E.length (r * c.n) e)).length; rw [fld_len _ _ hb.2]; exact hElen }
+      obtain ⟨p', pre', c', r', s', cs, hi, hp', hq, hrs', hpe, hcs, hr⟩ :=
+        ih (ws.map VR.dec) w.curG _ (sAdv (r * c.n) p) (w.k - 1) (w.w - w.k) hrsw hlenws hinv hwsOk' homws
+          (preOk_done pre hpre _ hc' r s) (sAdv_pos _ p hp) hcmp'.2
+      exact ⟨p', pre', c', r', s', (({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR), r, s) :: cs,
+        hi, hp', hq, hrs', by simp [hpe],
+        fun t ht => by simp at ht; rcases ht with rfl | ht; exact ⟨hc', hrs⟩; exact hcs t ht, h1.trans hr⟩
+
+
+
+
 end ZP.NTT
 
