@@ -589,4 +589,111 @@ theorem runFromC (n : Nat) (W1 Vq : List Nat) (Pb Xb : List Bool) (Rest W : List
   rw [runChoice_zp]
   exact h2
 
+/-! ## Backtracking and exhausting -/
+
+theorem Dt_noB (u r : List Bool) : NoB (Dt u r) := by
+  unfold Dt
+  split
+  · exact NoB.nil
+  · exact (Bits.ofB u).noB.app (NoB.cons (by simp [NB]) (Bits.ofB r).noB)
+
+theorem FWr_length (n : Nat) : ∀ ds, Dig n ds → (FWr n ds).length = ds.length * (n + 2)
+  | [], _ => by simp [FWr]
+  | d :: ds, h => by
+    have hd : d ≤ n + 1 := h d (List.mem_cons_self ..)
+    have ih := FWr_length n ds (fun x hx => h x (List.mem_cons_of_mem _ hx))
+    simp only [FWr, List.length_append, ih, blkW, List.length_cons, List.length_append,
+      List.length_replicate, List.length_cons]
+    rw [Nat.add_mul]
+    omega
+
+theorem nxt_some_spec (U Dl' : List Bool) (h : nxt U = some Dl') :
+    ∃ (r : List Bool) (j : Nat), U = r.reverse ++ true :: List.replicate j false ∧ Dl' = r.reverse ++ [false] := by
+  unfold nxt at h
+  cases hd : U.reverse.dropWhile (· == false) with
+  | nil => rw [hd] at h; simp at h
+  | cons x r =>
+    rw [hd] at h
+    simp only [Option.some.injEq] at h
+    obtain ⟨j, hj, hx⟩ := dropWhile_decomp _ x r hd
+    refine ⟨r, j, ?_, h.symm⟩
+    have := congrArg List.reverse hj
+    subst hx
+    simpa using this
+
+theorem nxt_none_spec (U : List Bool) (h : nxt U = none) : ∃ j, U = List.replicate j false := by
+  unfold nxt at h
+  cases hd : U.reverse.dropWhile (· == false) with
+  | nil =>
+    have := dropWhile_nil _ hd
+    exact ⟨U.length, List.eq_replicate_iff.mpr ⟨rfl, fun b hb => this b (List.mem_reverse.mpr hb)⟩⟩
+  | cons x r => rw [hd] at h; simp at h
+
+theorem hd_one (q : Nat) (A Z : List Nat) (hZ : ∀ x ∈ Z, x = 0) : hd q A (1 :: Z) = hd q A [1] := by
+  have e : Z = List.replicate Z.length 0 := List.eq_replicate_iff.mpr ⟨rfl, hZ⟩
+  calc hd q A (1 :: Z) = hd q A ([1] ++ List.replicate Z.length 0) := by rw [← e]; rfl
+    _ = hd q A [1] := hd_pad q A [1] _
+
+theorem backOk (n : Nat) (W : List Nat) (d : Nat) (ds : List Nat) (rr : List Bool) (j : Nat)
+    (hW : NoB W) :
+    zconpLogic.Reach
+      (hd QConp.BT (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ 0 :: Dt (rr.reverse ++ true :: List.replicate j false) []))) [])
+      (hdR Q.GRB (1 :: (W ++ [1]))
+        (List.replicate (FWr n (d :: ds)).length 0 ++ 0 :: Dt [] (rr.reverse ++ [false]))) := by
+  have hA : Bits (bitsOf rr.reverse) := Bits.ofB _
+  have hZ : ∀ a ∈ List.replicate j 2, a ∈ Z2 := fun a h => by
+    rw [List.eq_of_mem_replicate h]; simp [Z2]
+  have hL1 : Sym4 (1 :: (W ++ 1 :: FWr n (d :: ds))) :=
+    Sym4.cons (by simp [ALL]) (hW.sym4.app (Sym4.cons (by simp [ALL]) (FWr_sym4 n _)))
+  have hL0 : Sym4 (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ [0]))) :=
+    Sym4.cons (by simp [ALL]) (hW.sym4.app (Sym4.cons (by simp [ALL])
+      ((FWr_sym4 n _).app (Sym4.cons (by simp [ALL]) Sym4.nil))))
+  have h1 := btOk (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ [0]))) (bitsOf rr.reverse) (List.replicate j 2)
+    hL0 hA hZ
+  have h2 := rsLoop (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ [0]))) [2] hL0
+    (Sym4.cons (by simp [ALL]) Sym4.nil) (bitsOf rr.reverse).reverse (Bits.rev hA)
+  have h3 := rsEnd (1 :: (W ++ 1 :: FWr n (d :: ds))) (bitsOf rr.reverse ++ [2]) hL1
+    (hA.sym4.app (Sym4.cons (by simp [ALL]) Sym4.nil))
+  have hX : Sym4 (0 :: 1 :: (bitsOf rr.reverse ++ [2])) :=
+    Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) (hA.sym4.app (Sym4.cons (by simp [ALL]) Sym4.nil)))
+  have h4 := erLoop3 n (1 :: W) (0 :: 1 :: (bitsOf rr.reverse ++ [2]))
+    (Sym4.cons (by simp [ALL]) hW.sym4) hX d ds
+  have g1 : zconpLogic.Reach
+      (hd QConp.BT (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ 0 :: Dt (rr.reverse ++ true :: List.replicate j false) []))) [])
+      (hd QConp.RS2 (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ 0 :: (bitsOf rr.reverse ++ [1])))) [2]) :=
+    h1.ofEq (by simp [Dt, bitsOf]) (by simp)
+  have g2 : zconpLogic.Reach
+      (hd QConp.RS2 (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ 0 :: (bitsOf rr.reverse ++ [1])))) [2])
+      (hd QConp.RS2 (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ [0, 1]))) (bitsOf rr.reverse ++ [2])) :=
+    h2.ofEq (by simp) (by simp)
+  have g3 : zconpLogic.Reach
+      (hd QConp.RS2 (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ [0, 1]))) (bitsOf rr.reverse ++ [2]))
+      (hd QConp.ER3 (1 :: W ++ 1 :: FWr n (d :: ds)) (0 :: 1 :: (bitsOf rr.reverse ++ [2]))) :=
+    h3.ofEq (by simp) (by simp)
+  refine g1.trans (g2.trans (g3.trans (h4.ofEq rfl ?_)))
+  simp [Dt, bitsOf]
+
+theorem backExh (n : Nat) (W : List Nat) (d : Nat) (ds : List Nat) (j : Nat) (hW : NoB W) :
+    zconpLogic.Reach
+      (hd QConp.BT (1 :: (W ++ 1 :: (FWr n (d :: ds) ++ 0 :: Dt (List.replicate j false) []))) [])
+      (hd QConp.EX3 (1 :: W) [1]) := by
+  have hL : Sym4 (1 :: W) := Sym4.cons (by simp [ALL]) hW.sym4
+  have hL1 : Sym4 (1 :: (W ++ 1 :: FWr n (d :: ds))) :=
+    Sym4.cons (by simp [ALL]) (hW.sym4.app (Sym4.cons (by simp [ALL]) (FWr_sym4 n _)))
+  cases j with
+  | zero =>
+    have h1 := btEx0 (1 :: (W ++ 1 :: FWr n (d :: ds))) hL1
+    have h2 := exLoop3 n (1 :: W) [0] hL (Sym4.cons (by simp [ALL]) Sym4.nil) d ds
+    refine (h1.ofEq (by simp [Dt]) rfl).trans (h2.ofEq (by simp) ?_)
+    exact hd_one _ _ _ (by intro x hx; simp at hx; rcases hx with ⟨-, h⟩ | h <;> exact h)
+  | succ j =>
+    have hZ : ∀ a ∈ List.replicate (j + 1) 2, a ∈ Z2 := fun a h => by
+      rw [List.eq_of_mem_replicate h]; simp [Z2]
+    have h1 := btEx1 (1 :: (W ++ 1 :: FWr n (d :: ds))) (List.replicate (j + 1) 2) hL1 hZ
+    have hX : Sym4 (0 :: (List.replicate (List.replicate (j + 1) 2).length 0 ++ [0])) :=
+      Sym4.cons (by simp [ALL]) ((Sym4.rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) Sym4.nil))
+    have h2 := exLoop3 n (1 :: W) _ hL hX d ds
+    refine (h1.ofEq (by simp [Dt, bitsOf]) rfl).trans (h2.ofEq (by simp) ?_)
+    exact hd_one _ _ _ (by intro x hx; simp at hx; rcases hx with ⟨-, h⟩ | h <;> exact h)
+
 end ZP.Conp
