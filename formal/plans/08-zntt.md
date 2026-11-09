@@ -410,3 +410,5 @@ Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the 
 
 ### Stage: semantics, pass start (`startColInv`)
 `StartRec` (record at the start of pass `t`: `a = 0`, `k = [i=t] + 1`, digits `π`, `d`), `recI_start_dec/cur`, and `startColInv`: the loop start list `y0.curG :: ys.map dec` satisfies `ColInv` at column 0. This covers both the first pass (entry records) and later passes (`nextPass` gives `a = 0`, `c = a + c`, `k = 2` iff flag `3`). Remaining: `nextPass` ↔ `StartRec` for the next `t`, `E`-compare ↔ `evalPass`, `S` check, chaining, `evalC`, `hasCircuit`, bridge.
+
+`nextPass_start`: a finished record (with `RecI`) yields a `StartRec` for the next pass (`a = 0`, `a + c = π`, `k = [flag = 3] + 1`, `n`, `w` kept). Remaining: lift to the list (flags `2^(t+1) 3 2..`), compare/power-sum, chaining, `evalC`, `hasCircuit`, bridge.

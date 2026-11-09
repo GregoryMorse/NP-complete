@@ -11504,5 +11504,25 @@ theorem startColInv (p t : Nat) (πs ds vals : List Nat) (hp : 2 ≤ p) (y0 : VR
       (hy (idx + 1) z (by simpa using hz))
     simpa using this
 
+
+theorem nextPass_start (p T j π d : Nat) (vals : List Nat) (ch : Nat) (c : VR) (x : Nat) (hp : 2 ≤ p)
+    (hx : x ∈ [2, 3]) (h : RecI p T j π d vals ch c) :
+    StartRec p (if x = 3 then 1 else 0) π d (c.nextPass x) := by
+  obtain ⟨⟨hok, hm⟩, hw, hn, hac, ha, hk⟩ := h
+  have hxx : x = 2 ∨ x = 3 := by simpa using hx
+  have hOk : (c.nextPass x).Ok := by
+    refine { F := ?_, O := ?_, P := ?_, k1 := ?_, kw := ?_, E := ?_, Elen := ?_ }
+    · simp [VR.nextPass]
+    · exact hok.O
+    · simpa [VR.nextPass] using hx
+    · simp [VR.nextPass]; split <;> omega
+    · simp [VR.nextPass, hw]; split <;> omega
+    · exact hok.E
+    · exact hok.Elen
+  have hI : VI (c.nextPass x) := ⟨hOk, hm⟩
+  refine ⟨hI, hw, hn, rfl, ?_, ?_⟩
+  · simp [VR.nextPass]; omega
+  · simp [VR.nextPass]; rcases hxx with rfl | rfl <;> simp
+
 end ZP.NTT
 
