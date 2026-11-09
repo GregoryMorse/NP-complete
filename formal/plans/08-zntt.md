@@ -467,3 +467,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: records of a whole pass
 `passCsOf_succ` (recursion of the finished-record list) and `passEs`: E registers of all `n+1` finished records (including the last) equal `finE` of the start records at the node values. Next: express the next-pass start records as `mkSL (t+1) 0 D es'` and conclude `foks_step`.
+
+### Stage note: next-pass records as start records
+`esN` (E values after a pass), `Efin_mkStart`, `finE_mkSL`, `nextPass_mk`, `nextRecs_eq`: a list of records with the right dg/m/E, zipped with pass flags and `nextPass`ed, is `mkSL (t+1) 0 D es'`. Remaining for `foks_step`: instantiate it with `passCsOf` (dg via `dg_runAll_pos`, m via `loopRun_m0`, E via `passEs`, `loopRs`).

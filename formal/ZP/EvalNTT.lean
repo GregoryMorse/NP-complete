@@ -12175,5 +12175,88 @@ theorem passEs : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × 
           exact decVis_KEq r z (hvs' z (List.mem_of_getElem? hz))
 
 
+
+/-- E values after a pass: output records take `val * digit`, the others keep their value. -/
+def esN (p : Nat) : List DG → List Nat → List Nat → List Nat
+  | g :: gs, e :: es, v :: vl => (if g.2.2.2.2.2 = 2 then e else (v * g.1) % p) :: esN p gs es vl
+  | _, _, _ => []
+
+theorem Efin_mkStart (p : Nat) (g : DG) (x e v : Nat) (hp : 2 ≤ p) (hw : g.2.2.2.2.1 = p) (he : e < p) :
+    Efin (mkStart g x e) v = fld p ((if g.2.2.2.2.2 = 2 then e else (v * g.1) % p) + 1) := by
+  have hl : (mkStart g x e).E.length = p := by
+    simp only [mkStart]; rw [fld_len _ _ (by omega), hw]
+  unfold Efin
+  simp only [mkStart] at hl ⊢
+  rw [hw] at hl ⊢
+  by_cases hO : g.2.2.2.2.2 = 2
+  · simp [hO]
+  · simp only [hO, if_false]
+    rw [hl]
+    have := eAdv_val p (v * g.1) 1 (by omega) (by omega)
+    have h2 : eAdv p (v * g.1) 1 = (v * g.1) % p + 1 := by
+      have h3 : eAdv p (v * g.1) 1 - 1 = (v * g.1) % p := by simpa using this.2.2
+      have h4 := this.1; omega
+    rw [h2]
+
+theorem finE_mkSL (p t : Nat) : ∀ (i : Nat) (D : List DG) (es vl : List Nat), 2 ≤ p →
+    (∀ g ∈ D, g.2.2.2.2.1 = p) → (∀ e ∈ es, e < p) → D.length = es.length → D.length = vl.length →
+    finE (mkSL t i D es) vl = (esN p D es vl).map fun e' => fld p (e' + 1)
+  | i, [], [], _, _, _, _, _, _ => by simp [mkSL, finE, esN]
+  | i, [], _ :: _, _, _, _, _, h, _ => by simp at h
+  | i, _ :: _, [], _, _, _, _, h, _ => by simp at h
+  | i, g :: gs, e :: es, [], _, _, _, _, h => by simp at h
+  | i, g :: gs, e :: es, v :: vl, hp, hg, he, h1, h2 => by
+    simp only [mkSL, finE, esN, List.map_cons]
+    rw [Efin_mkStart p g _ e v hp (hg g (by simp)) (he e (by simp))]
+    rw [finE_mkSL p t (i + 1) gs es vl hp (fun x hx => hg x (by simp [hx])) (fun x hx => he x (by simp [hx]))
+      (by simpa using h1) (by simpa using h2)]
+
+
+theorem dg_mkStart (g : DG) (x e : Nat) : (mkStart g x e).dg = g := by
+  obtain ⟨a, b, c, d, w, o⟩ := g
+  simp [VR.dg, mkStart]
+
+theorem mkSL_dg : ∀ (t i : Nat) (D : List DG) (es : List Nat), D.length = es.length →
+    (mkSL t i D es).map VR.dg = D
+  | t, i, [], [], _ => rfl
+  | t, i, [], _ :: _, h => by simp at h
+  | t, i, _ :: _, [], h => by simp at h
+  | t, i, g :: gs, e :: es, h => by
+    simp [mkSL, dg_mkStart, mkSL_dg t (i + 1) gs es (by simpa using h)]
+
+theorem nextPass_mk (R : VR) (x e : Nat) (hm : R.m = 0) (hE : R.E = fld R.dg.2.2.2.2.1 (e + 1)) :
+    R.nextPass x = mkStart R.dg x e := by
+  simp only [VR.nextPass, mkStart, VR.dg, hE, hm]
+
+theorem nextRecs_eq : ∀ (qs : List VR) (flags : List Nat) (D : List DG) (es' : List Nat) (i0 t' : Nat),
+    qs.map VR.dg = D → (∀ q ∈ qs, q.m = 0) → qs.map VR.E = (D.zip es').map (fun q => fld q.1.2.2.2.2.1 (q.2 + 1)) →
+    D.length = es'.length →
+    flags = (List.range' i0 qs.length).map (fl t') →
+    (qs.zip flags).map (fun q => q.1.nextPass q.2) = mkSL t' i0 D es'
+  | [], flags, D, es', i0, t', hD, _, _, _, hf => by
+    simp at hD; subst hD; simp [mkSL]
+  | q :: qs, flags, D, es', i0, t', hD, hm, hE, hl, hf => by
+    obtain ⟨g, gs, rfl⟩ : ∃ g gs, D = g :: gs := by
+      cases D with
+      | nil => simp at hD
+      | cons a b => exact ⟨a, b, rfl⟩
+    obtain ⟨e, es2, rfl⟩ : ∃ e es2, es' = e :: es2 := by
+      cases es' with
+      | nil => simp at hl
+      | cons a b => exact ⟨a, b, rfl⟩
+    simp only [List.map_cons, List.cons.injEq] at hD
+    simp only [List.map_cons, List.zip_cons_cons, List.cons.injEq] at hE
+    simp only [List.length_cons, List.range'_succ, List.map_cons] at hf
+    subst hf
+    simp only [List.zip_cons_cons, List.map_cons, mkSL]
+    have hq : q.nextPass (fl t' i0) = mkStart g (fl t' i0) e := by
+      have := nextPass_mk q (fl t' i0) e (hm q (by simp)) (by rw [hD.1]; exact hE.1)
+      rw [this, hD.1]
+    rw [hq]
+    have ih := nextRecs_eq qs _ gs es2 (i0 + 1) t' hD.2 (fun x hx => hm x (by simp [hx])) hE.2
+      (by simpa using hl) rfl
+    rw [ih]
+
+
 end ZP.NTT
 
