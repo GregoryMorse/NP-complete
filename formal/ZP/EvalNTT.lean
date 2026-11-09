@@ -8668,5 +8668,79 @@ theorem assignRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat)
   · exact Or.inr (Or.inr ⟨T, hT, hr⟩)
 
 
+
+/-- The digit data of a record, invariant under the pass machinery. -/
+def VR.dg (v : VR) : Nat × Nat × Nat × Nat := (v.n, v.s, v.a + v.c, v.t)
+
+theorem dg_inc (v : VR) : v.inc.dg = v.dg ∧ v.inc.m = v.m := ⟨rfl, rfl⟩
+
+theorem dg_vis (v : VR) (h : v.m = 0) : v.vis.dg = v.dg ∧ v.vis.m = 0 := by
+  unfold VR.vis; split <;> simp [VR.dg, h, *]
+
+theorem dg_dec (v : VR) : v.dec.dg = v.dg ∧ v.dec.m = v.m := by
+  unfold VR.dec; split
+  · simp
+  · simp [VR.dg]; omega
+
+theorem dg_curG (v : VR) : v.curG.dg = v.dg ∧ v.curG.m = v.m := by
+  have h : v.cur.dg = v.dg ∧ v.cur.m = v.m := by
+    unfold VR.cur; simpa [VR.dg] using dg_dec v
+  unfold VR.curG; split
+  · simpa [VR.dg] using h
+  · exact h
+
+theorem dg_stepN : ∀ (r : Nat) (vs : List VR), (∀ x ∈ vs, x.m = 0) →
+    ∀ w ∈ stepN r vs, (∃ x ∈ vs, w.dg = x.dg) ∧ w.m = 0 := by
+  intro r
+  induction r with
+  | zero => intro vs h w hw; exact ⟨⟨w, hw, rfl⟩, h w hw⟩
+  | succ r ih =>
+    intro vs h w hw
+    have h1 : ∀ x ∈ stepList vs, (∃ y ∈ vs, x.dg = y.dg) ∧ x.m = 0 := by
+      intro x hx
+      unfold stepList at hx
+      cases vs with
+      | nil => simp at hx
+      | cons v vs' =>
+        simp only [List.mem_cons, List.mem_map] at hx
+        rcases hx with rfl | ⟨y, hy, rfl⟩
+        · have := dg_vis v.inc (by show v.m = 0; exact h v (by simp))
+          exact ⟨⟨v, by simp, by rw [this.1]; rfl⟩, this.2⟩
+        · have := dg_vis y (h y (by simp [hy]))
+          exact ⟨⟨y, by simp [hy], this.1⟩, this.2⟩
+    have := ih (stepList vs) (fun x hx => (h1 x hx).2) w hw
+    obtain ⟨⟨x, hx, e⟩, hm⟩ := this
+    exact ⟨⟨(h1 x hx).1.choose, (h1 x hx).1.choose_spec.1, by rw [e]; exact (h1 x hx).1.choose_spec.2⟩, hm⟩
+
+theorem dg_loopRun : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat),
+    c.m = 0 → (∀ x ∈ vs, x.m = 0) →
+    ∀ t ∈ (loopRun n c vs r s p).cs, ∃ x ∈ c :: vs, t.1.dg = x.dg := by
+  intro n
+  induction n with
+  | zero => intro c vs r s p _ _ t ht; simp [loopRun] at ht
+  | succ n ih =>
+    intro c vs r s p hc hvs t ht
+    unfold loopRun at ht
+    split at ht
+    · simp at ht
+    · rename_i w ws hw
+      simp only [List.mem_cons] at ht
+      rcases ht with rfl | ht
+      · exact ⟨c, by simp, by unfold outRec; split <;> simp [VR.dg]⟩
+      · have hall : ∀ x ∈ w :: ws, (∃ y ∈ vs, x.dg = y.dg) ∧ x.m = 0 := by
+          intro x hx; rw [← hw] at hx; exact dg_stepN r vs hvs x hx
+        have hwm := (hall w (by simp)).2
+        have := ih w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p)
+          (by rw [(dg_curG w).2]; exact hwm)
+          (by intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx
+              rw [(dg_dec y).2]; exact (hall y (by simp [hy])).2) t ht
+        obtain ⟨x, hx, e⟩ := this
+        simp only [List.mem_cons, List.mem_map] at hx
+        rcases hx with rfl | ⟨y, hy, rfl⟩
+        · obtain ⟨⟨z, hz, e2⟩, _⟩ := hall w (by simp)
+          exact ⟨z, by simp [hz], by rw [e, (dg_curG w).1, e2]⟩
+        · obtain ⟨⟨z, hz, e2⟩, _⟩ := hall y (by simp [hy])
+          exact ⟨z, by simp [hz], by rw [e, (dg_dec y).1, e2]⟩
+
 end ZP.NTT
 
