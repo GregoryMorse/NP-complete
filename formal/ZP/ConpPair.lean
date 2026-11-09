@@ -384,4 +384,59 @@ theorem decFuelY (s : List Nat) (t : Nat) (n : Nat) (hn : s.length = n) (hs : Bi
       simp
     · simp
 
+/-! ## Run setup: copy the source left, `core` of the code into `Q`, rotate once -/
+
+theorem dw_spec : ∀ l : List Bool, ∃ k, l = List.replicate k true ++ l.dropWhile (· == true) ∧
+    (l.dropWhile (· == true) = [] ∨ ∃ r, l.dropWhile (· == true) = false :: r)
+  | [] => ⟨0, rfl, Or.inl rfl⟩
+  | true :: l => by
+    obtain ⟨k, hk, hc⟩ := dw_spec l
+    have e : (true :: l).dropWhile (· == true) = l.dropWhile (· == true) := by simp
+    refine ⟨k + 1, ?_, by rw [e]; exact hc⟩
+    rw [e, List.replicate_succ, List.cons_append, ← hk]
+  | false :: l => ⟨0, by simp, Or.inr ⟨l, by simp⟩⟩
+
+theorem core_spec (P : List Bool) : ∃ k, P = core P ++ List.replicate k true ∧
+    (core P = [] ∨ ∃ c0, core P = c0 ++ [false]) := by
+  obtain ⟨k, hk, hc⟩ := dw_spec P.reverse
+  refine ⟨k, ?_, ?_⟩
+  · have h2 := congrArg List.reverse hk
+    rw [List.reverse_reverse, List.reverse_append, List.reverse_replicate] at h2
+    unfold core
+    exact h2
+  · unfold core
+    rcases hc with h | ⟨r, h⟩
+    · left; rw [h]; rfl
+    · right; exact ⟨r.reverse, by rw [h]; simp⟩
+
+theorem bitsOf_core_split (P : List Bool) : ∃ k, bitsOf P = bitsOf (core P) ++ List.replicate k 3 ∧
+    (core P = [] ∨ ∃ c0, core P = c0 ++ [false]) := by
+  obtain ⟨k, hk, hc⟩ := core_spec P
+  refine ⟨k, ?_, hc⟩
+  calc bitsOf P = bitsOf (core P ++ List.replicate k true) := by rw [← hk]
+    _ = _ := by simp [bitsOf, bn]
+
+theorem qcLoopS (Xr V X Rest S : List Nat) (hXr : Bits Xr) (hV : NoB V) (hX : Bits X) (hR : Sym4 Rest)
+    (hS : ∀ a ∈ S, a ∈ T3) :
+    ∀ vr Qc, Bits vr → Bits Qc →
+      zconpLogic.Reach (hd Q.QC (Qc ++ 1 :: (Xr ++ 1 :: (V ++ vr.reverse))) (Qc ++ (S ++ 1 :: (X ++ 1 :: Rest))))
+        (hd Q.QC (vr.reverse ++ (Qc ++ 1 :: (Xr ++ 1 :: V))) (vr.reverse ++ (Qc ++ (S ++ 1 :: (X ++ 1 :: Rest)))))
+  | [], Qc, _, _ => by
+    simp only [List.reverse_nil, List.append_nil, List.nil_append]
+    exact LTM.Reach.refl _ _
+  | b :: vr, Qc, hv, hQ => by
+    have h1 := qcBodyS Qc Xr V vr.reverse X Rest S b hQ hXr hV hv.tail.rev hX hR hS hv.head
+    have h2 := qcLoopS Xr V X Rest S hXr hV hX hR hS vr (b :: Qc) hv.tail (Bits.cons hv.head hQ)
+    exact (h1.ofEq (by simp) rfl).trans (h2.ofEq rfl (by simp))
+
+theorem qsSkipLoop (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    ∀ k, zconpLogic.Reach (hd QConp.QS (A ++ List.replicate k 3) R) (hd QConp.QS A (List.replicate k 3 ++ R))
+  | 0 => by simpa using LTM.Reach.refl _ _
+  | k + 1 => by
+    have hA' : Sym4 (A ++ List.replicate k 3) := hA.app (Sym4.rep _ _ (by simp [ALL]))
+    have h1 := qsSkip (A ++ List.replicate k 3) R hA' hR
+    have h2 := qsSkipLoop A (3 :: R) hA (Sym4.cons (by simp [ALL]) hR) k
+    refine (h1.ofEq (by simp [List.replicate_succ']) rfl).trans (h2.ofEq rfl ?_)
+    simp [List.replicate_succ']
+
 end ZP.Conp
