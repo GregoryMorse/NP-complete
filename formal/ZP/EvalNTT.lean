@@ -6009,5 +6009,31 @@ theorem beepStepC (A R : List Nat) (c : Nat) (hc : c ∈ [1, 2, 3]) :
   simp at hc
   rcases hc with rfl | rfl | rfl <;> exact cstep_zstep (by decide +kernel)
 
+/-- The odometer at a record whose witness string `b` is `0^z 1^(o+1) 0 …`: header, `acc` and `E`
+are skipped and the string is incremented without carry. -/
+theorem odRecInc (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (z o : Nat) (R : List Nat)
+    (hA : Sym4 A) (hF : [F, O, Pf].all (· ∈ [2, 3]) = true) (hacc : BitsD acc) (hE : BitsD E) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.ODH A ([F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: (List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R))))))
+      (hd QNTT.WI0 (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: (List.replicate z 2 ++ 3 :: List.replicate o 3))))
+        (3 :: R)) := by
+  have hf : BitsD [F, O, Pf] := by
+    intro y hy; simp at hF hy; rcases hy with rfl | rfl | rfl <;> simp [hF]
+  have hrep : ∀ k a, a ∈ ALL → Sym4 (List.replicate k a) := fun k a h => sym4_rep k a h
+  have hZ : Sym4 (List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R)) :=
+    (hrep z 2 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) ((hrep o 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hR)))
+  have hEs : Sym4 (E ++ 1 :: (List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R))) :=
+    hE.sym4.app (Sym4.cons (by simp [ALL]) hZ)
+  have hAs : Sym4 (acc ++ 1 :: (E ++ 1 :: (List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R)))) :=
+    hacc.sym4.app (Sym4.cons (by simp [ALL]) hEs)
+  have h1 := odhSkip A [F, O, Pf] _ hA hf hAs
+  have hA1 : Sym4 (A ++ [F, O, Pf] ++ [1]) := (hA.app hf.sym4).app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have h2 := odaSkip _ acc _ hA1 hacc hEs
+  have hA2 : Sym4 (A ++ [F, O, Pf] ++ [1] ++ acc ++ [1]) := (hA1.app hacc.sym4).app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have h3 := odeSkip _ E _ hA2 hE hZ
+  have hA3 : Sym4 (A ++ [F, O, Pf] ++ [1] ++ acc ++ [1] ++ E ++ [1]) := (hA2.app hE.sym4).app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have h4 := odInc _ z o R hA3 hR
+  simpa using h1.trans (h2.trans (h3.trans h4))
+
 end ZP.NTT
 
