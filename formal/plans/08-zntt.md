@@ -394,3 +394,6 @@ Next: `colAdvanceGF`, `colStepNF/OF`, `passLoopF` (parse mid-pass tape via `VR.t
 `passesRunF`: all passes of one assignment from `RFL` to either `ODL` with `OdOut'` or `SU1` with `SuOut`, needing only structural
 invariants plus `EF` (output `E` is `fld len e`). The semantic condition `Sem` is gone. Next: `assignRunF` (via `odlNext3`) and the assignment
 loop along `odoStepR`, then the correspondence with `evalC`.
+
+### Stage: Sem-free assignment run (`assignRunF`)
+`assignRunF` runs one whole assignment with no `Sem` hypothesis: outcomes are next assignment (WI0 with `Rest u v`), beep (`zstep` + PA0), or success (`SuOut` + SU1). Remaining: the loop along `odoStepR` and the link to `evalC`/`hasCircuit`.

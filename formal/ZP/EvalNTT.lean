@@ -10658,5 +10658,37 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
       rw [show a + 1 + 1 + b = a + 1 + (b + 1) by omega]
       simpa [nn_eq, List.append_assoc] using this
 
+
+/-- One whole assignment, `Sem`-free: the next assignment (`WI0`), the overflow (beep, restart at `PA0` with `C` grown),
+or success (`SU1`, restart at `PA0`). -/
+theorem assignRunF (Wf : List Nat) (hW : BitsD Wf) (Kf Cf : List Nat) (hK : BitsD Kf) (hC : BitsD Cf)
+    (m b n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s j : Nat) (L : List Nat)
+    (hP2 : GoodW (1 :: (((Kf ++ 1 :: Cf) ++ [1]) ++ NnTail m b)))
+    (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs)
+    (hEF : ∀ x ∈ vs, EF x) (hp : 1 ≤ p.2)
+    (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w) (hm0 : c.m = 0) (hvm : ∀ x ∈ vs, x.m = 0)
+    (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L) (hL : m ≤ L.length) :
+    let st := hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 ::
+          (((Kf ++ 1 :: Cf) ++ [1]) ++ NnTail m b))) [] c 0 r s vs) []
+    (∃ u v os' X R'', Rest u v ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
+      znttLogic.Reach st (hd QNTT.WI0 X (3 :: R''))) ∨
+    (∃ (A : List Nat) (n0 : Nat), znttLogic.Reach st (hd QNTT.BEEP A []) ∧
+      ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
+        znttLogic.Reach X (hdR QNTT.PA0 [3] (1 :: (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+          ((Cf.map (fun x => if x = 1 then 1 else 3) ++ [3]) ++ 1 ::
+            (List.replicate (m + 1 + b) 3 ++ List.replicate (n0 + 1) 0)))))) ∨
+    (∃ N : Nat, ∃ T, SuOut ((c :: vs).map VR.dg) Wf (Kf ++ 1 :: Cf) (b + m + 1) T ∧
+      znttLogic.Reach st (hdR QNTT.SU1 [] T) ∧
+      znttLogic.Reach (hdR QNTT.SU1 [] T) (hdR QNTT.PA0 [3] (1 :: (Kf ++ 1 :: (Cf ++ 1 :: (List.replicate (b + m + 1 + 1) 3 ++
+        List.replicate (N + 1) 0)))))) := by
+  intro st
+  rcases passesRunF Wf hW (Kf ++ 1 :: Cf) m b n vs c p r s j L hP2 hrs hlen hc hvs hom hEF hp hcw hvw hm0 hvm hfl hL with
+    ⟨L', R', hT, hr⟩ | ⟨T, hT, hr⟩
+  · rcases odlNext3 _ Wf Kf Cf hW hK hC _ L' R' hT with ⟨u, v, os', X, R'', hv, e, h⟩ | ⟨A, n0, hb, X, hX, hXr⟩
+    · exact Or.inl ⟨u, v, os', X, R'', hv, e, hr.trans h⟩
+    · exact Or.inr (Or.inl ⟨A, n0, hr.trans hb, X, hX, hXr⟩)
+  · obtain ⟨N, hN⟩ := sucRestart _ Wf Kf Cf (b + m) T hW hK hC hT
+    exact Or.inr (Or.inr ⟨N, T, hT, hr, hN⟩)
+
 end ZP.NTT
 
