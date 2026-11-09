@@ -12105,5 +12105,75 @@ theorem AOkD_eq (m n : Nat) (D : List DG) (s : Nat) (hw : ∀ g ∈ D, 2 ≤ g.2
     simp only [fl, if_true, h0]
 
 
+
+theorem passCsOf_zero (c : VR) (r s : Nat) (p : Nat × Nat) :
+    passCsOf 0 c [] r s p = [(outRec c r, r, s)] := by
+  simp [passCsOf, loopRun]
+
+theorem passCsOf_succ (n : Nat) (v0 : VR) (vs' : List VR) (c : VR) (r s : Nat) (p : Nat × Nat) :
+    passCsOf (n + 1) c (v0 :: vs') r s p =
+      (outRec c r, r, s) ::
+        passCsOf n (incVisN r v0).curG ((vs'.map (visN r)).map VR.dec) ((incVisN r v0).k - 1)
+          ((incVisN r v0).w - (incVisN r v0).k) (outP c r p) := by
+  unfold passCsOf
+  simp only [loopRun, stepN_cons]
+  simp
+
+theorem passEs : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × Nat), vs.length = n → VI c →
+    (∀ x ∈ vs, VI x) → (c.O = 3 → c.E = fld c.E.length 1) →
+    (passCsOf n c vs r s pp).map (fun x => x.1.E) =
+      finE (c :: vs) ((passCsOf n c vs r s pp).map (fun x => x.2.1))
+  | 0, c, vs, r, s, pp, hl, hc, _, hcE => by
+    have hvs : vs = [] := List.length_eq_zero_iff.1 hl
+    subst hvs
+    rw [passCsOf_zero]
+    simp only [List.map_cons, List.map_nil, finE]
+    rw [outRec_Efin c r (by have := hc.1.Elen; omega) (by have := hc.1.O; simpa using this) hcE]
+  | n + 1, c, vs, r, s, pp, hl, hc, hvs, hcE => by
+    obtain ⟨v0, vs', rfl⟩ : ∃ v0 vs', vs = v0 :: vs' := by
+      cases vs with
+      | nil => simp at hl
+      | cons a b => exact ⟨a, b, rfl⟩
+    have hv0 : VI v0 := hvs v0 (by simp)
+    have hvs' : ∀ x ∈ vs', VI x := fun x hx => hvs x (by simp [hx])
+    have hI1 := (incVisN_val r v0 hv0).1
+    have hcg := curG_f _ hI1
+    have hl' : ((vs'.map (visN r)).map VR.dec).length = n := by simp at hl ⊢; omega
+    have hvs'' : ∀ x ∈ (vs'.map (visN r)).map VR.dec, VI x := by
+      intro x hx
+      simp only [List.mem_map] at hx
+      obtain ⟨y, ⟨z, hz, rfl⟩, rfl⟩ := hx
+      have := (visIter r z (hvs' z hz)).1
+      exact ⟨(visN r z).dec_ok this.1, by
+        have := dec_fields' (visN r z); rw [this.2.1]; exact (visIter r z (hvs' z hz)).1.2⟩
+    have hk0 := curG_KEq (incVisN r v0) (by have := hI1.1.Elen; omega)
+    have IH := passEs n (VR.curG (incVisN r v0)) _ ((incVisN r v0).k - 1) ((incVisN r v0).w - (incVisN r v0).k)
+      (outP c r pp) hl' hcg.1 hvs'' (by
+        intro h3
+        have hO3 : (incVisN r v0).O = 3 := by rw [← hk0.1]; exact h3
+        have e1 : (incVisN r v0).curG.E = fld (incVisN r v0).E.length 1 := by simp [VR.curG, VR.cur, hO3, VR.dec]
+        have hl1 : 1 ≤ (incVisN r v0).E.length := by have := hI1.1.Elen; omega
+        rw [e1, fld_len _ _ hl1])
+    rw [passCsOf_succ]
+    simp only [List.map_cons, finE]
+    refine List.cons_eq_cons.2 ⟨?_, ?_⟩
+    · exact outRec_Efin c r (by have := hc.1.Elen; omega) (by have := hc.1.O; simpa using this) hcE
+    · rw [IH]
+      apply finE_congr
+      · simp [hl']
+      · intro i a b ha hb
+        cases i with
+        | zero =>
+          simp at ha hb; subst ha; subst hb
+          exact KEq_trans hk0 (incVis_KEq r v0 hv0)
+        | succ i =>
+          simp only [List.getElem?_cons_succ, List.getElem?_map, Option.map_eq_some_iff] at ha hb
+          obtain ⟨y, ⟨z, hz, rfl⟩, rfl⟩ := ha
+          have hb' : vs'[i]? = some b := by simpa using hb
+          have hzb : z = b := Option.some.inj (hz.symm.trans hb')
+          subst hzb
+          exact decVis_KEq r z (hvs' z (List.mem_of_getElem? hz))
+
+
 end ZP.NTT
 

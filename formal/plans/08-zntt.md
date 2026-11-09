@@ -464,3 +464,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: semantic start records
 `mkStart g x e` (digit signature, pass flag, E value `e`), `mkSL`, `DOk`, `mkSL_startRec` (they are `StartRec`s), `FOkS` (`FOk` stated on `(D, es, t)`), `AOkD_eq` (`AOkD ↔ FOkS … t=0, es = 1…`). Next: `foks_step` — one pass of `FOkS (m+1)` ⇔ compare ∧ S check ∧ `FOkS m` with `es'`.
+
+### Stage note: records of a whole pass
+`passCsOf_succ` (recursion of the finished-record list) and `passEs`: E registers of all `n+1` finished records (including the last) equal `finE` of the start records at the node values. Next: express the next-pass start records as `mkSL (t+1) 0 D es'` and conclude `foks_step`.
