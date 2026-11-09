@@ -11524,5 +11524,19 @@ theorem nextPass_start (p T j π d : Nat) (vals : List Nat) (ch : Nat) (c : VR) 
   · simp [VR.nextPass]; omega
   · simp [VR.nextPass]; rcases hxx with rfl | rfl <;> simp
 
+
+/-- One pass from its start records: the finished records carry the node values. -/
+theorem passVals (p t : Nat) (πs ds vals : List Nat) (hp : 2 ≤ p) (y0 : VR) (ys : List VR)
+    (hy : ∀ idx y, (y0 :: ys)[idx]? = some y →
+      StartRec p (if idx = t then 1 else 0) (πs.getD idx 0) (ds.getD idx 0) y)
+    (hV : ValsOk p t (ys.length + 1) πs ds vals) (s : Nat) (pp : Nat × Nat) :
+    (loopRun ys.length y0.curG (ys.map VR.dec) (y0.curG.k - 1) s pp).cs.map (fun x => x.1.k - 1) =
+      (List.range ys.length).map (fun i => vals.getD i 0) ∧
+    (loopRun ys.length y0.curG (ys.map VR.dec) (y0.curG.k - 1) s pp).c'.k - 1 = vals.getD ys.length 0 := by
+  have hI := startColInv p t πs ds vals hp y0 ys hy
+  have := loopVals p t (ys.length + 1) πs ds vals (by omega) hV ys.length 0 y0.curG (ys.map VR.dec)
+    (y0.curG.k - 1) s pp (by simp) (by omega) hI rfl
+  simpa using this
+
 end ZP.NTT
 
