@@ -24,20 +24,20 @@ macro "osimp" : tactic =>
   `(tactic| simp [dR, Item.den, List.getD, map_id_app, map_const_len, Fn.app])
 
 /-- `BLK` starts: `M` at the end, back to the first bit of `s`. -/
-theorem blkStartY (Jl : List Nat) (Jr : List Nat) (s : List Nat) (T : List Nat) (Y : List Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (hT : ∀ a ∈ T, a ∈ O13) (hY : Sym4 Y) :
+theorem blkStartY (Jl : List Nat) (Jr : List Nat) (s : List Nat) (T : List Nat) (Y : List Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (hT : NoB T) (hY : Sym4 Y) :
     zconpLogic.Reach (hdR Q.GRB (Jl ++ (1 :: (Jr ++ (1 :: (s ++ (1 :: (T))))))) (0 :: (0 :: (List.replicate s.length 0 ++ (Y)))))
       (hdR Q.COPY (Jl ++ (1 :: (Jr ++ ([1])))) (s ++ (1 :: (T ++ (1 :: (0 :: (List.replicate s.length 0 ++ (Y)))))))) := by
-  have hV : Valid [bits, bits, bits, O13, ALL] [Jl, Jr, s, T, Y] := Valid.cons hJl (Valid.cons hJr (Valid.cons hs (Valid.cons hT (Valid.cons hY (Valid.nil _)))))
+  have hV : Valid [bits, bits, bits, NB, ALL] [Jl, Jr, s, T, Y] := Valid.cons hJl (Valid.cons hJr (Valid.cons hs (Valid.cons hT (Valid.cons hY (Valid.nil _)))))
   exact checkFF (env := [Jl, Jr, s, T, Y]) (E := []) (k := 13) hV trivial
     (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .blk 3 .id]) (rs := [.sym 0, .sym 0, .blk 2 (.const 0), .blk 4 .id])
     (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .sym 0, .blk 2 (.const 0), .blk 4 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- One `COPY` round. -/
-theorem copyBodyY (P : List Nat) (u : List Nat) (v : List Nat) (T : List Nat) (Y : List Nat) (c : Nat) (hP : NoB P) (hu : Bits u) (hv : Bits v) (hT : ∀ a ∈ T, a ∈ O13) (hY : Sym4 Y) (hc : c ∈ bits) :
+theorem copyBodyY (P : List Nat) (u : List Nat) (v : List Nat) (T : List Nat) (Y : List Nat) (c : Nat) (hP : NoB P) (hu : Bits u) (hv : Bits v) (hT : NoB T) (hY : Sym4 Y) (hc : c ∈ bits) :
     zconpLogic.Reach (hdR Q.COPY (P ++ (u)) (c :: (v ++ (1 :: (T ++ (1 :: (List.replicate u.length 3 ++ (0 :: (0 :: (List.replicate v.length 0 ++ (Y)))))))))))
       (hdR Q.COPY (P ++ (u ++ ([c]))) (v ++ (1 :: (T ++ (1 :: (List.replicate u.length 3 ++ (3 :: (0 :: (List.replicate v.length 0 ++ (Y)))))))))) := by
-  have hV : Valid [NB, bits, bits, O13, ALL] [P, u, v, T, Y] := Valid.cons hP (Valid.cons hu (Valid.cons hv (Valid.cons hT (Valid.cons hY (Valid.nil _)))))
+  have hV : Valid [NB, bits, bits, NB, ALL] [P, u, v, T, Y] := Valid.cons hP (Valid.cons hu (Valid.cons hv (Valid.cons hT (Valid.cons hY (Valid.nil _)))))
   rcases mem_bits hc with rfl | rfl
   · exact checkFF (env := [P, u, v, T, Y]) (E := []) (k := 13) hV trivial
       (ls := [.blk 0 .id, .blk 1 .id]) (rs := [.sym 2, .blk 2 .id, .sym 1, .blk 3 .id, .sym 1, .blk 1 (.const 3), .sym 0, .sym 0, .blk 2 (.const 0), .blk 4 .id])
@@ -57,6 +57,7 @@ theorem blkVerY (j : List Nat) (s : List Nat) (Y : List Nat) (hj : Bits j) (hs :
     (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.sym 1, .sym 1, .sym 1, .blk 1 (.const 3), .sym 0, .blk 2 .id])
     (ls' := [.sym 1, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 1, .sym 1, .blk 1 (.const 3), .sym 3, .blk 2 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 
 /-- Decider fuel block done, the walker steps right. -/
 theorem blkDecStepYe (Jl : List Nat) (Jr : List Nat) (s : List Nat) (Y : List Nat) (c : Nat) (t : Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (hY : Sym4 Y) (hc : c ∈ bits) (ht : t ∈ bits) :
@@ -621,5 +622,124 @@ theorem eaAll (L F Dw : List Nat) (hL : Sym4 L) (hF : NoB F) (hD : NoB Dw) :
     · intro x hx; simp at hx; omega
     · intro x hx; simp at hx; omega
     · simp; omega
+
+/-! ## Loops over the fuel and over `D` -/
+
+theorem bits_all {b : Nat} (h : b ∈ bits) : b ∈ ALL := by
+  simp [bits, ALL] at *; omega
+
+theorem rep0_cons (b : Nat) (X : List Nat) : List.replicate b 0 ++ 0 :: X = List.replicate (b + 1) 0 ++ X := by
+  rw [← List.replicate_append_replicate]; simp
+
+theorem rep0_app (a b : Nat) (X : List Nat) :
+    List.replicate a 0 ++ (List.replicate b 0 ++ X) = List.replicate (a + b) 0 ++ X := by
+  rw [← List.append_assoc, List.replicate_append_replicate]
+
+theorem rsLoop (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    ∀ Ar : List Nat, Bits Ar →
+      zconpLogic.Reach (hd QConp.RS2 (L ++ (Ar.reverse ++ [1])) R)
+        (hd QConp.RS2 (L ++ [1]) (Ar.reverse ++ R))
+  | [], _ => by simpa using LTM.Reach.refl _ _
+  | c :: Ar, h => by
+    have hAr : Bits Ar := h.tail
+    have hrev : Sym4 (L ++ Ar.reverse) := hL.app (fun a ha => bits_all (hAr a (List.mem_reverse.mp ha)))
+    have h1 := rsStep (L ++ Ar.reverse) R c hrev hR h.head
+    have h2 := rsLoop L (c :: R) hL (Sym4.cons (bits_all h.head) hR) Ar hAr
+    exact (h1.ofEq (by simp) rfl).trans (h2.ofEq (by simp) (by simp))
+
+theorem blkW_cons (n d : Nat) : blkW n d = 1 :: (List.replicate d 3 ++ List.replicate (n + 1 - d) 2) := rfl
+
+theorem blkB_bits (n d : Nat) : Bits (List.replicate d 3 ++ List.replicate (n + 1 - d) 2) := by
+  intro a ha
+  simp only [List.mem_append] at ha
+  rcases ha with h | h
+  · rw [List.eq_of_mem_replicate h]; simp [bits]
+  · rw [List.eq_of_mem_replicate h]; simp [bits]
+
+theorem blkB_ne (n d : Nat) : List.replicate d 3 ++ List.replicate (n + 1 - d) 2 ≠ [] := by
+  intro h
+  have := congrArg List.length h
+  simp at this
+  omega
+
+theorem blkB_snoc (n d : Nat) : ∃ B0 c, List.replicate d 3 ++ List.replicate (n + 1 - d) 2 = B0 ++ [c] ∧ Bits B0 ∧ c ∈ bits := by
+  have hb := blkB_bits n d
+  rcases List.eq_nil_or_concat (List.replicate d 3 ++ List.replicate (n + 1 - d) 2) with h | ⟨B0, c, h⟩
+  · exact absurd h (blkB_ne n d)
+  · refine ⟨B0, c, by rw [h]; simp, ?_, ?_⟩
+    · intro a ha; exact hb a (by rw [h]; simp [ha])
+    · exact hb c (by rw [h]; simp)
+
+theorem FWr_sym4 (n : Nat) (ds : List Nat) : Sym4 (FWr n ds) := (FWr_noB n ds).sym4
+
+theorem erLoop4 (n : Nat) (L X : List Nat) (hL : Sym4 L) (hX : Sym4 X) :
+    ∀ ds : List Nat, zconpLogic.Reach (hd QConp.ER4 (L ++ 1 :: FWr n ds) X)
+      (hdR Q.GRB (L ++ [1]) (List.replicate (FWr n ds).length 0 ++ X))
+  | [] => by simpa [FWr] using erEnd L X hL hX
+  | d :: ds => by
+    obtain ⟨B0, c, hB, hB0, hc⟩ := blkB_snoc n d
+    have hL' : Sym4 (L ++ 1 :: FWr n ds) := hL.app (Sym4.cons (by simp [ALL]) (FWr_sym4 n ds))
+    have h1 := erB (L ++ 1 :: FWr n ds) B0 X c hL' hB0 hX hc
+    have hX' : Sym4 (List.replicate B0.length 0 ++ 0 :: 0 :: X) :=
+      (Sym4.rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) hX))
+    have h2 := erLoop4 n L _ hL hX' ds
+    have e : FWr n (d :: ds) = FWr n ds ++ 1 :: (B0 ++ [c]) := by
+      show FWr n ds ++ blkW n d = _
+      rw [blkW_cons, hB]
+    rw [e]
+    refine (h1.ofEq (by simp) rfl).trans (h2.ofEq rfl ?_)
+    rw [rep0_cons, rep0_cons, rep0_app]
+    congr 2
+    simp
+
+theorem exLoop4 (n : Nat) (L X : List Nat) (hL : Sym4 L) (hX : Sym4 X) :
+    ∀ ds : List Nat, zconpLogic.Reach (hd QConp.EX2 (L ++ 1 :: FWr n ds) X)
+      (hd QConp.EX3 L (1 :: (List.replicate (FWr n ds).length 0 ++ X)))
+  | [] => by simpa [FWr] using exEnd L X hL hX
+  | d :: ds => by
+    obtain ⟨B0, c, hB, hB0, hc⟩ := blkB_snoc n d
+    have hL' : Sym4 (L ++ 1 :: FWr n ds) := hL.app (Sym4.cons (by simp [ALL]) (FWr_sym4 n ds))
+    have h1 := exB (L ++ 1 :: FWr n ds) B0 X c hL' hB0 hX hc
+    have hX' : Sym4 (List.replicate B0.length 0 ++ 0 :: 0 :: X) :=
+      (Sym4.rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) hX))
+    have h2 := exLoop4 n L _ hL hX' ds
+    have e : FWr n (d :: ds) = FWr n ds ++ 1 :: (B0 ++ [c]) := by
+      show FWr n ds ++ blkW n d = _
+      rw [blkW_cons, hB]
+    rw [e]
+    refine (h1.ofEq (by simp) rfl).trans (h2.ofEq rfl ?_)
+    rw [rep0_cons, rep0_cons, rep0_app]
+    congr 3
+    simp
+
+theorem exLoop3 (n : Nat) (L X : List Nat) (hL : Sym4 L) (hX : Sym4 X) (d : Nat) (ds : List Nat) :
+    zconpLogic.Reach (hd QConp.EX1 (L ++ 1 :: FWr n (d :: ds)) X)
+      (hd QConp.EX3 L (1 :: (List.replicate (FWr n (d :: ds)).length 0 ++ X))) := by
+  have hL' : Sym4 (L ++ 1 :: FWr n ds) := hL.app (Sym4.cons (by simp [ALL]) (FWr_sym4 n ds))
+  have h1 := exA (L ++ 1 :: FWr n ds) _ X hL' (blkB_bits n d) hX
+  have hX' : Sym4 (List.replicate (List.replicate d 3 ++ List.replicate (n + 1 - d) 2).length 0 ++ 0 :: X) :=
+    (Sym4.rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hX)
+  have h2 := exLoop4 n L _ hL hX' ds
+  have e : FWr n (d :: ds) = FWr n ds ++ 1 :: (List.replicate d 3 ++ List.replicate (n + 1 - d) 2) := rfl
+  rw [e]
+  refine (h1.ofEq (by simp) rfl).trans (h2.ofEq rfl ?_)
+  rw [rep0_cons, rep0_app]
+  congr 3
+  simp
+
+theorem erLoop3 (n : Nat) (L X : List Nat) (hL : Sym4 L) (hX : Sym4 X) (d : Nat) (ds : List Nat) :
+    zconpLogic.Reach (hd QConp.ER3 (L ++ 1 :: FWr n (d :: ds)) X)
+      (hdR Q.GRB (L ++ [1]) (List.replicate (FWr n (d :: ds)).length 0 ++ X)) := by
+  have hL' : Sym4 (L ++ 1 :: FWr n ds) := hL.app (Sym4.cons (by simp [ALL]) (FWr_sym4 n ds))
+  have h1 := erA (L ++ 1 :: FWr n ds) _ X hL' (blkB_bits n d) hX
+  have hX' : Sym4 (List.replicate (List.replicate d 3 ++ List.replicate (n + 1 - d) 2).length 0 ++ 0 :: X) :=
+    (Sym4.rep _ _ (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hX)
+  have h2 := erLoop4 n L _ hL hX' ds
+  have e : FWr n (d :: ds) = FWr n ds ++ 1 :: (List.replicate d 3 ++ List.replicate (n + 1 - d) 2) := rfl
+  rw [e]
+  refine (h1.ofEq (by simp) rfl).trans (h2.ofEq rfl ?_)
+  rw [rep0_cons, rep0_app]
+  congr 3
+  simp
 
 end ZP.Conp
