@@ -8194,6 +8194,12 @@ theorem loopRun_m : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat �
     · exact ih'.1 t ht
 
 
+def nxtW (t0 : (VR × Nat × Nat) × Nat) : VR := t0.1.1.nextPass t0.2
+def nxtC (t0 : (VR × Nat × Nat) × Nat) : VR := (nxtW t0).curG
+def nxtVs (ts : List ((VR × Nat × Nat) × Nat)) : List VR := (ts.map fun q => q.1.1.nextPass q.2).map VR.dec
+def nxtR (t0 : (VR × Nat × Nat) × Nat) : Nat := (nxtW t0).k - 1
+def nxtS (t0 : (VR × Nat × Nat) × Nat) : Nat := (nxtW t0).w - (nxtW t0).k
+
 theorem goodW_pmNext (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
     (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2))) (hq : 1 ≤ q) :
     GoodW (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2))) := by
@@ -8235,13 +8241,17 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
           1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: (List.replicate b 2 ++
             tailB (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
               (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).map fun t => t.1.done t.2.1 t.2.2))))))) ∨
-    (∃ (q : Nat) (c1 : VR) (vs1 : List VR) (r1 s1 : Nat), 1 ≤ q ∧
+    (∃ (q : Nat) (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat)), 1 ≤ q ∧
+      (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+        (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts ∧
       znttLogic.Reach
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
           [] c 0 r s vs) [])
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate 0 2 ++ List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)))
-          [] c1 0 r1 s1 vs1) []) ∧
-      r1 + 1 + s1 = c1.w ∧ vs1.length = n ∧ CurInv c1 ∧ (∀ x ∈ vs1, x.Ok) ∧ OutM vs1 ∧ 2 ≤ c1.w ∧ (∀ x ∈ vs1, 2 ≤ x.w)) := by
+          [] (nxtC t0) 0 (nxtR t0) (nxtS t0) (nxtVs ts)) []) ∧
+      nxtR t0 + 1 + nxtS t0 = (nxtC t0).w ∧ (nxtVs ts).length = n ∧ CurInv (nxtC t0) ∧ (∀ x ∈ nxtVs ts, x.Ok) ∧ OutM (nxtVs ts) ∧
+      2 ≤ (nxtC t0).w ∧ (∀ x ∈ nxtVs ts, 2 ≤ x.w) ∧
+      (nxtC t0).P :: (nxtVs ts).map VR.P = List.replicate (j + 1) 2 ++ 3 :: l') := by
   obtain ⟨p', cs, hp', hcs, hPc, hLo, hcyc⟩ := passCycle Wf hW Q a b hP2 n vs c p r s hrs hlen hc hvs hom hp hcmp hcw hvw j y l' hfl
   obtain ⟨lo, hlo, hcsEq, hpEq⟩ := hLo
   rw [hlo, ← hcsEq] at hcmpN ⊢
@@ -8292,8 +8302,8 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
     have hmz : (t0.1.1.nextPass t0.2).O = 3 → (t0.1.1.nextPass t0.2).m = 0 := by
       intro h3
       exact hMz t0.1 (List.of_mem_zip (hmem t0 (by simp))).1 (by simpa [VR.nextPass] using h3)
-    refine ⟨p'.2, (t0.1.1.nextPass t0.2).curG, (ts.map fun q => q.1.1.nextPass q.2).map VR.dec,
-      (t0.1.1.nextPass t0.2).k - 1, (t0.1.1.nextPass t0.2).w - (t0.1.1.nextPass t0.2).k, hp', ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨p'.2, t0, ts, hp', hz, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    all_goals try simp only [nxtC, nxtW, nxtR, nxtS, nxtVs]
     · simp only [List.replicate_zero, List.nil_append]
       exact hfal.trans hfn
     · have := (curG_kw (t0.1.1.nextPass t0.2)).2
@@ -8315,11 +8325,21 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
     · rw [(curG_kw (t0.1.1.nextPass t0.2)).2]
       simpa [VR.nextPass] using h0.2.2.1
     · intro x hx
-      simp only [List.mem_map] at hx
+      simp only [nxtVs, List.mem_map] at hx
       obtain ⟨y, ⟨q, hq, rfl⟩, rfl⟩ := hx
       have hq' := hh q (List.mem_cons_of_mem _ hq)
       rw [dec_w]
       simpa [VR.nextPass] using hq'.2.2.1
+    · have hs : ((cs.zip (List.replicate (j + 1) 2 ++ 3 :: l')).map Prod.snd) = List.replicate (j + 1) 2 ++ 3 :: l' := by
+        rw [List.map_snd_zip]
+        have h1 := congrArg List.length hPc
+        have h2 := congrArg List.length hfl
+        simp at h1 h2 ⊢
+        omega
+      rw [hz] at hs
+      simp only [List.map_cons] at hs
+      rw [← hs]
+      simp [nxtC, nxtW, nxtVs, curG_P, dec_P, VR.nextPass, Function.comp_def]
   · left
     exact ⟨k, p'.2, hodl⟩
 
