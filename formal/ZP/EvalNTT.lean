@@ -6035,5 +6035,36 @@ theorem odRecInc (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (z o : Nat) (R
   have h4 := odInc _ z o R hA3 hR
   simpa using h1.trans (h2.trans (h3.trans h4))
 
+theorem odm2 (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODM A (2 :: R)) (hdR QNTT.ODI (A ++ [2]) R) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  simpa using checkFF (env := [A, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id]) (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Carry out of the witness string into the next string `u = 0^(z+1) 1^(o+1) 0 …`, then
+increment that without carry. -/
+theorem odCarryInc (P0 f R : List Nat) (n z o : Nat) (hP : Sym4 P0) (hf : BitsD f) (hn : f.length = n + 1)
+    (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.ODJ (P0 ++ 1 :: f) (1 :: (List.replicate (z + 1) 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R))))
+      (hd QNTT.WI0 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ 1 :: (List.replicate (z + 1) 2 ++ 3 :: List.replicate o 3))
+        (3 :: R)) := by
+  have hrep : ∀ k a, a ∈ ALL → Sym4 (List.replicate k a) := fun k a h => sym4_rep k a h
+  have hU : Sym4 (List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R)) :=
+    (hrep z 2 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) ((hrep o 3 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) hR)))
+  have h1 := odCarry P0 f (2 :: (List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R))) n hP hf hn
+    (Sym4.cons (by simp [ALL]) hU)
+  have hA : Sym4 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1]) := by
+    have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+    have a3 : (3 : Nat) ∈ ALL := by simp [ALL]
+    have h3 : Sym4 (3 :: List.replicate n 2) := Sym4.cons a3 (hrep n 2 (by simp [ALL]))
+    have h4 : Sym4 [1] := fun y hy => by simp at hy; subst hy; exact a1
+    simpa using (hP.app (Sym4.cons a1 h3)).app h4
+  have h2 := odm2 _ _ hA hU
+  have hA2 : Sym4 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1] ++ [2]) := hA.app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have h3 := odInc _ z o R hA2 hR
+  simpa [List.replicate_succ] using h1.trans (h2.trans h3)
+
 end ZP.NTT
 
