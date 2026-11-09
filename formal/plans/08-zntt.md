@@ -349,3 +349,5 @@ Remaining: show `Sem` from `evaluate` (`PassCmp` = the push-evaluation recursion
 ### Progress: outcome in odometer form
 `passesRun` now ends (`ODL` or `SU1`) with `TapeOutO`: the tape is `u ++ sepRest (o :: os)` with `u` good and `o :: os` odometer records (`ORec.Ok`) built by `VR.toO` from the finished records (`m = 0` invariant, `tailB_toO`, `VR.done_body_toO`).
 So `odFail` (`ODL` -> next assignment `WI0` / overflow `BEEP`) now applies directly to the `ODL` outcome. Remaining: digits unchanged by the passes (`n`, `s`, window sum), `Sem` from `evaluate`, `SU1` -> `PA0`, entries.
+
+- assignRun: one whole assignment (all passes) ends in the next assignment (WI0, via odlNext), the overflow BEEP, or success SU1 (TapeOutO). Remaining: digit-preservation invariants, Sem from evaluate, SU1 -> PA0 restart, first-assignment entry, Challenge/Solution wiring.

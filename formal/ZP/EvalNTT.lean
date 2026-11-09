@@ -8529,11 +8529,11 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
     GoodW (1 :: ((Q'' ++ [1]) ++ NnTail m b)) →
     r + 1 + s = c.w → vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → 1 ≤ p.2 → 2 ≤ c.w → (∀ x ∈ vs, 2 ≤ x.w) → c.m = 0 → (∀ x ∈ vs, x.m = 0) →
     c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L → m ≤ L.length → Sem m n c vs r s p j L →
-    (∃ L' R', TapeOutO (L' ++ R') ∧
+    (∃ R', TapeOutO ((Wf ++ [1]) ++ R') ∧
       znttLogic.Reach
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
           [] c 0 r s vs) [])
-        (hd QNTT.ODL L' R')) ∨
+        (hd QNTT.ODL (Wf ++ [1]) R')) ∨
     (∃ T, TapeOutO T ∧
       znttLogic.Reach
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
@@ -8575,7 +8575,7 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
       have := tapeOutO_of _ hu cs hcs' hne
       simpa [List.append_assoc] using this
     · left
-      refine ⟨_, _, ?_, h1⟩
+      refine ⟨_, ?_, h1⟩
       have hu := goodW_reg Wf (List.replicate p'.2 3) _ hW (BitsD.rep _ 3 (by simp))
         (by intro h; have := congrArg List.length h; simp at this; omega) hP2'
       have := tapeOutO_of _ hu cs hcs' hne
@@ -8602,7 +8602,7 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
       have hne : ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
           (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]) ≠ [] := by simp
       have := tapeOutO_of _ hu _ hcsOk hne
-      refine ⟨_, _, ?_, h1⟩
+      refine ⟨_, ?_, h1⟩
       simpa [List.append_assoc, List.replicate_succ] using this
     · have hs2 := (hsem' t0 ts (by simpa [passCsOf] using hz)).2
       have hP2' : GoodW (1 :: ((Q'' ++ [1]) ++ NnTail a (b + 1))) := by
@@ -8614,9 +8614,58 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
         rw [List.append_assoc, nn_eq]
       rw [e2] at h1
       simp only [List.replicate_zero, List.nil_append] at h1 hih
-      rcases hih with ⟨L', R', ho, hr⟩ | ⟨T, ho, hr⟩
-      · exact Or.inl ⟨L', R', ho, h1.trans hr⟩
+      rcases hih with ⟨R', ho, hr⟩ | ⟨T, ho, hr⟩
+      · exact Or.inl ⟨R', ho, h1.trans hr⟩
       · exact Or.inr ⟨T, ho, h1.trans hr⟩
+
+
+
+theorem tapeOutO_sym4 {T : List Nat} (h : TapeOutO T) : Sym4 T := by
+  obtain ⟨u, o, os, hu, hos, rfl⟩ := h
+  have : sepRest (o :: os) = 1 :: 1 :: tapeL (o :: os) := rfl
+  exact hu.sym4.app (by
+    rw [this]
+    exact Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) (tapeL_sym4 _ hos)))
+
+/-- A refuted assignment moves to the next one (`WI0`) or overflows (`BEEP`). -/
+theorem odlNext (Wf : List Nat) (hW : BitsD Wf) (R' : List Nat) (hT : TapeOutO ((Wf ++ [1]) ++ R')) :
+    (∃ u v os' X R'', Rest u v ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
+      znttLogic.Reach (hd QNTT.ODL (Wf ++ [1]) R') (hd QNTT.WI0 X (3 :: R''))) ∨
+    (∃ A, znttLogic.Reach (hd QNTT.ODL (Wf ++ [1]) R') (hd QNTT.BEEP A [])) := by
+  have sT := tapeOutO_sym4 hT
+  have hR : Sym4 R' := (Sym4_app_iff.1 sT).2
+  have hL : NoB (Wf ++ [1]) := NoB_app_iff.2 ⟨hW.noB, by intro x hx; simp at hx; simp [hx, NB]⟩
+  obtain ⟨u, o, os, hu, hos, hXY⟩ := hT
+  have hXY' : (Wf ++ [1]) ++ R' = u ++ 1 :: 1 :: tapeL (o :: os) := hXY
+  obtain ⟨v, hv, h1, h2⟩ := odFail u hu o os hos _ _ hXY' hL hR
+  cases hs : odoStepR (o :: os) with
+  | some os' =>
+    obtain ⟨X, R'', e, hr⟩ := h1 os' hs
+    exact Or.inl ⟨u, v, os', X, R'', hv, e, hr⟩
+  | none => exact Or.inr ⟨_, h2 hs⟩
+
+
+/-- One whole assignment, from the first cursor of the first pass: the next assignment (`WI0`), the overflow (`BEEP`),
+or success (`SU1`). -/
+theorem assignRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat)
+    (m b n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s j : Nat) (L : List Nat)
+    (hP2 : GoodW (1 :: ((Q'' ++ [1]) ++ NnTail m b)))
+    (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs) (hp : 1 ≤ p.2)
+    (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w) (hm0 : c.m = 0) (hvm : ∀ x ∈ vs, x.m = 0)
+    (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L) (hL : m ≤ L.length) (hsem : Sem m n c vs r s p j L) :
+    let st := hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
+          [] c 0 r s vs) []
+    (∃ u v os' X R'', Rest u v ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
+      znttLogic.Reach st (hd QNTT.WI0 X (3 :: R''))) ∨
+    (∃ A, znttLogic.Reach st (hd QNTT.BEEP A [])) ∨
+    (∃ T, TapeOutO T ∧ znttLogic.Reach st (hdR QNTT.SU1 [] T)) := by
+  intro st
+  rcases passesRun Wf hW Q'' m b n vs c p r s j L hP2 hrs hlen hc hvs hom hp hcw hvw hm0 hvm hfl hL hsem with
+    ⟨R', hT, hr⟩ | ⟨T, hT, hr⟩
+  · rcases odlNext Wf hW R' hT with ⟨u, v, os', X, R'', hv, e, h⟩ | ⟨A, h⟩
+    · exact Or.inl ⟨u, v, os', X, R'', hv, e, hr.trans h⟩
+    · exact Or.inr (Or.inl ⟨A, hr.trans h⟩)
+  · exact Or.inr (Or.inr ⟨T, hT, hr⟩)
 
 
 end ZP.NTT
