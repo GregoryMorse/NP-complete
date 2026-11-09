@@ -473,3 +473,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: `passNext`
 `passRs`, `esN_length`, `dec_KEq`, `DOk_w`, `passNext`: the next-pass records of the machine pass (finished records `nextPass`ed with the next flags) are exactly `mkSL (t+1) 0 D (esN p D es vl)`, `vl` the node values. Remaining for `foks_step`: the compare and S-check sides, flags `replicate (j+1) 2 ++ 3 :: L'` vs `fl (t+1)`, and the `hcm` side clause.
+
+### Stage note: compare side of a pass
+`fld_cmp` (E register `fld p (e+1)` matches node value `v` iff `e = v`), `CmpD`, `cmpE_mkSL`, `valsL` (+ bounds), `esN_lt`, `flags_eq`. Remaining for `foks_step`: assemble compare / S sum (`passPOf_val`) / `hcm` / `passNext` into the one-pass equivalence.

@@ -12413,5 +12413,91 @@ theorem passNext (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (y0
   · rw [hqlen]
 
 
+
+theorem fld_cmp (p e v : Nat) (he : e < p) (hv : v < p) :
+    (∃ z, 1 ≤ v + 1 ∧ fld p (e + 1) = fld (v + 1 + z) (v + 1)) ↔ e = v := by
+  constructor
+  · rintro ⟨z, _, h⟩
+    have h1 := count3_fld' p (e + 1) (by omega)
+    have h2 := count3_fld' (v + 1 + z) (v + 1) (by omega)
+    rw [h] at h1; omega
+  · rintro rfl
+    exact ⟨p - e - 1, by omega, by congr 1; omega⟩
+
+/-- Compare of the `O = 3` records against node values. -/
+def CmpD : List DG → List Nat → List Nat → Prop
+  | g :: gs, e :: es, v :: vl => (g.2.2.2.2.2 = 3 → e = v) ∧ CmpD gs es vl
+  | _, _, _ => True
+
+theorem cmpE_mkSL (p t : Nat) : ∀ (i : Nat) (gs : List DG) (es vl : List Nat),
+    (∀ g ∈ gs, g.2.2.2.2.1 = p ∧ (g.2.2.2.2.2 = 2 ∨ g.2.2.2.2.2 = 3)) → (∀ e ∈ es, e < p) → (∀ v ∈ vl, v < p) →
+    2 ≤ p → gs.length = es.length →
+    (CmpE ((mkSL t i gs es).map VR.dec) vl ↔ CmpD gs es vl)
+  | i, [], [], vl, _, _, _, _, _ => by simp [mkSL, CmpE, CmpD]
+  | i, [], _ :: _, _, _, _, _, _, h => by simp at h
+  | i, _ :: _, [], _, _, _, _, _, h => by simp at h
+  | i, g :: gs, e :: es, [], _, _, _, _, _ => by simp [mkSL, CmpE, CmpD]
+  | i, g :: gs, e :: es, v :: vl, hg, he, hv, hp, hl => by
+    simp only [mkSL, List.map_cons, CmpE, CmpD]
+    have hg0 := hg g (by simp)
+    have h1 : (mkStart g (fl t i) e).dec.O = g.2.2.2.2.2 := by
+      rw [(dec_EO _).2]; rfl
+    have h2 : (mkStart g (fl t i) e).dec.E = fld p (e + 1) := by
+      rw [(dec_EO _).1]; simp [mkStart, hg0.1]
+    rw [h1, h2]
+    rw [cmpE_mkSL p t (i + 1) gs es vl (fun x hx => hg x (by simp [hx])) (fun x hx => he x (by simp [hx]))
+      (fun x hx => hv x (by simp [hx])) hp (by simpa using hl)]
+    have := fld_cmp p e v (he e (by simp)) (hv v (by simp))
+    constructor
+    · rintro ⟨a, b⟩; exact ⟨fun h => this.1 (a h), b⟩
+    · rintro ⟨a, b⟩; exact ⟨fun h => this.2 (a h), b⟩
+
+
+/-- Node values of pass  for the digit signatures . -/
+def valsL (p t : Nat) (D : List DG) : List Nat :=
+  (List.range D.length).map fun i =>
+    (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) []).getD i 0
+
+theorem valsL_lt (p t : Nat) (D : List DG) (hp : 0 < p) : ∀ v ∈ valsL p t D, v < p := by
+  intro v hv
+  unfold valsL at hv
+  simp only [List.mem_map, List.mem_range] at hv
+  obtain ⟨i, hi, rfl⟩ := hv
+  have hlen2 : (D.map fun g => g.2.2.1).length = (D.map fun g => g.1).length := by simp
+  have := valsOk_decRecs p t (D.map fun g => g.2.2.1) (D.map fun g => g.1) hlen2 i (by simpa using hi)
+  rw [this]; exact Nat.mod_lt _ hp
+
+theorem valsL_length (p t : Nat) (D : List DG) : (valsL p t D).length = D.length := by simp [valsL]
+
+theorem esN_lt (p : Nat) (hp : 0 < p) : ∀ (D : List DG) (es vl : List Nat), (∀ e ∈ es, e < p) → ∀ x ∈ esN p D es vl, x < p
+  | g :: gs, e :: es, v :: vl, he, x, hx => by
+    simp only [esN, List.mem_cons] at hx
+    rcases hx with rfl | hx
+    · split
+      · exact he e (by simp)
+      · exact Nat.mod_lt _ hp
+    · exact esN_lt p hp gs es vl (fun y hy => he y (by simp [hy])) x hx
+  | [], _, _, _, x, hx => by simp [esN] at hx
+  | _ :: _, [], _, _, x, hx => by simp [esN] at hx
+  | _ :: _, _ :: _, [], _, x, hx => by simp [esN] at hx
+
+theorem flags_eq (t N : Nat) (h : t + 2 ≤ N) :
+    (List.range' 0 N).map (fl (t + 1)) = List.replicate (t + 1) 2 ++ 3 :: List.replicate (N - t - 2) 2 := by
+  apply List.ext_getElem
+  · simp; omega
+  · intro i h1 h2
+    simp only [List.getElem_map, List.getElem_range', fl]
+    simp only [List.length_map, List.length_range'] at h1
+    by_cases hi : i < t + 1
+    · rw [List.getElem_append_left (by simp; omega)]; simp; omega
+    · rw [List.getElem_append_right (by simp; omega)]
+      simp only [List.length_replicate]
+      by_cases he : i = t + 1
+      · subst he; simp
+      · obtain ⟨k, hk⟩ : ∃ k, i - (t + 1) = k + 1 := ⟨i - (t + 1) - 1, by omega⟩
+        rw [if_neg (by omega)]
+        simp [hk]
+
+
 end ZP.NTT
 
