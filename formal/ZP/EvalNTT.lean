@@ -6066,5 +6066,29 @@ theorem odCarryInc (P0 f R : List Nat) (n z o : Nat) (hP : Sym4 P0) (hf : BitsD 
   have h3 := odInc _ z o R hA2 hR
   simpa [List.replicate_succ] using h1.trans (h2.trans h3)
 
+/-- The same when the next string starts with `1`: `u = 1^(o+1) 0 …`. -/
+theorem odCarryInc0 (P0 f R : List Nat) (n o : Nat) (hP : Sym4 P0) (hf : BitsD f) (hn : f.length = n + 1)
+    (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.ODJ (P0 ++ 1 :: f) (1 :: 3 :: (List.replicate o 3 ++ 2 :: R)))
+      (hd QNTT.WI0 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ 1 :: 3 :: List.replicate o 3) (3 :: R)) := by
+  have hrep : ∀ k a, a ∈ ALL → Sym4 (List.replicate k a) := fun k a h => sym4_rep k a h
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have a2 : (2 : Nat) ∈ ALL := by simp [ALL]
+  have a3 : (3 : Nat) ∈ ALL := by simp [ALL]
+  have hU : Sym4 (List.replicate o 3 ++ 2 :: R) :=
+    (hrep o 3 a3).app (Sym4.cons a2 hR)
+  have h1 := odCarry P0 f (3 :: (List.replicate o 3 ++ 2 :: R)) n hP hf hn (Sym4.cons a3 hU)
+  have hA : Sym4 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1]) := by
+    have h3 : Sym4 (3 :: List.replicate n 2) := Sym4.cons a3 (hrep n 2 a2)
+    have h4 : Sym4 [1] := fun y hy => by simp at hy; subst hy; exact a1
+    simpa using (hP.app (Sym4.cons a1 h3)).app h4
+  have h2 := odm3 _ _ hA hU
+  have hA2 : Sym4 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1] ++ [3]) := hA.app (fun y hy => by simp at hy; subst hy; exact a3)
+  have h3 := odjOnes _ (2 :: R) o hA2 (Sym4.cons a2 hR)
+  have hA3 : Sym4 (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1] ++ [3] ++ List.replicate o 3) := hA2.app (hrep o 3 a3)
+  have h4 := odjZero _ R hA3 hR
+  simpa using h1.trans (h2.trans (h3.trans h4))
+
 end ZP.NTT
 
