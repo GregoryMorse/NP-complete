@@ -11459,5 +11459,50 @@ theorem outRec_E (c : VR) (r : Nat) (hO : c.O = 3) (hE : c.E = fld c.E.length 1)
   refine ⟨this.1, this.2.1, rfl, ?_⟩
   rw [this.2.2]; simp
 
+
+/-- A record at the start of pass `t` (before the first decrement). -/
+def StartRec (p T π d : Nat) (y : VR) : Prop :=
+  VI y ∧ y.w = p ∧ y.n = d ∧ y.a = 0 ∧ y.a + y.c = π ∧ y.k = T + 1
+
+theorem recI_start_dec (p T π d : Nat) (vals : List Nat) (y : VR) (hp : 2 ≤ p) (hT : T ≤ 1)
+    (h : StartRec p T π d y) : RecI p T 0 π d vals 0 y.dec := by
+  obtain ⟨hI, hw, hn, ha, hac, hk⟩ := h
+  have df := dec_fields' y
+  have hdI : VI y.dec := ⟨y.dec_ok hI.1, by rw [df.2.1]; exact hI.2⟩
+  refine ⟨hdI, by rw [df.2.2.2.1, hw], by rw [df.1, hn], by rw [df.2.2.2.2.1]; exact hac, ?_, ?_⟩
+  · by_cases hc : y.c = 0
+    · rw [df.2.2.2.2.2.1 hc]; omega
+    · rw [(df.2.2.2.2.2.2 hc).1]; omega
+  · rw [df.2.2.1, hk]
+    have : ptrVal (ptrOf π) 0 d vals = 0 := by
+      unfold ptrVal; cases ptrOf π <;> simp
+    rw [this, Nat.add_zero, Nat.add_zero, Nat.mod_eq_of_lt (by omega)]; rfl
+
+theorem recI_start_cur (p T π d : Nat) (vals : List Nat) (y : VR) (hp : 2 ≤ p) (hT : T ≤ 1)
+    (h : StartRec p T π d y) : RecI p T 0 π d vals 0 y.curG := by
+  have hd := recI_start_dec p T π d vals y hp hT h
+  obtain ⟨g1, g2, g3, g4, g5, g6⟩ := curG_f y h.1
+  obtain ⟨_, hw, hn, hac, ha, hk⟩ := hd
+  refine ⟨g1, by rw [g4]; exact hw, by rw [g2]; exact hn, by rw [g5, g6]; exact hac, by rw [g5]; exact ha, ?_⟩
+  rw [g3]; exact hk
+
+theorem startColInv (p t : Nat) (πs ds vals : List Nat) (hp : 2 ≤ p) (y0 : VR) (ys : List VR)
+    (hy : ∀ idx y, (y0 :: ys)[idx]? = some y →
+      StartRec p (if idx = t then 1 else 0) (πs.getD idx 0) (ds.getD idx 0) y) :
+    ColInv p t 0 πs ds vals (y0.curG :: ys.map VR.dec) := by
+  intro idx x hx
+  cases idx with
+  | zero =>
+    simp only [List.getElem?_cons_zero, Option.some.injEq] at hx
+    subst hx
+    have := recI_start_cur p _ (πs.getD 0 0) (ds.getD 0 0) vals y0 hp (by split <;> omega) (hy 0 y0 (by simp))
+    simpa using this
+  | succ idx =>
+    simp only [List.getElem?_cons_succ, List.getElem?_map, Option.map_eq_some_iff] at hx
+    obtain ⟨z, hz, rfl⟩ := hx
+    have := recI_start_dec p _ (πs.getD (idx + 1) 0) (ds.getD (idx + 1) 0) vals z hp (by split <;> omega)
+      (hy (idx + 1) z (by simpa using hz))
+    simpa using this
+
 end ZP.NTT
 

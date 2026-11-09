@@ -407,3 +407,6 @@ Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the 
 
 ### Stage: semantics, output registers
 `eAdv_val`, `sAdv_val` (the `E` and `S` registers add mod `p`; `S` keeps width and `q ≥ 1`) and `outRec_E` (a finished output cursor's `E` has value `z * acc` mod `len`, since `curG` resets it to value 0). Remaining: entry ORec ↔ `ColInv` (needs `E.length = w`), compare ↔ `evalPass`'s `all`, power-sum check ↔ `E'` sum, pass chaining, `evalC`, `hasCircuit`; bridge.
+
+### Stage: semantics, pass start (`startColInv`)
+`StartRec` (record at the start of pass `t`: `a = 0`, `k = [i=t] + 1`, digits `π`, `d`), `recI_start_dec/cur`, and `startColInv`: the loop start list `y0.curG :: ys.map dec` satisfies `ColInv` at column 0. This covers both the first pass (entry records) and later passes (`nextPass` gives `a = 0`, `c = a + c`, `k = 2` iff flag `3`). Remaining: `nextPass` ↔ `StartRec` for the next `t`, `E`-compare ↔ `evalPass`, `S` check, chaining, `evalC`, `hasCircuit`, bridge.
