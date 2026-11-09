@@ -367,3 +367,8 @@ So `odFail` (`ODL` -> next assignment `WI0` / overflow `BEEP`) now applies direc
 - Next assignment entry: `nextEntry` takes the `WI0` outcome of `odlNext2` (tape `v 1 1 tapeL (o :: os)` with `Rest v v`) to the first-pass cursor `RFL`, via `orcRc` (odometer record as tape record: `orcRc_body`, `orcRc_init`, `orcRc_ok`, `tailB_orc`, `tailI_orc`, `toRc_ps`) and `firstEntry`. `ORec.Ok` now carries `Elen`, and the digit data `dg`/`dgO` also carries `w` (= `acc.length`) so that `2 ≤ acc.length` of the finished records follows from the pass hypotheses. Remaining: the assignment loop (iterate `assignRun'` + `nextEntry` along `odoStepR`), `Sem` from `evaluate`, pair lemma/bridge, Challenge/Solution wiring.
 
 - Positional digit preservation: `dg_loopRun_pos`/`dg_runAll_pos` (the finished records of a pass loop have exactly the digit data of the starting records, in order), `tapeOutP_ex`; the refuted/success outcomes `OdOut`/`SuOut` now state `(o :: os).map ORec.dgO = D` with `D = (c :: vs).map VR.dg`, and `passesRun` carries it through `nextPass` (`hEq`). So the finished odometer record list is exactly the starting digit list, which is what the odometer-successor step needs. Remaining: the assignment loop, `Sem` from `evaluate`, pair lemma/bridge, Challenge/Solution wiring.
+
+### Compare-mismatch failure paths (machine level)
+`cmpLt`/`cpLtEnd`/`cmpAccLt` (acc smaller than `E`: refuted at `CPE3`), `cmpGt`/`cpGtEnd`/`cmpAccGt` (acc larger: refuted at `CP5`),
+and the `FA0` wrappers `fa0OLt`/`fa0OGt` reach `ODL` with an explicit tape. Remaining: parse these mid-pass tapes as `OdOut`
+(records beyond the cursor are in cursor form, not `done` form), then thread through `colAdvance`/`passStep` to drop `PassCmp`.

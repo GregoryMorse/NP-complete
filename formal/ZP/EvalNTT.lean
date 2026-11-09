@@ -9498,5 +9498,191 @@ theorem nextEntry (X R'' v : List Nat) (hNoB : NoB X) (hv : Rest v v) (o : ORec)
     (fun x hx => toRc_ps x (hok x (by simp [hx])) (hacc x (by simp [hx])) 2 (by simp))
 
 
+/-! ## Compare mismatch: refutation at the output compare -/
+
+
+/-- `cpRound`s while the accumulator is the smaller: `n` rounds leave one accumulator mark and `d + 2` marks of `E`. -/
+theorem cmpLt (A : List Nat) (d : Nat) : ∀ (n a s z : Nat) (R : List Nat), Sym4 A → Sym4 R →
+    znttLogic.Reach
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate a 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2 ++
+        1 :: (List.replicate (n + d + 2) 3 ++ List.replicate z 2) ++ 1 :: R))
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate (a + n) 2 ++ 3 :: List.replicate s 2 ++
+        1 :: (List.replicate (d + 2) 3 ++ List.replicate (z + n) 2) ++ 1 :: R)) := by
+  intro n
+  induction n with
+  | zero => intro a s z R hA hR; simpa using (LTM.Reach.refl _ _)
+  | succ n ih =>
+    intro a s z R hA hR
+    have h := cpRound A a (n + d + 1) z (List.replicate n 3 ++ List.replicate s 2) R hA
+      (bd_app (BitsD.rep n 3 (by simp)) (BitsD.rep s 2 (by simp))) hR
+    have ih' := ih (a + 1) s (z + 1) R hA hR
+    rw [show a + 1 + n = a + (n + 1) by omega, show z + 1 + n = z + (n + 1) by omega] at ih'
+    rw [show n + 1 + d + 2 = n + d + 3 by omega]
+    simp only [List.append_assoc, List.cons_append, List.replicate_succ] at h ih' ⊢
+    exact h.trans ih'
+
+/-- Accumulator smaller than `E`: refuted at `CPE3`. -/
+theorem cpLtEnd (A : List Nat) (a s d z : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate a 2 ++ 3 :: List.replicate s 2 ++
+        1 :: (List.replicate (d + 2) 3 ++ List.replicate z 2) ++ 1 :: R))
+      (hd QNTT.ODL (A ++ [1] ++ List.replicate a 2 ++ [3] ++ List.replicate s 2 ++ [1] ++ [3])
+        (3 :: (List.replicate d 3 ++ List.replicate z 2 ++ 1 :: R))) := by
+  have sP : Sym4 (A ++ [1]) := hA.app (sym4_cell 1 (by simp))
+  have sZ : Sym4 (List.replicate z 2) := (BitsD.rep z 2 (by simp)).sym4
+  have sS : Sym4 (List.replicate s 2) := (BitsD.rep s 2 (by simp)).sym4
+  have sA2 : Sym4 (List.replicate a 2) := (BitsD.rep a 2 (by simp)).sym4
+  have sD : Sym4 (List.replicate d 3) := (BitsD.rep d 3 (by simp)).sym4
+  have g1 := cp0Skip (A ++ [1]) a (3 :: (List.replicate s 2 ++ 1 :: (List.replicate (d + 2) 3 ++ List.replicate z 2 ++ 1 :: R))) sP
+    (by simp [ALL, sS, sZ, sD, hR])
+  have g2 := cp0Hit (A ++ [1] ++ List.replicate a 2) (List.replicate s 2 ++ 1 :: (List.replicate (d + 2) 3 ++ List.replicate z 2 ++ 1 :: R))
+    (by simp [ALL, hA, sA2]) (by simp [ALL, sS, sZ, sD, hR])
+  have g3 := cpe1 (A ++ [1] ++ List.replicate a 2 ++ [3]) s (List.replicate (d + 2) 3 ++ List.replicate z 2 ++ 1 :: R)
+    (by simp [ALL, hA, sA2]) (by simp [ALL, sZ, sD, hR])
+  have g4 := cpe2One (A ++ [1] ++ List.replicate a 2 ++ [3] ++ List.replicate s 2 ++ [1])
+    (List.replicate (d + 1) 3 ++ List.replicate z 2 ++ 1 :: R)
+    (by simp [ALL, hA, sA2, sS]) (by simp [ALL, sZ, sD, hR])
+  have g5 := cpe3One (A ++ [1] ++ List.replicate a 2 ++ [3] ++ List.replicate s 2 ++ [1] ++ [3])
+    (List.replicate d 3 ++ List.replicate z 2 ++ 1 :: R)
+    (by simp [ALL, hA, sA2, sS]) (by simp [ALL, sZ, sD, hR])
+  simp only [List.append_assoc, List.cons_append, List.nil_append, List.replicate_succ] at g1 g2 g3 g4 g5 ⊢
+  exact g1.trans (g2.trans (g3.trans (g4.trans g5)))
+
+/-- Accumulator larger than `E`: refuted at `CP5`. -/
+theorem cpGtEnd (A : List Nat) (a : Nat) (f : List Nat) (z : Nat) (R : List Nat) (hA : Sym4 A) (hf : BitsD f) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate a 2 ++ 3 :: 3 :: f ++ 1 :: (3 :: List.replicate z 2 ++ 1 :: R)))
+      (hd QNTT.ODL (A ++ [1] ++ List.replicate a 2 ++ [2] ++ (3 :: f) ++ [1] ++ [3])
+        (List.replicate z 2 ++ 1 :: R)) := by
+  have sP : Sym4 (A ++ [1]) := hA.app (sym4_cell 1 (by simp))
+  have sQ : Sym4 (A ++ [1] ++ List.replicate a 2) := sP.app (BitsD.rep a 2 (by simp)).sym4
+  have hf3 : BitsD (3 :: f) := BitsD.cons (by simp) hf
+  have sZ : Sym4 (List.replicate z 2) := (BitsD.rep z 2 (by simp)).sym4
+  have sf : Sym4 f := hf.sym4
+  have h1 := cp0Skip (A ++ [1]) a (3 :: 3 :: (f ++ 1 :: ((3 :: List.replicate z 2) ++ 1 :: R))) sP
+    (by simp [ALL, sf, hR, sZ])
+  have h2 := cp0Hit (A ++ [1] ++ List.replicate a 2) (3 :: (f ++ 1 :: ((3 :: List.replicate z 2) ++ 1 :: R))) sQ
+    (by simp [ALL, sf, hR, sZ])
+  have h3 := cp1Two (A ++ [1] ++ List.replicate a 2) (f ++ 1 :: ((3 :: List.replicate z 2) ++ 1 :: R)) sQ
+    (by simp [ALL, sf, hR, sZ])
+  have h4 := cp2Mark (A ++ [1] ++ List.replicate a 2) (3 :: (f ++ 1 :: ((3 :: List.replicate z 2) ++ 1 :: R))) sQ
+    (by simp [ALL, sf, hR, sZ])
+  have h5 := cp3Skip (A ++ [1] ++ List.replicate a 2 ++ [2]) (3 :: f) ((3 :: List.replicate z 2) ++ 1 :: R)
+    (by simp [ALL, hA, sQ]) hf3 (by simp [ALL, hR, sZ])
+  have h6 := cp4One (A ++ [1] ++ List.replicate a 2 ++ [2] ++ (3 :: f) ++ [1]) (List.replicate z 2 ++ 1 :: R)
+    (by simp [ALL, hA, sQ, sf]) (by simp [ALL, hR, sZ])
+  have h7 : znttLogic.Reach (hdR QNTT.CP5 (A ++ [1] ++ List.replicate a 2 ++ [2] ++ (3 :: f) ++ [1] ++ [3]) (List.replicate z 2 ++ 1 :: R))
+      (hd QNTT.ODL (A ++ [1] ++ List.replicate a 2 ++ [2] ++ (3 :: f) ++ [1] ++ [3]) (List.replicate z 2 ++ 1 :: R)) := by
+    cases z with
+    | zero =>
+      have := cp5M (A ++ [1] ++ List.replicate a 2 ++ [2] ++ (3 :: f) ++ [1] ++ [3]) R (by simp [ALL, hA, sQ, sf]) hR
+      simpa only [List.replicate_zero, List.nil_append] using this
+    | succ k =>
+      have := cp5Zero (A ++ [1] ++ List.replicate a 2 ++ [2] ++ (3 :: f) ++ [1] ++ [3])
+        (List.replicate k 2 ++ 1 :: R) (by simp [ALL, hA, sQ, sf]) (by simp [ALL, hR, sZ])
+      simpa only [List.replicate_succ, List.cons_append] using this
+  simp only [List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 h5 h6 h7 ⊢
+  exact h1.trans (h2.trans (h3.trans (h4.trans (h5.trans (h6.trans h7)))))
+
+theorem cmpGt (A : List Nat) (d : Nat) : ∀ (e a s z : Nat) (R : List Nat), Sym4 A → Sym4 R →
+    znttLogic.Reach
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate a 2 ++ List.replicate (e + d + 2) 3 ++ List.replicate s 2 ++
+        1 :: (List.replicate (e + 1) 3 ++ List.replicate z 2) ++ 1 :: R))
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate (a + e) 2 ++ List.replicate (d + 2) 3 ++ List.replicate s 2 ++
+        1 :: (3 :: List.replicate (z + e) 2) ++ 1 :: R)) := by
+  intro e
+  induction e with
+  | zero => intro a s z R hA hR; simpa using (LTM.Reach.refl _ _)
+  | succ e ih =>
+    intro a s z R hA hR
+    have h := cpRound A a e z (List.replicate (e + d + 1) 3 ++ List.replicate s 2) R hA
+      (bd_app (BitsD.rep _ 3 (by simp)) (BitsD.rep s 2 (by simp))) hR
+    have ih' := ih (a + 1) s (z + 1) R hA hR
+    rw [show a + 1 + e = a + (e + 1) by omega, show z + 1 + e = z + (e + 1) by omega] at ih'
+    rw [show e + 1 + d + 2 = e + d + 3 by omega]
+    simp only [List.append_assoc, List.cons_append, List.replicate_succ] at h ih' ⊢
+    exact h.trans ih'
+
+theorem cmpAccLt (A : List Nat) (n d a s z : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate a 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2 ++
+        1 :: (List.replicate (n + d + 2) 3 ++ List.replicate z 2) ++ 1 :: R))
+      (hd QNTT.ODL (A ++ [1] ++ List.replicate (a + n) 2 ++ [3] ++ List.replicate s 2 ++ [1] ++ [3])
+        (3 :: (List.replicate d 3 ++ List.replicate (z + n) 2 ++ 1 :: R))) :=
+  (cmpLt A d n a s z R hA hR).trans (cpLtEnd A (a + n) s d (z + n) R hA hR)
+
+theorem cmpAccGt (A : List Nat) (e d a s z : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.CP0 (A ++ [1]) (List.replicate a 2 ++ List.replicate (e + d + 2) 3 ++ List.replicate s 2 ++
+        1 :: (List.replicate (e + 1) 3 ++ List.replicate z 2) ++ 1 :: R))
+      (hd QNTT.ODL (A ++ [1] ++ List.replicate (a + e) 2 ++ [2] ++ (3 :: (List.replicate d 3 ++ List.replicate s 2)) ++ [1] ++ [3])
+        (List.replicate (z + e) 2 ++ 1 :: R)) := by
+  have h1 := cmpGt A d e a s z R hA hR
+  have h2 := cpGtEnd A (a + e) (List.replicate d 3 ++ List.replicate s 2) (z + e) R hA
+    (bd_app (BitsD.rep d 3 (by simp)) (BitsD.rep s 2 (by simp))) hR
+  simp only [List.append_assoc, List.cons_append, List.replicate_succ] at h1 h2 ⊢
+  exact h1.trans h2
+
+
+theorem fa0OLt (A : List Nat) (w : Rc) (hw : w.DE) (hO : w.O = 3) (n d s z : Nat)
+    (hacc : w.acc = List.replicate (n + 1) 3 ++ List.replicate s 2)
+    (hE : w.E = List.replicate (n + d + 2) 3 ++ List.replicate z 2)
+    (ws : List Rc) (hws : ∀ x ∈ ws, x.DE) (hA : Sym4 A) :
+    znttLogic.Reach (hdR QNTT.FA0 A ([w.F, w.O, w.Pf] ++ 1 :: (w.tl ++ tailB ws)))
+      (hd QNTT.ODL (A ++ [3, 3, w.Pf] ++ [1] ++ List.replicate n 2 ++ [3] ++ List.replicate s 2 ++ [1] ++ [3])
+        (3 :: (List.replicate d 3 ++ List.replicate (z + n) 2 ++ 1 :: (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws)))) := by
+  have ho := hw.ok
+  have sTl : Sym4 (w.tl ++ tailB ws) := (w.tl_sym4 ho).app (tailB_sym4 ws (fun x hx => (hws x hx).ok))
+  have sA3 : Sym4 (A ++ [3]) := hA.app (sym4_cell 3 (by simp))
+  have h4 := fa0Mark A w.F (w.O :: w.Pf :: 1 :: (w.tl ++ tailB ws)) ho.F hA
+    (sym4_B ho.O (sym4_B ho.Pf (sym4_M sTl)))
+  have h5 := fa1o (A ++ [3]) (w.Pf :: 1 :: (w.tl ++ tailB ws)) sA3 (sym4_B ho.Pf (sym4_M sTl))
+  have h6 := faoSkip (A ++ [3] ++ [3]) [w.Pf] (w.tl ++ tailB ws) (sA3.app (sym4_cell 3 (by simp)))
+    (fun y hy => by simp at hy; subst hy; exact ho.Pf) sTl
+  have sR' : Sym4 (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws) := by
+    have := sTl
+    simp only [Rc.tl] at this
+    simp [hacc, hE] at this
+    simpa using this.2.2.2.2.2.2
+  have hwt : w.tl ++ tailB ws = List.replicate 0 2 ++ List.replicate (n + 1) 3 ++ List.replicate s 2 ++
+      1 :: (List.replicate (n + d + 2) 3 ++ List.replicate z 2) ++ 1 :: (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws) := by
+    simp [Rc.tl, hacc, hE]
+  rw [hwt] at h4 h5 h6 ⊢
+  have h7 := cmpAccLt (A ++ [3] ++ [3] ++ [w.Pf]) n d 0 s z (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws)
+    ((sA3.app (sym4_cell 3 (by simp))).app (sym4_B ho.Pf Sym4.nil)) sR'
+  simp only [hO, List.append_assoc, List.cons_append, List.nil_append] at h4 h5 h6 h7 ⊢
+  refine h4.trans (h5.trans (h6.trans (h7.of_eq rfl ?_)))
+  simp [Rc.tl, hacc, List.replicate_succ, Nat.add_comm, Nat.add_left_comm]
+
+theorem fa0OGt (A : List Nat) (w : Rc) (hw : w.DE) (hO : w.O = 3) (e d s z : Nat)
+    (hacc : w.acc = List.replicate (e + d + 2) 3 ++ List.replicate s 2)
+    (hE : w.E = List.replicate (e + 1) 3 ++ List.replicate z 2)
+    (ws : List Rc) (hws : ∀ x ∈ ws, x.DE) (hA : Sym4 A) :
+    znttLogic.Reach (hdR QNTT.FA0 A ([w.F, w.O, w.Pf] ++ 1 :: (w.tl ++ tailB ws)))
+      (hd QNTT.ODL (A ++ [3, 3, w.Pf] ++ [1] ++ List.replicate e 2 ++ [2] ++ (3 :: (List.replicate d 3 ++ List.replicate s 2)) ++ [1] ++ [3])
+        (List.replicate (z + e) 2 ++ 1 :: (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws))) := by
+  have ho := hw.ok
+  have sTl : Sym4 (w.tl ++ tailB ws) := (w.tl_sym4 ho).app (tailB_sym4 ws (fun x hx => (hws x hx).ok))
+  have sA3 : Sym4 (A ++ [3]) := hA.app (sym4_cell 3 (by simp))
+  have h4 := fa0Mark A w.F (w.O :: w.Pf :: 1 :: (w.tl ++ tailB ws)) ho.F hA
+    (sym4_B ho.O (sym4_B ho.Pf (sym4_M sTl)))
+  have h5 := fa1o (A ++ [3]) (w.Pf :: 1 :: (w.tl ++ tailB ws)) sA3 (sym4_B ho.Pf (sym4_M sTl))
+  have h6 := faoSkip (A ++ [3] ++ [3]) [w.Pf] (w.tl ++ tailB ws) (sA3.app (sym4_cell 3 (by simp)))
+    (fun y hy => by simp at hy; subst hy; exact ho.Pf) sTl
+  have sR' : Sym4 (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws) := by
+    have := sTl
+    simp only [Rc.tl] at this
+    simp [hacc, hE] at this
+    simpa using this.2.2.2.2.2.2
+  have hwt : w.tl ++ tailB ws = List.replicate 0 2 ++ List.replicate (e + d + 2) 3 ++ List.replicate s 2 ++
+      1 :: (List.replicate (e + 1) 3 ++ List.replicate z 2) ++ 1 :: (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws) := by
+    simp [Rc.tl, hacc, hE]
+  rw [hwt] at h4 h5 h6 ⊢
+  have h7 := cmpAccGt (A ++ [3] ++ [3] ++ [w.Pf]) e d 0 s z (w.b0 :: (w.br ++ 1 :: w.u0 :: w.ur) ++ tailB ws)
+    ((sA3.app (sym4_cell 3 (by simp))).app (sym4_B ho.Pf Sym4.nil)) sR'
+  simp only [hO, List.append_assoc, List.cons_append, List.nil_append] at h4 h5 h6 h7 ⊢
+  refine h4.trans (h5.trans (h6.trans (h7.of_eq rfl ?_)))
+  simp [Rc.tl, hacc, List.replicate_succ, Nat.add_comm, Nat.add_left_comm]
+
 end ZP.NTT
 
