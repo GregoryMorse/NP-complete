@@ -742,4 +742,15 @@ theorem erLoop3 (n : Nat) (L X : List Nat) (hL : Sym4 L) (hX : Sym4 X) (d : Nat)
   congr 3
   simp
 
+/-- New instance: `M_2 M_3` after `s`. -/
+theorem w1Start (j : List Nat) (s : List Nat) (hj : Bits j) (hs : Bits s) :
+    zconpLogic.Reach (hdR QConp.W1 (1 :: (j ++ (1 :: (s)))) ([]))
+      (hdR Q.GRB (1 :: (j ++ (1 :: (s ++ (1 :: ([1])))))) ([])) := by
+  have hV : Valid [bits, bits] [j, s] := Valid.cons hj (Valid.cons hs (Valid.nil _))
+  exact checkFF (env := [j, s]) (E := []) (k := 2) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id]) (rs := [])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
 end ZP.Conp

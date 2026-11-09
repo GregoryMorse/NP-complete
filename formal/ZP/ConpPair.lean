@@ -774,4 +774,59 @@ theorem searchC (n : Nat) (ds0 : List Nat) (hds0 : Dig n ds0) (hne : ds0 ≠ [])
       obtain ⟨u, r, ds3, h1, h2, h3⟩ := ih1 (hiff.mp h)
       exact ⟨u, r, ds3, h1, h2, hS3.trans h3⟩
 
+/-! ## The outer loop -/
+
+theorem sincL (A : List Nat) (hA : NoB A) : ∀ (r : List Bool) (k : Nat),
+    zconpLogic.Reach (hd Q.SINC (A ++ 1 :: bitsOf r.reverse) (List.replicate k 2))
+      (hdR QConp.W1 (A ++ 1 :: (bitsOf (incR r).reverse ++ List.replicate k 2)) [])
+  | [], k => (sincE A (List.replicate k 2) hA (rep_z2 k)).ofEq rfl (by rw [rep_snoc_eq]; rfl)
+  | false :: r, k =>
+    (sinc0 A (bitsOf r.reverse) (List.replicate k 2) hA (Bits.ofB _) (rep_z2 k)).ofEq
+      (by simp [bitsOf]) (by simp [incR, bitsOf])
+  | true :: r, k =>
+    ((sinc1 A (bitsOf r.reverse) (List.replicate k 2) hA (Bits.ofB _) (rep_z2 k)).ofEq
+      (by simp [bitsOf]) rfl).trans
+      ((sincL A hA r (k + 1)).ofEq rfl (by simp [incR, bitsOf, List.replicate_succ]))
+
+theorem jincL : ∀ (r : List Bool) (k : Nat),
+    zconpLogic.Reach (hd Q.JINC (1 :: bitsOf r.reverse) (List.replicate k 2 ++ [1]))
+      (hdR QConp.W1 (1 :: (bitsOf (incR r).reverse ++ (List.replicate k 2 ++ [1]))) [])
+  | [], k => (jincE (List.replicate k 2) (rep_z2 k)).ofEq rfl (by rw [rep_cons_comm]; rfl)
+  | false :: r, k =>
+    (jinc0 (bitsOf r.reverse) (List.replicate k 2) (Bits.ofB _) (rep_z2 k)).ofEq
+      (by simp [bitsOf]) (by simp [incR, bitsOf])
+  | true :: r, k =>
+    ((jinc1 (bitsOf r.reverse) (List.replicate k 2) (Bits.ofB _) (rep_z2 k)).ofEq
+      (by simp [bitsOf]) rfl).trans
+      ((jincL r (k + 1)).ofEq rfl (by simp [incR, bitsOf, List.replicate_succ]))
+
+theorem valr_full (n : Nat) : ∀ k, valr n (List.replicate k (n + 1)) + 1 = (n + 2) ^ k
+  | 0 => rfl
+  | k + 1 => by
+    have ih := valr_full n k
+    show n + 1 + (n + 2) * valr n (List.replicate k (n + 1)) + 1 = (n + 2) ^ (k + 1)
+    rw [Nat.pow_succ, ← ih, Nat.mul_comm (valr n (List.replicate k (n + 1)) + 1), Nat.mul_add, Nat.mul_one]
+    omega
+
+/-- The one step out of the beep state. -/
+theorem beepStepC (j s Y : List Nat) :
+    zconpLogic.zstep (hdR Q.BEEP (1 :: (j ++ 1 :: (s ++ [1, 2]))) (1 :: Y)) =
+      some (hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 2, 0]))) Y) := by
+  have e1 : (⟨Q.BEEP, [Item.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2].reverse,
+      [.sym 1, .blk 2 .id], false⟩ : SC).den [j, s, Y] = hdR Q.BEEP (1 :: (j ++ 1 :: (s ++ [1, 2]))) (1 :: Y) :=
+    den_tapeR (by osimp) (by osimp)
+  have e2 : (⟨Q.EAs, [Item.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2, .sym 0].reverse,
+      [.blk 2 .id], false⟩ : SC).den [j, s, Y] = hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 2, 0]))) Y :=
+    den_tapeR (by osimp) (by osimp)
+  rw [← e1, ← e2]
+  exact cstep_zstep (by decide +kernel)
+
+theorem ReachPos {M : LTM} {c c' : ZC} (h : M.Reach c c') (hq : c.q ≠ c'.q) : M.Reach1 c c' := by
+  obtain ⟨n, hn⟩ := h
+  cases n with
+  | zero =>
+    have : c = c' := Option.some.inj hn
+    exact absurd (by rw [this]) hq
+  | succ n => exact ⟨n, hn⟩
+
 end ZP.Conp
