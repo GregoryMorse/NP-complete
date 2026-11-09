@@ -5975,5 +5975,29 @@ theorem odInc (A : List Nat) (z o : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4
   have h4 := odjZero _ R hA3 hR
   simpa using h1.trans (h2.trans (h3.trans h4))
 
+/-- Carry out of a digit string `f` (length `n+1`) that ends at an `M`: the string is reset to
+zeros, its first cell becomes `1`, and the scan continues at the next separator (`ODM`). -/
+theorem odCarry (P0 f R : List Nat) (n : Nat) (hP : Sym4 P0) (hf : BitsD f) (hn : f.length = n + 1)
+    (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODJ (P0 ++ 1 :: f) (1 :: R))
+      (hdR QNTT.ODM (P0 ++ 1 :: 3 :: List.replicate n 2 ++ [1]) R) := by
+  have hA : Sym4 (P0 ++ 1 :: f) := hP.app (Sym4.cons (by simp [ALL]) (fun y hy => by
+    have := hf y hy; simp at this; rcases this with rfl | rfl <;> simp [ALL]))
+  have hP1 : Sym4 (P0 ++ [1]) := hP.app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have hrep : ∀ k, Sym4 (List.replicate k 2) := fun k => sym4_rep k 2 (by simp [ALL])
+  have h1 := odjM (P0 ++ 1 :: f) R hA hR
+  have h2 := odrBits (P0 ++ [1]) f (1 :: R) hP1 hf (Sym4.cons (by simp [ALL]) hR)
+  have h3 := odrM P0 (List.replicate f.length 2 ++ 1 :: R) hP ((hrep _).app (Sym4.cons (by simp [ALL]) hR))
+  rw [hn, List.replicate_succ] at h3
+  have h4 := odw2 (P0 ++ [1]) (List.replicate n 2 ++ 1 :: R) hP1 ((hrep _).app (Sym4.cons (by simp [ALL]) hR))
+  have hP2 : Sym4 (P0 ++ [1] ++ [3]) := hP1.app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have h5 := odnZeros (P0 ++ [1] ++ [3]) (1 :: R) n hP2 (Sym4.cons (by simp [ALL]) hR)
+  have hP3 : Sym4 (P0 ++ [1] ++ [3] ++ List.replicate n 2) := hP2.app (hrep _)
+  have h6 := odnM _ R hP3 hR
+  rw [hn, List.replicate_succ] at h2
+  have h1' : znttLogic.Reach (hdR QNTT.ODJ (P0 ++ 1 :: f) (1 :: R)) (hd QNTT.ODR (P0 ++ [1] ++ f) (1 :: R)) := by
+    simpa using h1
+  simpa using h1'.trans (h2.trans (h3.trans (h4.trans (h5.trans h6))))
+
 end ZP.NTT
 
