@@ -330,3 +330,6 @@ Remaining: the induction over `a` passes (carrying `PassCmp` and the next-pass i
 ### Progress: last pass (`ZP/EvalNTT.lean`, no sorry)
 `lastCycle`: the last pass from `RFL` ends in `SU1` (`S` starts with `0`: `s_n ≠ 0`, success) or in `ODL` (`S = 0`, via `fl0Scan`, `fl1Block`, `fl1M`, `fl2One`). It also exposes `cs` with its flags and widths.
 Remaining: the induction over passes (`passCycle` + `faNext`, then `lastCycle`), the `PassCmp` semantics = `evaluate`, `SU1` -> `PA0` (existing `suOk`), `ODL` -> `odFail`, restart, entries.
+
+### Progress: pure pass run
+`loopRun` (with `outRec`, `outP`, `LoopOut`) is the pure function computing the finished cursor records, the final cursor and the counter `p` of a pass loop. `passLoop2`, `passMore2`, `passLast2`, `passCycle` and `lastCycle` now state that their `cs`, `p'` are exactly `loopRun`'s, so the semantic layer (`PassCmp` = `evaluate`) can reason about pure data.
