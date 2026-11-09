@@ -482,3 +482,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: `foks_step`
 `foks_step`: for `t+1 ≤ n`, `L' = replicate (n-t-1) 2`, `S = p`: `FOkS (m+1) n D es t (y::L') S` ⇔ compare of records ≥1 (`CmpD`) ∧ `Σ val·digit ≡ 0 (mod p)` ∧ record-0 clause for the next pass (`H0z`) ∧ `FOkS m n D es' (t+1) L' S`, with `es' = esN …`. Next: the base case (`FOkS 0`), the induction over `m` against `evalFrom`, and `vals` of the next pass.
+
+### Stage note: `foks_base`
+`foks_base`: last pass `FOkS 0 n D es t L S ⇔ CmpD ∧ Σ val·digit ≢ 0 (mod S)`. With `foks_step` this reduces `AOkD` to a chain of semantic passes; next is the induction over `m` against `evalFrom` and the node values of pass `t+1`.

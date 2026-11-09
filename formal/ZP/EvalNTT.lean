@@ -12711,5 +12711,36 @@ theorem foks_step (p t m n : Nat) (D : List DG) (es L' : List Nat) (y S : Nat) (
     exact ⟨hcmiff.2 h0z, hf⟩
 
 
+
+theorem foks_base (p t n : Nat) (D : List DG) (es : List Nat) (L : List Nat) (S : Nat) (hD : DOk p D es)
+    (hS : 1 ≤ S) (hn : D.length = n + 1) :
+    FOkS 0 n D es t L S ↔ (CmpD D.tail es.tail (valsL p t D).tail ∧ SumOD D (valsL p t D) % S ≠ 0) := by
+  have hlen := hD.1
+  obtain ⟨g, gs, rfl⟩ : ∃ g gs, D = g :: gs := by
+    cases D with
+    | nil => simp at hn
+    | cons a b => exact ⟨a, b, rfl⟩
+  obtain ⟨e, es2, rfl⟩ : ∃ e es2, es = e :: es2 := by
+    cases es with
+    | nil => simp at hlen
+    | cons a b => exact ⟨a, b, rfl⟩
+  have hy : mkSL t 0 (g :: gs) (e :: es2) = mkStart g (fl t 0) e :: mkSL t 1 gs es2 := rfl
+  generalize hy0 : mkStart g (fl t 0) e = y0 at hy
+  generalize hys : mkSL t 1 gs es2 = ys at hy
+  have hnys : ys.length = n := by
+    have := (pass_setup p t _ _ hD y0 ys hy).2.2.2.2
+    simp only [List.length_cons] at this hn; omega
+  subst hnys
+  have hl0 : FOkS 0 ys.length (g :: gs) (e :: es2) t L S ↔
+      FOk 0 ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) t L := by
+    unfold FOkS; rw [hy]
+  rw [hl0]
+  have hcmp := pass_cmp p t _ _ hD y0 ys hy
+  have hsum := pass_sum p t _ _ hD y0 ys hy S hS
+  simp only [List.tail_cons] at hcmp
+  simp only [FOk, hcmp, hsum]
+  rfl
+
+
 end ZP.NTT
 
