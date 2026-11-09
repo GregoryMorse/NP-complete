@@ -118,4 +118,5 @@ public import ZP.Gx
 public import ZP.HardB
 public import ZP.Hard
 public import ZP.MulSwitch
+public import ZP.MulRun
 public import ZP.GenericP
