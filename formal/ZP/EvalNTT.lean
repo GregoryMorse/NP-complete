@@ -8908,5 +8908,78 @@ theorem sucRestart (D : List (Nat × Nat × Nat × Nat)) (Wf Kf Cf : List Nat) (
   simp only [List.length_replicate] at hr
   simpa [sepRest, tapeL, List.replicate_succ', List.append_assoc] using hr
 
+
+theorem ORec.vr_ok (o : ORec) (ho : o.Ok) (x : Nat) (hx : x ∈ [2, 3]) (hacc : 2 ≤ o.acc.length) :
+    (o.vr x).Ok := by
+  have hO : o.O ∈ [2, 3] := by
+    have := ho.hF; simp at this; simpa using this.2.1
+  refine { F := by simp [ORec.vr], O := hO, P := hx, k1 := ?_, kw := ?_, E := ?_, Elen := ?_ }
+  · simp [ORec.vr]; split <;> omega
+  · simp [ORec.vr]; split <;> omega
+  · intro y hy
+    simp [ORec.vr, List.mem_replicate] at hy
+    rcases hy with rfl | h
+    · simp
+    · simp [h.2]
+  · simp [ORec.vr]
+
+theorem vr_cmp (o : ORec) :
+    (o.vr 3).O = 3 → ∃ z, 1 ≤ (o.vr 3).k ∧ (o.vr 3).E = fld ((o.vr 3).k + z) (o.vr 3).k := by
+  intro _
+  refine ⟨o.E.length - 2, by simp [ORec.vr], ?_⟩
+  simp [ORec.vr, fld]
+
+
+/-- First assignment: `WI0` (witness initialisation) through the pass start to the cursor on record 0 (`RFL`). -/
+theorem firstEntry (L R Pm Pm' : List Nat) (hL : NoB L) (hRest : Rest Pm Pm') (hP' : GoodW Pm')
+    (r : Rc) (hr : r.Ok) (rs : List Rc) (hrs : ∀ x ∈ rs, x.Ok)
+    (hLR : L ++ R = Pm ++ 1 :: 1 :: (r.body ++ tailB rs))
+    (o : ORec) (os : List ORec) (hok : ∀ x ∈ o :: os, x.Ok) (hacc : ∀ x ∈ o :: os, 2 ≤ x.acc.length)
+    (hk : ∀ x ∈ o :: os, 1 ≤ x.k) (hdr : ∀ x ∈ o :: os, x.d + 1 ≤ x.r)
+    (h0 : r.initB 3 = (o.toRc 3).body) (h1 : tailI rs = tailB (os.map fun x => x.toRc 2))
+    (hPS0 : (o.toRc 3).PS) (hPS : ∀ x ∈ os, (x.toRc 2).PS) :
+    znttLogic.Reach (hd QNTT.WI0 L R)
+      (hd QNTT.RFL (curTapeG Pm' [] (o.vr 3).curG 0 ((o.vr 3).k - 1) ((o.vr 3).w - (o.vr 3).k)
+        ((os.map fun x => x.vr 2).map VR.dec)) []) := by
+  have hwi := witnessInit L R Pm Pm' hL hRest r hr rs hrs hLR
+  rw [h0, h1] at hwi
+  have hrs0 : ∀ x ∈ os.map (fun x => x.toRc 2), x.PS := by
+    intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx; exact hPS y hy
+  have hN1 : NoB [1, 1] := by intro a ha; simp at ha; simp [ha, NB]
+  have hL2 : NoB (Pm' ++ [1, 1] ++ (o.toRc 3).body ++ tailB (os.map fun x => x.toRc 2)) := by
+    simp only [NoB_app_iff]
+    exact ⟨⟨⟨hP'.noB, hN1⟩, Rc.body_noB _ hPS0.ok⟩, tailB_noB _ (fun x hx => (hrs0 x hx).ok)⟩
+  have hps := passStartAll (Pm' ++ [1, 1] ++ (o.toRc 3).body ++ tailB (os.map fun x => x.toRc 2)) Pm'
+    hL2 hP' (o.toRc 3) hPS0 (os.map fun x => x.toRc 2) hrs0 (by simp)
+  have hBr : ∀ p ∈ (os.map fun x => (x, 2)), BrOk p := by
+    intro p hp; simp only [List.mem_map] at hp; obtain ⟨y, hy, rfl⟩ := hp
+    exact ⟨hk y (by simp [hy]), hacc y (by simp [hy]), by simp, hdr y (by simp [hy])⟩
+  have e1 := toRc_ps_vr o 3 (hk o (by simp)) (hacc o (by simp)) (by simp) (hdr o (by simp))
+  have e2 := tailP_vr (os.map fun x => (x, 2)) hBr
+  simp only [List.map_map, Function.comp_def] at e2
+  have hw : (o.vr 3).Ok := ORec.vr_ok o (hok o (by simp)) 3 (by simp) (hacc o (by simp))
+  have hws : ∀ x ∈ (os.map fun x => x.vr 2), x.Ok := by
+    intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx
+    exact ORec.vr_ok y (hok y (by simp [hy])) 2 (by simp) (hacc y (by simp [hy]))
+  have hLe : Pm' ++ [1, 1] ++ (o.toRc 3).ps.body ++ tailP (os.map fun x => x.toRc 2) =
+      Pm' ++ 1 :: 1 :: ([(o.vr 3).F, (o.vr 3).O, (o.vr 3).P] ++ 1 :: ((o.vr 3).tl ++ tailVR (os.map fun x => x.vr 2))) := by
+    have : tailP (os.map fun x => x.toRc 2) = tailVR (os.map fun x => x.vr 2) := e2
+    rw [this]
+    have e1' : 1 :: 1 :: (o.toRc 3).ps.body = (o.vr 3).recd := e1
+    simp only [VR.recd] at e1'
+    have e3 : (o.toRc 3).ps.body = (o.vr 3).F :: (o.vr 3).O :: (o.vr 3).P :: 1 :: (o.vr 3).tl := by
+      simpa using e1'
+    rw [e3]; simp
+  have hNL : NoB (Pm' ++ [1, 1] ++ (o.toRc 3).ps.body ++ tailP (os.map fun x => x.toRc 2)) := by
+    rw [hLe]
+    simp only [NoB_app_iff, NoB_cons_iff]
+    refine ⟨hP'.noB, by simp [NB], by simp [NB], ?_⟩
+    have h3 := hw.hdr3.noB
+    simp only [NoB_cons_iff] at h3
+    exact ⟨⟨h3.1, h3.2.1, h3.2.2.1, by intro a ha; simp at ha⟩, by simp [NB], hw.tl_noB, tailVR_noB _ hws⟩
+  have hf := faG' _ Pm' hNL hP' (o.vr 3) hw _ hws (vr_cmp o) hLe
+  exact hwi.trans (hps.trans hf)
+
+
 end ZP.NTT
 
