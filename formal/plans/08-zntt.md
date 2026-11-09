@@ -250,3 +250,9 @@ pass eats `1`s from the left. So at odometer time a `b`/`u` string is a *window*
 right end `e = z + k ∈ [1, z+k+m]` of the run of ones; the increment (`odInc`, `odCarryInc`, `odCarryInc0`, `odRecInc`) moves it
 to `e + 1`, overflow resets to `1 0…` (`e = 1`) and carries. `b` strings are the case `z = 0` (`therm`). The `OR`/`odo` walk
 therefore matches `odoNext` on `(e - 1, L)` pairs; leading zeros are invisible to it because `WI1` normalises them.
+
+### Progress: odometer on a record list (done)
+`ORec` (header/acc/E, `b` = `therm d r`, `u` = `winStr z k m`), `tapeL`, `ORec.next`, `odoStepR`, `resetAll`.
+`odoWalk`: from `ODH` at the first record, `odoStepR os = some os'` gives `WI0` with `X ++ 3 :: R = A ++ tapeL os'`, and
+`odoStepR os = none` gives `BEEP` on `A ++ tapeL (resetAll os)`. `odoStepR_digs`: the record step realises `odoNext`
+on the digit list. Remaining: pass loop, restart interface, power sums, merge, pair lemma, bridge, `evalC`, entries.

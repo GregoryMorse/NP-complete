@@ -6438,5 +6438,260 @@ theorem odRecCarryEnd (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (n z k : 
   have key := h1'.trans (h2'.trans h3)
   simpa only [List.append_assoc, List.cons_append, List.singleton_append, List.nil_append] using key
 
+/-! ## Odometer on a record list -/
+
+structure ORec where
+  F : Nat
+  O : Nat
+  Pf : Nat
+  acc : List Nat
+  E : List Nat
+  d : Nat
+  r : Nat
+  z : Nat
+  k : Nat
+  m : Nat
+
+def ORec.tape (o : ORec) : List Nat :=
+  [o.F, o.O, o.Pf] ++ 1 :: (o.acc ++ 1 :: (o.E ++ 1 :: (therm o.d o.r ++ 1 :: winStr o.z o.k o.m)))
+
+def sepRest : List ORec → List Nat
+  | [] => []
+  | o :: os => 1 :: 1 :: (o.tape ++ sepRest os)
+
+def tapeL : List ORec → List Nat
+  | [] => []
+  | o :: os => o.tape ++ sepRest os
+
+structure ORec.Ok (o : ORec) : Prop where
+  hF : [o.F, o.O, o.Pf].all (· ∈ [2, 3]) = true
+  acc : BitsD o.acc
+  E : BitsD o.E
+  d : o.d + 1 ≤ o.r
+  k : 1 ≤ o.k
+
+def ORec.next (o : ORec) : Sum ORec ORec :=
+  if o.d + 1 < o.r then .inl { o with d := o.d + 1 }
+  else if 1 ≤ o.m then .inl { o with d := 0, k := o.k + 1, m := o.m - 1 }
+  else .inr { o with d := 0, z := 0, k := 1, m := o.z + o.k - 1 }
+
+def odoStepR : List ORec → Option (List ORec)
+  | [] => none
+  | o :: os =>
+    match o.next with
+    | .inl o' => some (o' :: os)
+    | .inr o' => (odoStepR os).map (o' :: ·)
+
+
+theorem ORec.Ok.sym4 {o : ORec} (h : o.Ok) : Sym4 o.tape := by
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hf : BitsD [o.F, o.O, o.Pf] := by
+    have hF := h.hF
+    intro y hy; simp at hF hy; rcases hy with rfl | rfl | rfl <;> simp [hF]
+  have hth : BitsD (therm o.d o.r) := by
+    intro y hy; simp [therm, List.mem_replicate] at hy; rcases hy with ⟨_, rfl⟩ | ⟨_, rfl⟩ <;> simp
+  unfold ORec.tape
+  exact hf.sym4.app (Sym4.cons a1 (h.acc.sym4.app (Sym4.cons a1 (h.E.sym4.app (Sym4.cons a1
+    (hth.sym4.app (Sym4.cons a1 (bitsD_winStr _ _ _).sym4)))))))
+
+theorem sepRest_sym4 : ∀ os : List ORec, (∀ o ∈ os, o.Ok) → Sym4 (sepRest os)
+  | [], _ => Sym4.nil
+  | o :: os, h => by
+    have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+    exact Sym4.cons a1 (Sym4.cons a1 ((h o (by simp)).sym4.app
+      (sepRest_sym4 os (fun x hx => h x (by simp [hx])))))
+
+theorem tapeL_sym4 (os : List ORec) (h : ∀ o ∈ os, o.Ok) : Sym4 (tapeL os) := by
+  cases os with
+  | nil => exact Sym4.nil
+  | cons o os => exact (h o (by simp)).sym4.app (sepRest_sym4 os (fun x hx => h x (by simp [hx])))
+
+theorem odoInc1 (o o' : ORec) (os : List ORec) (A : List Nat) (hO : o.Ok) (hos : ∀ x ∈ os, x.Ok)
+    (hA : Sym4 A) (hc : o.d + 1 < o.r) (ho' : o' = { o with d := o.d + 1 }) :
+    ∃ X R, X ++ 3 :: R = A ++ tapeL (o' :: os) ∧
+      znttLogic.Reach (hdR QNTT.ODH A (tapeL (o :: os))) (hd QNTT.WI0 X (3 :: R)) := by
+  subst ho'
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hR : Sym4 (1 :: (winStr o.z o.k o.m ++ sepRest os)) :=
+    Sym4.cons a1 ((bitsD_winStr _ _ _).sym4.app (sepRest_sym4 os hos))
+  have h := odRecIncTherm A o.F o.O o.Pf o.acc o.E o.d o.r _ hc hA hO.hF hO.acc hO.E hR
+  have e : tapeL (o :: os) = [o.F, o.O, o.Pf] ++ 1 :: (o.acc ++ 1 :: (o.E ++ 1 :: (therm o.d o.r ++
+      (1 :: (winStr o.z o.k o.m ++ sepRest os))))) := by simp [tapeL, ORec.tape]
+  rw [e]
+  refine ⟨_, _, ?_, h⟩
+  simp [tapeL, ORec.tape, therm, List.replicate_succ']
+
+theorem odoInc2 (o o' : ORec) (os : List ORec) (A : List Nat) (hO : o.Ok) (hos : ∀ x ∈ os, x.Ok)
+    (hA : Sym4 A) (hc : ¬ o.d + 1 < o.r) (hm : 1 ≤ o.m)
+    (ho' : o' = { o with d := 0, k := o.k + 1, m := o.m - 1 }) :
+    ∃ X R, X ++ 3 :: R = A ++ tapeL (o' :: os) ∧
+      znttLogic.Reach (hdR QNTT.ODH A (tapeL (o :: os))) (hd QNTT.WI0 X (3 :: R)) := by
+  subst ho'
+  obtain ⟨n, hn⟩ : ∃ n, o.r = n + 1 := ⟨o.r - 1, by have := hO.d; omega⟩
+  obtain ⟨m, hm'⟩ : ∃ m, o.m = m + 1 := ⟨o.m - 1, by omega⟩
+  have hd : o.d = n := by have := hO.d; omega
+  have h := odRecCarryInc A o.F o.O o.Pf o.acc o.E n o.z o.k m (sepRest os) hO.k hA hO.hF hO.acc hO.E
+    (sepRest_sym4 os hos)
+  have e : tapeL (o :: os) = [o.F, o.O, o.Pf] ++ 1 :: (o.acc ++ 1 :: (o.E ++ 1 :: (List.replicate (n + 1) 3 ++
+      1 :: (winStr o.z o.k (m + 1) ++ sepRest os)))) := by
+    simp [tapeL, ORec.tape, therm, hd, hn, hm']
+  rw [e]
+  refine ⟨_, _, ?_, h⟩
+  simp [tapeL, ORec.tape, therm, winStr, hn, hm', List.replicate_succ']
+
+def ORec.reset (o : ORec) : ORec := { o with d := 0, z := 0, k := 1, m := o.z + o.k - 1 }
+
+theorem odoCarryN (o o2 : ORec) (os2 : List ORec) (A : List Nat) (hO : o.Ok) (hos : ∀ x ∈ o2 :: os2, x.Ok)
+    (hA : Sym4 A) (hc : ¬ o.d + 1 < o.r) (hm : ¬ 1 ≤ o.m) :
+    znttLogic.Reach (hdR QNTT.ODH A (tapeL (o :: o2 :: os2)))
+      (hdR QNTT.ODH (A ++ o.reset.tape ++ [1, 1]) (tapeL (o2 :: os2))) := by
+  obtain ⟨n, hn⟩ : ∃ n, o.r = n + 1 := ⟨o.r - 1, by have := hO.d; omega⟩
+  have hd : o.d = n := by have := hO.d; omega
+  have hm0 : o.m = 0 := by omega
+  have h := odRecCarryNext A o.F o.O o.Pf o.acc o.E n o.z o.k (tapeL (o2 :: os2)) hO.k hA hO.hF hO.acc hO.E
+    (tapeL_sym4 _ hos)
+  have e : tapeL (o :: o2 :: os2) = [o.F, o.O, o.Pf] ++ 1 :: (o.acc ++ 1 :: (o.E ++ 1 :: (List.replicate (n + 1) 3 ++
+      1 :: (winStr o.z o.k 0 ++ 1 :: 1 :: tapeL (o2 :: os2))))) := by
+    simp [tapeL, sepRest, ORec.tape, therm, hd, hn, hm0]
+  rw [e]
+  have e2 : A ++ o.reset.tape ++ [1, 1] = A ++ [o.F, o.O, o.Pf] ++ 1 :: (o.acc ++ 1 :: (o.E ++ 1 :: (3 :: List.replicate n 2 ++
+        1 :: 3 :: List.replicate (o.z + o.k - 1) 2 ++ [1, 1]))) := by
+    simp [ORec.reset, ORec.tape, therm, winStr, hn, List.replicate_succ]
+  rw [e2]
+  exact h
+
+theorem odoCarryE (o : ORec) (A : List Nat) (hO : o.Ok)
+    (hA : Sym4 A) (hc : ¬ o.d + 1 < o.r) (hm : ¬ 1 ≤ o.m) :
+    znttLogic.Reach (hdR QNTT.ODH A (tapeL [o])) (hd QNTT.BEEP (A ++ o.reset.tape) []) := by
+  obtain ⟨n, hn⟩ : ∃ n, o.r = n + 1 := ⟨o.r - 1, by have := hO.d; omega⟩
+  have hd : o.d = n := by have := hO.d; omega
+  have hm0 : o.m = 0 := by omega
+  have h := odRecCarryEnd A o.F o.O o.Pf o.acc o.E n o.z o.k hO.k hA hO.hF hO.acc hO.E
+  have e : tapeL [o] = [o.F, o.O, o.Pf] ++ 1 :: (o.acc ++ 1 :: (o.E ++ 1 :: (List.replicate (n + 1) 3 ++
+      1 :: winStr o.z o.k 0))) := by
+    simp [tapeL, sepRest, ORec.tape, therm, hd, hn, hm0]
+  rw [e]
+  have e2 : A ++ o.reset.tape = A ++ [o.F, o.O, o.Pf] ++ 1 :: (o.acc ++ 1 :: (o.E ++ 1 :: (3 :: List.replicate n 2 ++
+        1 :: 3 :: List.replicate (o.z + o.k - 1) 2))) := by
+    simp [ORec.reset, ORec.tape, therm, winStr, hn, List.replicate_succ]
+  rw [e2]
+  exact h
+
+
+theorem ORec.Ok.reset {o : ORec} (h : o.Ok) : o.reset.Ok :=
+  ⟨h.hF, h.acc, h.E, by have := h.d; simp [ORec.reset]; omega, by simp [ORec.reset]⟩
+
+def resetAll : List ORec → List ORec
+  | [] => []
+  | o :: os => o.reset :: resetAll os
+
+theorem sepRest_resetAll_cons (o : ORec) (os : List ORec) :
+    tapeL (resetAll (o :: os)) = o.reset.tape ++ sepRest (resetAll os) := rfl
+
+theorem odoWalk : ∀ (os : List ORec) (o : ORec) (A : List Nat), (∀ x ∈ o :: os, x.Ok) → Sym4 A →
+    (∀ os', odoStepR (o :: os) = some os' → ∃ X R, X ++ 3 :: R = A ++ tapeL os' ∧
+      znttLogic.Reach (hdR QNTT.ODH A (tapeL (o :: os))) (hd QNTT.WI0 X (3 :: R))) ∧
+    (odoStepR (o :: os) = none →
+      znttLogic.Reach (hdR QNTT.ODH A (tapeL (o :: os))) (hd QNTT.BEEP (A ++ tapeL (resetAll (o :: os))) []))
+  := by
+  intro os
+  induction os with
+  | nil =>
+    intro o A hok hA
+    have hO := hok o (by simp)
+    constructor
+    · intro os' h
+      unfold odoStepR at h
+      by_cases hc : o.d + 1 < o.r
+      · simp [ORec.next, hc] at h; subst h
+        exact odoInc1 o _ [] A hO (by simp) hA hc rfl
+      · by_cases hm : 1 ≤ o.m
+        · simp [ORec.next, hc, hm] at h; subst h
+          exact odoInc2 o _ [] A hO (by simp) hA hc hm rfl
+        · simp [ORec.next, hc, hm, odoStepR] at h
+    · intro h
+      unfold odoStepR at h
+      by_cases hc : o.d + 1 < o.r
+      · simp [ORec.next, hc] at h
+      · by_cases hm : 1 ≤ o.m
+        · simp [ORec.next, hc, hm] at h
+        · have := odoCarryE o A hO hA hc hm
+          simpa [resetAll, tapeL, sepRest] using this
+  | cons o2 os2 ih =>
+    intro o A hok hA
+    have hO := hok o (by simp)
+    have hos : ∀ x ∈ o2 :: os2, x.Ok := fun x hx => hok x (by simp [hx])
+    constructor
+    · intro os' h
+      unfold odoStepR at h
+      by_cases hc : o.d + 1 < o.r
+      · simp [ORec.next, hc] at h; subst h
+        exact odoInc1 o _ (o2 :: os2) A hO hos hA hc rfl
+      · by_cases hm : 1 ≤ o.m
+        · simp [ORec.next, hc, hm] at h; subst h
+          exact odoInc2 o _ (o2 :: os2) A hO hos hA hc hm rfl
+        · simp [ORec.next, hc, hm] at h
+          obtain ⟨l, hl, rfl⟩ := h
+          have hA' : Sym4 (A ++ o.reset.tape ++ [1, 1]) :=
+            (hA.app hO.reset.sym4).app (fun y hy => by simp at hy; rcases hy with rfl | rfl <;> simp [ALL])
+          obtain ⟨X, R, hXR, hr⟩ := (ih o2 _ hos hA').1 l hl
+          refine ⟨X, R, ?_, (odoCarryN o o2 os2 A hO hos hA hc hm).trans hr⟩
+          rw [hXR]
+          have hne : l ≠ [] := by
+            intro hl0; subst hl0
+            cases os2 <;> simp [odoStepR, ORec.next] at hl <;> split at hl <;> simp_all
+          obtain ⟨l1, ls, rfl⟩ := List.exists_cons_of_ne_nil hne
+          simp [tapeL, sepRest, ORec.reset]
+    · intro h
+      unfold odoStepR at h
+      by_cases hc : o.d + 1 < o.r
+      · simp [ORec.next, hc] at h
+      · by_cases hm : 1 ≤ o.m
+        · simp [ORec.next, hc, hm] at h
+        · simp [ORec.next, hc, hm] at h
+          have hA' : Sym4 (A ++ o.reset.tape ++ [1, 1]) :=
+            (hA.app hO.reset.sym4).app (fun y hy => by simp at hy; rcases hy with rfl | rfl <;> simp [ALL])
+          have hr := (ih o2 _ hos hA').2 h
+          have := (odoCarryN o o2 os2 A hO hos hA hc hm).trans hr
+          simpa [resetAll, tapeL, sepRest] using this
+
+
+def ORec.digs (o : ORec) : List (Nat × Nat) := [(o.d, o.r), (o.z + o.k - 1, o.z + o.k + o.m)]
+def digsL (os : List ORec) : List (Nat × Nat) := os.flatMap ORec.digs
+
+theorem odoStepR_digs : ∀ (os os' : List ORec), (∀ x ∈ os, x.Ok) → odoStepR os = some os' →
+    odoNext (digsL os) = some (digsL os') := by
+  intro os
+  induction os with
+  | nil => intro os' _ h; simp [odoStepR] at h
+  | cons o os ih =>
+    intro os' hok h
+    have hO := hok o (by simp)
+    have hd := hO.d
+    have hk := hO.k
+    unfold odoStepR at h
+    by_cases hc : o.d + 1 < o.r
+    · simp [ORec.next, hc] at h; subst h
+      simp [digsL, ORec.digs, odoNext, hc]
+    · by_cases hm : 1 ≤ o.m
+      · simp [ORec.next, hc, hm] at h; subst h
+        have hdr : o.d + 1 = o.r := by omega
+        have h1 : ¬ (o.d + 1 < o.r) := hc
+        have h2 : o.z + o.k - 1 + 1 < o.z + o.k + o.m := by omega
+        have h3 : o.z + (o.k + 1) - 1 = o.z + o.k - 1 + 1 := by omega
+        have h4 : o.z + (o.k + 1) + (o.m - 1) = o.z + o.k + o.m := by omega
+        simp [digsL, ORec.digs, odoNext, h1, h2, h3, h4]
+      · simp [ORec.next, hc, hm] at h
+        obtain ⟨l, hl, rfl⟩ := h
+        have := ih l (fun x hx => hok x (by simp [hx])) hl
+        have hm0 : o.m = 0 := by omega
+        have h1 : ¬ (o.d + 1 < o.r) := hc
+        have h2 : ¬ (o.z + o.k - 1 + 1 < o.z + o.k + o.m) := by omega
+        have h5 : o.z + o.k - 1 + 1 = o.z + o.k := by omega
+        simp [digsL, ORec.digs, ORec.reset, odoNext, h1, h2] at this ⊢
+        simp [h2, this, hm0]
+        omega
+
+
 end ZP.NTT
 
