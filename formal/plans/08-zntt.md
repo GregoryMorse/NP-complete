@@ -388,3 +388,9 @@ Next: `colAdvanceGF`, `colStepNF/OF`, `passLoopF` (parse mid-pass tape via `VR.t
 `loopRun_EF`/`outRec_EF` (every finished record keeps `E = fld len e`), `faGF`, `failSep'`, `faNextF` (mismatch at the first record of the next pass
 → `ODL`, tape `Pm ++ sepRest os`). Next: `odOutF` (convert to `OdOut'`) and `passesRunF`, a `Sem`-free `passesRun` doing the case splits
 (`PassCmp` → `passLoopF`; first-record compare → `faNextF`; otherwise `passStep`).
+
+### `Sem`-free pass loop (done)
+`passStepF` (no `hcmpN`; third disjunct = mismatch at the first record of the next pass → parsable `ODL`), `nxt_EF`, `failA`, `odOutF` and
+`passesRunF`: all passes of one assignment from `RFL` to either `ODL` with `OdOut'` or `SU1` with `SuOut`, needing only structural
+invariants plus `EF` (output `E` is `fld len e`). The semantic condition `Sem` is gone. Next: `assignRunF` (via `odlNext3`) and the assignment
+loop along `odoStepR`, then the correspondence with `evalC`.
