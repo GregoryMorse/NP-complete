@@ -495,4 +495,131 @@ theorem rsEnd (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+theorem sincE (A : List Nat) (Z : List Nat) (hA : NoB A) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd Q.SINC (A ++ [1]) Z)
+      (hdR QConp.W1 (A ++ (1 :: (Z ++ [2]))) []) := by
+  have hV : Valid [NB, Z2] [A, Z] := Valid.cons hA (Valid.cons hZ (Valid.nil _))
+  exact checkTF (env := [A, Z]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem sinc0 (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd Q.SINC (A ++ (1 :: (r ++ [2]))) Z)
+      (hdR QConp.W1 (A ++ (1 :: (r ++ (3 :: Z)))) []) := by
+  have hV : Valid [NB, bits, Z2] [A, r, Z] := Valid.cons hA (Valid.cons hr (Valid.cons hZ (Valid.nil _)))
+  exact checkTF (env := [A, r, Z]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3, .blk 2 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem sinc1 (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd Q.SINC (A ++ (1 :: (r ++ [3]))) Z)
+      (hd Q.SINC (A ++ (1 :: r)) (2 :: Z)) := by
+  have hV : Valid [NB, bits, Z2] [A, r, Z] := Valid.cons hA (Valid.cons hr (Valid.cons hZ (Valid.nil _)))
+  exact checkTT (env := [A, r, Z]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 2, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem jincE (Z : List Nat) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd Q.JINC [1] (Z ++ [1]))
+      (hdR QConp.W1 (1 :: (Z ++ (2 :: [1]))) []) := by
+  have hV : Valid [Z2] [Z] := Valid.cons hZ (Valid.nil _)
+  exact checkTF (env := [Z]) (E := []) (k := 4) hV trivial
+    (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1])
+    (ls' := [.sym 1, .blk 0 .id, .sym 2, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem jinc0 (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd Q.JINC (1 :: (r ++ [2])) (Z ++ [1]))
+      (hdR QConp.W1 (1 :: (r ++ (3 :: (Z ++ [1])))) []) := by
+  have hV : Valid [bits, Z2] [r, Z] := Valid.cons hr (Valid.cons hZ (Valid.nil _))
+  exact checkTF (env := [r, Z]) (E := []) (k := 3) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 2]) (rs := [.blk 1 .id, .sym 1])
+    (ls' := [.sym 1, .blk 0 .id, .sym 3, .blk 1 .id, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+theorem jinc1 (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zconpLogic.Reach (hd Q.JINC (1 :: (r ++ [3])) (Z ++ [1]))
+      (hd Q.JINC (1 :: r) (2 :: (Z ++ [1]))) := by
+  have hV : Valid [bits, Z2] [r, Z] := Valid.cons hr (Valid.cons hZ (Valid.nil _))
+  exact checkTT (env := [r, Z]) (E := []) (k := 1) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 3]) (rs := [.blk 1 .id, .sym 1])
+    (ls' := [.sym 1, .blk 0 .id]) (rs' := [.sym 2, .blk 1 .id, .sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-! ## Blank padding -/
+
+theorem hd_eq' (q : Nat) (A R : List Nat) :
+    hd q A R = ⟨q, stail (sapp A.reverse blank), scons (sapp A.reverse blank 0) (sapp R blank)⟩ := by
+  show (⟨q, stail (sapp (dL [A, R] [.blk 0 .id]) blank),
+    scons (sapp (dL [A, R] [.blk 0 .id]) blank 0) (sapp (dR [A, R] [.blk 1 .id]) blank)⟩ : ZC) = _
+  rw [dW_blk0, dW_blk1]
+
+theorem hdR_eq' (q : Nat) (A R : List Nat) :
+    hdR q A R = ⟨q, sapp A.reverse blank, sapp R blank⟩ := by
+  show (⟨q, sapp (dL [A, R] [.blk 0 .id]) blank, sapp (dR [A, R] [.blk 1 .id]) blank⟩ : ZC) = _
+  rw [dW_blk0, dW_blk1]
+
+theorem sapp_zeros' (g : Nat) : sapp (List.replicate g 0) blank = blank := by
+  induction g with
+  | zero => rfl
+  | succ g ih =>
+    show scons 0 (sapp (List.replicate g 0) blank) = blank
+    rw [ih, scons_blank]
+
+theorem hd_pad (q : Nat) (A R : List Nat) (z : Nat) : hd q A (R ++ List.replicate z 0) = hd q A R := by
+  rw [hd_eq', hd_eq', sapp_append, sapp_zeros']
+
+theorem hdR_pad (q : Nat) (A R : List Nat) (z : Nat) : hdR q A (R ++ List.replicate z 0) = hdR q A R := by
+  rw [hdR_eq', hdR_eq', sapp_append, sapp_zeros']
+
+theorem zeros_eq {l l' : List Nat} (h : ∀ x ∈ l, x = 0) (h' : ∀ x ∈ l', x = 0) (hl : l.length = l'.length) :
+    l = l' := by
+  rw [List.eq_replicate_iff.mpr ⟨rfl, h⟩, List.eq_replicate_iff.mpr ⟨rfl, h'⟩, hl]
+
+/-- Erase to the right: the head ends on `EBs`, over blanks. -/
+theorem eaAll (L F Dw : List Nat) (hL : Sym4 L) (hF : NoB F) (hD : NoB Dw) :
+    ∃ k, zconpLogic.Reach (hdR Q.EAs L (F ++ 0 :: Dw)) (hd Q.EBs (L ++ (List.replicate k 0 ++ [0])) []) := by
+  have h0 : Sym4 (0 :: Dw) := Sym4.cons (by simp [ALL]) hD.sym4
+  have h1 := eaF L F (0 :: Dw) hL hF h0
+  have hL1 : Sym4 (L ++ List.replicate F.length 0) := hL.app (Sym4.rep _ _ (by simp [ALL]))
+  have h2 := eaSep (L ++ List.replicate F.length 0) Dw hL1 hD.sym4
+  have hL2 : Sym4 (L ++ List.replicate F.length 0 ++ [0]) := hL1.app (Sym4.cons (by simp [ALL]) Sym4.nil)
+  cases Dw with
+  | nil =>
+    refine ⟨F.length, h1.trans (h2.trans ((ea2End _ hL2).ofEq rfl (by simp)))⟩
+  | cons x Dw' =>
+    have hx : x ∈ NB := hD x (List.mem_cons_self ..)
+    have hD' : NoB Dw' := fun y hy => hD y (List.mem_cons_of_mem _ hy)
+    have h3 : zconpLogic.Reach (hdR QConp.EAs2 (L ++ List.replicate F.length 0 ++ [0]) (x :: Dw'))
+        (hdR Q.EAs (L ++ List.replicate F.length 0 ++ [0] ++ [0]) Dw') := by
+      by_cases hx1 : x = 1
+      · subst hx1; exact ea2M _ _ hL2 hD'.sym4
+      · exact ea2b _ _ x hL2 hD'.sym4 (by simp [NB] at hx; simp [bits]; omega)
+    have hL3 : Sym4 (L ++ List.replicate F.length 0 ++ [0] ++ [0]) :=
+      hL2.app (Sym4.cons (by simp [ALL]) Sym4.nil)
+    have h4 := eaF _ Dw' [] hL3 hD' Sym4.nil
+    have hL4 : Sym4 (L ++ List.replicate F.length 0 ++ [0] ++ [0] ++ List.replicate Dw'.length 0) :=
+      hL3.app (Sym4.rep _ _ (by simp [ALL]))
+    have h4' : zconpLogic.Reach (hdR Q.EAs (L ++ List.replicate F.length 0 ++ [0] ++ [0]) Dw')
+        (hdR Q.EAs (L ++ List.replicate F.length 0 ++ [0] ++ [0] ++ List.replicate Dw'.length 0) []) := h4.ofEq (by simp) rfl
+    have h5 := eaSep _ [] hL4 Sym4.nil
+    have hL5 : Sym4 (L ++ List.replicate F.length 0 ++ [0] ++ [0] ++ List.replicate Dw'.length 0 ++ [0]) :=
+      hL4.app (Sym4.cons (by simp [ALL]) Sym4.nil)
+    have h6 := ea2End _ hL5
+    have e0 : ∀ q A, hdR q A ([] : List Nat) = hdR q A [0] := fun q A => by
+      simpa using (hdR_pad q A [] 1).symm
+    have h56 := (h5.ofEq (e0 _ _).symm rfl).trans h6
+    refine ⟨F.length + Dw'.length + 2, h1.trans (h2.trans (h3.trans ((h4'.ofEq rfl rfl).trans
+      (h56.ofEq rfl ?_))))⟩
+    congr 1
+    simp only [List.append_assoc]
+    congr 1
+    apply zeros_eq
+    · intro x hx; simp at hx; omega
+    · intro x hx; simp at hx; omega
+    · simp; omega
+
 end ZP.Conp
