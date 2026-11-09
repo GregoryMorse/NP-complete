@@ -12499,5 +12499,100 @@ theorem flags_eq (t N : Nat) (h : t + 2 ≤ N) :
         simp [hk]
 
 
+
+theorem DOk_O {p : Nat} {D : List DG} {es : List Nat} (h : DOk p D es) :
+    ∀ g ∈ D, g.2.2.2.2.2 = 2 ∨ g.2.2.2.2.2 = 3 := by
+  obtain ⟨hl, _, h3⟩ := h
+  intro g hg
+  obtain ⟨i, hi, hgi⟩ := List.getElem_of_mem hg
+  have hi' : i < es.length := by omega
+  exact (h3 i g es[i] (by rw [List.getElem?_eq_getElem hi, hgi]) (List.getElem?_eq_getElem hi')).2.1
+
+theorem pass_setup (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (y0 : VR) (ys : List VR)
+    (hy : mkSL t 0 D es = y0 :: ys) :
+    ColInv p t 0 (D.map fun g => g.2.2.1) (D.map fun g => g.1)
+      (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) []) (y0.curG :: ys.map VR.dec) ∧
+    ValsOk p t (ys.length + 1) (D.map fun g => g.2.2.1) (D.map fun g => g.1)
+      (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) []) ∧
+    VI y0 ∧ (∀ x ∈ ys, VI x) ∧ ys.length + 1 = D.length := by
+  have hlen := hD.1
+  have hp := hD.2.1
+  have hL : (y0 :: ys).length = D.length := by rw [← hy]; exact mkSL_length t 0 D es hlen
+  have hSR := mkSL_startRec p t D es hD
+  rw [hy] at hSR
+  have hSR' : ∀ idx y, (y0 :: ys)[idx]? = some y →
+      StartRec p (if idx = t then 1 else 0) ((D.map fun g => g.2.2.1).getD idx 0) ((D.map fun g => g.1).getD idx 0) y := hSR
+  have hlen2 : (D.map fun g => g.2.2.1).length = (D.map fun g => g.1).length := by simp
+  have hV := valsOk_decRecs p t (D.map fun g => g.2.2.1) (D.map fun g => g.1) hlen2
+  have hn : ys.length + 1 = D.length := by simpa using hL
+  have hN : (D.map fun g => g.2.2.1).length = ys.length + 1 := by rw [List.length_map]; omega
+  rw [hN] at hV
+  have hI := startColInv p t (D.map fun g => g.2.2.1) (D.map fun g => g.1)
+    (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) []) (by omega) y0 ys hSR'
+  have hVI : ∀ x ∈ y0 :: ys, VI x := fun x hx => by
+    obtain ⟨i, hlt, hi⟩ := List.getElem_of_mem hx
+    exact (hSR' i x (by rw [List.getElem?_eq_getElem hlt, hi])).1
+  exact ⟨hI, hV, hVI y0 (by simp), fun x hx => hVI x (by simp [hx]), hn⟩
+
+theorem pass_cmp (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (y0 : VR) (ys : List VR)
+    (hy : mkSL t 0 D es = y0 :: ys) :
+    PassCmp ys.length (y0.k - 1) (ys.map VR.dec) ↔ CmpD D.tail es.tail (valsL p t D).tail := by
+  obtain ⟨hI, hV, hvy0, hvys, hn⟩ := pass_setup p t D es hD y0 ys hy
+  have hp := hD.2.1
+  have hr : y0.k - 1 = y0.curG.k - 1 := by rw [curG_k y0 hvy0]
+  rw [passCmp_iff p t (ys.length + 1) _ _ _ (by omega) hV ys.length 0 y0.curG (ys.map VR.dec) _ (by simp) (by omega) hI hr]
+  obtain ⟨g, gs, rfl⟩ : ∃ g gs, D = g :: gs := by
+    cases D with
+    | nil => simp at hn
+    | cons a b => exact ⟨a, b, rfl⟩
+  obtain ⟨e, es2, rfl⟩ : ∃ e es2, es = e :: es2 := by
+    cases es with
+    | nil => have := hD.1; simp at this
+    | cons a b => exact ⟨a, b, rfl⟩
+  have hys : ys = mkSL t 1 gs es2 := by
+    simp only [mkSL] at hy; exact (List.cons.inj hy).2.symm
+  have hw := DOk_w hD
+  have hvl : (List.range ys.length).map (fun i => (valsAux t p 0 (decRecs ((g :: gs).map fun g => g.2.2.1)
+      ((g :: gs).map fun g => g.1)) []).getD (0 + i + 1) 0) = (valsL p t (g :: gs)).tail := by
+    unfold valsL
+    have : (g :: gs).length = ys.length + 1 := hn.symm
+    rw [this, List.range_succ_eq_map]
+    simp only [List.map_cons, List.tail_cons, List.map_map]
+    apply List.map_congr_left; intro i _; simp only [Function.comp]; congr 1; omega
+  rw [hvl, hys]
+  have hcl : gs.length = es2.length := by have := hD.1; simpa using this
+  have := cmpE_mkSL p t 1 gs es2 (valsL p t (g :: gs)).tail
+    (fun x hx => ⟨hw.1 x (by simp [hx]), DOk_O hD x (by simp [hx])⟩) (fun x hx => hw.2 x (by simp [hx])) (fun v hv => valsL_lt p t _ (by omega) v (List.mem_of_mem_tail hv)) hp hcl
+  simpa using this
+
+
+theorem pass_sum (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (y0 : VR) (ys : List VR)
+    (hy : mkSL t 0 D es = y0 :: ys) (S : Nat) (hS : 1 ≤ S) :
+    (passPOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).1 =
+      SumOD D (valsL p t D) % S := by
+  obtain ⟨hI, hV, hvy0, hvys, hn⟩ := pass_setup p t D es hD y0 ys hy
+  have hp := hD.2.1
+  have hr : y0.k - 1 = y0.curG.k - 1 := by rw [curG_k y0 hvy0]
+  have hm0 : y0.curG.m = 0 := by rw [(dg_curG y0).2]; exact hvy0.2
+  have hvs0 : ∀ x ∈ ys.map VR.dec, x.m = 0 := by
+    intro x hx
+    simp only [List.mem_map] at hx
+    obtain ⟨z, hz, rfl⟩ := hx
+    rw [(dg_dec z).2]; exact (hvys z hz).2
+  rw [passPOf_val _ _ _ _ _ _ (by simpa using hS)]
+  have := passCs_sum p t (ys.length + 1) _ _ _ (by omega) hV ys.length 0 y0.curG (ys.map VR.dec) (y0.k - 1)
+    (y0.w - y0.k) (0, S) (by simp) (by omega) hI hr hm0 hvs0
+  rw [this]
+  have e2 : ((y0.curG :: ys.map VR.dec).map VR.dg) = D := by
+    rw [← mkSL_dg t 0 D es hD.1, hy]
+    simp [dg_curG, List.map_map, Function.comp_def, (dg_dec _).1]
+  rw [e2]
+  have e3 : (List.range (ys.length + 1)).map (fun i => (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1)
+      (D.map fun g => g.1)) []).getD (0 + i) 0) = valsL p t D := by
+    unfold valsL; rw [← hn]; simp
+  rw [e3]
+  simp
+
+
 end ZP.NTT
 

@@ -476,3 +476,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: compare side of a pass
 `fld_cmp` (E register `fld p (e+1)` matches node value `v` iff `e = v`), `CmpD`, `cmpE_mkSL`, `valsL` (+ bounds), `esN_lt`, `flags_eq`. Remaining for `foks_step`: assemble compare / S sum (`passPOf_val`) / `hcm` / `passNext` into the one-pass equivalence.
+
+### Stage note: pass facts in digit terms
+`pass_setup`, `pass_cmp` (`PassCmp ↔ CmpD` on the tails), `pass_sum` (`passPOf.1 = SumOD D vl % S`). Remaining: `foks_step` assembling these with `passNext` and the `hcm` clause.
