@@ -66,5 +66,5 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [x] 05 Z_GI (`ZP.zgiQuasihalts_iff_sentence`, `zgi_quasihalts_iff_InP`; axioms checked, `lake comparator` not run here: no `bwrap`)
 - [ ] 07 Z_MUL (branch `lean-n3-p07`; the capacity obstruction is resolved, see the plan's last status section)
 - [x] 08 Z_NTT (`ZP.zntt_quasihalts_iff_sentence`, hypothesis `PrimeEx`; comparator-checked)
-- [ ] 09 twin primes (`ZP.twin_quasihalts_iff`; table generated)
+- [x] 09 twin primes (`ZP.twin_quasihalts_iff`, proved)
 - [ ] 10 Z_coNP (`ZP.zconp_quasihalts_iff_sentence`; table, logic, certificate and `zcBase` done)

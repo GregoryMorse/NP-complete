@@ -117,7 +117,7 @@ and R as `1^j 0 1^(r-1-j)` (or `1^r` between walks), so each scanner lemma appli
 
 ## Checklist
 
-- [ ] `DefsTwin`, `ChecksTwin` (table length, primes, first two beeps)
-- [ ] `TwinTM`: `zc`, `Reach`/`Seg`, step and scanner lemmas
-- [ ] `TwinRound`: walk step, walk, check/fail/pass/beep, `round`, `cand`, `twin_iff`, `start`
-- [ ] `MainTwin`: `MacroSimB`, `twin_quasihalts_iff`; Challenge/Solution/comparator
+- [x] `DefsTwin`, `ChecksTwin` (table length, primes; first-two-beeps check not done)
+- [x] `TwinTM`: stream zipper (`BZ`, `TM.zrun`, `zconf`) as in `Zip.lean`
+- [x] `TwinRound`: walk step, walk, check/fail/pass/beep, `roundFail/Pass`, `trial`, `cand`, `twin_iff`, `start`
+- [x] `MainTwin`: `MacroSimB`, `twinQuasihalts_iff`; Challenge/Solution/comparator (DONE, 2026-11)

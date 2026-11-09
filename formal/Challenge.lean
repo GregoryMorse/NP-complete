@@ -9,6 +9,8 @@ public import ZP.DefsD
 public import ZP.DefsG
 public import ZP.DefsNTT
 public import ZP.TableNTT
+public import ZP.DefsTwin
+public import ZP.TableTwin
 
 public section
 
@@ -48,4 +50,8 @@ theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.Sent
 /-- Z_NTT: the prime `1 + n i` is supplied by the hypothesis `PrimeEx` (Dirichlet for `≡ 1 mod n`). -/
 theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
     ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN := by
+  sorry
+
+/-- The 19-state twin-prime beeper: it quasihalts iff there are finitely many twin primes. -/
+theorem ZP.twin_quasihalts_iff : ZP.Quasihalts ZP.twinMachine ↔ ¬ ZP.TwinPrimes := by
   sorry

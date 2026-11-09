@@ -38,6 +38,11 @@ public import ZP.CompilePP
 public import ZP.CompileConp
 public import ZP.ExtChecksConp
 public import ZP.TableTwin
+public import ZP.DefsTwin
+public import ZP.ChecksTwin
+public import ZP.TwinTM
+public import ZP.TwinRound
+public import ZP.MainTwin
 public import ZP.Count
 public import ZP.PairPP
 public import ZP.MainPP
