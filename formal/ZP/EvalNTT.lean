@@ -12004,5 +12004,106 @@ theorem evalC_eq (n p : Nat) (recs : List Rec) :
   rfl
 
 
+
+/-- Start record of a pass: digit signature, pass flag `x`, E-register value `e`. -/
+def mkStart (g : DG) (x e : Nat) : VR :=
+  { F := 2, O := g.2.2.2.2.2, P := x, w := g.2.2.2.2.1, k := if x = 3 then 2 else 1,
+    E := fld g.2.2.2.2.1 (e + 1), m := 0, n := g.1, s := g.2.1, a := 0, c := g.2.2.1, t := g.2.2.2.1 }
+
+theorem vrD_mkStart (g : DG) (x : Nat) (hw : 2 ≤ g.2.2.2.2.1) : vrD g x = mkStart g x 1 := by
+  unfold vrD mkStart fld
+  obtain ⟨u, hu⟩ : ∃ u, g.2.2.2.2.1 = u + 2 := ⟨g.2.2.2.2.1 - 2, by omega⟩
+  rw [hu]; simp [List.replicate_succ]
+
+theorem mkStart_ok (g : DG) (x e : Nat) (hx : x = 2 ∨ x = 3) (hO : g.2.2.2.2.2 = 2 ∨ g.2.2.2.2.2 = 3)
+    (hw : 2 ≤ g.2.2.2.2.1) (he : e + 1 ≤ g.2.2.2.2.1) : (mkStart g x e).Ok := by
+  refine { F := ?_, O := ?_, P := ?_, k1 := ?_, kw := ?_, E := ?_, Elen := ?_, Elw := ?_ } <;>
+    simp only [mkStart]
+  · simp
+  · rcases hO with h | h <;> simp [h]
+  · rcases hx with h | h <;> simp [h]
+  · split <;> omega
+  · split <;> omega
+  · exact fld_bits _ _
+  · rw [fld_len _ _ he]; exact hw
+  · rw [fld_len _ _ he]
+
+
+def fl (t i : Nat) : Nat := if i = t then 3 else 2
+
+def mkSL (t : Nat) : Nat → List DG → List Nat → List VR
+  | i, g :: gs, e :: es => mkStart g (fl t i) e :: mkSL t (i + 1) gs es
+  | _, _, _ => []
+
+/-- Well-formedness of the digit signatures and E values of a pass. -/
+def DOk (p : Nat) (D : List DG) (es : List Nat) : Prop :=
+  D.length = es.length ∧ 2 ≤ p ∧ ∀ (i : Nat) (g : DG) (e : Nat), D[i]? = some g → es[i]? = some e →
+    g.2.2.2.2.1 = p ∧ (g.2.2.2.2.2 = 2 ∨ g.2.2.2.2.2 = 3) ∧ e < p
+
+theorem mkSL_length : ∀ (t i : Nat) (D : List DG) (es : List Nat), D.length = es.length →
+    (mkSL t i D es).length = D.length
+  | t, i, [], [], _ => rfl
+  | t, i, [], _ :: _, h => by simp at h
+  | t, i, _ :: _, [], h => by simp at h
+  | t, i, g :: gs, e :: es, h => by simp [mkSL, mkSL_length t (i + 1) gs es (by simpa using h)]
+
+theorem mkSL_get : ∀ (t i : Nat) (D : List DG) (es : List Nat) (idx : Nat) (y : VR),
+    (mkSL t i D es)[idx]? = some y → ∃ g e, D[idx]? = some g ∧ es[idx]? = some e ∧ y = mkStart g (fl t (i + idx)) e
+  | t, i, [], _, idx, y, h => by simp [mkSL] at h
+  | t, i, _ :: _, [], idx, y, h => by simp [mkSL] at h
+  | t, i, g :: gs, e :: es, 0, y, h => by
+    simp [mkSL] at h
+    exact ⟨g, e, by simp, by simp, by simp [← h]⟩
+  | t, i, g :: gs, e :: es, idx + 1, y, h => by
+    simp only [mkSL, List.getElem?_cons_succ] at h
+    obtain ⟨g', e', h1, h2, h3⟩ := mkSL_get t (i + 1) gs es idx y h
+    exact ⟨g', e', by simpa using h1, by simpa using h2, by rw [h3]; congr 2; omega⟩
+
+theorem mkStart_start (p : Nat) (g : DG) (x e : Nat) (hx : x = 2 ∨ x = 3) (hO : g.2.2.2.2.2 = 2 ∨ g.2.2.2.2.2 = 3)
+    (hw : g.2.2.2.2.1 = p) (hp : 2 ≤ p) (he : e < p) :
+    StartRec p (if x = 3 then 1 else 0) g.2.2.1 g.1 (mkStart g x e) := by
+  refine ⟨⟨mkStart_ok g x e hx hO (by omega) (by omega), rfl⟩, hw, rfl, rfl, by simp [mkStart], ?_⟩
+  simp only [mkStart]; split <;> simp_all
+
+theorem mkSL_startRec (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) :
+    ∀ idx y, (mkSL t 0 D es)[idx]? = some y →
+      StartRec p (if idx = t then 1 else 0) ((D.map fun g => g.2.2.1).getD idx 0) ((D.map fun g => g.1).getD idx 0) y := by
+  intro idx y hy
+  obtain ⟨g, e, h1, h2, rfl⟩ := mkSL_get t 0 D es idx y hy
+  obtain ⟨hw, hO, he⟩ := hD.2.2 idx g e h1 h2
+  have hx : fl t (0 + idx) = 2 ∨ fl t (0 + idx) = 3 := by unfold fl; split <;> simp
+  have := mkStart_start p g (fl t (0 + idx)) e hx hO hw hD.2.1 he
+  have e1 : (D.map fun g => g.2.2.1).getD idx 0 = g.2.2.1 := by simp [List.getD_eq_getElem?_getD, h1]
+  have e2 : (D.map fun g => g.1).getD idx 0 = g.1 := by simp [List.getD_eq_getElem?_getD, h1]
+  rw [e1, e2]
+  unfold fl at this ⊢
+  simpa using this
+
+
+/-- Full success of the remaining passes, from the semantic description of the start records. -/
+def FOkS (m n : Nat) (D : List DG) (es : List Nat) (t : Nat) (L : List Nat) (S : Nat) : Prop :=
+  match mkSL t 0 D es with
+  | [] => False
+  | y0 :: ys => FOk m n y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) t L
+
+theorem mkSL_init : ∀ (i : Nat) (gs : List DG), (∀ g ∈ gs, 2 ≤ g.2.2.2.2.1) →
+    mkSL 0 (i + 1) gs (List.replicate gs.length 1) = gs.map fun x => vrD x 2
+  | i, [], _ => rfl
+  | i, g :: gs, h => by
+    simp only [List.length_cons, List.replicate_succ, mkSL, List.map_cons]
+    rw [mkSL_init (i + 1) gs (fun x hx => h x (by simp [hx])), vrD_mkStart g 2 (h g (by simp))]
+    simp [fl]
+
+theorem AOkD_eq (m n : Nat) (D : List DG) (s : Nat) (hw : ∀ g ∈ D, 2 ≤ g.2.2.2.2.1) :
+    AOkD m n D s ↔ FOkS m n D (List.replicate D.length 1) 0 (List.replicate n 2) s := by
+  cases D with
+  | nil => simp [AOkD, FOkS, mkSL]
+  | cons g gs =>
+    have h1 := mkSL_init 0 gs (fun x hx => hw x (by simp [hx]))
+    have h0 : vrD g 3 = mkStart g 3 1 := vrD_mkStart g 3 (hw g (by simp))
+    simp only [AOkD, FOkS, List.length_cons, List.replicate_succ, mkSL, h1]
+    simp only [fl, if_true, h0]
+
+
 end ZP.NTT
 

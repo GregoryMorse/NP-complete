@@ -461,3 +461,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: reference side as a chain
 `valsOk_decRecs` (node values = `valsAux` satisfy `ValsOk`), `evalFrom`/`evalC_eq` (`evalC` as a chain of `evalPass` steps from pass `t`). Next: the one-pass transfer (`FOk (m+1) …` ↔ compare ∧ sum check ∧ `FOk m …` on the updated E list) and induction on `m`.
+
+### Stage note: semantic start records
+`mkStart g x e` (digit signature, pass flag, E value `e`), `mkSL`, `DOk`, `mkSL_startRec` (they are `StartRec`s), `FOkS` (`FOk` stated on `(D, es, t)`), `AOkD_eq` (`AOkD ↔ FOkS … t=0, es = 1…`). Next: `foks_step` — one pass of `FOkS (m+1)` ⇔ compare ∧ S check ∧ `FOkS m` with `es'`.
