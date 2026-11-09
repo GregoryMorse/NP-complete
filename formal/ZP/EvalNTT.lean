@@ -7201,5 +7201,20 @@ theorem toRc_ps_vr (o : ORec) (x : Nat) (hk : 1 ≤ o.k) (hacc : 2 ≤ o.acc.len
   simp [therm]
 
 
+def BrOk (p : ORec × Nat) : Prop := 1 ≤ p.1.k ∧ 2 ≤ p.1.acc.length ∧ p.2 ∈ [2, 3] ∧ p.1.d + 1 ≤ p.1.r
+
+theorem tailP_vr : ∀ l : List (ORec × Nat), (∀ p ∈ l, BrOk p) →
+    tailP (l.map fun p => p.1.toRc p.2) = tailVR (l.map fun p => p.1.vr p.2)
+  | [], _ => by simp [tailP, tailVR]
+  | p :: l, h => by
+    have hp := h p (by simp)
+    have := toRc_ps_vr p.1 p.2 hp.1 hp.2.1 hp.2.2.1 hp.2.2.2
+    have ih := tailP_vr l (fun q hq => h q (by simp [hq]))
+    simp only [List.map_cons, tailP, tailVR, List.flatten_cons]
+    simp only [tailVR] at ih
+    rw [ih, ← this]
+    rfl
+
+
 end ZP.NTT
 
