@@ -485,3 +485,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: `foks_base`
 `foks_base`: last pass `FOkS 0 n D es t L S ⇔ CmpD ∧ Σ val·digit ≢ 0 (mod S)`. With `foks_step` this reduces `AOkD` to a chain of semantic passes; next is the induction over `m` against `evalFrom` and the node values of pass `t+1`.
+
+### Stage note: index forms for the chain
+`cmpD_iff`, `valsL_head` (node value of record 0 is `[t=0]`), `sumOD_idx` (S sum as a sum over the last `n` records), `foldl_add_sum`, `sum_map_mod`. Next: `evalPass` characterised in the same terms, then the induction over `m`.

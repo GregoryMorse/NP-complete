@@ -12742,5 +12742,76 @@ theorem foks_base (p t n : Nat) (D : List DG) (es : List Nat) (L : List Nat) (S 
   rfl
 
 
+
+theorem cmpD_iff : ∀ (D : List DG) (es vl : List Nat), D.length = es.length → D.length = vl.length →
+    (CmpD D es vl ↔ ∀ (i : Nat) (g : DG), D[i]? = some g → g.2.2.2.2.2 = 3 → es.getD i 0 = vl.getD i 0)
+  | [], [], [], _, _ => by simp [CmpD]
+  | [], _ :: _, _, h, _ => by simp at h
+  | _ :: _, [], _, h, _ => by simp at h
+  | _ :: _, _ :: _, [], _, h => by simp at h
+  | g :: gs, e :: es, v :: vl, h1, h2 => by
+    have ih := cmpD_iff gs es vl (by simpa using h1) (by simpa using h2)
+    simp only [CmpD, ih]
+    constructor
+    · rintro ⟨a, b⟩ i g' hg' hO
+      cases i with
+      | zero => simp at hg'; subst hg'; simpa using a hO
+      | succ i => simpa using b i g' (by simpa using hg') hO
+    · intro h
+      refine ⟨fun hO => by simpa using h 0 g (by simp) hO, fun i g' hg' hO => ?_⟩
+      simpa using h (i + 1) g' (by simpa using hg') hO
+
+theorem valsL_head (p t : Nat) (g : DG) (gs : List DG) (hp : 2 ≤ p) :
+    (valsL p t (g :: gs)).head? = some (if t = 0 then 1 else 0) := by
+  have hlen2 : ((g :: gs).map fun g => g.2.2.1).length = ((g :: gs).map fun g => g.1).length := by simp
+  have := valsOk_decRecs p t ((g :: gs).map fun g => g.2.2.1) ((g :: gs).map fun g => g.1) hlen2 0 (by simp)
+  unfold valsL
+  rw [List.length_cons, List.range_succ_eq_map, List.map_cons, List.head?_cons]
+  congr 1
+  rw [this]
+  have hz : ptrVal (ptrOf (((g :: gs).map fun g => g.2.2.1).getD 0 0)) 0 (((g :: gs).map fun g => g.1).getD 0 0)
+      (valsAux t p 0 (decRecs ((g :: gs).map fun g => g.2.2.1) ((g :: gs).map fun g => g.1)) []) = 0 := by
+    unfold ptrVal; cases ptrOf (((g :: gs).map fun g => g.2.2.1).getD 0 0) <;> simp
+  rw [hz]
+  by_cases ht : t = 0
+  · subst ht; simp; exact Nat.mod_eq_of_lt (by omega)
+  · simp [ht, Ne.symm ht]
+
+
+theorem foldl_add_sum (l : List Nat) : ∀ acc, l.foldl (· + ·) acc = acc + l.sum := by
+  induction l with
+  | nil => intro acc; simp
+  | cons x xs ih => intro acc; simp [ih]; omega
+
+theorem sum_map_mod (p : Nat) (l : List Nat) : (l.map (· % p)).sum % p = l.sum % p := by
+  induction l with
+  | nil => simp
+  | cons x xs ih => simp [List.sum_cons, Nat.add_mod, ih]
+
+theorem sumOD_idx : ∀ (a b : Nat) (D : List DG) (vl : List Nat),
+    D.map (fun g => g.2.2.2.2.2) = List.replicate a 2 ++ List.replicate b 3 → D.length = vl.length →
+    SumOD D vl = ((List.range b).map fun k => vl.getD (a + k) 0 * (D.map fun g => g.1).getD (a + k) 0).sum
+  | a + 1, b, [], vl, h, _ => by simp at h
+  | a + 1, b, g :: gs, [], h, hl => by simp at hl
+  | a + 1, b, g :: gs, v :: vl, h, hl => by
+    simp only [List.map_cons, List.replicate_succ, List.cons_append, List.cons.injEq] at h
+    have ih := sumOD_idx a b gs vl h.2 (by simpa using hl)
+    simp only [SumOD, h.1, if_true, Nat.zero_add, ih]
+    congr 1
+    apply List.map_congr_left; intro k _
+    rw [Nat.add_right_comm a 1 k]; simp
+  | 0, 0, D, vl, h, hl => by
+    cases D <;> cases vl <;> simp_all [SumOD]
+  | 0, b + 1, [], vl, h, _ => by simp at h
+  | 0, b + 1, g :: gs, [], h, hl => by simp at hl
+  | 0, b + 1, g :: gs, v :: vl, h, hl => by
+    simp only [Nat.zero_add, List.map_cons, List.replicate_zero, List.nil_append, List.replicate_succ,
+      List.cons.injEq] at h
+    have ih := sumOD_idx 0 b gs vl (by simpa using h.2) (by simpa using hl)
+    simp only [SumOD, h.1, show (3 : Nat) ≠ 2 by decide, if_false, Nat.zero_add] at ih ⊢
+    rw [List.range_succ_eq_map, List.map_cons, List.sum_cons, ih]
+    simp [List.map_map, Function.comp_def, Nat.add_comm 1]
+
+
 end ZP.NTT
 
