@@ -7612,5 +7612,55 @@ theorem odFail (u : List Nat) (hu : GoodW u) (o : ORec) (os : List ORec) (hos : 
   · have := hw.2 h
     simpa using hc.trans this
 
+
+/-- A record list whose flags read `2^j 3 x :: l` splits around the input flag. -/
+theorem flagSplit : ∀ (j : Nat) (pre : List Rc) (l : List Nat), pre.map Rc.Pf = List.replicate j 2 ++ 3 :: l → l ≠ [] →
+    ∃ pre0 r r2 post, pre = pre0 ++ r :: r2 :: post ∧ (∀ x ∈ pre0, x.Pf = 2) ∧ r.Pf = 3 := by
+  intro j
+  induction j with
+  | zero =>
+    intro pre l h hl
+    cases pre with
+    | nil => simp at h
+    | cons r rs =>
+      cases rs with
+      | nil => simp at h; simp [h] at hl
+      | cons r2 post =>
+        simp [List.replicate] at h
+        exact ⟨[], r, r2, post, by simp, by simp, h.1⟩
+  | succ j ih =>
+    intro pre l h hl
+    cases pre with
+    | nil => simp [List.replicate_succ] at h
+    | cons x rs =>
+      simp only [List.replicate_succ, List.map_cons, List.cons_append, List.cons.injEq] at h
+      obtain ⟨hx, h'⟩ := h
+      obtain ⟨pre0, r, r2, post, he, h0, h3⟩ := ih rs l h' hl
+      refine ⟨x :: pre0, r, r2, post, by simp [he], ?_, h3⟩
+      intro y hy; simp at hy; rcases hy with rfl | hy
+      · exact hx
+      · exact h0 y hy
+
+
+/-- `SC` after a pass with `S = 0`, given the flag pattern of the finished records. -/
+theorem scStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+    (pre : List Rc) (hpre : ∀ x ∈ pre, x.Ok ∧ x.acc ≠ []) (j : Nat) (l : List Nat)
+    (hfl : pre.map Rc.Pf = List.replicate j 2 ++ 3 :: l) (hl : l ≠ []) :
+    ∃ pre0 r r2 post, pre = pre0 ++ r :: r2 :: post ∧
+      znttLogic.Reach
+        (hd QNTT.SC (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: Q) ++ List.replicate a 3)
+          (3 :: 2 :: (List.replicate b 2 ++ tailB pre)))
+        (hdR QNTT.RZ1 [] (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) ++
+          tailB (pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post))) := by
+  obtain ⟨pre0, r, r2, post, he, h0, h3⟩ := flagSplit j pre l hfl hl
+  refine ⟨pre0, r, r2, post, he, ?_⟩
+  have mem : ∀ x, x ∈ pre0 ∨ x = r ∨ x = r2 ∨ x ∈ post → x ∈ pre := by
+    intro x hx; rw [he]; simpa using hx
+  have := scBridge Wf hW Q a b q hP2 pre0 (fun x hx => ⟨(hpre x (mem x (Or.inl hx))).1, (hpre x (mem x (Or.inl hx))).2, h0 x hx⟩)
+    r r2 (hpre r (mem r (Or.inr (Or.inl rfl)))).1 (hpre r (mem r (Or.inr (Or.inl rfl)))).2 h3
+    (hpre r2 (mem r2 (Or.inr (Or.inr (Or.inl rfl))))).1 post (fun x hx => (hpre x (mem x (Or.inr (Or.inr (Or.inr hx))))).1)
+  rw [he]; exact this
+
 end ZP.NTT
 
