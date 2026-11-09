@@ -338,3 +338,10 @@ Remaining: the induction over passes (`passCycle` + `faNext`, then `lastCycle`),
 `loopRun_m` (finished output records have `m = 0`) and `goodW_pmNext`. `passStep`: one non-final pass is either refuted (`ODL`, tape given in terms of the pure `loopRun`) or reaches the next pass's first cursor `RFL`
 with the tape `Wf 1 (3^q 1 (Q 3^a 3 2 2^b))`, and with `CurInv`, `Ok`, `OutM`, widths and lengths of the next pass established. The only semantic input is `hcmpN` (compare condition of the next pass's first record).
 Remaining: chain `passStep` by induction on `a` into `lastCycle` (needs `Q = Q'' ++ [1]` re-indexing `(a, b) -> (a-1, b+1)`), then the ORec form of the finished records for `odFail`, `PassCmp` = `evaluate`, `PA0` restart, entries.
+
+### Progress: all passes of one assignment (`passesRun`)
+`Sem m ...` (the semantic input: the compare condition `PassCmp` for each of the `m + 1` passes, defined on pure data via `passCsOf`, `passQOf`, `nxtC`, `nxtVs`, `nxtR`, `nxtS`),
+`NnTail`, `TapeOut`, `tapeOut_of`, `nn_eq`, `goodW_shiftNn`.
+`passesRun`: from `RFL` at the first cursor of the first pass, with the counter `Nn = 1^(m+1) 0^b`, the whole run of `m` non-final passes and the last pass either refutes (`ODL`) or succeeds (`SU1`).
+In both cases the tape has the form `u ++ tailB pre'` with `u` a good prefix and `pre'` finished records (`Ok`, nonempty).
+Remaining: show `Sem` from `evaluate` (`PassCmp` = the push-evaluation recursion; power sums); the ORec form of the finished records so that `odFail` applies to the `ODL` outcome; `SU1` -> `PA0` (existing `suOk`) restart; the `RulerNTT` / `PrimeNTT` interface; entries.

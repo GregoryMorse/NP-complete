@@ -8073,7 +8073,7 @@ theorem lastCycle (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (b : Nat)
     (n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s : Nat)
     (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs)
     (hp : 1 ≤ p.2) (hcmp : PassCmp n r vs) (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w) :
-    ∃ (p' : Nat × Nat) (cs : List (VR × Nat × Nat)), (∀ t ∈ cs, t.1.Ok ∧ t.2.1 + 1 + t.2.2 = t.1.w ∧ 2 ≤ t.1.w) ∧
+    ∃ (p' : Nat × Nat) (cs : List (VR × Nat × Nat)), 1 ≤ p'.2 ∧ (∀ t ∈ cs, t.1.Ok ∧ t.2.1 + 1 + t.2.2 = t.1.w ∧ 2 ≤ t.1.w) ∧
       cs.map (fun t => t.1.P) = c.P :: vs.map VR.P ∧
       (∃ lo : LoopOut, loopRun n c vs r s p = lo ∧ cs = lo.cs ++ [(outRec lo.c' lo.r', lo.r', lo.s')] ∧
         p' = outP lo.c' lo.r' lo.p') ∧
@@ -8093,7 +8093,7 @@ theorem lastCycle (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (b : Nat)
     passLast2 Wf hW Q b hP2 n vs c [] p r s hrs hlen hc hvs hom (by intro x hx; simp at hx) hp hcmp hcw hvw
   simp only [List.nil_append] at hpe
   subst hpe
-  refine ⟨p', cs, hcs, hPc, hLo, ?_⟩
+  refine ⟨p', cs, hp', hcs, hPc, hLo, ?_⟩
   have n1 : (1 : Nat) ∈ NB := by simp [NB]
   have n2 : (2 : Nat) ∈ NB := by simp [NB]
   have n3 : (3 : Nat) ∈ NB := by simp [NB]
@@ -8344,6 +8344,151 @@ theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
       simp [nxtC, nxtW, nxtVs, curG_P, dec_P, VR.nextPass, Function.comp_def]
   · left
     exact ⟨k, p'.2, hodl⟩
+
+
+def passCsOf (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) : List (VR × Nat × Nat) :=
+  (loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+    (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]
+
+def passQOf (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) : Nat :=
+  (outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p').2
+
+/-- The semantic input of `m` further passes (the last one included): the compare condition of each pass. -/
+def Sem : Nat → Nat → VR → List VR → Nat → Nat → Nat × Nat → Nat → List Nat → Prop
+  | 0, n, _, vs, r, _, _, _, _ => PassCmp n r vs
+  | m + 1, n, c, vs, r, s, p, j, L =>
+    PassCmp n r vs ∧ ∀ t0 ts, (passCsOf n c vs r s p).zip (List.replicate (j + 1) 2 ++ 3 :: L.tail) = t0 :: ts →
+      ((nxtW t0).O = 3 → ∃ z, 1 ≤ (nxtW t0).k ∧ (nxtW t0).E = fld ((nxtW t0).k + z) (nxtW t0).k) ∧
+      Sem m n (nxtC t0) (nxtVs ts) (nxtR t0) (nxtS t0) (0, passQOf n c vs r s p) (j + 1) L.tail
+
+/-- Tails of the tape for `m` further passes. -/
+def NnTail (m b : Nat) : List Nat := List.replicate (m + 1) 3 ++ List.replicate b 2
+
+/-- Shape of a refuted configuration: a good prefix and the finished records. -/
+def OdlOut (L R : List Nat) : Prop :=
+  ∃ (u : List Nat) (pre' : List Rc), GoodW u ∧ (∀ x ∈ pre', x.Ok) ∧ pre' ≠ [] ∧ L ++ R = u ++ tailB pre'
+
+theorem goodW_shiftNn (Q : List Nat) (a b : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2))) :
+    GoodW (1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := by
+  have := goodW_swap_tail (1 :: (Q ++ List.replicate a 3)).length (1 :: (Q ++ List.replicate a 3)) 3 3
+    (3 :: List.replicate b 2) (2 :: List.replicate b 2) rfl (by simp) (by simp)
+    (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)
+    (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all)
+    (by
+      have e : (1 :: (Q ++ List.replicate a 3)) ++ 3 :: 3 :: List.replicate b 2 =
+          1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) := by
+        simp only [List.replicate_succ, List.cons_append, List.append_assoc, List.nil_append]
+        have key : ∀ (a : Nat) (L : List Nat), List.replicate a 3 ++ 3 :: L = 3 :: (List.replicate a 3 ++ L) := by
+          intro a L; induction a with
+          | zero => simp
+          | succ a ih => simp [List.replicate_succ, ih]
+        rw [key, key]
+      rw [e]; exact hP2)
+  simpa [List.append_assoc] using this
+
+
+def TapeOut (T : List Nat) : Prop :=
+  ∃ (u : List Nat) (pre' : List Rc), GoodW u ∧ (∀ x ∈ pre', x.Ok) ∧ pre' ≠ [] ∧ T = u ++ tailB pre'
+
+theorem tapeOut_of (u : List Nat) (hu : GoodW u) (cs : List (VR × Nat × Nat)) (hcs : ∀ t ∈ cs, t.1.Ok)
+    (hne : cs ≠ []) : TapeOut (u ++ tailB (cs.map fun t => t.1.done t.2.1 t.2.2)) :=
+  ⟨u, _, hu, fun x hx => by
+      simp only [List.mem_map] at hx; obtain ⟨t, ht, rfl⟩ := hx; exact t.1.done_ok (hcs t ht) _ _,
+    by simpa using hne, rfl⟩
+
+theorem nn_eq (a b : Nat) : List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2 = NnTail a (b + 1) := by
+  have key : ∀ (a : Nat) (L : List Nat), List.replicate a 3 ++ 3 :: L = List.replicate (a + 1) 3 ++ L := by
+    intro a L; induction a with
+    | zero => simp
+    | succ a ih => simp [List.replicate_succ, ih]
+  rw [key]; simp [NnTail, List.replicate_succ]
+
+
+/-- All passes of one assignment: the whole run either refutes (`ODL`) or succeeds (`SU1`), with a good prefix and the
+finished records in both cases. -/
+theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
+    ∀ (m b n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s j : Nat) (L : List Nat),
+    GoodW (1 :: ((Q'' ++ [1]) ++ NnTail m b)) →
+    r + 1 + s = c.w → vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → 1 ≤ p.2 → 2 ≤ c.w → (∀ x ∈ vs, 2 ≤ x.w) →
+    c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L → m ≤ L.length → Sem m n c vs r s p j L →
+    (∃ L' R', TapeOut (L' ++ R') ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
+          [] c 0 r s vs) [])
+        (hd QNTT.ODL L' R')) ∨
+    (∃ T, TapeOut T ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
+          [] c 0 r s vs) [])
+        (hdR QNTT.SU1 [] T)) := by
+  intro m
+  induction m with
+  | zero =>
+    intro b n vs c p r s j L hP2 hrs hlen hc hvs hom hp hcw hvw hfl hL hsem
+    have e : (Q'' ++ [1]) ++ NnTail 0 b = Q'' ++ [1] ++ [3] ++ List.replicate b 2 := by simp [NnTail]
+    rw [e] at hP2 ⊢
+    obtain ⟨p', cs, hp', hcs, hPc, hLo, hlast⟩ := lastCycle Wf hW Q'' b hP2 n vs c p r s hrs hlen hc hvs hom hp hsem hcw hvw
+    have hne : cs ≠ [] := by
+      intro h; rw [h] at hPc; simp at hPc
+    have hcs' : ∀ t ∈ cs, t.1.Ok := fun t ht => (hcs t ht).1
+    have hP2' : GoodW (1 :: (Q'' ++ 1 :: 2 :: List.replicate b 2)) := by
+      have := goodW_swap_tail (1 :: (Q'' ++ [1])).length (1 :: (Q'' ++ [1])) 3 2
+        (List.replicate b 2) (List.replicate b 2) rfl (by simp) (by simp)
+        (BitsD.rep b 2 (by simp)) (BitsD.rep b 2 (by simp))
+        (by simpa [List.append_assoc] using hP2)
+      simpa [List.append_assoc] using this
+    rcases hlast with ⟨k, hk, h1⟩ | ⟨hk, h1⟩
+    · right
+      refine ⟨_, ?_, h1⟩
+      have hu := goodW_reg Wf (List.replicate (k + 1) 2 ++ List.replicate p'.2 3) _ hW
+        (bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)))
+        (by intro h; have := congrArg List.length h; simp at this) hP2'
+      have := tapeOut_of _ hu cs hcs' hne
+      simpa [List.append_assoc] using this
+    · left
+      refine ⟨_, _, ?_, h1⟩
+      have hu := goodW_reg Wf (List.replicate p'.2 3) _ hW (BitsD.rep _ 3 (by simp))
+        (by intro h; have := congrArg List.length h; simp at this; omega) hP2'
+      have := tapeOut_of _ hu cs hcs' hne
+      simpa [List.append_assoc] using this
+  | succ a ih =>
+    intro b n vs c p r s j L hP2 hrs hlen hc hvs hom hp hcw hvw hfl hL hsem
+    obtain ⟨y, l', rfl⟩ : ∃ y l', L = y :: l' := by
+      cases L with
+      | nil => simp at hL
+      | cons y l' => exact ⟨y, l', rfl⟩
+    have e : (Q'' ++ [1]) ++ NnTail (a + 1) b = (Q'' ++ [1]) ++ List.replicate (a + 2) 3 ++ List.replicate b 2 := by
+      simp [NnTail, List.append_assoc]
+    rw [e] at hP2 ⊢
+    obtain ⟨hcmp, hsem'⟩ := hsem
+    have hstep := passStep Wf hW (Q'' ++ [1]) a b hP2 n vs c p r s hrs hlen hc hvs hom hp hcmp hcw hvw j y l' hfl
+      (fun t0 ts hz => (hsem' t0 ts (by simpa [passCsOf] using hz)).1)
+    obtain ⟨hcsOk, hst⟩ := hstep
+    rcases hst with ⟨k, q, h1⟩ | ⟨q, t0, ts, hq, hqe, hz, h1, hrs1, hlen1, hc1, hvs1, hom1, hcw1, hvw1, hfl1⟩
+    · left
+      have hP2'' : GoodW (1 :: ((Q'' ++ [1]) ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := goodW_shiftNn _ a b hP2
+      have hu := goodW_reg Wf (List.replicate (k + 1) 2 ++ List.replicate q 3) _ hW
+        (bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)))
+        (by intro h; have := congrArg List.length h; simp at this) (by simpa [List.append_assoc] using hP2'')
+      have hne : ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
+          (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]) ≠ [] := by simp
+      have := tapeOut_of _ hu _ hcsOk hne
+      refine ⟨_, _, ?_, h1⟩
+      simpa [List.append_assoc, List.replicate_succ] using this
+    · have hs2 := (hsem' t0 ts (by simpa [passCsOf] using hz)).2
+      have hP2' : GoodW (1 :: ((Q'' ++ [1]) ++ NnTail a (b + 1))) := by
+        rw [← nn_eq]
+        simpa [List.append_assoc] using goodW_shiftNn (Q'' ++ [1]) a b hP2
+      have hih := ih (b + 1) n (nxtVs ts) (nxtC t0) (0, q) (nxtR t0) (nxtS t0) (j + 1) l' hP2' hrs1 hlen1 hc1 hvs1 hom1
+        hq hcw1 hvw1 (by simpa using hfl1) (by simpa using hL) (by rw [hqe]; exact hs2)
+      have e2 : (Q'' ++ [1]) ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2 = (Q'' ++ [1]) ++ NnTail a (b + 1) := by
+        rw [List.append_assoc, nn_eq]
+      rw [e2] at h1
+      simp only [List.replicate_zero, List.nil_append] at h1 hih
+      rcases hih with ⟨L', R', ho, hr⟩ | ⟨T, ho, hr⟩
+      · exact Or.inl ⟨L', R', ho, h1.trans hr⟩
+      · exact Or.inr ⟨T, ho, h1.trans hr⟩
 
 end ZP.NTT
 
