@@ -89,6 +89,7 @@ public import ZP.CompileNTT
 public import ZP.RulerNTT
 public import ZP.RecordNTT
 public import ZP.EvalNTT
+public import ZP.EvalNTT2
 public import ZP.PrimeNTT
 public import ZP.MainNTT
 public import ZP.DefsMul

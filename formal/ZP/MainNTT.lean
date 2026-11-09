@@ -2,7 +2,7 @@ module
 
 public import ZP.GenStep
 public import ZP.CompileNTT
-public import ZP.EvalNTT
+public import ZP.EvalNTT2
 public import ZP.PrimeNTT
 public import ZP.AbstractNTT
 public import ZP.PairF
