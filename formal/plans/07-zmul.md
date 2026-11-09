@@ -125,3 +125,90 @@ theorem zmul_quasihalts_iff_sentence : Quasihalts zmulMachine ↔ SentenceMul
 Sanity checks reproduce the first refutations of `ref/zmul_ref.py` (`('', '')`, `('0', '')`, `('1','11011')`, `('00','')`),
 including that `J = '1'` is correct on all instances before `'11011'`.
 Everything from §2 on (generated files, fuel, switch loops, interpreter theorem, check) is still to do.
+
+### Status update (generated files and certificate)
+
+- `gen_table.py zmul_native` and `gen_logic.py zmul` (parent: zp2 directly) generate `ZP/TableMul.lean` and `ZP/LogicMul.lean` (169 logical states, 190 slots); the CI loops include them.
+- `ZP/CompileMul.lean`: `zmulCert_ok` and `zmulMacroSimC` build with no sorry.
+- Next: `zmBase` (zp2 minus the 16 extra transitions), the Ext facts, mixed-width fuel, switch loops.
+
+### Status update (zmBase)
+
+- `gen_logic.py basemul` generates `ZP/LogicBaseMul.lean` (`zmBase`: zp2 minus the 75 transitions changed by the derived machines and zmul, with zmul's beep state 36); CI regenerates it.
+- `ZP/ExtChecks.lean`: `zmBase_ext_zmulLogic` (kernel-checked).
+- Note: `zmBase` has a different beep state than `zpBase`, so the zpBase-based lemmas (Fuel, Rot, Interp, Run) must be re-proved or re-derived for `zmBase`; that, the mixed-width fuel, switch loops, the `runMul` theorem and the check are still to do.
+
+### Status update (retargeted interpreter lemmas)
+
+- `ZP/MulRot.lean`, `ZP/MulFuel.lean`, `ZP/MulInterp.lean`: copies of `Rot`, `Fuel`, `Interp` with `zpBase` -> `zmBase`, in namespace `ZP.Mul`. They build; only the two halting peek segments (`segHalt`, `segShort2`) fail on `zmBase` (the peek of `t = 0` entries is what zmul changes) and are removed from the copy.
+- Findings from `zmul` traces (entry `FBACK` on `w d 0`): `w=0,d=0` reaches `ER20`/`DP10` (outcome 0), `w=1,d=0` reaches the new states `mK1/mK2` (output check), `d=1` reaches the switch states (`mRX`, `mPB0`, `mPB`, `mL1`, ...). These three exits are the new segments to prove before `MulRun` (copy of `Run.lean`, whose step uses `segHalt/segShort2`).
+- Next: new halt/switch peek segments, `MulRun` with the queue relation `StorRel`, mixed-width fuel, check.
+
+### Status update (halting peek segments)
+
+- `ZP/MulInterp.lean` now has the halting peeks: `segHalt0`, `segShort1`, `segShort2_0` (outcome 0, `w=d=t=0`; these only use transitions shared with `zp2`, so they are stated for `zmBase` and reach `hdR Q.DP10 [1] W`), and `segHalt1`, `segShort2_1` (outcome 1, `w=1,d=0,t=0`).
+- **Important:** every segment that passes through a transition zmul changes (the `t = 0` peeks `PKT01/PKT11`, the switch, the output check) cannot be proved for `zmBase`; it must be stated for `zmulLogic` and combined with the `zmBase` lemmas through `zmBase_ext_zmulLogic.reach`. So `MulRun` should work with `zmulLogic.Reach`, lifting the `zmBase` pieces (`Rot`, `Fuel`, normal-step segments, `segHalt0`).
+- Exit shape of the outcome-1 halt: `hd FBACK (Qw ++ [2,2,3] ++ 0^g ++ 0 :: (Lw ++ [0])) (1 :: (Rw ++ 1 :: W)) ⟶ hdR mK1 [2] (Rw ++ 1 :: W)`. `Rw` (the guest cells left of the head) is the output, `Lw`/`Qw`/the gap are blanked, and `mK1` starts the multiplication check on `0 Rw M W`.
+- A Python mirror for designing the remaining segments is `formal/scripts/symexec.py` run with `LOGIC=LogicMul LOGICID=zmul`.
+- Still to do: the switch peek and `switchStep` (shift chain, terminator, pop) with `StorRel`, `MulRun`, mixed-width fuel and its build, the `mK*` output check (`mulCheck`), `pair_mainMul`, `MainMul`, Challenge/Solution entries.
+
+### Status update (mixed-width fuel; switch analysis)
+
+- `ZP/MulFuel.lean`: the odometer is now over `List Dg` (`Dg = Nat × Nat`, block width and digit): `FWr`, `valr`, `Dig`, `full`, `rad`, `fuel` (decrement, same width list) and `valr_full : valr (full ds) + 1 = rad ds`. For the zmul fuel take `ds = (0,·) × |J|` followed by `(|s|,·)` (wide block most significant), giving `(|s|+2)·2^|J| - 1`. `borrow`/`fuel` accept a tail that is empty, `M`-led, or blank-led (the blank is the `B` before the storage).
+- **Switch, observed with the concrete simulator** (`peek w 1 0`, start `hd FBACK (Qw ++ [2,3,r0] ++ 0^g ++ 0 :: (Lw ++ [0])) (1 :: Rw ++ 1 :: W ++ 1 :: F)` with `F = FWr ds ++ 0 :: ST`; `ST` = storage text):
+  - storage text is `⋃ over the queue, back first` of `1 :: bitsOf st` (`st` in cell order `h+1, h+2, …`, i.e. `bitsOf Lt`, which is `Lw` reversed);
+  - phase 1 (`mGS`, `mGW`, `mTB`, `mTK`): mark the cell before the head `M` with a marker `M'`; then loop: `mTK` on the leftmost remaining `Lw` cell `a` blanks it, `mC_a` sweeps right to the separator `B`, `mQ*` inserts `a` at the front of `ST` (shift of the whole storage by one, non-identity: needs a list induction), `mRT/mRX/mRT2/mTB` return; iteration `T(a :: Lw', ST') → T(Lw', a :: ST')` (the gap grows by one blank);
+  - phase 2: marker reached (`mCM`): it is erased and `M` inserted at the storage front;
+  - phase 3 (pop): `mPB0` sweeps to the end of `ST`, `mPB` takes the last bit (blanking it), `mL_b`/`mLL_b` carry it left to the last blank cell before the head's `M`, `mBK` returns; at the stack's `M` it is erased (`mE1`) and `RGQ1` returns to `RTW`;
+  - end state `hd RTW (Qw ++ [2,3,r0]) (0^y ++ 0 :: (Lw2 ++ ch2 :: 1 :: …))` with `Lw2 ++ [ch2] = bitsOf front` (`ch2 = 0`, `Lw2 = []` if the front stack is empty), so `post` (rotation) applies to the code `r0 :: true :: false :: rest` as in the normal step.
+- **Capacity condition (open, no counterexample found).** The pop deposits the front stack into the blank run left of the head `M`; if the stack has more bits than that run (`g + |Lt_now| + 3`, where the gap `g` between code and `Lw` depends only on the code, e.g. 7 for `J = 10`, 11 for `1010`, 18 for `1011`, not on `|s|`), `mLL` would sweep over the code and the layout would be destroyed. A hand-built overflow (simulator) does destroy it, so the interpreter theorem needs an invariant "front stack size <= g + |Lt| + 3" along reachable runs. Evidence so far (Python runs of `LogicMul` from a hand-built run-start layout `hdR GC (M M P M) (s M M 1^(|s|+1) (M 1)^|J| B M^|J|)`): the machine outcome equals `ref/zmul_ref.py` on all 7938 pairs `|J| <= 6`, `|s| <= 5`, including 2034 with non-empty pops and stacks up to 19 cells, and no deposit overflowed; random longer `J` (up to 30 bits) with stacks of 16-32 cells agree as well. Random programs reaching stacks of 80-100 cells within 300 guest steps exist (e.g. `J = 1000110111101110110001111`, `s = 0`) but the machine run did not reach their pops within 40M simulated steps, so they are untested. The invariant is neither proved nor refuted. A proof needs to bound stack sizes (tape cells reachable within `clockMul` steps) by `g`, which depends only on the code, and that looks false for adversarial programs; if it is, `Quasihalts zmulMachine <-> SentenceMul` does not follow from `runMul` alone.
+- Remaining (not started): the loops above as Lean lemmas (`ins` induction, outer `Lw` loop, pop loop, `switchStep` with `StorRel` and the capacity invariant), `MulRun`/`runMul` theorem over `zmulLogic.Reach`, the `mK*` check (`mulCheck`), `pair_mainMul`, `MainMul`, Challenge/Solution entries.
+
+### Capacity condition: RESOLVED (it is an invariant, not a machine bug)
+
+The previous note measured `g` only near the start of a run and concluded that it "depends only on the code".
+It does not: the code `Q` drifts left by every rotation, so the gap grows at every guest step, and the cells a
+switch removes from the guest tape stay in the room in front of `H` as blanks. Measure the **room**
+
+    rho := g + |Lw|          (layout  code ++ 0^g ++ 0 :: (Lw ++ [c])  at FBACK / BK2; Lw = bitsOf Lt.reverse)
+
+i.e. the number of cells strictly between the code's right end and `H`, up to the constant 2. Then:
+
+1. **rho never decreases from one guest step to the next.** In Lean terms, with the copied lemmas of `MulInterp`/`MulRun`:
+   - `cdStep` already proves `g' = H.length + g + 1`, so every count-down rotation gives `g ≤ g'`;
+   - `tokens` already proves `g' = a + y + 2`, so `post` gives `y + 2 ≤ g'` (state it as `y + 1 ≤ g'`);
+   - a move left (`segMv0e`, `segMv0c`) passes `y = g` and `Lw2 = Lw ++ [r0]` or `Lw`, so rho grows;
+   - a move right onto a used cell (`segMv1`, `Lw = Lw2 ++ [ch2]`) has `y = g`, `|Lw2| = |Lw| - 1`:
+     `rho' = g' + |Lw| - 1 >= g + 1 + |Lw| - 1 = rho`;
+   - a move right onto a fresh cell (`Lw = []`): the new head cell comes out of the gap, `y + 1 = g`,
+     `rho' = g' >= y + 1 = g = rho`;
+   - a switch keeps the region between code and `H` cell for cell (it only rewrites it), then `post` adds `>= 1`.
+   So the only change to the copied zp2 lemmas is to **replace `∃ g', 1 ≤ g'` by the quantitative bound**
+   (`g ≤ g'` for `cdStep`/`countdown`, `y + 1 ≤ g'` for `tokens`/`post`, and in `peek` the bound that
+   makes `rho' ≥ rho`, i.e. `g + 1 ≤ g'` when the move consumed a cell of `Lw` or of the gap, `g ≤ g'` otherwise;
+   the `1 ≤ g'` facts still follow). These are copies in namespace `ZP.Mul`, so `Run.lean`/`Interp.lean` are untouched.
+2. **Every stack in the queue has length ≤ rho** (`Cap Q rho : ∀ st ∈ Q, st.length ≤ rho`):
+   - at the run start the queue is `|J|` empty stacks;
+   - normal steps do not change the queue and do not decrease rho;
+   - a switch pushes `Lt` (`|Lt| = |Lw| ≤ rho`) and pops the front `F` (`|F| ≤ rho` by the invariant), then rho does not
+     decrease, so `Cap` holds again.
+3. **The pop fits.** Before the pop the region between the code and `H` is `g + |Lt| + 2` cells, all blank
+   (the shift chain moved `Lt` into the storage and erased the head cell). The deposit needs `|F|` cells and a
+   blank separating it from the code, so `|F| ≤ g + |Lt| = rho` is enough. Take this as the hypothesis of
+   `switchStep` and compute the new gap exactly: `y = g + |Lt| + 1 - |F|` (cells are conserved), so
+   `y ≥ 1` and the output layout is the `RTW` layout that `post` takes.
+
+So `MulRun` carries `StorRel Q storage ∧ Cap Q (g + |Lw|)` (plus zp2's `1 ≤ g`) through the induction on the run,
+and `switchStep` takes `F.length ≤ g + Lt.length` as a hypothesis. No change to `native/zmul.py` or the table is needed.
+
+**Evidence** (`formal/scripts/zmulcap/run.py SEED N MAXLEN_J MAXLEN_S`: a C simulator of the logical machine,
+started from the run-start layout and compared with `ref/zmul_ref.correct`). There were 12,800 random pairs with
+506,586 non-empty pops in total, in runs with `|J| ≤ 3, |s| ≤ 60`; `|J| ≤ 4, |s| ≤ 40`; `|J| ≤ 6, |s| ≤ 24`;
+`|J| ≤ 8, |s| ≤ 16`; `|J| ≤ 2, |s| ≤ 20`. Results: no outcome mismatch and no overflow, and every deposited cell
+had at least 20 blanks between it and the code. Over 6,800 of these pairs (99,460 pops), rho was also measured
+at every guest step and never decreased. The earlier test stopped at `|s| ≤ 5`, so it never exercised this.
+Runs with long `J` and `s` that hit the 4·10^9-step cap print `ABNORMAL ... STEPS`; that is the step cap, not an error.
+
+Next (unchanged order): the shift-chain, terminator and pop loops as Lean lemmas, `switchStep` with the hypothesis
+above, `MulRun` (the `runMul` theorem over `zmulLogic.Reach`, carrying `StorRel` and `Cap`), the `mK*` check
+(`mulCheck`), `pair_mainMul`, `MainMul`, Challenge/Solution entries.

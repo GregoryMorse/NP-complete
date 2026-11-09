@@ -44,6 +44,7 @@ TABLES = {
     'zntt_native': ('znttMachine', 'NTT'),
     'twinprime_native': ('twinMachine', 'Twin'),
     'zconp_native': ('zconpMachine', 'Conp'),
+    'zmul_native': ('zmulMachine', 'Mul'),
 }
 
 
