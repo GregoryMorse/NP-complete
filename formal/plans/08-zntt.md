@@ -293,3 +293,7 @@ and the first-record entry `faN/faO` ↔ `curTapeG`), then chain `scPm → passS
 `VR.nextPass`/`VR.doneX`/`done_ps_vr` (a finished record, with the new input flag, passes through `Rc.ps` to the next pass's `VR`).
 For chaining, `passLoop` must additionally expose the invariant `r + 1 + s = c.w` for the `done` records (`r = c.k - 1`,
 `s = c.w - c.k`), then: `scPm` → `passStartAll` on `done` records → `faG'` with `VR.nextPass` records → `passMore`/`passLast`.
+
+### Progress: pass-level wrappers
+`passMore2` / `passLast2` (in `ZP/EvalNTT.lean`) wrap `passMore` / `passLast` over `passLoop2`. They expose the done records `cs`, with `pre' = pre ++ cs.map done`.
+Remaining: chain `scPm` -> `passStartAll` -> `faG'` -> next pass; `PassCmp` semantics and the tie to `evaluate`; compose the failure leaves into the odometer; `PA0` restart; Challenge/Solution entries.
