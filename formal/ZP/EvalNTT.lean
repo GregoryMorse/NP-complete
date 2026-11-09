@@ -7482,5 +7482,81 @@ theorem passLast2 (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (b : Nat)
     exact ⟨sAdv (r' * c'.n) p', _, cs ++ [(({ c' with E := fld c'.E.length (eAdv c'.E.length (r' * c'.n) e) } : VR), r', s')],
       hpo, by simp, by simp [hpe], fun t ht => by simp at ht; rcases ht with ht | rfl; exact hcs t ht; exact ⟨hc'', hrs'⟩, h1.trans (h2.trans (finish _ _ hpo (by simp) (sAdv_pos _ p' hp')))⟩
 
+
+theorem goodW_inv {x : Nat} {l : List Nat} (h : GoodW (x :: l)) :
+    (x ∈ [2, 3] ∧ GoodW l) ∨ (x = 1 ∧ ∃ c w, l = c :: w ∧ c ∈ [2, 3] ∧ GoodW w) := by
+  cases h with
+  | bit hb h' => exact Or.inl ⟨hb, h'⟩
+  | mb hb h' => exact Or.inr ⟨rfl, _, _, rfl, hb, h'⟩
+
+theorem goodW_swap_tail : ∀ (n : Nat) (u : List Nat) (b b' : Nat) (v1 v2 : List Nat), u.length = n →
+    b ∈ [2, 3] → b' ∈ [2, 3] → BitsD v1 → BitsD v2 →
+    GoodW (u ++ b :: v1) → GoodW (u ++ b' :: v2) := by
+  intro n
+  induction n using Nat.strongRecOn with
+  | ind n ih =>
+    intro u b b' v1 v2 hn hb hb' h1 h2 h
+    cases u with
+    | nil => exact GoodW.bit hb' (GoodW.bits h2)
+    | cons x u =>
+      simp only [List.cons_append] at h ⊢
+      rcases goodW_inv h with ⟨hx, h'⟩ | ⟨rfl, c, w, hw, hc, h'⟩
+      · exact GoodW.bit hx (ih u.length (by simp at hn; omega) u b b' v1 v2 rfl hb hb' h1 h2 h')
+      · cases u with
+        | nil =>
+          exact GoodW.mb hb' (GoodW.bits h2)
+        | cons c' u' =>
+          simp only [List.cons_append, List.cons.injEq] at hw
+          obtain ⟨rfl, rfl⟩ := hw
+          exact GoodW.mb hc (ih u'.length (by simp at hn; omega) u' b b' v1 v2 rfl hb hb' h1 h2 h')
+
+
+/-- After a non-final pass with `S = 0` (`p'.1 = 0`): the check `SC` passes, the input flag moves on, and we are back in `RZ1`. -/
+theorem scBridge (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+    (pre0 : List Rc) (hpre0 : ∀ x ∈ pre0, x.Ok ∧ x.acc ≠ [] ∧ x.Pf = 2) (r r2 : Rc) (hr : r.Ok) (hacc : r.acc ≠ [])
+    (h3 : r.Pf = 3) (hr2 : r2.Ok) (post : List Rc) (hpost : ∀ x ∈ post, x.Ok) :
+    znttLogic.Reach
+      (hd QNTT.SC (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: Q) ++ List.replicate a 3)
+        (3 :: 2 :: (List.replicate b 2 ++ tailB (pre0 ++ r :: r2 :: post))))
+      (hdR QNTT.RZ1 [] (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) ++
+        tailB (pre0 ++ { r with Pf := 2 } :: { r2 with Pf := 3 } :: post))) := by
+  have hG : GoodW (1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := by
+    have := goodW_swap_tail (1 :: (Q ++ List.replicate a 3)).length (1 :: (Q ++ List.replicate a 3)) 3 3
+      (3 :: List.replicate b 2) (2 :: List.replicate b 2) rfl (by simp) (by simp)
+      (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all [List.mem_replicate])
+      (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all [List.mem_replicate])
+      (by
+        have e : (1 :: (Q ++ List.replicate a 3)) ++ 3 :: 3 :: List.replicate b 2 =
+            1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) := by
+          simp [List.replicate_succ, List.append_assoc]
+          have key : ∀ (a : Nat) (L : List Nat), List.replicate a 3 ++ 3 :: L = 3 :: (List.replicate a 3 ++ L) := by
+            intro a L; induction a with
+            | zero => simp
+            | succ a ih => simp [List.replicate_succ, ih]
+          rw [key, key]
+        rw [e]; exact hP2)
+    simpa [List.append_assoc] using this
+  have nP := hP2.noB
+  simp only [NoB_cons_iff, NoB_app_iff] at nP
+  have n3 : (3 : Nat) ∈ NB := by simp [NB]
+  have n1 : (1 : Nat) ∈ NB := by simp [NB]
+  have hnX : NoB (Wf ++ 1 :: (List.replicate q 3 ++ 1 :: Q) ++ List.replicate a 3) := by
+    simp only [NoB_cons_iff, NoB_app_iff]
+    exact ⟨⟨hW.noB, n1, noB_rep q 3 (by simp), n1, nP.2.1.1⟩, noB_rep a 3 (by simp)⟩
+  have hsY : Sym4 (3 :: 2 :: (List.replicate b 2 ++ tailB (pre0 ++ r :: r2 :: post))) := by
+    have sT : Sym4 (tailB (pre0 ++ r :: r2 :: post)) := tailB_sym4 _ (fun x hx => by
+      simp only [List.mem_append, List.mem_cons] at hx
+      rcases hx with hx | rfl | rfl | hx
+      · exact (hpre0 x hx).1
+      · exact hr
+      · exact hr2
+      · exact hpost x hx)
+    have s2 : Sym4 (List.replicate b 2) := (BitsD.rep b 2 (by simp)).sym4
+    exact Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) (s2.app sT))
+  have := scPm Wf hW q (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2) hG pre0 hpre0 r r2 hr hacc h3 hr2 post hpost
+    _ _ (by simp [List.append_assoc]) hnX hsY
+  simpa [List.append_assoc] using this
+
 end ZP.NTT
 
