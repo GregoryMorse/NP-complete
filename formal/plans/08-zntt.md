@@ -422,3 +422,7 @@ Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the 
 `Rt` (reflexive-transitive closure), `ORec.at o π d` (record at digits `(π, d)` of a cycle), `head_reach` (a record cycles through all `(π, d)` by `next = inl` steps), `cyc` (a full head cycle plus overflow advances the tail one `odoStepR` step and restores the initial head), and `cover`: from records in initial form, every in-range digit assignment `setD os πs ds` is reachable by `odoStepR` iteration. Remaining: determinism (reachable states precede the terminal one), multi-pass semantics ↔ `evalC`, bridge.
 
 `Rt.det_term`/`odo_all_visited`: the odometer is deterministic, so if it terminates from an initial list every in-range digit assignment lies on the visited path before the terminal state. Remaining: multi-pass semantics ↔ `evalC` (success iff `evalC` on the current digits), then combine with `assignLoop` and `hasCircuit_iff`; bridge.
+
+### Stage: passStepF semantic exposure
+`passStepF` now also exposes the S register value (`OUT.1`) and the compare outcome (the `nextPass` E-check) in each
+of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to tie machine outcomes to `evalC`.
