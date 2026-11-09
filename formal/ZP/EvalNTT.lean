@@ -11407,5 +11407,57 @@ theorem loopVals (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : ValsO
     · have := IH.2
       rw [this]; congr 1; omega
 
+
+theorem eAdv_val (w : Nat) : ∀ (n e : Nat), 1 ≤ e → e ≤ w → 1 ≤ eAdv w n e ∧ eAdv w n e ≤ w ∧
+    eAdv w n e - 1 = (e - 1 + n) % w
+  | 0, e, h1, h2 => by
+    refine ⟨h1, h2, ?_⟩
+    simp [eAdv]; rw [Nat.mod_eq_of_lt (by omega)]
+  | n + 1, e, h1, h2 => by
+    have hb := incK_bounds w e h1 h2
+    obtain ⟨a, b, c⟩ := eAdv_val w n (incK w e) hb.1 hb.2
+    refine ⟨a, b, ?_⟩
+    simp only [eAdv]
+    rw [c, incK_val w e h1 h2, Nat.mod_add_mod]
+    congr 1; omega
+
+theorem sAdv_val : ∀ (n : Nat) (p : Nat × Nat), 1 ≤ p.2 →
+    (sAdv n p).1 + (sAdv n p).2 = p.1 + p.2 ∧ 1 ≤ (sAdv n p).2 ∧
+    (sAdv n p).1 = (p.1 + n) % (p.1 + p.2)
+  | 0, p, h => by
+    refine ⟨rfl, h, ?_⟩
+    simp [sAdv]; rw [Nat.mod_eq_of_lt (by omega)]
+  | n + 1, p, h => by
+    have hn : 1 ≤ (sNext p).2 ∧ (sNext p).1 + (sNext p).2 = p.1 + p.2 := by
+      unfold sNext; split <;> simp <;> omega
+    obtain ⟨a, b, c⟩ := sAdv_val n (sNext p) hn.1
+    simp only [sAdv]
+    refine ⟨by rw [a]; exact hn.2, b, ?_⟩
+    rw [c, hn.2]
+    have : (sNext p).1 = (p.1 + 1) % (p.1 + p.2) := by
+      unfold sNext
+      split
+      · rename_i h2
+        have : p.1 + 1 = p.1 + p.2 := by omega
+        rw [this, Nat.mod_self]
+      · rw [Nat.mod_eq_of_lt (by omega)]
+    rw [this, Nat.mod_add_mod]
+    congr 1; omega
+
+theorem count3_fld' (len e : Nat) (h : e ≤ len) : (fld len e).count 3 = e := by
+  simp [fld, List.count_replicate]
+
+/-- The `E` register of a finished output cursor: value `z * acc` (it was reset to value 0 by `curG`). -/
+theorem outRec_E (c : VR) (r : Nat) (hO : c.O = 3) (hE : c.E = fld c.E.length 1) (hl : 1 ≤ c.E.length) :
+    ∃ e, 1 ≤ e ∧ e ≤ c.E.length ∧ (outRec c r).E = fld c.E.length e ∧ e - 1 = (r * c.n) % c.E.length := by
+  unfold outRec
+  rw [if_neg (by omega)]
+  have hc : c.E.count 3 = 1 := by rw [hE]; exact count3_fld' _ _ hl |>.trans rfl
+  have := eAdv_val c.E.length (r * c.n) 1 (by omega) hl
+  refine ⟨eAdv c.E.length (r * c.n) (c.E.count 3), ?_⟩
+  rw [hc]
+  refine ⟨this.1, this.2.1, rfl, ?_⟩
+  rw [this.2.2]; simp
+
 end ZP.NTT
 

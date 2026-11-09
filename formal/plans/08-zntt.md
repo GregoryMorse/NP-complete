@@ -404,3 +404,6 @@ loop along `odoStepR`, then the correspondence with `evalC`.
 ### Stage: semantics, pass values (`loopVals`)
 `incK_val`/`incKn_val` (the machine's counters are arithmetic mod `w`), `visIter`/`incVisN_val`/`stepN_cons` (r visits add `r * b` to captured records, r increments add `r`), `valsAux_get` (`valsAux` satisfies the node recurrence), `RecI`/`ColInv` (per-column invariant: record `i` holds `[i=t] + chain + ptrVal` mod `p`, pointer digit `π`: `ptrOf π = some (π-2)` for `π ≥ 2`, captured when `c = 1` after `j+1` decrements), `recI_head`/`recI_tail`, and `loopVals`: the finished records of a pass loop have exactly the node values of `valsAux`.
 Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the E-compare / `outRec` / power-sum steps ↔ `evalPass`, chaining passes (`nextPass`), `evalC`, then `hasCircuit`; bridge assembly.
+
+### Stage: semantics, output registers
+`eAdv_val`, `sAdv_val` (the `E` and `S` registers add mod `p`; `S` keeps width and `q ≥ 1`) and `outRec_E` (a finished output cursor's `E` has value `z * acc` mod `len`, since `curG` resets it to value 0). Remaining: entry ORec ↔ `ColInv` (needs `E.length = w`), compare ↔ `evalPass`'s `all`, power-sum check ↔ `E'` sum, pass chaining, `evalC`, `hasCircuit`; bridge.
