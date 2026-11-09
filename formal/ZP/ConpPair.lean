@@ -1036,4 +1036,71 @@ theorem dPhase (Jb Sb : List Bool) (t : Nat) (ht : t ∈ bits) (htt : t = 2 ∨ 
         hdR_pad Q.EAs _ [1] 1
       exact hx.trans (h1.trans (h2.ofEq e rfl))
 
+/-! ## One pair -/
+
+def layC (J S : Nat) : ZC := ⟨QConp.W1, sapp (layWord J S).reverse blank, blank⟩
+
+theorem layC_hdR (J S : Nat) :
+    layC J S = hdR QConp.W1 (1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))) [] := by
+  rw [hdR_eq']
+  simp only [layC, layWord, sapp]
+
+theorem pair_mainConp (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
+    ∃ n, 0 < n ∧
+      ((¬ ¬ CorrectConp J S → zconpLogic.zrun n (layC J S) =
+          some (layC (absStepC CorrectConp (J, S)).1 (absStepC CorrectConp (J, S)).2)) ∧
+       (¬ CorrectConp J S → ∃ a c1 c2, a < n ∧ zconpLogic.zrun a (layC J S) = some c1 ∧
+          c1.q = zconpLogic.beep ∧ zconpLogic.zstep c1 = some c2 ∧
+          zconpLogic.zrun (n - a - 1) c2 =
+            some (layC (absStepC CorrectConp (J, S)).1 (absStepC CorrectConp (J, S)).2))) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  obtain ⟨t, ht, h3, h2, hV⟩ := vPhase (bitsOf (str J)) hj (str S)
+  have hA0 : zconpLogic.Reach1 (layC J S)
+      (hdR Q.GRB (1 :: ((bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ [1])) ++ [1])) []) := by
+    rw [layC_hdR]
+    refine ReachPos ((w1Start (bitsOf (str J)) (bitsOf (str S)) hj hs).ofEq rfl (by simp)) ?_
+    show QConp.W1 ≠ Q.GRB
+    decide
+  have hA1 := hA0.trans hV
+  have htt : t = 2 ∨ t = 3 := by
+    by_cases hb : runND (str S) [] ((str S).length + 1)
+    · exact Or.inr (h3 hb)
+    · exact Or.inl (h2 hb)
+  have hcorr : CorrectConp J S ↔ (runND (str J) (str S) (clock (str J) (str S)) ↔ t = 2) := by
+    unfold CorrectConp inLC
+    by_cases hb : runND (str S) [] ((str S).length + 1)
+    · have : t = 3 := h3 hb
+      simp [hb, this]
+    · have : t = 2 := h2 hb
+      simp [hb, this]
+  obtain ⟨hAdv, hBad⟩ := dPhase (str J) (str S) t ht htt
+  obtain ⟨rS, hrS⟩ := numR_surj S hS
+  obtain ⟨rJ, hrJ⟩ := numR_surj J hJ
+  have eS : str S = rS.reverse := by rw [← hrS, str_numR]
+  have eS1 : str (S + 1) = (incR rS).reverse := by rw [← hrS, ← numR_inc, str_numR]
+  have eJ : str J = rJ.reverse := by rw [← hrJ, str_numR]
+  have eJ1 : str (J + 1) = (incR rJ).reverse := by rw [← hrJ, ← numR_inc, str_numR]
+  by_cases hc : CorrectConp J S
+  · have e : absStepC CorrectConp (J, S) = (J, S + 1) := absStepC_pos hc
+    rw [e]
+    have hok := hAdv (hcorr.mp hc)
+    have hinc := sincL (1 :: bitsOf (str J)) (NoB.cons one_nb hj.noB) rS 0
+    have hinc' : zconpLogic.Reach (hd Q.SINC (1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))) [])
+        (layC J (S + 1)) :=
+      hinc.ofEq (by rw [eS]; simp) (by rw [layC_hdR, eS1]; simp)
+    obtain ⟨n, hn⟩ := hA1.trans (hok.trans hinc')
+    exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
+  · have e : absStepC CorrectConp (J, S) = (J + 1, 1) := absStepC_neg hc
+    rw [e]
+    obtain ⟨Y, h1, h3'⟩ := hBad (fun h => hc (hcorr.mpr h))
+    have hj1 : zconpLogic.Reach (hd Q.JINC (1 :: bitsOf (str J)) [1]) (layC (J + 1) 1) :=
+      (jincL rJ 0).ofEq (by rw [eJ]; simp) (by rw [layC_hdR, eJ1, str_one]; simp [bitsOf])
+    obtain ⟨n1, hn1⟩ := hA1.trans h1
+    obtain ⟨n2, hn2⟩ := h3'.trans hj1
+    refine ⟨n1 + 1 + 1 + n2, by omega, fun h => absurd hc h,
+      fun _ => ⟨n1 + 1, _, _, by omega, hn1, rfl, beepStepC _ _ _, ?_⟩⟩
+    rw [show n1 + 1 + 1 + n2 - (n1 + 1) - 1 = n2 by omega]
+    exact hn2
+
 end ZP.Conp
