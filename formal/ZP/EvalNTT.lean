@@ -13118,5 +13118,151 @@ theorem AOkD_evalC (p nr n : Nat) (D : List DG) (hp : 2 ≤ p) (hn : D.length = 
   rw [e]
 
 
+
+theorem next_dg (o o' : ORec) (ho : o.Ok) (ho' : o'.Ok) (h : o.dgO = o'.dgO) :
+    (∀ a, o.next = Sum.inl a → ∃ a', o'.next = Sum.inl a' ∧ a.dgO = a'.dgO) ∧
+    (∀ a, o.next = Sum.inr a → ∃ a', o'.next = Sum.inr a' ∧ a.dgO = a'.dgO) := by
+  have d1 := ho.d
+  have d2 := ho'.d
+  have k1 := ho.k
+  have k2 := ho'.k
+  simp only [ORec.dgO, Prod.mk.injEq] at h
+  obtain ⟨e1, e2, e3, e4, e5, e6⟩ := h
+  have hr : o.r = o'.r := by omega
+  constructor
+  · intro a ha
+    unfold ORec.next at ha
+    by_cases c1 : o.d + 1 < o.r
+    · rw [if_pos c1] at ha
+      cases ha
+      refine ⟨{ o' with d := o'.d + 1 }, ?_, ?_⟩
+      · unfold ORec.next; rw [if_pos (by omega)]
+      · simp only [ORec.dgO]; simp only [Prod.mk.injEq]; refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | omega | trivial
+    · rw [if_neg c1] at ha
+      by_cases c2 : 1 ≤ o.m
+      · rw [if_pos c2] at ha
+        cases ha
+        refine ⟨{ o' with d := 0, k := o'.k + 1, m := o'.m - 1 }, ?_, ?_⟩
+        · unfold ORec.next; rw [if_neg (by omega), if_pos (by omega)]
+        · simp only [ORec.dgO]; simp only [Prod.mk.injEq]; refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | omega | trivial
+      · rw [if_neg c2] at ha
+        cases ha
+  · intro a ha
+    unfold ORec.next at ha
+    by_cases c1 : o.d + 1 < o.r
+    · rw [if_pos c1] at ha; cases ha
+    · rw [if_neg c1] at ha
+      by_cases c2 : 1 ≤ o.m
+      · rw [if_pos c2] at ha; cases ha
+      · rw [if_neg c2] at ha
+        cases ha
+        refine ⟨{ o' with d := 0, z := 0, k := 1, m := o'.z + o'.k - 1 }, ?_, ?_⟩
+        · unfold ORec.next; rw [if_neg (by omega), if_neg (by omega)]
+        · simp only [ORec.dgO]; simp only [Prod.mk.injEq]; refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | omega | trivial
+
+theorem odo_dg : ∀ (es es' : List ORec), (∀ x ∈ es, x.Ok) → (∀ x ∈ es', x.Ok) →
+    es.map ORec.dgO = es'.map ORec.dgO →
+    (∀ t, odoStepR es = some t → ∃ t', odoStepR es' = some t' ∧ t.map ORec.dgO = t'.map ORec.dgO) ∧
+    (odoStepR es = none → odoStepR es' = none)
+  | [], [], _, _, _ => ⟨by simp [odoStepR], fun _ => rfl⟩
+  | [], _ :: _, _, _, h => by simp at h
+  | _ :: _, [], _, _, h => by simp at h
+  | o :: os, o' :: os', h1, h2, h => by
+    simp only [List.map_cons, List.cons.injEq] at h
+    obtain ⟨hh, ht⟩ := h
+    have ih := odo_dg os os' (fun x hx => h1 x (by simp [hx])) (fun x hx => h2 x (by simp [hx])) ht
+    have nd := next_dg o o' (h1 o (by simp)) (h2 o' (by simp)) hh
+    constructor
+    · intro t hT
+      unfold odoStepR at hT
+      cases hn : o.next with
+      | inl a =>
+        rw [hn] at hT
+        cases hT
+        obtain ⟨a', ha', hd⟩ := nd.1 a hn
+        refine ⟨a' :: os', ?_, by simp [hd, ht]⟩
+        unfold odoStepR; rw [ha']
+      | inr a =>
+        rw [hn] at hT
+        simp only [Option.map_eq_some_iff] at hT
+        obtain ⟨u, hu, rfl⟩ := hT
+        obtain ⟨u', hu', hd⟩ := ih.1 u hu
+        obtain ⟨a', ha', hd2⟩ := nd.2 a hn
+        refine ⟨a' :: u', ?_, by simp [hd, hd2]⟩
+        unfold odoStepR; rw [ha']; simp [hu']
+    · intro hN
+      unfold odoStepR at hN ⊢
+      cases hn : o.next with
+      | inl a => rw [hn] at hN; cases hN
+      | inr a =>
+        rw [hn] at hN
+        obtain ⟨a', ha', _⟩ := nd.2 a hn
+        rw [ha']
+        have : odoStepR os = none := by
+          cases hh : odoStepR os with
+          | none => rfl
+          | some u => rw [hh] at hN; simp at hN
+        simp [ih.2 this]
+
+theorem rt_ph {a b : List ORec} (h : Rt OS a b) (ha : ∀ x ∈ a, x.Ok) :
+    (∀ x ∈ b, x.Ok) ∧ (b = a ∨ ph (b.map ORec.dgO) < ph (a.map ORec.dgO)) := by
+  induction h with
+  | refl => exact ⟨ha, Or.inl rfl⟩
+  | @tail b0 c0 _ hs ih =>
+    obtain ⟨hb, hb2⟩ := ih
+    obtain ⟨o2, os2, rfl, _, hok2, _⟩ := odo_ok b0 c0 hb hs
+    refine ⟨hok2, Or.inr ?_⟩
+    have := odo_dec b0 _ hb hs
+    rcases hb2 with rfl | h2
+    · exact this
+    · exact Nat.lt_trans this h2
+
+theorem rt_antisymm {a b : List ORec} (ha : ∀ x ∈ a, x.Ok) (h1 : Rt OS a b) (h2 : Rt OS b a) : b = a := by
+  obtain ⟨hb, h1'⟩ := rt_ph h1 ha
+  obtain ⟨_, h2'⟩ := rt_ph h2 hb
+  rcases h1' with h | h1'
+  · exact h
+  · rcases h2' with h | h2'
+    · exact h.symm
+    · exact absurd (Nat.lt_trans h1' h2') (Nat.lt_irrefl _)
+
+theorem diters_lift (m n s : Nat) {D D3 : List DG} (h : DIterS m n s D D3) :
+    ∀ es : List ORec, (∀ x ∈ es, x.Ok) → es.map ORec.dgO = D →
+    ∃ es3 : List ORec, (∀ x ∈ es3, x.Ok) ∧ es3.map ORec.dgO = D3 ∧ Rt OS es es3 ∧
+      ∀ e', Rt OS es e' → Rt OS e' es3 → e' = es3 ∨ ¬ AOkD m n (e'.map ORec.dgO) s := by
+  induction h with
+  | refl D =>
+    intro es hok hd
+    exact ⟨es, hok, hd, Rt.refl _, fun e' h1 h2 => Or.inl (rt_antisymm hok h1 h2)⟩
+  | step hs hn _ ih =>
+    rename_i D D2 D3
+    intro es hok hd
+    obtain ⟨o, os, o2, os2, hO, hD, hS, hD2⟩ := hs
+    have hdg := odo_dg (o :: os) es hO hok (by rw [hd, hD])
+    obtain ⟨t', ht', htd⟩ := hdg.1 _ hS
+    obtain ⟨a, as, rfl, _, hok2, _⟩ := odo_ok es t' hok ht'
+    obtain ⟨es3, hok3, hd3, hr3, hp⟩ := ih (a :: as) hok2 (by rw [← hD2, htd])
+    have hOS : OS es (a :: as) := ht'
+    refine ⟨es3, hok3, hd3, (Rt.tail (Rt.refl _) hOS).trans hr3, fun e' h1 h2 => ?_⟩
+    rcases Rt.det_step OS_det hOS h1 with rfl | h1'
+    · exact Or.inr (by rw [hd]; exact hn)
+    · exact hp e' h1' h2
+
+/-- Odometer link: a terminating refuted iteration refutes every in-range digit assignment. -/
+theorem diters_refute (m n s : Nat) (os : List ORec) (hok : ∀ x ∈ os, x.Ok)
+    (hI : ∀ x ∈ os, x.z = 0 ∧ x.k = 1 ∧ x.d = 0 ∧ 1 ≤ x.r) {D : List DG}
+    (hit : DIterS m n s (os.map ORec.dgO) D) (hterm : StepNone D) (hno : ¬ AOkD m n D s)
+    (πs ds : List Nat) (hF : Fit os πs ds) : ¬ AOkD m n ((setD os πs ds).map ORec.dgO) s := by
+  obtain ⟨es3, hok3, hd3, hr3, hp⟩ := diters_lift m n s hit os hok rfl
+  obtain ⟨o, os', ho, hdo, hn⟩ := hterm
+  have hdg := odo_dg (o :: os') es3 ho hok3 (by rw [hdo, hd3])
+  have hn3 : odoStepR es3 = none := hdg.2 hn
+  obtain ⟨hv1, hv2⟩ := odo_all_visited os es3 hI hr3 hn3 πs ds hF
+  rcases hp _ hv2 hv1 with h | h
+  · rw [h, hd3]; exact hno
+  · exact h
+
+
 end ZP.NTT
+
 

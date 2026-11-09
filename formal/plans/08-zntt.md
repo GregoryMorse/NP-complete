@@ -497,3 +497,9 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: `AOkD ↔ evalC`
 `AOkD_evalC`: for `D` with `O` pattern `2^(N-n)3^n`, `w = p ≥ 2` and `1 ≤ n_ref ≤ N`, `AOkD (n_ref-1) (N-1) D p ↔ evalC n_ref p (decRecs πs ds) = true`. The machine assignment loop's per-assignment success is the reference verdict. Remaining: odometer link (`DIterS` ↔ `Rt`/`OS`), `hasCircuit` from `assignLoop`, and the bridge assembly.
+
+### Stage note: odometer link (digit level)
+`odo_dg` shows `odoStepR` is determined by the `dgO` image on Ok lists (so `DStep` is functional);
+`diters_lift` lifts a `DIterS` chain to `Rt OS` with every non-final state refuted;
+`diters_refute` concludes that a terminating refuted iteration refutes every `Fit` assignment (`setD`),
+via `odo_all_visited`. Remaining: derive `hasCircuit`/`¬hasCircuit` from `assignLoop`, then the bridge assembly.
