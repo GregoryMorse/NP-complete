@@ -256,3 +256,9 @@ therefore matches `odoNext` on `(e - 1, L)` pairs; leading zeros are invisible t
 `odoWalk`: from `ODH` at the first record, `odoStepR os = some os'` gives `WI0` with `X ++ 3 :: R = A ++ tapeL os'`, and
 `odoStepR os = none` gives `BEEP` on `A ++ tapeL (resetAll os)`. `odoStepR_digs`: the record step realises `odoNext`
 on the digit list. Remaining: pass loop, restart interface, power sums, merge, pair lemma, bridge, `evalC`, entries.
+
+### Progress: pass loop (done up to the last cursor)
+`passLoop`: iterates `colStepN`/`colStepO` over a column list, with invariants `CurInv` (cursor), `OutM` (`O = 3 → m = 0`),
+`PreOk`, the register shape `Wf ++ 1 :: (0^p.1 1^p.2 ++ 1 :: P2)` and the semantic obligation `PassCmp n r vs` (the compare
+hypothesis `hcmp` for every cursor reached; to be proved by the semantic layer). It ends at the last cursor (`vs = []`).
+Remaining: the last-record broadcast and `CA4 → PE0`, compare failure branch, `PA0` interface, power sums, merge, pair lemma, bridge.

@@ -6693,5 +6693,165 @@ theorem odoStepR_digs : ∀ (os os' : List ORec), (∀ x ∈ os, x.Ok) → odoSt
         omega
 
 
+/-! ## The pass loop -/
+
+theorem stepN_length (r : Nat) : ∀ vs : List VR, (stepN r vs).length = vs.length := by
+  induction r with
+  | zero => intro vs; simp [stepN]
+  | succ r ih => intro vs; rw [stepN, ih]; cases vs <;> simp [stepList]
+
+def OutM (vs : List VR) : Prop := ∀ x ∈ vs, x.O = 3 → x.m = 0
+
+theorem vis_om (v : VR) : v.vis.O = v.O ∧ (v.vis.m = 0 ∨ v.vis.m = v.m) := by
+  unfold VR.vis; split <;> simp
+
+theorem inc_om (v : VR) : v.inc.O = v.O ∧ v.inc.m = v.m := by simp [VR.inc]
+
+theorem stepList_outM : ∀ vs : List VR, OutM vs → OutM (stepList vs)
+  | [], _ => by simp [stepList, OutM]
+  | v :: vs, h => by
+    intro w hw
+    simp only [stepList, List.mem_cons, List.mem_map] at hw
+    rcases hw with rfl | ⟨x, hx, rfl⟩
+    · intro h3
+      obtain ⟨o1, o2⟩ := vis_om v.inc
+      obtain ⟨i1, i2⟩ := inc_om v
+      rw [o1, i1] at h3
+      have := h v (by simp) h3
+      rcases o2 with h0 | h0
+      · exact h0
+      · rw [h0, i2]; exact this
+    · intro h3
+      obtain ⟨o1, o2⟩ := vis_om x
+      rw [o1] at h3
+      have := h x (by simp [hx]) h3
+      rcases o2 with h0 | h0
+      · exact h0
+      · rw [h0]; exact this
+
+theorem stepN_outM (r : Nat) : ∀ vs : List VR, OutM vs → OutM (stepN r vs) := by
+  induction r with
+  | zero => intro vs h; simpa [stepN] using h
+  | succ r ih => intro vs h; exact ih _ (stepList_outM vs h)
+
+theorem dec_outM (vs : List VR) (h : OutM vs) : OutM (vs.map VR.dec) := by
+  intro w hw
+  simp only [List.mem_map] at hw
+  obtain ⟨x, hx, rfl⟩ := hw
+  have := h x hx
+  unfold VR.dec; split <;> simp_all
+
+
+def CurInv (c : VR) : Prop :=
+  c.Ok ∧ c.F = 3 ∧ (c.O = 3 → c.m = 0 ∧ ∃ e, 1 ≤ e ∧ e ≤ c.E.length ∧ c.E = fld c.E.length e)
+
+theorem curG_inv (w : VR) (hw : w.Ok) (hm : w.O = 3 → w.m = 0) : CurInv w.curG := by
+  by_cases h : w.O = 3
+  · have hcur := w.cur_ok hw
+    have hlen := hw.Elen
+    have h1 : 1 ≤ w.E.length := by omega
+    have hl : (fld w.E.length 1).length = w.E.length := fld_len _ _ h1
+    have hG : w.curG = { w.cur with E := fld w.E.length 1 } := by simp [VR.curG, h]
+    rw [hG]
+    refine ⟨{ hcur with E := fld_bits _ _, Elen := by show 2 ≤ (fld w.E.length 1).length; omega }, by simp [VR.cur], ?_⟩
+    intro _
+    refine ⟨by simp [VR.cur, VR.dec]; split <;> simp [hm h], 1, Nat.le_refl _, ?_, ?_⟩
+    · show 1 ≤ (fld w.E.length 1).length; omega
+    · show fld w.E.length 1 = fld (fld w.E.length 1).length 1
+      rw [hl]
+  · have hG : w.curG = w.cur := by simp [VR.curG, h]
+    rw [hG]
+    refine ⟨w.cur_ok hw, by simp [VR.cur], ?_⟩
+    intro h3
+    exfalso
+    have : w.cur.O = w.O := by simp [VR.cur, VR.dec]; split <;> simp
+    exact h (this ▸ h3)
+
+
+def PassCmp : Nat → Nat → List VR → Prop
+  | 0, _, _ => True
+  | n + 1, r, vs =>
+    match stepN r vs with
+    | [] => True
+    | w :: ws => (w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k) ∧ PassCmp n (w.k - 1) (ws.map VR.dec)
+
+theorem pm_good (Wf P2 : List Nat) (hW : BitsD Wf) (hP2 : GoodW (1 :: P2)) (p : Nat × Nat) (hp : 1 ≤ p.2) :
+    GoodW (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2)) := by
+  refine goodW_reg Wf (List.replicate p.1 2 ++ List.replicate p.2 3) P2 hW
+    (bd_app (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp))) ?_ hP2
+  obtain ⟨q', hq'⟩ : ∃ q', p.2 = q' + 1 := ⟨p.2 - 1, by omega⟩
+  simp [hq', List.replicate_succ]
+
+
+def PreOk (pre : List Rc) : Prop := ∀ x ∈ pre, x.Ok ∧ x.acc ≠ [] ∧ x.F = 2
+
+theorem preOk_done (pre : List Rc) (hpre : PreOk pre) (c : VR) (hc : c.Ok) (a s : Nat) :
+    PreOk (pre ++ [c.done a s]) := by
+  intro x hx
+  rw [List.mem_append] at hx
+  rcases hx with hx | hx
+  · exact hpre x hx
+  · simp at hx; subst hx
+    exact ⟨c.done_ok hc a s, by simp [VR.done, VR.toRcA], by simp [VR.done]⟩
+
+theorem passLoop (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) :
+    ∀ (n : Nat) (vs : List VR) (c : VR) (pre : List Rc) (p : Nat × Nat) (r s : Nat),
+    vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → PreOk pre → 1 ≤ p.2 → PassCmp n r vs →
+    ∃ (p' : Nat × Nat) (pre' : List Rc) (c' : VR) (r' s' : Nat), CurInv c' ∧ PreOk pre' ∧ 1 ≤ p'.2 ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2)) pre c 0 r s vs) [])
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p'.1 2 ++ List.replicate p'.2 3 ++ 1 :: P2)) pre' c' 0 r' s' []) []) := by
+  intro n
+  induction n with
+  | zero =>
+    intro vs c pre p r s hlen hc hvs hom hpre hp hcmp
+    have : vs = [] := List.length_eq_zero_iff.mp hlen
+    subst this
+    exact ⟨p, pre, c, r, s, hc, hpre, hp, LTM.Reach.refl _ _⟩
+  | succ n ih =>
+    intro vs c pre p r s hlen hc hvs hom hpre hp hcmp
+    obtain ⟨hcOk, hF, hOut⟩ := hc
+    have hlen' := stepN_length r vs
+    obtain ⟨w, ws, hw⟩ : ∃ w ws, stepN r vs = w :: ws := by
+      cases h : stepN r vs with
+      | nil => rw [h] at hlen'; simp at hlen'; omega
+      | cons w ws => exact ⟨w, ws, rfl⟩
+    have hok := stepN_ok r vs hvs
+    rw [hw] at hok
+    have hwOk : w.Ok := hok w (by simp)
+    have hwsOk : ∀ x ∈ ws, x.Ok := fun x hx => hok x (by simp [hx])
+    have hout := stepN_outM r vs hom
+    rw [hw] at hout
+    have hwm : w.O = 3 → w.m = 0 := hout w (by simp)
+    have hlenws : (ws.map VR.dec).length = n := by
+      rw [hw] at hlen'; simp at hlen'; simp; omega
+    have hcmp' : (w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k) ∧ PassCmp n (w.k - 1) (ws.map VR.dec) := by
+      have := hcmp; simp only [PassCmp, hw] at this; exact this
+    have hinv := curG_inv w hwOk hwm
+    have hwsOk' : ∀ x ∈ ws.map VR.dec, x.Ok := by
+      intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx; exact y.dec_ok (hwsOk y hy)
+    have homws : OutM (ws.map VR.dec) := dec_outM ws (fun x hx => hout x (by simp [hx]))
+    have hPm := pm_good Wf P2 hW hP2 p hp
+    by_cases hO : c.O = 2
+    · have h1 := colStepN c hcOk hF hO _ hPm pre hpre r s vs hvs w ws hw hcmp'.1
+      obtain ⟨p', pre', c', r', s', hi, hp', hq, hr⟩ :=
+        ih (ws.map VR.dec) w.curG (pre ++ [c.done r s]) p (w.k - 1) (w.w - w.k) hlenws hinv hwsOk' homws
+          (preOk_done pre hpre c hcOk r s) hp hcmp'.2
+      exact ⟨p', pre', c', r', s', hi, hp', hq, h1.trans hr⟩
+    · have hO3 : c.O = 3 := by have := hcOk.O; simp at this; omega
+      obtain ⟨hm, e, he, hew, hE⟩ := hOut hO3
+      have hElen := hcOk.Elen
+      have h1 := colStepO c.n c hcOk hF hO3 hm rfl Wf hW P2 hP2 pre hpre s c.E.length hElen r p e hp he hew hE vs hvs w ws
+        hw hcmp'.1
+      have hb := eAdv_bounds c.E.length (r * c.n) e he hew
+      have hc' : ({ c with E := fld c.E.length (eAdv c.E.length (r * c.n) e) } : VR).Ok :=
+        { F := hcOk.F, O := hcOk.O, P := hcOk.P, k1 := hcOk.k1, kw := hcOk.kw, E := fld_bits _ _,
+          Elen := by show 2 ≤ (fld c.E.length (eAdv c.E.length (r * c.n) e)).length; rw [fld_len _ _ hb.2]; exact hElen }
+      obtain ⟨p', pre', c', r', s', hi, hp', hq, hr⟩ :=
+        ih (ws.map VR.dec) w.curG _ (sAdv (r * c.n) p) (w.k - 1) (w.w - w.k) hlenws hinv hwsOk' homws
+          (preOk_done pre hpre _ hc' r s) (sAdv_pos _ p hp) hcmp'.2
+      exact ⟨p', pre', c', r', s', hi, hp', hq, h1.trans hr⟩
+
+
 end ZP.NTT
 
