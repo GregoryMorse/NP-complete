@@ -120,4 +120,5 @@ public import ZP.Hard
 public import ZP.MulSwitch
 public import ZP.MulRun
 public import ZP.PairMul
+public import ZP.MulCheck
 public import ZP.GenericP
