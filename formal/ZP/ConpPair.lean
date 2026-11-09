@@ -968,4 +968,72 @@ theorem vaccE (j s F Dw : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hD
     (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits])
   exact hk.trans (h2.ofEq (by simp) (by simp))
 
+theorem vPhase (j : List Nat) (hj : Bits j) (Sb : List Bool) :
+    ∃ t, t ∈ bits ∧ (runND Sb [] (Sb.length + 1) → t = 3) ∧ (¬ runND Sb [] (Sb.length + 1) → t = 2) ∧
+      zconpLogic.Reach (hdR Q.GRB (1 :: ((j ++ 1 :: (bitsOf Sb ++ [1])) ++ [1])) [])
+        (hdR Q.GRB (1 :: ((j ++ 1 :: (bitsOf Sb ++ [1, t])) ++ [1])) []) := by
+  have hs := Bits.ofB Sb
+  obtain ⟨hA, hB⟩ := vSearch j hj Sb
+  by_cases hb : runND Sb [] (Sb.length + 1)
+  · obtain ⟨F', Dw', hF, hD, hr⟩ := hA hb
+    refine ⟨3, by simp [bits], fun _ => rfl, fun h => absurd hb h, ?_⟩
+    exact hr.trans (((vAccA j (bitsOf Sb) F' Dw' hj hs hF hD).ofEq (by simp) rfl).trans
+      (vaccE j (bitsOf Sb) F' Dw' hj hs hF hD))
+  · refine ⟨2, by simp [bits], fun h => absurd h hb, fun _ => rfl, ?_⟩
+    exact (hB hb).trans ((vExh j (bitsOf Sb) hj hs).ofEq rfl (by simp))
+
+theorem dPhase (Jb Sb : List Bool) (t : Nat) (ht : t ∈ bits) (htt : t = 2 ∨ t = 3) :
+    ((runND Jb Sb (clock Jb Sb) ↔ t = 2) →
+      zconpLogic.Reach
+        (hdR Q.GRB (1 :: ((bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t])) ++ [1])) [])
+        (hd Q.SINC (1 :: (bitsOf Jb ++ 1 :: bitsOf Sb)) [])) ∧
+    (¬ (runND Jb Sb (clock Jb Sb) ↔ t = 2) → ∃ Y,
+      zconpLogic.Reach
+        (hdR Q.GRB (1 :: ((bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, t])) ++ [1])) [])
+        (hdR Q.BEEP (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2]))) (1 :: Y)) ∧
+      zconpLogic.Reach (hdR Q.EAs (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2, 0]))) Y)
+        (hd Q.JINC (1 :: bitsOf Jb) [1])) := by
+  have hj := Bits.ofB Jb
+  have hs := Bits.ofB Sb
+  obtain ⟨hA, hB⟩ := dSearch Jb Sb t ht
+  by_cases ho : runND Jb Sb (clock Jb Sb)
+  · obtain ⟨F', Dw', hF, hD, hr⟩ := hA ho
+    rcases htt with rfl | rfl
+    · refine ⟨fun _ => ?_, fun h => absurd ⟨fun _ => rfl, fun _ => ho⟩ h⟩
+      have h1 : zconpLogic.Reach
+          (hdR Q.DP11 [1] ((bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2])) ++ 1 :: (F' ++ 0 :: Dw')))
+          (hdR Q.EAs (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 0]))) ((1 :: F') ++ 0 :: Dw')) :=
+        (dAcc2A (bitsOf Jb) (bitsOf Sb) F' Dw' hj hs hF hD).ofEq (by simp) (by simp)
+      exact hr.trans (h1.trans (advE (bitsOf Jb) (bitsOf Sb) (1 :: F') Dw' hj hs
+        (NoB.cons one_nb hF) hD))
+    · refine ⟨fun h => absurd (h.mp ho) (by decide), fun _ => ?_⟩
+      have h1 : zconpLogic.Reach
+          (hdR Q.DP11 [1] ((bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 3])) ++ 1 :: (F' ++ 0 :: Dw')))
+          (hdR Q.BEEP (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2]))) (1 :: (F' ++ 0 :: Dw'))) :=
+        (dAcc3 (bitsOf Jb) (bitsOf Sb) F' Dw' hj hs hF hD).ofEq (by simp) (by simp)
+      exact ⟨F' ++ 0 :: Dw', hr.trans h1, badE _ _ F' Dw' hj hs hF hD⟩
+  · have hx := hB ho
+    rcases htt with rfl | rfl
+    · refine ⟨fun h => absurd (h.mpr rfl) ho, fun _ => ?_⟩
+      have h1 : zconpLogic.Reach
+          (hd QConp.EX3 (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2]))) [1])
+          (hdR Q.BEEP (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2]))) (1 :: [])) :=
+        (dExh2 (bitsOf Jb) (bitsOf Sb) hj hs).ofEq (by simp) (by simp)
+      refine ⟨[], hx.trans h1, ?_⟩
+      have := badE (bitsOf Jb) (bitsOf Sb) [] [] hj hs NoB.nil NoB.nil
+      have e : hdR Q.EAs (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2, 0]))) ([] ++ 0 :: []) =
+          hdR Q.EAs (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 2, 0]))) [] :=
+        hdR_pad Q.EAs _ [] 1
+      exact this.ofEq e rfl
+    · refine ⟨fun _ => ?_, fun h => absurd ⟨fun h' => absurd h' ho, fun h' => by cases h'⟩ h⟩
+      have h1 : zconpLogic.Reach
+          (hd QConp.EX3 (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 3]))) [1])
+          (hdR Q.EAs (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 0]))) [1]) :=
+        (dExh3A (bitsOf Jb) (bitsOf Sb) hj hs).ofEq (by simp) (by simp)
+      have h2 := advE (bitsOf Jb) (bitsOf Sb) [1] [] hj hs (NoB.cons one_nb NoB.nil) NoB.nil
+      have e : hdR Q.EAs (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 0]))) ([1] ++ 0 :: []) =
+          hdR Q.EAs (1 :: (bitsOf Jb ++ 1 :: (bitsOf Sb ++ [1, 0]))) [1] :=
+        hdR_pad Q.EAs _ [1] 1
+      exact hx.trans (h1.trans (h2.ofEq e rfl))
+
 end ZP.Conp
