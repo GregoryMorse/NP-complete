@@ -8147,5 +8147,50 @@ theorem lastCycle (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (b : Nat)
     simp only [List.append_assoc, List.cons_append] at h1 h2 ⊢
     exact h1.trans h2
 
+
+theorem outRec_m (c : VR) (r : Nat) : (outRec c r).m = c.m ∧ (outRec c r).O = c.O := by
+  unfold outRec; split <;> simp
+
+theorem loopRun_m : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat),
+    CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → vs.length = n →
+    (∀ t ∈ (loopRun n c vs r s p).cs, t.1.O = 3 → t.1.m = 0) ∧
+    ((loopRun n c vs r s p).c'.O = 3 → (loopRun n c vs r s p).c'.m = 0) := by
+  intro n
+  induction n with
+  | zero =>
+    intro c vs r s p hc hvs hom hl
+    simp [loopRun, hc.2.2]
+    exact fun h => (hc.2.2 h).1
+  | succ n ih =>
+    intro c vs r s p hc hvs hom hl
+    have hlen' := stepN_length r vs
+    obtain ⟨w, ws, hw⟩ : ∃ w ws, stepN r vs = w :: ws := by
+      cases h : stepN r vs with
+      | nil => rw [h] at hlen'; simp at hlen'; omega
+      | cons w ws => exact ⟨w, ws, rfl⟩
+    have hok := stepN_ok r vs hvs
+    rw [hw] at hok
+    have hwOk : w.Ok := hok w (by simp)
+    have hout := stepN_outM r vs hom
+    rw [hw] at hout
+    have hwm : w.O = 3 → w.m = 0 := hout w (by simp)
+    have hwsOk' : ∀ x ∈ ws.map VR.dec, x.Ok := by
+      intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx
+      exact y.dec_ok (hok y (by simp [hy]))
+    have homws : OutM (ws.map VR.dec) := dec_outM ws (fun x hx => hout x (by simp [hx]))
+    have hlenws : (ws.map VR.dec).length = n := by
+      rw [hw] at hlen'; simp at hlen'; simp; omega
+    have ih' := ih w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p) (curG_inv w hwOk hwm) hwsOk' homws hlenws
+    simp only [loopRun, hw]
+    refine ⟨?_, ih'.2⟩
+    intro t ht
+    simp only [List.mem_cons] at ht
+    rcases ht with rfl | ht
+    · intro h3
+      rw [(outRec_m c r).2] at h3
+      rw [(outRec_m c r).1]
+      exact (hc.2.2 h3).1
+    · exact ih'.1 t ht
+
 end ZP.NTT
 
