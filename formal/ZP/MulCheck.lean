@@ -679,4 +679,109 @@ theorem haltPhase (Pb Xb : List Bool) (r : Option (List Bool)) (Fy ST : List Nat
         1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 0 :: 1 :: (Fy ++ 0 :: ST))))) by simp)
       exact (h1.trans (h2'.trans h3)).of_eq rfl (hdR_rep0 _ _ _ _)
 
+/-! ## One pair -/
+
+def layMul (J S : Nat) : ZC := ⟨QMul.NI, sapp (layWord J S).reverse blank, blank⟩
+
+theorem layMul_hdR (J S : Nat) :
+    layMul J S = hdR QMul.NI (1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))) [] := by
+  rw [ZP.F.hdR_eq']
+  simp only [layMul, layWord, sapp]
+
+theorem FWr_one : ∀ (ds : List Dg), ds ≠ [] → ∃ Fy, FWr ds = 1 :: Fy
+  | [], h => absurd rfl h
+  | (n, d) :: ds, _ => by
+    by_cases hds : ds = []
+    · subst hds
+      exact ⟨List.replicate d 3 ++ List.replicate (n + 1 - d) 2, by simp [FWr, blkW]⟩
+    · obtain ⟨Fy, hF⟩ := FWr_one ds hds
+      exact ⟨Fy ++ blkW n d, by simp [FWr, hF]⟩
+
+theorem full_fz (n k : Nat) : full (fz n k) = fz n k := by
+  simp [full, fz, List.map_replicate]
+
+theorem mainPhase (J S : Nat) :
+    ∃ q Fy ST, (q = Q.DP31 ∨ q = Q.DP30) ∧ (q = Q.DP31 ↔ CorrectMul J S) ∧ NoB Fy ∧ NoB ST ∧
+      zmulLogic.Reach (hdR QMul.NI (1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))) [])
+        (hdR q (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ [1]))) (1 :: (Fy ++ 0 :: ST))) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  have h0 := decFuelM (bitsOf (str S)) hs (bitsOf (str J)) hj
+  have hdig := fz_dig (bitsOf (str S)).length (bitsOf (str J)).length
+  have hne : fz (bitsOf (str S)).length (bitsOf (str J)).length ≠ [] := by simp [fz]
+  obtain ⟨ds', ST', hds', hmap, hST', h1⟩ := runFromM (str J) (str S) _ hdig hne
+  have hne' : ds' ≠ [] := by
+    intro h
+    rw [h] at hmap
+    simp [fz] at hmap
+  obtain ⟨Fy, hFy⟩ := FWr_one ds' hne'
+  rw [hFy] at h1
+  have hFnb : NoB (1 :: Fy) := by rw [← hFy]; exact FWr_noB _
+  have hv : valr (fz (bitsOf (str S)).length (bitsOf (str J)).length) = clockMul (str J) (str S) := by
+    have := fz_valr (bitsOf (str S)).length (bitsOf (str J)).length
+    rw [full_fz] at this
+    simp only [bitsOf_len] at this ⊢
+    unfold clockMul
+    omega
+  rw [hv] at h1
+  obtain ⟨q, hq, hqok, h2⟩ := haltPhase (str J) (str S)
+    (runMulAux (clockMul (str J) (str S)) (rot ((str J).reverse ++ [false])) (str S) 0
+      (List.replicate (str J).length [])) Fy ST' hFnb hST'
+  refine ⟨q, Fy, ST', hq, ?_, fun a ha => hFnb a (List.mem_cons_of_mem _ ha), hST', ?_⟩
+  · rw [hqok]
+    unfold CorrectMul correctMulB runMul
+    cases hr : runMulAux (clockMul (str J) (str S)) (rot ((str J).reverse ++ [false])) (str S) 0
+      (List.replicate (str J).length []) <;> simp [okB]
+  · refine h0.trans ((h1.of_eq (by simp [bitsOf_len]) rfl).trans h2)
+
+theorem pair_mainMul (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
+    ∃ n, 0 < n ∧
+      ((¬ ¬ CorrectMul J S → zmulLogic.zrun n (layMul J S) =
+          some (layMul (absStepC CorrectMul (J, S)).1 (absStepC CorrectMul (J, S)).2)) ∧
+       (¬ CorrectMul J S → ∃ a c1 c2, a < n ∧ zmulLogic.zrun a (layMul J S) = some c1 ∧
+          c1.q = zmulLogic.beep ∧ zmulLogic.zstep c1 = some c2 ∧
+          zmulLogic.zrun (n - a - 1) c2 =
+            some (layMul (absStepC CorrectMul (J, S)).1 (absStepC CorrectMul (J, S)).2))) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  obtain ⟨q, Fy, ST, hq, hqiff, hFy, hST, hA⟩ := mainPhase J S
+  obtain ⟨rS, hrS⟩ := numR_surj S hS
+  obtain ⟨rJ, hrJ⟩ := numR_surj J hJ
+  have eS : str S = rS.reverse := by rw [← hrS, str_numR]
+  have eS1 : str (S + 1) = (incR rS).reverse := by rw [← hrS, ← numR_inc, str_numR]
+  have eJ : str J = rJ.reverse := by rw [← hrJ, str_numR]
+  have eJ1 : str (J + 1) = (incR rJ).reverse := by rw [← hrJ, ← numR_inc, str_numR]
+  have hA1 : zmulLogic.Reach1 (layMul J S) (hdR q (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ [1])))
+      (1 :: (Fy ++ 0 :: ST))) := by
+    rw [layMul_hdR]
+    refine ZP.F.Reach_pos hA ?_
+    rw [ZP.F.hdR_eq', ZP.F.hdR_eq']
+    show QMul.NI ≠ q
+    rcases hq with rfl | rfl <;> decide
+  by_cases hc : CorrectMul J S
+  · have e : absStepC CorrectMul (J, S) = (J, S + 1) := absStepC_pos hc
+    rw [e]
+    have hq1 : q = Q.DP31 := hqiff.mpr hc
+    subst hq1
+    have hok := okTailM (bitsOf (str J)) (bitsOf (str S)) Fy ST hj hs hFy hST
+    have hinc := sincLM (1 :: bitsOf (str J)) (NoB.cons one_nb hj.noB) rS 0
+    obtain ⟨n, hn⟩ := hA1.trans (hok.trans (hinc.of_eq (c4 := layMul J (S + 1))
+      (by rw [eS]; rfl) (by rw [layMul_hdR, eS1]; simp)))
+    exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
+  · have e : absStepC CorrectMul (J, S) = (J + 1, 1) := absStepC_neg hc
+    rw [e]
+    have hq0 : q = Q.DP30 := by
+      rcases hq with rfl | rfl
+      · exact absurd (hqiff.mp rfl) hc
+      · rfl
+    subst hq0
+    have h3 := badTailM (bitsOf (str J)) (bitsOf (str S)) Fy ST hj hs hFy hST
+    obtain ⟨n1, hn1⟩ := hA1
+    obtain ⟨n2, hn2⟩ := h3.trans ((jincLM rJ 0).of_eq (c4 := layMul (J + 1) 1)
+      (by rw [eJ]; rfl) (by rw [layMul_hdR, eJ1, str_one]; rfl))
+    refine ⟨n1 + 1 + 1 + n2, by omega, fun h => absurd hc h,
+      fun _ => ⟨n1 + 1, _, _, by omega, hn1, rfl, beepStepM _ _ _, ?_⟩⟩
+    rw [show n1 + 1 + 1 + n2 - (n1 + 1) - 1 = n2 by omega]
+    exact hn2
+
 end ZP.Mul
