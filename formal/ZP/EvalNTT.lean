@@ -7216,5 +7216,56 @@ theorem tailP_vr : ∀ l : List (ORec × Nat), (∀ p ∈ l, BrOk p) →
     rfl
 
 
+/-- The first record as cursor, in `VR` form: `FAL` .. `RFL`. -/
+theorem faG (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (w : VR) (hw : w.Ok) (ws : List VR)
+    (hws : ∀ x ∈ ws, x.Ok) (hcmp : w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k)
+    (hLe : L = Pm ++ 1 :: 1 :: ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws))) :
+    znttLogic.Reach (hd QNTT.FAL L [])
+      (hd QNTT.RFL (Pm ++ [1, 1] ++ [3, w.O, w.P] ++ 1 :: (w.curG.tl ++ tailVR (ws.map VR.dec))) []) := by
+  have sPm := hP.sym4
+  have sMM : Sym4 (Pm ++ [1, 1]) := sPm.app (sym4_M (sym4_M Sym4.nil))
+  have sB : Sym4 ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) :=
+    hw.hdr3.sym4.app (sym4_M (hw.tl_sym4.app (tailVR_sym4 ws hws)))
+  have h1 := falScan L [] hL Sym4.nil
+  rw [hLe] at h1
+  have h2 := fasGood hP [] (1 :: 1 :: ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws))) Sym4.nil (sym4_M (sym4_M sB))
+  have h3 := fasMM Pm ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws)) sPm sB
+  have h4 := fa0G (Pm ++ [1, 1]) w hw ws hws sMM hcmp
+  simp only [List.append_nil, List.append_assoc, List.cons_append, List.nil_append] at h1 h2 h3 h4 ⊢
+  rw [hLe]
+  simp only [List.append_nil, List.append_assoc, List.cons_append, List.nil_append]
+  exact h1.trans (h2.trans (h3.trans h4))
+
+
+theorem curTapeG_tl (Pm : List Nat) (pre : List Rc) (c : VR) (hk : 1 ≤ c.k) (hkw : c.k ≤ c.w) (hF : c.F = 3)
+    (vs : List VR) :
+    curTapeG Pm pre c 0 (c.k - 1) (c.w - c.k) vs = Pm ++ tailB pre ++ [1, 1, 3, c.O, c.P] ++ 1 :: (c.tl ++ tailVR vs) := by
+  obtain ⟨j, hj⟩ : ∃ j, c.k = j + 1 := ⟨c.k - 1, by omega⟩
+  simp [curTapeG, VR.tl, fld, hj, List.replicate_succ]
+
+theorem curG_kw (w : VR) : w.curG.k = w.k ∧ w.curG.w = w.w := by
+  by_cases h : w.O = 3 <;> simp [VR.curG, VR.cur, VR.dec, h] <;> split <;> simp_all
+
+/-- The first record as cursor: `FAL` to the cursor tape of `passLoop`. -/
+theorem faG' (L Pm : List Nat) (hL : NoB L) (hP : GoodW Pm) (w : VR) (hw : w.Ok) (ws : List VR)
+    (hws : ∀ x ∈ ws, x.Ok) (hcmp : w.O = 3 → ∃ z, 1 ≤ w.k ∧ w.E = fld (w.k + z) w.k)
+    (hLe : L = Pm ++ 1 :: 1 :: ([w.F, w.O, w.P] ++ 1 :: (w.tl ++ tailVR ws))) :
+    znttLogic.Reach (hd QNTT.FAL L [])
+      (hd QNTT.RFL (curTapeG Pm [] w.curG 0 (w.k - 1) (w.w - w.k) (ws.map VR.dec)) []) := by
+  have h := faG L Pm hL hP w hw ws hws hcmp hLe
+  have hcur : w.curG.F = 3 := by
+    by_cases h : w.O = 3 <;> simp [VR.curG, VR.cur, h]
+  obtain ⟨k1, k2⟩ := curG_kw w
+  have hOk : w.curG.k ≥ 1 := by rw [k1]; exact hw.k1
+  have hkw : w.curG.k ≤ w.curG.w := by rw [k1, k2]; exact hw.kw
+  have := curTapeG_tl Pm [] w.curG hOk hkw hcur (ws.map VR.dec)
+  rw [k1, k2] at this
+  rw [this]
+  have hk : w.curG.O = w.O ∧ w.curG.P = w.P := by
+    by_cases h : w.O = 3 <;> simp [VR.curG, VR.cur, VR.dec, h] <;> split <;> simp_all
+  rw [hk.1, hk.2]
+  simpa [tailB] using h
+
+
 end ZP.NTT
 
