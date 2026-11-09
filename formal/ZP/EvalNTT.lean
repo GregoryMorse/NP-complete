@@ -11050,5 +11050,362 @@ theorem assignLoop (a k c : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) (n : Nat) :
   · exact ⟨_, DIter.refl _, Or.inl hbeep⟩
   · exact ⟨_, DIter.refl _, Or.inr hsucc⟩
 
+
+theorem incK_val (w k : Nat) (hk : 1 ≤ k) (hkw : k ≤ w) : incK w k - 1 = (k - 1 + 1) % w := by
+  unfold incK
+  split
+  · subst_vars; have : k - 1 + 1 = k := by omega
+    rw [this, Nat.mod_self]
+  · have : k - 1 + 1 = k := by omega
+    rw [this, Nat.mod_eq_of_lt (by omega)]; omega
+
+theorem incKn_val (w : Nat) : ∀ (n k : Nat), 1 ≤ k → k ≤ w → 1 ≤ incKn w n k ∧ incKn w n k ≤ w ∧
+    incKn w n k - 1 = (k - 1 + n) % w
+  | 0, k, hk, hkw => by
+    refine ⟨hk, hkw, ?_⟩
+    simp [incKn]; rw [Nat.mod_eq_of_lt (by omega)]
+  | n + 1, k, hk, hkw => by
+    have h1 := incK_bounds w k hk hkw
+    obtain ⟨a, b, c⟩ := incKn_val w n (incK w k) h1.1 h1.2
+    refine ⟨a, b, ?_⟩
+    simp only [incKn]
+    rw [c, incK_val w k hk hkw, Nat.mod_add_mod]
+    congr 1; omega
+
+/-- Every record carries the invariants `Ok` and `m = 0`. -/
+def VI (v : VR) : Prop := v.Ok ∧ v.m = 0
+
+theorem vis_fields (v : VR) (h : VI v) :
+    VI v.vis ∧ v.vis.w = v.w ∧ v.vis.c = v.c ∧ v.vis.n = v.n ∧ v.vis.a = v.a ∧ v.vis.t = v.t ∧ v.vis.O = v.O ∧
+    v.vis.E = v.E ∧ v.vis.P = v.P ∧
+    v.vis.k - 1 = (v.k - 1 + (if v.c = 1 then v.n else 0)) % v.w := by
+  obtain ⟨ho, hm⟩ := h
+  by_cases hc : v.c = 1
+  · have hb := incKn_val v.w v.n v.k ho.k1 ho.kw
+    have e : v.vis = { v with k := incKn v.w v.n v.k, m := 0, n := v.n } := by
+      unfold VR.vis; rw [if_pos hc, hm, Nat.zero_add]
+    rw [e, if_pos hc]
+    exact ⟨⟨{ F := ho.F, O := ho.O, P := ho.P, k1 := hb.1, kw := hb.2.1, E := ho.E, Elen := ho.Elen }, rfl⟩,
+      rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, hb.2.2⟩
+  · have e : v.vis = v := by unfold VR.vis; rw [if_neg hc]
+    rw [e, if_neg hc]
+    refine ⟨⟨ho, hm⟩, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_⟩
+    rw [Nat.add_zero, Nat.mod_eq_of_lt (by have := ho.kw; have := ho.k1; omega)]
+
+theorem inc_fields (v : VR) (h : VI v) :
+    VI v.inc ∧ v.inc.w = v.w ∧ v.inc.c = v.c ∧ v.inc.n = v.n ∧ v.inc.a = v.a ∧ v.inc.t = v.t ∧ v.inc.O = v.O ∧
+    v.inc.E = v.E ∧ v.inc.P = v.P ∧ v.inc.k - 1 = (v.k - 1 + 1) % v.w := by
+  obtain ⟨ho, hm⟩ := h
+  exact ⟨⟨ho.inc, hm⟩, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, incK_val v.w v.k ho.k1 ho.kw⟩
+
+def visN : Nat → VR → VR
+  | 0, v => v
+  | r + 1, v => visN r v.vis
+
+/-- Value `k - 1` of a record after `r` visits. -/
+theorem visIter (r : Nat) : ∀ v : VR, VI v →
+    VI (visN r v) ∧ (visN r v).w = v.w ∧ (visN r v).c = v.c ∧ (visN r v).n = v.n ∧
+    (visN r v).a = v.a ∧ (visN r v).t = v.t ∧ (visN r v).O = v.O ∧ (visN r v).E = v.E ∧
+    (visN r v).P = v.P ∧
+    (visN r v).k - 1 = (v.k - 1 + r * (if v.c = 1 then v.n else 0)) % v.w := by
+  induction r with
+  | zero =>
+    intro v h
+    refine ⟨h, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_⟩
+    show v.k - 1 = (v.k - 1 + 0 * (if v.c = 1 then v.n else 0)) % v.w
+    rw [Nat.zero_mul, Nat.add_zero, Nat.mod_eq_of_lt (by have := h.1.kw; have := h.1.k1; omega)]
+  | succ r ih =>
+    intro v h
+    simp only [visN]
+    obtain ⟨h1, e1, e2, e3, e4, e5, e6, e7, e8, e9⟩ := vis_fields v h
+    obtain ⟨g1, g2, g3, g4, g5, g6, g7, g8, g9, g10⟩ := ih v.vis h1
+    refine ⟨g1, by rw [g2, e1], by rw [g3, e2], by rw [g4, e3], by rw [g5, e4], by rw [g6, e5],
+      by rw [g7, e6], by rw [g8, e7], by rw [g9, e8], ?_⟩
+    rw [g10, e9, e2, e1, e3]
+    rw [Nat.mod_add_mod, Nat.succ_mul]
+    congr 1
+    by_cases hc : v.c = 1
+    · simp only [if_pos hc]
+      generalize r * v.n = X
+      omega
+    · simp only [if_neg hc]
+      simp
+
+def incVisN : Nat → VR → VR
+  | 0, v => v
+  | r + 1, v => incVisN r v.inc.vis
+
+theorem incVisN_val (r : Nat) : ∀ v : VR, VI v →
+    VI (incVisN r v) ∧ (incVisN r v).w = v.w ∧ (incVisN r v).c = v.c ∧ (incVisN r v).n = v.n ∧
+    (incVisN r v).a = v.a ∧ (incVisN r v).t = v.t ∧ (incVisN r v).O = v.O ∧ (incVisN r v).E = v.E ∧
+    (incVisN r v).P = v.P ∧
+    (incVisN r v).k - 1 = (v.k - 1 + r * (1 + (if v.c = 1 then v.n else 0))) % v.w := by
+  induction r with
+  | zero =>
+    intro v h
+    refine ⟨h, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_⟩
+    show v.k - 1 = (v.k - 1 + 0 * (1 + (if v.c = 1 then v.n else 0))) % v.w
+    rw [Nat.zero_mul, Nat.add_zero, Nat.mod_eq_of_lt (by have := h.1.kw; have := h.1.k1; omega)]
+  | succ r ih =>
+    intro v h
+    simp only [incVisN]
+    obtain ⟨a1, a2, a3, a4, a5, a6, a7, a8, a9, a10⟩ := inc_fields v h
+    obtain ⟨b1, b2, b3, b4, b5, b6, b7, b8, b9, b10⟩ := vis_fields v.inc a1
+    obtain ⟨g1, g2, g3, g4, g5, g6, g7, g8, g9, g10⟩ := ih v.inc.vis b1
+    refine ⟨g1, by rw [g2, b2, a2], by rw [g3, b3, a3], by rw [g4, b4, a4], by rw [g5, b5, a5],
+      by rw [g6, b6, a6], by rw [g7, b7, a7], by rw [g8, b8, a8], by rw [g9, b9, a9], ?_⟩
+    rw [g10, b10, a10, b3, b2, a3, a2, b4, a4, Nat.mod_add_mod, Nat.add_assoc, Nat.mod_add_mod]
+    congr 1
+    rw [Nat.succ_mul]
+    generalize r * (1 + if v.c = 1 then v.n else 0) = X
+    omega
+
+theorem stepN_cons (r : Nat) : ∀ (w : VR) (ws : List VR), stepN r (w :: ws) = incVisN r w :: ws.map (visN r) := by
+  induction r with
+  | zero => intro w ws; simp [stepN, incVisN, visN]
+  | succ r ih =>
+    intro w ws
+    simp only [stepN, stepList]
+    rw [ih]
+    simp [incVisN, visN, List.map_map, Function.comp_def]
+
+
+theorem valsAux_prefix (t p : Nat) : ∀ (recs : List Rec) (j : Nat) (vs : List Nat),
+    vs <+: valsAux t p j recs vs ∧ (valsAux t p j recs vs).length = vs.length + recs.length
+  | [], j, vs => by simp [valsAux]
+  | (u, b) :: rs, j, vs => by
+    obtain ⟨h1, h2⟩ := valsAux_prefix t p rs (j + 1) (vs ++ [((if j = t then 1 else 0) + vs.getLastD 0 + ptrVal u j b vs) % p])
+    simp only [valsAux]
+    refine ⟨(List.prefix_append _ _).trans h1, ?_⟩
+    rw [h2]; simp; omega
+
+theorem getD_prefix {l1 l2 : List Nat} (h : l1 <+: l2) {i : Nat} (hi : i < l1.length) : l2.getD i 0 = l1.getD i 0 := by
+  obtain ⟨k, rfl⟩ := h
+  rw [List.getD_eq_getElem?_getD, List.getD_eq_getElem?_getD, List.getElem?_append_left hi]
+
+theorem valsAux_get (t p : Nat) : ∀ (recs : List Rec) (j : Nat) (vs : List Nat), vs.length = j →
+    ∀ i, j ≤ i → i < j + recs.length →
+    (valsAux t p j recs vs).getD i 0 =
+      ((if i = t then 1 else 0) + (if i = 0 then 0 else (valsAux t p j recs vs).getD (i - 1) 0) +
+        ptrVal (recs.getD (i - j) (none, 0)).1 i (recs.getD (i - j) (none, 0)).2 (valsAux t p j recs vs)) % p
+  | [], j, vs, hl, i, h1, h2 => by simp at h2; omega
+  | (u, b) :: rs, j, vs, hl, i, h1, h2 => by
+    obtain ⟨v, hv⟩ : ∃ v, v = ((if j = t then 1 else 0) + vs.getLastD 0 + ptrVal u j b vs) % p := ⟨_, rfl⟩
+    have hlen : (vs ++ [v]).length = j + 1 := by simp [hl]
+    have pre := (valsAux_prefix t p rs (j + 1) (vs ++ [v])).1
+    simp only [valsAux]
+    rw [← hv]
+    by_cases hij : i = j
+    · subst hij
+      have e1 : (valsAux t p (i + 1) rs (vs ++ [v])).getD i 0 = v := by
+        rw [getD_prefix pre (by omega)]
+        simp [hl]
+      rw [e1]
+      simp only [Nat.sub_self, List.getD_cons_zero]
+      have e2 : vs.getLastD 0 = (if i = 0 then 0 else (valsAux t p (i + 1) rs (vs ++ [v])).getD (i - 1) 0) := by
+        by_cases h0 : i = 0
+        · subst h0; have : vs = [] := List.length_eq_zero_iff.1 hl
+          subst this; simp
+        · rw [if_neg h0, getD_prefix pre (by simp [hl]; omega)]
+          have : vs ≠ [] := by intro h; subst h; simp at hl; omega
+          rw [List.getLastD_eq_getLast?, List.getD_eq_getElem?_getD, List.getLast?_eq_getElem?]
+          rw [List.getElem?_append_left (by omega)]
+          simp [hl]
+      have e3 : ptrVal u i b vs = ptrVal u i b (valsAux t p (i + 1) rs (vs ++ [v])) := by
+        unfold ptrVal
+        cases u with
+        | none => rfl
+        | some u =>
+          simp only
+          split
+          · rename_i hu
+            rw [getD_prefix pre (by simp [hl]; omega)]
+            rw [List.getD_eq_getElem?_getD, List.getD_eq_getElem?_getD, List.getElem?_append_left (by omega)]
+          · rfl
+      conv => lhs; rw [hv, e2, e3]
+    · have := valsAux_get t p rs (j + 1) (vs ++ [v]) hlen i (by omega) (by simp at h2 ⊢; omega)
+      rw [this]
+      have : i - j = (i - (j + 1)) + 1 := by omega
+      rw [this]
+      simp
+
+
+def ptrOf (π : Nat) : Option Nat := if 2 ≤ π then some (π - 2) else none
+
+/-- Per-record column invariant at column `j`. -/
+def RecI (p T j π d : Nat) (vals : List Nat) (chain : Nat) (x : VR) : Prop :=
+  VI x ∧ x.w = p ∧ x.n = d ∧ x.a + x.c = π ∧ x.a = min π (j + 1) ∧
+    x.k - 1 = (T + chain + ptrVal (ptrOf π) j d vals) % p
+
+theorem dec_fields' (v : VR) : v.dec.n = v.n ∧ v.dec.m = v.m ∧ v.dec.k = v.k ∧ v.dec.w = v.w ∧
+    v.dec.a + v.dec.c = v.a + v.c ∧ (v.c = 0 → v.dec.a = v.a) ∧ (v.c ≠ 0 → v.dec.a = v.a + 1 ∧ v.dec.c = v.c - 1) := by
+  unfold VR.dec
+  by_cases h : v.c = 0
+  · simp [h]
+  · simp [h]; omega
+
+theorem curG_f (v : VR) (h : VI v) : VI v.curG ∧ v.curG.n = v.dec.n ∧ v.curG.k = v.dec.k ∧ v.curG.w = v.dec.w ∧
+    v.curG.a = v.dec.a ∧ v.curG.c = v.dec.c := by
+  have hI : VI v.dec := ⟨v.dec_ok h.1, by rw [(dec_fields' v).2.1]; exact h.2⟩
+  have hm : v.O = 3 → v.m = 0 := fun _ => h.2
+  have hc := (curG_inv v h.1 hm).1
+  have hmm := (dg_curG v).2
+  refine ⟨⟨hc, by rw [hmm]; exact h.2⟩, ?_⟩
+  unfold VR.curG
+  split <;> simp [VR.cur]
+
+theorem ptrVal_succ (π d j : Nat) (vals : List Nat) :
+    ptrVal (ptrOf π) (j + 1) d vals = ptrVal (ptrOf π) j d vals + (if π = j + 2 then d * vals.getD j 0 else 0) := by
+  unfold ptrVal ptrOf
+  by_cases h : 2 ≤ π
+  · simp only [h, if_true]
+    by_cases h1 : π - 2 < j
+    · have : π ≠ j + 2 := by omega
+      simp [h1, this]; omega
+    · by_cases h2 : π = j + 2
+      · have e : π - 2 = j := by omega
+        simp [e, h2]
+      · have : ¬ (π - 2 < j + 1) := by omega
+        simp [h1, this, h2]
+  · simp only [h, if_false]
+    have : π ≠ j + 2 := by omega
+    simp [this]
+
+theorem c1_iff (π j : Nat) (x : VR) (hac : x.a + x.c = π) (ha : x.a = min π (j + 1)) :
+    (x.c = 1 ↔ π = j + 2) := by omega
+
+theorem dec_a_min (π j : Nat) (y : VR) (hac : y.a + y.c = π) (ha : y.a = min π (j + 1)) :
+    y.dec.a = min π (j + 1 + 1) := by
+  have df := dec_fields' y
+  by_cases h : y.c = 0
+  · rw [df.2.2.2.2.2.1 h]; omega
+  · rw [(df.2.2.2.2.2.2 h).1]; omega
+
+theorem recI_tail (p T j π d : Nat) (vals : List Nat) (x : VR) (r : Nat) (hp : 0 < p)
+    (h : RecI p T j π d vals 0 x) (hr : r = vals.getD j 0) :
+    RecI p T (j + 1) π d vals 0 (VR.dec (visN r x)) := by
+  obtain ⟨hI, hw, hn, hac, ha, hk⟩ := h
+  obtain ⟨v1, v2, v3, v4, v5, v6, v7, v8, v9, v10⟩ := visIter r x hI
+  have df := dec_fields' (visN r x)
+  have hI' : VI (VR.dec (visN r x)) := ⟨(visN r x).dec_ok v1.1, by rw [df.2.1]; exact v1.2⟩
+  have hac' : (visN r x).a + (visN r x).c = π := by rw [v3, v5]; exact hac
+  have ha' : (visN r x).a = min π (j + 1) := by rw [v5]; exact ha
+  refine ⟨hI', by rw [df.2.2.2.1, v2, hw], by rw [df.1, v4, hn], by rw [df.2.2.2.2.1]; exact hac',
+    dec_a_min π j _ hac' ha', ?_⟩
+  rw [df.2.2.1]
+  rw [v10, hw, hk, Nat.mod_add_mod, ptrVal_succ]
+  have := c1_iff π j x hac ha
+  by_cases hc : x.c = 1
+  · have h2 : π = j + 2 := this.1 hc
+    simp only [if_pos hc, if_pos h2, hn]
+    have e : r * d = d * vals.getD j 0 := by rw [hr, Nat.mul_comm]
+    rw [e, Nat.add_assoc]
+  · have h2 : ¬ π = j + 2 := fun e => hc (this.2 e)
+    simp only [if_neg hc, if_neg h2, Nat.mul_zero, Nat.add_zero]
+
+theorem recI_head (p T j π d : Nat) (vals : List Nat) (x : VR) (r : Nat) (hp : 0 < p)
+    (h : RecI p T j π d vals 0 x) (hr : r = vals.getD j 0) :
+    RecI p T (j + 1) π d vals r (VR.curG (incVisN r x)) := by
+  obtain ⟨hI, hw, hn, hac, ha, hk⟩ := h
+  obtain ⟨v1, v2, v3, v4, v5, v6, v7, v8, v9, v10⟩ := incVisN_val r x hI
+  have df := dec_fields' (incVisN r x)
+  obtain ⟨g1, g2, g3, g4, g5, g6⟩ := curG_f _ v1
+  have hac' : (incVisN r x).a + (incVisN r x).c = π := by rw [v3, v5]; exact hac
+  have ha' : (incVisN r x).a = min π (j + 1) := by rw [v5]; exact ha
+  refine ⟨g1, by rw [g4, df.2.2.2.1, v2, hw], by rw [g2, df.1, v4, hn], ?_, ?_, ?_⟩
+  · rw [g5, g6, df.2.2.2.2.1]; exact hac'
+  · rw [g5]; exact dec_a_min π j _ hac' ha'
+  · rw [g3, df.2.2.1, v10, hw, hk, Nat.mod_add_mod, ptrVal_succ]
+    have := c1_iff π j x hac ha
+    by_cases hc : x.c = 1
+    · have h2 : π = j + 2 := this.1 hc
+      simp only [if_pos hc, if_pos h2, hn]
+      have e : r * (1 + d) = r + d * r := by rw [Nat.mul_add, Nat.mul_one, Nat.mul_comm r d]
+      rw [e, ← hr]
+      congr 1; omega
+    · have h2 : ¬ π = j + 2 := fun e => hc (this.2 e)
+      simp only [if_neg hc, if_neg h2, Nat.add_zero, Nat.mul_zero]
+      congr 1; omega
+
+def ColInv (p t j : Nat) (πs ds vals : List Nat) (xs : List VR) : Prop :=
+  ∀ idx x, xs[idx]? = some x →
+    RecI p (if j + idx = t then 1 else 0) j (πs.getD (j + idx) 0) (ds.getD (j + idx) 0) vals
+      (if idx = 0 then (if j = 0 then 0 else vals.getD (j - 1) 0) else 0) x
+
+def ValsOk (p t N : Nat) (πs ds vals : List Nat) : Prop :=
+  ∀ i, i < N → vals.getD i 0 =
+    ((if i = t then 1 else 0) + (if i = 0 then 0 else vals.getD (i - 1) 0) +
+      ptrVal (ptrOf (πs.getD i 0)) i (ds.getD i 0) vals) % p
+
+theorem cursor_val (p t N : Nat) (πs ds vals : List Nat) (hV : ValsOk p t N πs ds vals) (j : Nat) (c : VR)
+    (vs : List VR) (hj : j < N) (hI : ColInv p t j πs ds vals (c :: vs)) : c.k - 1 = vals.getD j 0 := by
+  obtain ⟨_, _, _, _, _, hk⟩ := hI 0 c (by simp)
+  rw [hk, hV j hj]
+  simp
+
+theorem loopVals (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : ValsOk p t N πs ds vals) :
+    ∀ (n j : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × Nat), vs.length = n → j + n + 1 = N →
+      ColInv p t j πs ds vals (c :: vs) → r = c.k - 1 →
+      (loopRun n c vs r s pp).cs.map (fun x => x.1.k - 1) = (List.range n).map (fun i => vals.getD (j + i) 0) ∧
+      (loopRun n c vs r s pp).c'.k - 1 = vals.getD (j + n) 0 := by
+  intro n
+  induction n with
+  | zero =>
+    intro j c vs r s pp hl hN hI hr
+    have hvs : vs = [] := List.length_eq_zero_iff.1 hl
+    subst hvs
+    simp only [loopRun, List.range_zero, List.map_nil, true_and]
+    exact cursor_val p t N πs ds vals hV j c [] (by omega) hI
+  | succ n ih =>
+    intro j c vs r s pp hl hN hI hr
+    obtain ⟨v0, vs', rfl⟩ : ∃ v0 vs', vs = v0 :: vs' := by
+      cases vs with
+      | nil => simp at hl
+      | cons a b => exact ⟨a, b, rfl⟩
+    have hrj : r = vals.getD j 0 := by
+      rw [hr]; exact cursor_val p t N πs ds vals hV j c _ (by omega) hI
+    have h0 := hI 1 v0 (by simp)
+    simp only [show ¬ ((1:Nat) = 0) from by decide, if_false] at h0
+    have hhead := recI_head p _ j _ _ vals v0 r hp h0 hrj
+    have hI' : ColInv p t (j + 1) πs ds vals
+        (VR.curG (incVisN r v0) :: (vs'.map (visN r)).map VR.dec) := by
+      intro idx x hx
+      cases idx with
+      | zero =>
+        simp only [List.getElem?_cons_zero, Option.some.injEq] at hx
+        subst hx
+        have e : (if (0:Nat) = 0 then (if j + 1 = 0 then 0 else vals.getD (j + 1 - 1) 0) else 0) = r := by
+          simp [hrj]
+        rw [e]; exact hhead
+      | succ idx =>
+        simp only [List.getElem?_cons_succ, List.getElem?_map, Option.map_eq_some_iff] at hx
+        obtain ⟨y, ⟨z, hz, rfl⟩, rfl⟩ := hx
+        have hz' : (c :: v0 :: vs')[idx + 2]? = some z := by simpa using hz
+        have h1 := hI (idx + 2) z hz'
+        have e : j + 1 + (idx + 1) = j + (idx + 2) := by omega
+        rw [e]
+        simp only [show ¬ (idx + 2 = 0) from by omega, if_false] at h1
+        simp only [show ¬ (idx + 1 = 0) from by omega, if_false]
+        exact recI_tail p _ j _ _ vals z r hp h1 hrj
+    obtain ⟨g1, g2, g3, g4, g5, g6⟩ := curG_f (incVisN r v0) (incVisN_val r v0 h0.1).1
+    have df := dec_fields' (incVisN r v0)
+    have hr' : (incVisN r v0).k - 1 = (VR.curG (incVisN r v0)).k - 1 := by rw [g3, df.2.2.1]
+    have hl' : ((vs'.map (visN r)).map VR.dec).length = n := by simp at hl ⊢; omega
+    have IH := ih (j + 1) (VR.curG (incVisN r v0)) _ ((incVisN r v0).k - 1) ((incVisN r v0).w - (incVisN r v0).k)
+      (outP c r pp) hl' (by omega) hI' hr'
+    have hk : (outRec c r).k = c.k := by unfold outRec; split <;> rfl
+    simp only [loopRun, stepN_cons]
+    refine ⟨?_, ?_⟩
+    · rw [List.range_succ_eq_map, List.map_cons, List.map_cons]
+      refine List.cons_eq_cons.2 ⟨?_, ?_⟩
+      · simp only [hk, Nat.add_zero]; rw [← hr]; exact hrj.symm ▸ rfl
+      · rw [IH.1, List.map_map]
+        apply List.map_congr_left
+        intro i _
+        simp only [Function.comp]
+        congr 1; omega
+    · have := IH.2
+      rw [this]; congr 1; omega
+
 end ZP.NTT
 

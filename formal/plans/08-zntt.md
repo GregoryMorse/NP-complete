@@ -400,3 +400,7 @@ loop along `odoStepR`, then the correspondence with `evalC`.
 
 ### Stage: assignment loop (`assignLoop`)
 `StepInfo`/`StepNone` expose the odometer step (or exhaustion) from `odlNext3`/`assignRunF`; `ph`/`odo_dec` is a mixed-radix measure that strictly decreases along `odoStepR`; `entryRun` derives all `assignRunF` hypotheses from an ORec list; `assignLoop` iterates assignments (`DIter` on digit tuples) until the odometer is exhausted (beep, `StepNone`) or a success (`SuOut`). Remaining: tie the digits/`stepN` semantics to `evalC`/`hasCircuit`, then the pair lemma / Challenge entries.
+
+### Stage: semantics, pass values (`loopVals`)
+`incK_val`/`incKn_val` (the machine's counters are arithmetic mod `w`), `visIter`/`incVisN_val`/`stepN_cons` (r visits add `r * b` to captured records, r increments add `r`), `valsAux_get` (`valsAux` satisfies the node recurrence), `RecI`/`ColInv` (per-column invariant: record `i` holds `[i=t] + chain + ptrVal` mod `p`, pointer digit `π`: `ptrOf π = some (π-2)` for `π ≥ 2`, captured when `c = 1` after `j+1` decrements), `recI_head`/`recI_tail`, and `loopVals`: the finished records of a pass loop have exactly the node values of `valsAux`.
+Remaining: entry ORec ↔ `ColInv` at column 0 (π = z+k, d = coefficient), the E-compare / `outRec` / power-sum steps ↔ `evalPass`, chaining passes (`nextPass`), `evalC`, then `hasCircuit`; bridge assembly.
