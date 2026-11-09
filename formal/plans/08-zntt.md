@@ -491,3 +491,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: `evalPass_sem`
 `evalPass_sem`: for `DOk` digits with `O` pattern `2^(N-n)3^n`, `evalPass n p recs t (es.drop (N-n))` is `some (esN … |>.drop (N-n))` exactly when `CmpD D es vl ∧ (Σ val·digit ≡ 0 ↔ t ≠ n-1)`, else `none` (with helpers `esN_getD`, `HO_get`, `HO_lt`, `sum_map_mod2`, `decRecs_snd`). Next: induction over `m` combining with `foks_step`/`foks_base` to get `AOkD ↔ evalC`.
+
+### Stage note: the pass chain
+`H0`, `DOk_esN`, `cmp_split`, `chain`: for `D` with `O` pattern `2^(N-n)3^n`, `t+m+1 = n_ref`, `(H0 t D es ∧ FOkS m n D es t L p) ↔ (evalFrom n_ref p recs t (m+1) (es.drop (N-n_ref))).isSome`. Induction on `m` over `foks_base`/`foks_step` and `evalPass_sem`. Next: instantiate at `t=0`, `es = 1…` with `AOkD_eq` and `evalC_eq` to get `AOkD ↔ evalC`.

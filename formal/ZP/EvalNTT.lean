@@ -12969,5 +12969,117 @@ theorem evalPass_sem (p nr t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D 
     rw [if_neg (fun h => hall1 (hall.2 (hcmpk.1 h.1)))]
 
 
+
+def H0 (t : Nat) (D : List DG) (es : List Nat) : Prop :=
+  ∀ g e, D.head? = some g → es.head? = some e → g.2.2.2.2.2 = 3 → e = (if t = 0 then 1 else 0)
+
+theorem DOk_esN (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) :
+    DOk p D (esN p D es (valsL p t D)) := by
+  have hlen := hD.1
+  have hvl := valsL_length p t D
+  have hel := esN_length p D es _ hlen hvl.symm
+  refine ⟨by rw [hel], hD.2.1, ?_⟩
+  intro i g e hg he
+  have hi : i < es.length := by
+    refine Classical.byContradiction fun hc => ?_
+    rw [List.getElem?_eq_none (by omega)] at hg; simp at hg
+  have h0 := hD.2.2 i g es[i] hg (List.getElem?_eq_getElem hi)
+  refine ⟨h0.1, h0.2.1, ?_⟩
+  have hmem : e ∈ esN p D es (valsL p t D) := List.mem_of_getElem? he
+  exact esN_lt p (by have := hD.2.1; omega) D es _ (DOk_w hD).2 e hmem
+
+theorem cmp_split (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (hne : D ≠ []) :
+    CmpD D es (valsL p t D) ↔ (CmpD D.tail es.tail (valsL p t D).tail ∧ H0 t D es) := by
+  obtain ⟨g, gs, rfl⟩ : ∃ g gs, D = g :: gs := by
+    cases D with
+    | nil => exact absurd rfl hne
+    | cons a b => exact ⟨a, b, rfl⟩
+  obtain ⟨e, es2, rfl⟩ : ∃ e es2, es = e :: es2 := by
+    cases es with
+    | nil => have := hD.1; simp at this
+    | cons a b => exact ⟨a, b, rfl⟩
+  have hh := valsL_head p t g gs hD.2.1
+  obtain ⟨v0, vl0, hv⟩ : ∃ v0 vl0, valsL p t (g :: gs) = v0 :: vl0 := by
+    cases hq : valsL p t (g :: gs) with
+    | nil => rw [hq] at hh; simp at hh
+    | cons a b => exact ⟨a, b, rfl⟩
+  rw [hv] at hh
+  simp only [List.head?_cons, Option.some.injEq] at hh
+  subst hh
+  rw [hv]
+  simp only [CmpD, List.tail_cons, H0, List.head?_cons, Option.some.injEq]
+  constructor
+  · rintro ⟨a, b⟩
+    exact ⟨b, fun g' e' hg he hO => by subst hg; subst he; exact a hO⟩
+  · rintro ⟨b, a⟩
+    exact ⟨fun hO => a g e rfl rfl hO, b⟩
+
+
+theorem chain (p nr n : Nat) (D : List DG) (hn : D.length = n + 1) (hnrN : nr ≤ n + 1)
+    (hHO : D.map (fun g => g.2.2.2.2.2) = List.replicate (n + 1 - nr) 2 ++ List.replicate nr 3) :
+    ∀ (m t : Nat) (es L : List Nat), t + m + 1 = nr → DOk p D es → L = List.replicate (n - t) 2 →
+      ((H0 t D es ∧ FOkS m n D es t L p) ↔
+        (evalFrom nr p (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) t (m + 1)
+          (es.drop (n + 1 - nr))).isSome)
+  | 0, t, es, L, ht, hD, hL => by
+    have hp := hD.2.1
+    have hne : D ≠ [] := by intro h; subst h; simp at hn
+    rw [foks_base p t n D es L p hD (by omega) hn]
+    have hsem := evalPass_sem p nr t D es hD (by omega) (by rw [hn]; exact hHO)
+    rw [hn] at hsem
+    simp only [evalFrom]
+    rw [hsem]
+    have hsplit := cmp_split p t D es hD hne
+    have e1 : t = nr - 1 := by omega
+    have hcond : (CmpD D es (valsL p t D) ∧ (SumOD D (valsL p t D) % p = 0 ↔ t ≠ nr - 1)) ↔
+        (H0 t D es ∧ (CmpD D.tail es.tail (valsL p t D).tail ∧ SumOD D (valsL p t D) % p ≠ 0)) := by
+      rw [hsplit]
+      have e2 : (t ≠ nr - 1) ↔ False := ⟨fun h => h e1, False.elim⟩
+      rw [e2, iff_false]
+      constructor
+      · rintro ⟨⟨a, c⟩, b⟩; exact ⟨c, a, b⟩
+      · rintro ⟨c, a, b⟩; exact ⟨⟨a, c⟩, b⟩
+    by_cases hq : CmpD D es (valsL p t D) ∧ (SumOD D (valsL p t D) % p = 0 ↔ t ≠ nr - 1)
+    · rw [if_pos hq]; simp only [Option.bind, Option.isSome_some, iff_true]; exact hcond.1 hq
+    · rw [if_neg hq]; simp only [Option.bind, Option.isSome_none, Bool.false_eq_true, iff_false]
+      exact fun h => hq (hcond.2 h)
+  | m + 1, t, es, L, ht, hD, hL => by
+    have hp := hD.2.1
+    have hne : D ≠ [] := by intro h; subst h; simp at hn
+    have htn : t + 1 ≤ n := by omega
+    have hL2 : L = 2 :: List.replicate (n - t - 1) 2 := by
+      rw [hL, ← List.replicate_succ]; congr 1; omega
+    have hstep := foks_step p t m n D es (List.replicate (n - t - 1) 2) 2 p hD rfl hn htn rfl
+    rw [hL2, hstep]
+    have hsem := evalPass_sem p nr t D es hD (by omega) (by rw [hn]; exact hHO)
+    rw [hn] at hsem
+    rw [evalFrom, hsem]
+    have hsplit := cmp_split p t D es hD hne
+    have e1 : t ≠ nr - 1 := by omega
+    have hcond : (CmpD D es (valsL p t D) ∧ (SumOD D (valsL p t D) % p = 0 ↔ t ≠ nr - 1)) ↔
+        (H0 t D es ∧ (CmpD D.tail es.tail (valsL p t D).tail ∧ SumOD D (valsL p t D) % p = 0)) := by
+      rw [hsplit]
+      have e2 : (t ≠ nr - 1) ↔ True := ⟨fun _ => trivial, fun _ => e1⟩
+      rw [e2, iff_true]
+      constructor
+      · rintro ⟨⟨a, c⟩, b⟩; exact ⟨c, a, b⟩
+      · rintro ⟨c, a, b⟩; exact ⟨⟨a, c⟩, b⟩
+    have hH : H0 (t + 1) D (esN p D es (valsL p t D)) ↔ H0z D (esN p D es (valsL p t D)) := by
+      simp [H0, H0z]
+    have IH := chain p nr n D hn hnrN hHO m (t + 1) (esN p D es (valsL p t D)) (List.replicate (n - t - 1) 2)
+      (by omega) (DOk_esN p t D es hD) (by rw [show n - (t + 1) = n - t - 1 by omega])
+    by_cases hq : CmpD D es (valsL p t D) ∧ (SumOD D (valsL p t D) % p = 0 ↔ t ≠ nr - 1)
+    · rw [if_pos hq]
+      obtain ⟨hc0, ha, hb⟩ := hcond.1 hq
+      rw [Option.bind_some, ← IH]
+      constructor
+      · rintro ⟨_, _, _, c, d⟩; exact ⟨hH.2 c, d⟩
+      · rintro ⟨c, d⟩; exact ⟨hc0, ha, hb, hH.1 c, d⟩
+    · rw [if_neg hq]
+      rw [Option.bind_none]; simp only [Option.isSome_none, Bool.false_eq_true, iff_false]
+      rintro ⟨c0, a, b, _⟩
+      exact hq (hcond.2 ⟨c0, a, b⟩)
+
+
 end ZP.NTT
 
