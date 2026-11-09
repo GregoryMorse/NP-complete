@@ -6186,5 +6186,25 @@ theorem odoNext_none : ∀ l : List (Nat × Nat), OdoWF l → odoNext l = none �
       · simp; omega
       · exact ih hrest h p hp
 
+/-- Thermometer encoding of a digit `d < r`: `1^(d+1) 0^(r-d-1)`. -/
+def therm (d r : Nat) : List Nat := List.replicate (d + 1) 3 ++ List.replicate (r - (d + 1)) 2
+
+/-- `odRecInc` on thermometer digits: the `b` string `d < r - 1` becomes `d + 1`. -/
+theorem odRecIncTherm (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (d r : Nat) (R : List Nat)
+    (hdr : d + 1 < r) (hA : Sym4 A) (hF : [F, O, Pf].all (· ∈ [2, 3]) = true) (hacc : BitsD acc)
+    (hE : BitsD E) (hR : Sym4 R) :
+    znttLogic.Reach
+      (hdR QNTT.ODH A ([F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: (therm d r ++ R)))))
+      (hd QNTT.WI0 (A ++ [F, O, Pf] ++ 1 :: (acc ++ 1 :: (E ++ 1 :: List.replicate (d + 1) 3)))
+        (3 :: (List.replicate (r - (d + 2)) 2 ++ R))) := by
+  obtain ⟨m, hm⟩ : ∃ m, r - (d + 1) = m + 1 := ⟨r - (d + 2), by omega⟩
+  have hm' : r - (d + 2) = m := by omega
+  have h := odRecInc A F O Pf acc E 0 d (List.replicate m 2 ++ R) hA hF hacc hE
+    ((sym4_rep m 2 (by simp [ALL])).app hR)
+  rw [hm']
+  have et : therm d r = List.replicate (d + 1) 3 ++ List.replicate (m + 1) 2 := by simp [therm, hm]
+  rw [et]
+  simpa [List.replicate_succ] using h
+
 end ZP.NTT
 
