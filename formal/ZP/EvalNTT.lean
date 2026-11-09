@@ -8334,159 +8334,12 @@ theorem toO_ok (t : VR) (ht : t.Ok) (r s : Nat) (hrs : r + 1 + s = t.w) : (t.toO
     Elw := by simp [VR.toO]; have := ht.Elw; omega }
 
 
-/-- One non-final pass followed by the start of the next: either refuted (`ODL`) or the next pass's first cursor
-with all invariants of the next pass. -/
-theorem passStep (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
-    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
-    (n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s : Nat)
-    (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs)
-    (hp : 1 ≤ p.2) (hcmp : PassCmp n r vs) (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w)
-    (hm0 : c.m = 0) (hvm : ∀ x ∈ vs, x.m = 0)
-    (j y : Nat) (l' : List Nat) (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: y :: l')
-    (hcmpN : ∀ t0 ts, (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
-        (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts →
-      (t0.1.1.nextPass t0.2).O = 3 → ∃ z, 1 ≤ (t0.1.1.nextPass t0.2).k ∧
-        (t0.1.1.nextPass t0.2).E = fld ((t0.1.1.nextPass t0.2).k + z) (t0.1.1.nextPass t0.2).k) :
-    (∀ t ∈ ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
-        (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]), t.1.Ok ∧ t.1.m = 0 ∧ t.2.1 + 1 + t.2.2 = t.1.w) ∧ ((∃ k q, znttLogic.Reach
-        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
-          [] c 0 r s vs) [])
-        (hd QNTT.ODL (Wf ++ [1]) (2 :: (List.replicate k 2 ++ List.replicate q 3 ++
-          1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: (List.replicate b 2 ++
-            tailB (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
-              (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).map fun t => t.1.done t.2.1 t.2.2))))))) ∨
-    (∃ (q : Nat) (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat)), 1 ≤ q ∧ q = (outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p').2 ∧
-      (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
-        (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts ∧
-      znttLogic.Reach
-        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
-          [] c 0 r s vs) [])
-        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate 0 2 ++ List.replicate q 3 ++ 1 :: (Q ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)))
-          [] (nxtC t0) 0 (nxtR t0) (nxtS t0) (nxtVs ts)) []) ∧
-      nxtR t0 + 1 + nxtS t0 = (nxtC t0).w ∧ (nxtVs ts).length = n ∧ CurInv (nxtC t0) ∧ (∀ x ∈ nxtVs ts, x.Ok) ∧ OutM (nxtVs ts) ∧
-      2 ≤ (nxtC t0).w ∧ (∀ x ∈ nxtVs ts, 2 ≤ x.w) ∧ (nxtC t0).m = 0 ∧ (∀ x ∈ nxtVs ts, x.m = 0) ∧
-      (nxtC t0).P :: (nxtVs ts).map VR.P = List.replicate (j + 1) 2 ++ 3 :: l')) := by
-  obtain ⟨p', cs, hp', hcs, hPc, hLo, hcyc⟩ := passCycle Wf hW Q a b hP2 n vs c p r s hrs hlen hc hvs hom hp hcmp hcw hvw j y l' hfl
-  obtain ⟨lo, hlo, hcsEq, hpEq⟩ := hLo
-  rw [hlo, ← hcsEq] at hcmpN ⊢
-  have hMz : ∀ t ∈ cs, t.1.O = 3 → t.1.m = 0 := by
-    have hm := loopRun_m n c vs r s p hc hvs hom hlen
-    rw [hlo] at hm
-    intro t ht
-    rw [hcsEq] at ht
-    simp only [List.mem_append, List.mem_singleton] at ht
-    rcases ht with ht | rfl
-    · exact hm.1 t ht
-    · intro h3
-      rw [(outRec_m lo.c' lo.r').2] at h3
-      rw [(outRec_m lo.c' lo.r').1]
-      exact hm.2 h3
-  have hxs : ∀ x ∈ List.replicate (j + 1) 2 ++ 3 :: l', x ∈ [2, 3] := by
-    intro x hx
-    simp only [List.mem_append, List.mem_cons, List.mem_replicate] at hx
-    rcases hx with ⟨_, rfl⟩ | rfl | hx
-    · simp
-    · simp
-    · have h1 : x ∈ c.P :: vs.map VR.P := by rw [hfl]; simp [hx]
-      simp only [List.mem_cons, List.mem_map] at h1
-      rcases h1 with rfl | ⟨v, hv, rfl⟩
-      · exact hc.1.P
-      · exact (hvs v hv).P
-  have hmzs : ∀ t ∈ cs, t.1.m = 0 := by
-    have hm := loopRun_m0 n c vs r s p hm0 hvm hlen
-    rw [hlo] at hm
-    intro t ht
-    rw [hcsEq] at ht
-    simp only [List.mem_append, List.mem_singleton] at ht
-    rcases ht with ht | rfl
-    · exact hm.1 t ht
-    · rw [(outRec_m lo.c' lo.r').1]; exact hm.2
-  refine ⟨fun t ht => ⟨(hcs t ht).1, hmzs t ht, (hcs t ht).2.1⟩, ?_⟩
-  rcases hcyc with ⟨hk, t0, ts, hz, hfal⟩ | ⟨k, hk, hodl⟩
-  · right
-    have hzl : (cs.zip (List.replicate (j + 1) 2 ++ 3 :: l')).length = n + 1 := by
-      have h1 := congrArg List.length hPc
-      have h2 := congrArg List.length hfl
-      simp at h1 h2 ⊢
-      omega
-    rw [hz] at hzl
-    simp only [List.length_cons] at hzl
-    have hmem : ∀ q ∈ t0 :: ts, q ∈ cs.zip (List.replicate (j + 1) 2 ++ 3 :: l') := by
-      intro q hq; rw [hz]; exact hq
-    have hh : ∀ q ∈ t0 :: ts, q.1.1.Ok ∧ q.1.2.1 + 1 + q.1.2.2 = q.1.1.w ∧ 2 ≤ q.1.1.w ∧ q.2 ∈ [2, 3] := by
-      intro q hq
-      have := List.of_mem_zip (hmem q hq)
-      have h3 := hcs q.1 this.1
-      exact ⟨h3.1, h3.2.1, h3.2.2, hxs _ this.2⟩
-    have h0 := hh t0 (by simp)
-    have hGP := goodW_pmNext Wf hW Q a b p'.2 hP2 hp'
-    have hcmp0 := hcmpN t0 ts hz
-    have hfn := faNext _ hGP t0 ts hh hcmp0
-    have hw := VR.nextPass_ok _ h0.1 _ h0.2.2.2 h0.2.2.1
-    have hmz : (t0.1.1.nextPass t0.2).O = 3 → (t0.1.1.nextPass t0.2).m = 0 := by
-      intro h3
-      exact hMz t0.1 (List.of_mem_zip (hmem t0 (by simp))).1 (by simpa [VR.nextPass] using h3)
-    refine ⟨p'.2, t0, ts, hp', by rw [hpEq], hz, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-    all_goals try simp only [nxtC, nxtW, nxtR, nxtS, nxtVs]
-    · simp only [List.replicate_zero, List.nil_append]
-      exact hfal.trans hfn
-    · have := (curG_kw (t0.1.1.nextPass t0.2)).2
-      have h1 := hw.k1; have h2 := hw.kw
-      omega
-    · simpa using hzl
-    · exact curG_inv _ hw hmz
-    · intro x hx
-      simp only [List.mem_map] at hx
-      obtain ⟨y, ⟨q, hq, rfl⟩, rfl⟩ := hx
-      have hq' := hh q (List.mem_cons_of_mem _ hq)
-      exact VR.dec_ok _ (VR.nextPass_ok _ hq'.1 _ hq'.2.2.2 hq'.2.2.1)
-    · apply dec_outM
-      intro x hx
-      simp only [List.mem_map] at hx
-      obtain ⟨q, hq, rfl⟩ := hx
-      intro h3
-      exact hMz q.1 (List.of_mem_zip (hmem q (List.mem_cons_of_mem _ hq))).1 (by simpa [VR.nextPass] using h3)
-    · rw [(curG_kw (t0.1.1.nextPass t0.2)).2]
-      simpa [VR.nextPass] using h0.2.2.1
-    · intro x hx
-      simp only [nxtVs, List.mem_map] at hx
-      obtain ⟨y, ⟨q, hq, rfl⟩, rfl⟩ := hx
-      have hq' := hh q (List.mem_cons_of_mem _ hq)
-      rw [dec_w]
-      simpa [VR.nextPass] using hq'.2.2.1
-    · exact curG_m0 _ (by simpa [VR.nextPass] using hmzs t0.1 (List.of_mem_zip (hmem t0 (by simp))).1)
-    · intro x hx
-      simp only [nxtVs, List.mem_map] at hx
-      obtain ⟨y, ⟨q, hq, rfl⟩, rfl⟩ := hx
-      exact dec_m0 _ (by simpa [VR.nextPass] using hmzs q.1 (List.of_mem_zip (hmem q (List.mem_cons_of_mem _ hq))).1)
-    · have hs : ((cs.zip (List.replicate (j + 1) 2 ++ 3 :: l')).map Prod.snd) = List.replicate (j + 1) 2 ++ 3 :: l' := by
-        rw [List.map_snd_zip]
-        have h1 := congrArg List.length hPc
-        have h2 := congrArg List.length hfl
-        simp at h1 h2 ⊢
-        omega
-      rw [hz] at hs
-      simp only [List.map_cons] at hs
-      rw [← hs]
-      simp [nxtC, nxtW, nxtVs, curG_P, dec_P, VR.nextPass, Function.comp_def]
-  · left
-    exact ⟨k, p'.2, hodl⟩
-
-
 def passCsOf (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) : List (VR × Nat × Nat) :=
   (loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
     (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]
 
 def passQOf (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) : Nat :=
   (outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p').2
-
-/-- The semantic input of `m` further passes (the last one included): the compare condition of each pass. -/
-def Sem : Nat → Nat → VR → List VR → Nat → Nat → Nat × Nat → Nat → List Nat → Prop
-  | 0, n, _, vs, r, _, _, _, _ => PassCmp n r vs
-  | m + 1, n, c, vs, r, s, p, j, L =>
-    PassCmp n r vs ∧ ∀ t0 ts, (passCsOf n c vs r s p).zip (List.replicate (j + 1) 2 ++ 3 :: L.tail) = t0 :: ts →
-      ((nxtW t0).O = 3 → ∃ z, 1 ≤ (nxtW t0).k ∧ (nxtW t0).E = fld ((nxtW t0).k + z) (nxtW t0).k) ∧
-      Sem m n (nxtC t0) (nxtVs ts) (nxtR t0) (nxtS t0) (0, passQOf n c vs r s p) (j + 1) L.tail
 
 /-- Tails of the tape for `m` further passes. -/
 def NnTail (m b : Nat) : List Nat := List.replicate (m + 1) 3 ++ List.replicate b 2
@@ -8802,14 +8655,14 @@ def SuOut (D : List (DG)) (Wf Q'' : List Nat) (b : Nat) (T : List Nat) : Prop :=
     T = (Wf ++ 1 :: (S0 ++ 1 :: (Q'' ++ 1 :: List.replicate b 2))) ++ sepRest (o :: os)
 
 /-- The refuted outcome: parameters `Wf 1 S0 1 Qp 3^a' 2 2^b'` (`a' + 1 + b' = N`), then the finished records. -/
-def OdOut (D : List (DG)) (Wf Qp : List Nat) (N : Nat) (R' : List Nat) : Prop :=
-  ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ a' + 1 + b' = N ∧
+def OdOut (D : List (DG)) (Wf Qp : List Nat) (N P : Nat) (R' : List Nat) : Prop :=
+  ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ S0.length = P ∧ a' + 1 + b' = N ∧
     GoodW (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ 2 :: List.replicate b' 2))) ∧
     (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧
     (Wf ++ [1]) ++ R' = (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ 2 :: List.replicate b' 2))) ++ sepRest (o :: os)
 
-theorem OdOut.toO {D Wf Qp N R'} (h : OdOut D Wf Qp N R') : TapeOutO ((Wf ++ [1]) ++ R') := by
-  obtain ⟨S0, a', b', o, os, a, b, c, g, ok, d, e⟩ := h
+theorem OdOut.toO {D Wf Qp N P R'} (h : OdOut D Wf Qp N P R') : TapeOutO ((Wf ++ [1]) ++ R') := by
+  obtain ⟨S0, a', b', o, os, a, b, l, c, g, ok, d, e⟩ := h
   exact ⟨_, o, os, g, ok, e⟩
 
 theorem tapeOutP_ex (cs : List (VR × Nat × Nat))
@@ -8854,136 +8707,6 @@ theorem nn_eq (a b : Nat) : List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2 =
   rw [key]; simp [NnTail, List.replicate_succ]
 
 
-/-- All passes of one assignment: the whole run either refutes (`ODL`) or succeeds (`SU1`), with a good prefix and the
-finished records in both cases. -/
-theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
-    ∀ (m b n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s j : Nat) (L : List Nat),
-    GoodW (1 :: ((Q'' ++ [1]) ++ NnTail m b)) →
-    r + 1 + s = c.w → vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → 1 ≤ p.2 → 2 ≤ c.w → (∀ x ∈ vs, 2 ≤ x.w) → c.m = 0 → (∀ x ∈ vs, x.m = 0) →
-    c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L → m ≤ L.length → Sem m n c vs r s p j L →
-    (∃ R', OdOut ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (m + 1 + b) R' ∧
-      znttLogic.Reach
-        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
-          [] c 0 r s vs) [])
-        (hd QNTT.ODL (Wf ++ [1]) R')) ∨
-    (∃ T, SuOut ((c :: vs).map VR.dg) Wf Q'' (b + m + 1) T ∧
-      znttLogic.Reach
-        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
-          [] c 0 r s vs) [])
-        (hdR QNTT.SU1 [] T)) := by
-  intro m
-  induction m with
-  | zero =>
-    intro b n vs c p r s j L hP2 hrs hlen hc hvs hom hp hcw hvw hm0 hvm hfl hL hsem
-    have e : (Q'' ++ [1]) ++ NnTail 0 b = Q'' ++ [1] ++ [3] ++ List.replicate b 2 := by simp [NnTail]
-    rw [e] at hP2 ⊢
-    obtain ⟨p', cs, hp', hcs, hPc, hLo, hlast⟩ := lastCycle Wf hW Q'' b hP2 n vs c p r s hrs hlen hc hvs hom hp hsem hcw hvw
-    have hne : cs ≠ [] := by
-      intro h; rw [h] at hPc; simp at hPc
-    have hmzs : ∀ t ∈ cs, t.1.m = 0 := by
-      obtain ⟨lo, hlo, hcsEq, hpEq⟩ := hLo
-      have hm := loopRun_m0 n c vs r s p hm0 hvm hlen
-      rw [hlo] at hm
-      intro t ht
-      rw [hcsEq] at ht
-      simp only [List.mem_append, List.mem_singleton] at ht
-      rcases ht with ht | rfl
-      · exact hm.1 t ht
-      · rw [(outRec_m lo.c' lo.r').1]; exact hm.2
-    have hD : cs.map (fun t => t.1.dg) = (c :: vs).map VR.dg := by
-      obtain ⟨lo, hlo, hcsEq, _⟩ := hLo
-      have := dg_runAll_pos n c vs r s p hm0 hvm hlen
-      rw [hlo] at this; rw [hcsEq]; exact this
-    have hcs' : ∀ t ∈ cs, t.1.Ok ∧ t.1.m = 0 ∧ t.2.1 + 1 + t.2.2 = t.1.w :=
-      fun t ht => ⟨(hcs t ht).1, hmzs t ht, (hcs t ht).2.1⟩
-    have hP2' : GoodW (1 :: (Q'' ++ 1 :: 2 :: List.replicate b 2)) := by
-      have := goodW_swap_tail (1 :: (Q'' ++ [1])).length (1 :: (Q'' ++ [1])) 3 2
-        (List.replicate b 2) (List.replicate b 2) rfl (by simp) (by simp)
-        (BitsD.rep b 2 (by simp)) (BitsD.rep b 2 (by simp))
-        (by simpa [List.append_assoc] using hP2)
-      simpa [List.append_assoc] using this
-    rcases hlast with ⟨k, hk, h1⟩ | ⟨hk, h1⟩
-    · right
-      have hu := goodW_reg Wf (List.replicate (k + 1) 2 ++ List.replicate p'.2 3) _ hW
-        (bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)))
-        (by intro h; have := congrArg List.length h; simp at this) hP2'
-      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutP_ex cs hcs' hne
-      refine ⟨_, ⟨List.replicate (k + 1) 2 ++ List.replicate p'.2 3, o, os,
-        bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)), ?_, hok, hdg.trans hD, rfl⟩, ?_⟩
-      · simpa [List.replicate_succ, List.append_assoc] using hu
-      · rw [hex] at h1
-        simpa [List.replicate_succ, List.append_assoc] using h1
-    · left
-      have hu := goodW_reg Wf (List.replicate p'.2 3) _ hW (BitsD.rep _ 3 (by simp))
-        (by intro h; have := congrArg List.length h; simp at this; omega) hP2'
-      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutP_ex cs hcs' hne
-      refine ⟨(List.replicate p'.2 3 ++ 1 :: ((Q'' ++ [1]) ++ List.replicate 0 3 ++ 2 :: List.replicate b 2)) ++
-        sepRest (o :: os), ⟨List.replicate p'.2 3, 0, b, o, os, BitsD.rep _ 3 (by simp),
-        by intro h; have := congrArg List.length h; simp at this; omega, by omega, ?_, hok, hdg.trans hD, ?_⟩, ?_⟩
-      · simpa [List.append_assoc] using hu
-      · simp [List.append_assoc]
-      · rw [hex] at h1
-        simpa [List.append_assoc] using h1
-  | succ a ih =>
-    intro b n vs c p r s j L hP2 hrs hlen hc hvs hom hp hcw hvw hm0 hvm hfl hL hsem
-    obtain ⟨y, l', rfl⟩ : ∃ y l', L = y :: l' := by
-      cases L with
-      | nil => simp at hL
-      | cons y l' => exact ⟨y, l', rfl⟩
-    have e : (Q'' ++ [1]) ++ NnTail (a + 1) b = (Q'' ++ [1]) ++ List.replicate (a + 2) 3 ++ List.replicate b 2 := by
-      simp [NnTail, List.append_assoc]
-    rw [e] at hP2 ⊢
-    obtain ⟨hcmp, hsem'⟩ := hsem
-    have hstep := passStep Wf hW (Q'' ++ [1]) a b hP2 n vs c p r s hrs hlen hc hvs hom hp hcmp hcw hvw hm0 hvm j y l' hfl
-      (fun t0 ts hz => (hsem' t0 ts (by simpa [passCsOf] using hz)).1)
-    obtain ⟨hcsOk, hst⟩ := hstep
-    rcases hst with ⟨k, q, h1⟩ | ⟨q, t0, ts, hq, hqe, hz, h1, hrs1, hlen1, hc1, hvs1, hom1, hcw1, hvw1, hm1, hvm1, hfl1⟩
-    · left
-      have hP2'' : GoodW (1 :: ((Q'' ++ [1]) ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := goodW_shiftNn _ a b hP2
-      have hu := goodW_reg Wf (List.replicate (k + 1) 2 ++ List.replicate q 3) _ hW
-        (bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)))
-        (by intro h; have := congrArg List.length h; simp at this) (by simpa [List.append_assoc] using hP2'')
-      have hne : ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
-          (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]) ≠ [] := by simp
-      obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutP_ex _ hcsOk hne
-      refine ⟨((2 :: List.replicate k 2) ++ List.replicate q 3 ++ 1 :: ((Q'' ++ [1]) ++ List.replicate (a + 1) 3 ++
-          2 :: List.replicate b 2)) ++ sepRest (o :: os),
-        ⟨(2 :: List.replicate k 2) ++ List.replicate q 3, a + 1, b, o, os,
-          bd_app (BitsD.cons (by simp) (BitsD.rep _ 2 (by simp))) (BitsD.rep _ 3 (by simp)),
-          by intro h; have := congrArg List.length h; simp at this, by omega, ?_, hok, hdg.trans (dg_runAll_pos n c vs r s p hm0 hvm hlen), ?_⟩, ?_⟩
-      · rw [List.replicate_succ' (n := a) (a := 3)]; simpa [List.append_assoc, List.replicate_succ] using hu
-      · simp [List.append_assoc]
-      · rw [hex] at h1
-        rw [List.replicate_succ' (n := a) (a := 3)]; simpa [List.append_assoc, List.replicate_succ] using h1
-    · have hs2 := (hsem' t0 ts (by simpa [passCsOf] using hz)).2
-      have hP2' : GoodW (1 :: ((Q'' ++ [1]) ++ NnTail a (b + 1))) := by
-        rw [← nn_eq]
-        simpa [List.append_assoc] using goodW_shiftNn (Q'' ++ [1]) a b hP2
-      have hih := ih (b + 1) n (nxtVs ts) (nxtC t0) (0, q) (nxtR t0) (nxtS t0) (j + 1) l' hP2' hrs1 hlen1 hc1 hvs1 hom1
-        hq hcw1 hvw1 hm1 hvm1 (by simpa using hfl1) (by simpa using hL) (by rw [hqe]; exact hs2)
-      have e2 : (Q'' ++ [1]) ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2 = (Q'' ++ [1]) ++ NnTail a (b + 1) := by
-        rw [List.append_assoc, nn_eq]
-      rw [e2] at h1
-      simp only [List.replicate_zero, List.nil_append] at h1 hih
-      have hEq : (nxtC t0 :: nxtVs ts).map VR.dg = (c :: vs).map VR.dg := by
-        have hcl : ((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
-            (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).length = n + 1 := by
-          simp [loopRun_cs_length n c vs r s p hlen]
-        have hzl : (List.replicate (j + 1) 2 ++ 3 :: l').length = n + 1 := by
-          have := congrArg List.length hfl
-          simp at this ⊢; omega
-        have hmf := List.map_fst_zip (l₁ := (loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
-            (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]) (l₂ := List.replicate (j + 1) 2 ++ 3 :: l') (by omega)
-        rw [hz] at hmf
-        have hp := dg_runAll_pos n c vs r s p hm0 hvm hlen
-        rw [← hp, ← hmf]
-        simp [nxtC, nxtVs, nxtW, dg_curG, dg_nextPass, dg_dec, List.map_map, Function.comp_def]
-      rcases hih with ⟨R', ho, hr⟩ | ⟨T, ho, hr⟩
-      · exact Or.inl ⟨R', by rw [hEq] at ho; rwa [show a + 1 + (b + 1) = a + 1 + 1 + b by omega] at ho, h1.trans hr⟩
-      · exact Or.inr ⟨T, by rw [hEq] at ho; rwa [show b + 1 + a + 1 = b + (a + 1) + 1 by omega] at ho, h1.trans hr⟩
-
-
-
 theorem tapeOutO_sym4 {T : List Nat} (h : TapeOutO T) : Sym4 T := by
   obtain ⟨u, o, os, hu, hos, rfl⟩ := h
   have : sepRest (o :: os) = 1 :: 1 :: tapeL (o :: os) := rfl
@@ -9007,31 +8730,6 @@ theorem odlNext (Wf : List Nat) (hW : BitsD Wf) (R' : List Nat) (hT : TapeOutO (
     obtain ⟨X, R'', e, hr⟩ := h1 os' hs
     exact Or.inl ⟨u, v, os', X, R'', hv, e, hr⟩
   | none => exact Or.inr ⟨_, h2 hs⟩
-
-
-/-- One whole assignment, from the first cursor of the first pass: the next assignment (`WI0`), the overflow (`BEEP`),
-or success (`SU1`). -/
-theorem assignRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat)
-    (m b n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s j : Nat) (L : List Nat)
-    (hP2 : GoodW (1 :: ((Q'' ++ [1]) ++ NnTail m b)))
-    (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs) (hp : 1 ≤ p.2)
-    (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w) (hm0 : c.m = 0) (hvm : ∀ x ∈ vs, x.m = 0)
-    (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L) (hL : m ≤ L.length) (hsem : Sem m n c vs r s p j L) :
-    let st := hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
-          [] c 0 r s vs) []
-    (∃ u v os' X R'', Rest u v ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
-      znttLogic.Reach st (hd QNTT.WI0 X (3 :: R''))) ∨
-    (∃ A, znttLogic.Reach st (hd QNTT.BEEP A [])) ∨
-    (∃ T, SuOut ((c :: vs).map VR.dg) Wf Q'' (b + m + 1) T ∧ znttLogic.Reach st (hdR QNTT.SU1 [] T)) := by
-  intro st
-  rcases passesRun Wf hW Q'' m b n vs c p r s j L hP2 hrs hlen hc hvs hom hp hcw hvw hm0 hvm hfl hL hsem with
-    ⟨R', hT, hr⟩ | ⟨T, hT, hr⟩
-  · rcases odlNext Wf hW R' hT.toO with ⟨u, v, os', X, R'', hv, e, h⟩ | ⟨A, h⟩
-    · exact Or.inl ⟨u, v, os', X, R'', hv, e, hr.trans h⟩
-    · exact Or.inr (Or.inl ⟨A, hr.trans h⟩)
-  · exact Or.inr (Or.inr ⟨T, hT, hr⟩)
-
-
 
 
 theorem ORec.Ok.noB {o : ORec} (h : o.Ok) : NoB o.tape := by
@@ -9343,93 +9041,6 @@ theorem resetAll_ok : ∀ os : List ORec, (∀ x ∈ os, x.Ok) → ∀ x ∈ res
     · exact (h o (by simp)).reset
     · exact resetAll_ok os (fun y hy => h y (by simp [hy])) x hx
 
-/-- A refuted assignment moves to the next one (`WI0`), or overflows: `BEEP`, the beep step, and the erase sweep
-restarting at `PA0` with `C` grown by one (`beepOk`). -/
-theorem odlNext2 (D : List (DG)) (Wf Kf Cf : List Nat) (hW : BitsD Wf) (hK : BitsD Kf) (hC : BitsD Cf)
-    (N : Nat) (R' : List Nat) (hT : OdOut D Wf ((Kf ++ 1 :: Cf) ++ [1]) N R') :
-    (∃ u v os' X R'', Rest u v ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
-      znttLogic.Reach (hd QNTT.ODL (Wf ++ [1]) R') (hd QNTT.WI0 X (3 :: R''))) ∨
-    (∃ (A : List Nat) (n0 : Nat), znttLogic.Reach (hd QNTT.ODL (Wf ++ [1]) R') (hd QNTT.BEEP A []) ∧
-      ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
-        znttLogic.Reach X (hdR QNTT.PA0 [3] (1 :: (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
-          ((Cf.map (fun x => if x = 1 then 1 else 3) ++ [3]) ++ 1 :: (List.replicate N 3 ++ List.replicate (n0 + 1) 0)))))) := by
-  have hT' := hT.toO
-  have sT := tapeOutO_sym4 hT'
-  have hR : Sym4 R' := (Sym4_app_iff.1 sT).2
-  have hL : NoB (Wf ++ [1]) := NoB_app_iff.2 ⟨hW.noB, by intro x hx; simp at hx; simp [hx, NB]⟩
-  obtain ⟨S0, a', b', o, os, hS0, hS0ne, hN, hg, hos, hdg, hXY⟩ := hT
-  have hXY' : (Wf ++ [1]) ++ R' = (Wf ++ 1 :: (S0 ++ 1 :: ((Kf ++ 1 :: Cf) ++ [1] ++ List.replicate a' 3 ++ 2 :: List.replicate b' 2))) ++
-      1 :: 1 :: tapeL (o :: os) := hXY
-  obtain ⟨v, hv, h1, h2⟩ := odFail _ hg o os hos _ _ hXY' hL hR
-  cases hs : odoStepR (o :: os) with
-  | some os' =>
-    obtain ⟨X, R'', e, hr⟩ := h1 os' hs
-    exact Or.inl ⟨_, v, os', X, R'', hv, e, hr⟩
-  | none =>
-    right
-    have hb := h2 hs
-    have hvm := rest_map hv
-    have hgv : GoodW v := hv.goodW
-    have hrep : List.replicate a' 3 ++ 3 :: List.replicate b' 3 = List.replicate N 3 := by
-      subst hN
-      rw [show (3 :: List.replicate b' 3) = List.replicate (b' + 1) 3 from rfl, List.replicate_append_replicate]
-      congr 1; omega
-    have hvE : v = Wf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (S0.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
-        (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (Cf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: List.replicate N 3))) := by
-      rw [hvm, ← hrep]
-      simp [List.map_append, List.map_replicate, List.append_assoc]
-    obtain ⟨L, rfl⟩ : ∃ L, N = L + 1 := ⟨N - 1, by omega⟩
-    have hrk : ∀ x ∈ resetAll (o :: os), x.Ok := resetAll_ok _ hos
-    have hnb : NoB (tapeL (resetAll (o :: os))) := tapeL_noB _ hrk
-    have hAeq : (v ++ [1, 1]) ++ tapeL (resetAll (o :: os)) =
-        (Wf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (S0.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
-          (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 :: (Cf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
-            List.replicate (L + 1) 3)))) ++ 1 :: 1 :: tapeL (resetAll (o :: os)) := by
-      rw [hvE]; simp [List.append_assoc]
-    have hnbA : NoB ((v ++ [1, 1]) ++ tapeL (resetAll (o :: os))) := by
-      have h1 : NoB v := hgv.noB
-      exact NoB_app_iff.2 ⟨NoB_app_iff.2 ⟨h1, by intro x hx; simp at hx; simp [hx, NB]⟩, hnb⟩
-    have hne : (v ++ [1, 1]) ++ tapeL (resetAll (o :: os)) ≠ [] := by simp
-    obtain ⟨X, hX, hXr⟩ := beepToSU1 _ hnbA hne
-    have hbo := beepOk (Wf.map (fun x => if x = 1 then 1 else 3)) (S0.map (fun x => if x = 1 then 1 else 3))
-      (Kf.map (fun x => if x = 1 then 1 else 3)) (Cf.map (fun x => if x = 1 then 1 else 3))
-      (tapeL (resetAll (o :: os))) L (bits_map hW) (bits_map hS0) (bits_map hK) (bits_map hC)
-      (by rw [← hvE]; exact hgv) hnb
-    refine ⟨_, (tapeL (resetAll (o :: os))).length, hb, X, hX, ?_⟩
-    rw [hAeq] at hXr
-    exact hXr.trans hbo
-
-/-- One whole assignment with explicit continuations: the next assignment (`WI0`), the overflow (beep, then restart
-at `PA0` with `C` grown), or success (`SU1`, restart at `PA0`). -/
-theorem assignRun' (Wf : List Nat) (hW : BitsD Wf) (Kf Cf : List Nat) (hK : BitsD Kf) (hC : BitsD Cf)
-    (m b n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s j : Nat) (L : List Nat)
-    (hP2 : GoodW (1 :: (((Kf ++ 1 :: Cf) ++ [1]) ++ NnTail m b)))
-    (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs) (hp : 1 ≤ p.2)
-    (hcw : 2 ≤ c.w) (hvw : ∀ x ∈ vs, 2 ≤ x.w) (hm0 : c.m = 0) (hvm : ∀ x ∈ vs, x.m = 0)
-    (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L) (hL : m ≤ L.length) (hsem : Sem m n c vs r s p j L) :
-    let st := hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 ::
-          (((Kf ++ 1 :: Cf) ++ [1]) ++ NnTail m b))) [] c 0 r s vs) []
-    (∃ u v os' X R'', Rest u v ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
-      znttLogic.Reach st (hd QNTT.WI0 X (3 :: R''))) ∨
-    (∃ (A : List Nat) (n0 : Nat), znttLogic.Reach st (hd QNTT.BEEP A []) ∧
-      ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
-        znttLogic.Reach X (hdR QNTT.PA0 [3] (1 :: (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
-          ((Cf.map (fun x => if x = 1 then 1 else 3) ++ [3]) ++ 1 ::
-            (List.replicate (m + 1 + b) 3 ++ List.replicate (n0 + 1) 0)))))) ∨
-    (∃ N : Nat, ∃ T, SuOut ((c :: vs).map VR.dg) Wf (Kf ++ 1 :: Cf) (b + m + 1) T ∧
-      znttLogic.Reach st (hdR QNTT.SU1 [] T) ∧
-      znttLogic.Reach (hdR QNTT.SU1 [] T) (hdR QNTT.PA0 [3] (1 :: (Kf ++ 1 :: (Cf ++ 1 :: (List.replicate (b + m + 1 + 1) 3 ++
-        List.replicate (N + 1) 0)))))) := by
-  intro st
-  rcases passesRun Wf hW (Kf ++ 1 :: Cf) m b n vs c p r s j L hP2 hrs hlen hc hvs hom hp hcw hvw hm0 hvm hfl hL hsem with
-    ⟨R', hT, hr⟩ | ⟨T, hT, hr⟩
-  · rcases odlNext2 _ Wf Kf Cf hW hK hC _ R' hT with ⟨u, v, os', X, R'', hv, e, h⟩ | ⟨A, n0, hb, X, hX, hXr⟩
-    · exact Or.inl ⟨u, v, os', X, R'', hv, e, hr.trans h⟩
-    · exact Or.inr (Or.inl ⟨A, n0, hr.trans hb, X, hX, hXr⟩)
-  · obtain ⟨N, hN⟩ := sucRestart _ Wf Kf Cf (b + m) T hW hK hC hT
-    exact Or.inr (Or.inr ⟨N, T, hT, hr, hN⟩)
-
-
 /-- An odometer record as a tape record. -/
 def orcRc (o : ORec) : Rc :=
   { F := o.F, O := o.O, Pf := o.Pf, acc := o.acc, E := o.E, b0 := (therm o.d o.r).headD 2,
@@ -9716,18 +9327,18 @@ theorem fa0OGt (A : List Nat) (w : Rc) (hw : w.DE) (hO : w.O = 3) (e d s z : Nat
 
 
 /-- The refuted outcome, generalised: the parameter region `Nn` is `3^a' 2^b'`, and the tape is given whole. -/
-def OdOut' (D : List (DG)) (Wf Qp : List Nat) (N : Nat) (T : List Nat) : Prop :=
-  ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ a' + b' = N ∧ 1 ≤ N ∧
+def OdOut' (D : List (DG)) (Wf Qp : List Nat) (N P : Nat) (T : List Nat) : Prop :=
+  ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ S0.length = P ∧ a' + b' = N ∧ 1 ≤ N ∧
     GoodW (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ List.replicate b' 2))) ∧
     (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧
     T = (Wf ++ 1 :: (S0 ++ 1 :: (Qp ++ List.replicate a' 3 ++ List.replicate b' 2))) ++ sepRest (o :: os)
 
-theorem OdOut'.toO {D Wf Qp N T} (h : OdOut' D Wf Qp N T) : TapeOutO T := by
-  obtain ⟨S0, a', b', o, os, a, b, c, c1, g, ok, d, e⟩ := h
+theorem OdOut'.toO {D Wf Qp N P T} (h : OdOut' D Wf Qp N P T) : TapeOutO T := by
+  obtain ⟨S0, a', b', o, os, a, b, l, c, c1, g, ok, d, e⟩ := h
   exact ⟨_, o, os, g, ok, e⟩
 
-theorem OdOut'.noB {D Wf Qp N T} (h : OdOut' D Wf Qp N T) : NoB T := by
-  obtain ⟨S0, a', b', o, os, a, b, c, c1, g, ok, d, e⟩ := h
+theorem OdOut'.noB {D Wf Qp N P T} (h : OdOut' D Wf Qp N P T) : NoB T := by
+  obtain ⟨S0, a', b', o, os, a, b, l, c, c1, g, ok, d, e⟩ := h
   rw [e]
   have sr : sepRest (o :: os) = 1 :: 1 :: tapeL (o :: os) := rfl
   refine NoB_app_iff.2 ⟨g.noB, ?_⟩
@@ -9739,23 +9350,23 @@ theorem OdOut'.noB {D Wf Qp N T} (h : OdOut' D Wf Qp N T) : NoB T := by
     · simp [NB]
     · exact tapeL_noB _ ok x hx
 
-theorem OdOut.to' {D Wf Qp N R'} (h : OdOut D Wf Qp N R') : OdOut' D Wf Qp N ((Wf ++ [1]) ++ R') := by
-  obtain ⟨S0, a', b', o, os, hS, hne, hN, hg, hos, hd, e⟩ := h
-  refine ⟨S0, a', b' + 1, o, os, hS, hne, by omega, by omega, by simpa [List.replicate_succ] using hg, hos, hd, ?_⟩
+theorem OdOut.to' {D Wf Qp N P R'} (h : OdOut D Wf Qp N P R') : OdOut' D Wf Qp N P ((Wf ++ [1]) ++ R') := by
+  obtain ⟨S0, a', b', o, os, hS, hne, hl, hN, hg, hos, hd, e⟩ := h
+  refine ⟨S0, a', b' + 1, o, os, hS, hne, hl, by omega, by omega, by simpa [List.replicate_succ] using hg, hos, hd, ?_⟩
   simpa [List.replicate_succ] using e
 
 def StepNone (D : List (DG)) : Prop :=
   ∃ (o : ORec) (os : List ORec), (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧ odoStepR (o :: os) = none
 
-def StepInfo (D : List (DG)) (Wf Kf Cf : List Nat) (N : Nat) (v : List Nat) (os' : List ORec) : Prop :=
-  ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ a' + b' = N ∧ 1 ≤ N ∧
+def StepInfo (D : List (DG)) (Wf Kf Cf : List Nat) (N P : Nat) (v : List Nat) (os' : List ORec) : Prop :=
+  ∃ (S0 : List Nat) (a' b' : Nat) (o : ORec) (os : List ORec), BitsD S0 ∧ S0 ≠ [] ∧ S0.length = P ∧ a' + b' = N ∧ 1 ≤ N ∧
     (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧ odoStepR (o :: os) = some os' ∧
     v = (Wf ++ 1 :: (S0 ++ 1 :: ((Kf ++ 1 :: Cf) ++ [1] ++ List.replicate a' 3 ++ List.replicate b' 2))).map
       (fun x => if x = 1 then 1 else 3)
 
 theorem odlNext3 (D : List (DG)) (Wf Kf Cf : List Nat) (hW : BitsD Wf) (hK : BitsD Kf) (hC : BitsD Cf)
-    (N : Nat) (L R' : List Nat) (hT : OdOut' D Wf ((Kf ++ 1 :: Cf) ++ [1]) N (L ++ R')) :
-    (∃ u v os' X R'', Rest u v ∧ StepInfo D Wf Kf Cf N v os' ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
+    (N P : Nat) (L R' : List Nat) (hT : OdOut' D Wf ((Kf ++ 1 :: Cf) ++ [1]) N P (L ++ R')) :
+    (∃ u v os' X R'', Rest u v ∧ StepInfo D Wf Kf Cf N P v os' ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
       znttLogic.Reach (hd QNTT.ODL L R') (hd QNTT.WI0 X (3 :: R''))) ∨
     (∃ (A : List Nat) (n0 : Nat), StepNone D ∧ znttLogic.Reach (hd QNTT.ODL L R') (hd QNTT.BEEP A []) ∧
       ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
@@ -9765,14 +9376,14 @@ theorem odlNext3 (D : List (DG)) (Wf Kf Cf : List Nat) (hW : BitsD Wf) (hK : Bit
   have sT := tapeOutO_sym4 hT'
   have hR : Sym4 R' := (Sym4_app_iff.1 sT).2
   have hL : NoB L := (NoB_app_iff.1 hT.noB).1
-  obtain ⟨S0, a', b', o, os, hS0, hS0ne, hN, hN1, hg, hos, hdg, hXY⟩ := hT
+  obtain ⟨S0, a', b', o, os, hS0, hS0ne, hSP, hN, hN1, hg, hos, hdg, hXY⟩ := hT
   have hXY' : L ++ R' = (Wf ++ 1 :: (S0 ++ 1 :: ((Kf ++ 1 :: Cf) ++ [1] ++ List.replicate a' 3 ++ List.replicate b' 2))) ++
       1 :: 1 :: tapeL (o :: os) := hXY
   obtain ⟨v, hv, h1, h2⟩ := odFail _ hg o os hos _ _ hXY' hL hR
   cases hs : odoStepR (o :: os) with
   | some os' =>
     obtain ⟨X, R'', e, hr⟩ := h1 os' hs
-    exact Or.inl ⟨_, v, os', X, R'', hv, ⟨S0, a', b', o, os, hS0, hS0ne, hN, hN1, hos, hdg, hs, by
+    exact Or.inl ⟨_, v, os', X, R'', hv, ⟨S0, a', b', o, os, hS0, hS0ne, hSP, hN, hN1, hos, hdg, hs, by
       rw [rest_map hv]⟩, e, hr⟩
   | none =>
     right
@@ -10088,6 +9699,39 @@ theorem failSep (Pm : List Nat) (pre : List Rc) (os0 : List ORec) (hpre : tailB 
       List.nil_append, VR.done_body_toO x hx hxm r s, ORec.tape, w', hb, hu]
 
 
+theorem sNext_sum (p : Nat × Nat) (hp : 1 ≤ p.2) : (sNext p).1 + (sNext p).2 = p.1 + p.2 := by
+  unfold sNext; split <;> simp <;> omega
+
+theorem sAdv_sum : ∀ (n : Nat) (p : Nat × Nat), 1 ≤ p.2 → (sAdv n p).1 + (sAdv n p).2 = p.1 + p.2
+  | 0, p, _ => by simp [sAdv]
+  | n + 1, p, hp => by
+    have h1 : 1 ≤ (sNext p).2 := by unfold sNext; split <;> simp <;> omega
+    have := sAdv_sum n (sNext p) h1
+    simp only [sAdv]; rw [this]; exact sNext_sum p hp
+
+theorem outP_sum (c : VR) (r : Nat) (p : Nat × Nat) (hp : 1 ≤ p.2) :
+    (outP c r p).1 + (outP c r p).2 = p.1 + p.2 := by
+  unfold outP; split
+  · rfl
+  · exact sAdv_sum _ p hp
+
+theorem outP_pos (c : VR) (r : Nat) (p : Nat × Nat) (hp : 1 ≤ p.2) : 1 ≤ (outP c r p).2 := by
+  unfold outP; split
+  · exact hp
+  · exact sAdv_pos _ p hp
+
+theorem loopRun_psum : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat), 1 ≤ p.2 →
+    1 ≤ (loopRun n c vs r s p).p'.2 ∧ (loopRun n c vs r s p).p'.1 + (loopRun n c vs r s p).p'.2 = p.1 + p.2
+  | 0, c, vs, r, s, p, hp => by simp [loopRun, hp]
+  | n + 1, c, vs, r, s, p, hp => by
+    unfold loopRun
+    split
+    · simp [hp]
+    · rename_i w ws hw
+      have := loopRun_psum n w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p) (outP_pos c r p hp)
+      simp only
+      exact ⟨this.1, by rw [this.2]; exact outP_sum c r p hp⟩
+
 theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (1 :: P2)) :
     ∀ (n : Nat) (vs : List VR) (c : VR) (pre : List Rc) (p : Nat × Nat) (r s : Nat) (os0 : List ORec)
       (D : List (DG)),
@@ -10095,6 +9739,7 @@ theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (
     r + 1 + s = c.w → c.m = 0 → (∀ x ∈ vs, x.m = 0) → tailB pre = sepRest os0 → (∀ y ∈ os0, y.Ok) →
     os0.map ORec.dgO ++ (c :: vs).map VR.dg = D → ¬ PassCmp n r vs →
     ∃ (L R : List Nat) (os : List ORec) (p' : Nat × Nat), (∀ y ∈ os, y.Ok) ∧ os.map ORec.dgO = D ∧ 1 ≤ p'.2 ∧
+      p'.1 + p'.2 = p.1 + p.2 ∧
       znttLogic.Reach
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: P2)) pre c 0 r s vs) [])
         (hd QNTT.ODL L R) ∧
@@ -10157,14 +9802,14 @@ theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (
         have hD' : (os0 ++ [c.toO r s]).map ORec.dgO ++ (w.curG :: ws.map VR.dec).map VR.dg = D := by
           rw [hdgE, hdgs, ← hD, List.map_append, List.map_cons, List.map_nil, toO_dgO c r s hrs]
           simp
-        obtain ⟨L, R, os, p', k1, k2, k3, k4, k5⟩ :=
+        obtain ⟨L, R, os, p', k1, k2, k3, ks, k4, k5⟩ :=
           ih (ws.map VR.dec) w.curG (pre ++ [c.done r s]) p (w.k - 1) (w.w - w.k) (os0 ++ [c.toO r s]) D hlenws hinv
             hwsOk' homws (dec_EF ws (fun x hx => hEFs x (by simp [hx]))) hpo hp hrs' hm' hvm' hos'
             (by intro y hy; simp only [List.mem_append, List.mem_singleton] at hy
                 rcases hy with hy | rfl
                 · exact hos0 y hy
                 · exact toO_ok c hcOk r s hrs) hD' hcmp3
-        exact ⟨L, R, os, p', k1, k2, k3, h1.trans k4, k5⟩
+        exact ⟨L, R, os, p', k1, k2, k3, ks, h1.trans k4, k5⟩
       · have hO3 : c.O = 3 := by have := hcOk.O; simp at this; omega
         obtain ⟨hm, e, he, hew, hE⟩ := hOut hO3
         have hElen := hcOk.Elen
@@ -10186,14 +9831,14 @@ theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (
             (w.curG :: ws.map VR.dec).map VR.dg = D := by
           rw [hdgE, hdgs, ← hD, List.map_append, List.map_cons, List.map_nil, toO_dgO _ r s hrs'']
           simp [VR.dg]
-        obtain ⟨L, R, os, p', k1, k2, k3, k4, k5⟩ :=
+        obtain ⟨L, R, os, p', k1, k2, k3, ks, k4, k5⟩ :=
           ih (ws.map VR.dec) w.curG _ (sAdv (r * c.n) p) (w.k - 1) (w.w - w.k) _ D hlenws hinv
             hwsOk' homws (dec_EF ws (fun x hx => hEFs x (by simp [hx]))) hpo (sAdv_pos _ p hp) hrs' hm' hvm' hos'
             (by intro y hy; simp only [List.mem_append, List.mem_singleton] at hy
                 rcases hy with hy | rfl
                 · exact hos0 y hy
                 · exact toO_ok _ hc' r s hrs'') hD' hcmp3
-        exact ⟨L, R, os, p', k1, k2, k3, h1.trans k4, k5⟩
+        exact ⟨L, R, os, p', k1, k2, k3, ks.trans (sAdv_sum _ p hp), h1.trans k4, k5⟩
     · -- compare fails now
       have hwO : w.O = 3 := Classical.byContradiction fun h => hh (fun h' => absurd h' h)
       obtain ⟨e, z, he, hE, hne⟩ := EF_mismatch w hwOk (hEFs w (by simp)) hwO hh
@@ -10201,7 +9846,7 @@ theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (
       · obtain ⟨L, R, a2, E2, k1, k2, k3, k4, hr, hLR⟩ :=
           colStepNF c hcOk hF hO _ hPm pre hpre r s vs hvs w ws hw hwO e z he hE hne
         obtain ⟨os, hos, hdos, hT⟩ := failSep _ pre os0 hpos hos0 c hcOk hcm r s hrs w hwOk hwm0 ws hwsOk hwsm0 a2 E2 k1 k2 k3 k4
-        refine ⟨L, R, os, p, hos, ?_, hp, hr, ?_⟩
+        refine ⟨L, R, os, p, hos, ?_, hp, rfl, hr, ?_⟩
         · rw [hdos, ← hD, List.map_cons, ← hdgs]; simp
         · rw [hLR, hT]
       · have hO3 : c.O = 3 := by have := hcOk.O; simp at this; omega
@@ -10218,7 +9863,7 @@ theorem passLoopF (Wf : List Nat) (hW : BitsD Wf) (P2 : List Nat) (hP2 : GoodW (
           colStepOF c.n c hcOk hF hO3 hm rfl Wf hW P2 hP2 pre hpre s c.E.length hElen r p e0 hp he0 hew hE0 vs hvs w ws hw
             hwO e z he hE hne
         obtain ⟨os, hos, hdos, hT⟩ := failSep _ pre os0 hpos hos0 _ hc' hcm' r s hrs'' w hwOk hwm0 ws hwsOk hwsm0 a2 E2 k1 k2 k3 k4
-        refine ⟨L, R, os, sAdv (r * c.n) p, hos, ?_, sAdv_pos _ p hp, hr, ?_⟩
+        refine ⟨L, R, os, sAdv (r * c.n) p, hos, ?_, sAdv_pos _ p hp, sAdv_sum _ p hp, hr, ?_⟩
         · rw [hdos, ← hD, List.map_cons, ← hdgs]; simp [VR.dg]
         · rw [hLR, hT]
 
@@ -10374,13 +10019,13 @@ theorem faNextF (Pm : List Nat) (hP : GoodW Pm) (t0 : (VR × Nat × Nat) × Nat)
 
 theorem odOutF (D : List (DG)) (Wf Qp : List Nat) (hW : BitsD Wf) (m b : Nat) (p' : Nat × Nat)
     (hp : 1 ≤ p'.2) (hG : GoodW (1 :: (Qp ++ NnTail m b))) (os : List ORec) (hos : ∀ y ∈ os, y.Ok) (hne : os ≠ [])
-    (hD : os.map ORec.dgO = D) :
-    OdOut' D Wf Qp (m + 1 + b)
+    (hD : os.map ORec.dgO = D) (P : Nat) (hP : p'.1 + p'.2 = P) :
+    OdOut' D Wf Qp (m + 1 + b) P
       ((Wf ++ 1 :: (List.replicate p'.1 2 ++ List.replicate p'.2 3 ++ 1 :: (Qp ++ NnTail m b))) ++ sepRest os) := by
   obtain ⟨o, os', rfl⟩ := List.exists_cons_of_ne_nil hne
   have hg := pm_good Wf (Qp ++ NnTail m b) hW hG p' hp
   refine ⟨List.replicate p'.1 2 ++ List.replicate p'.2 3, m + 1, b, o, os',
-    bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)), ?_, rfl, by omega, ?_, hos, hD, ?_⟩
+    bd_app (BitsD.rep _ 2 (by simp)) (BitsD.rep _ 3 (by simp)), ?_, by simp [hP], rfl, by omega, ?_, hos, hD, ?_⟩
   · obtain ⟨q, hq⟩ : ∃ q, p'.2 = q + 1 := ⟨p'.2 - 1, by omega⟩
     simp [hq, List.replicate_succ]
   · simpa [NnTail, List.append_assoc] using hg
@@ -10416,7 +10061,7 @@ theorem passStepF (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
       nxtR t0 + 1 + nxtS t0 = (nxtC t0).w ∧ (nxtVs ts).length = n ∧ CurInv (nxtC t0) ∧ (∀ x ∈ nxtVs ts, x.Ok) ∧ OutM (nxtVs ts) ∧
       2 ≤ (nxtC t0).w ∧ (∀ x ∈ nxtVs ts, 2 ≤ x.w) ∧ (nxtC t0).m = 0 ∧ (∀ x ∈ nxtVs ts, x.m = 0) ∧
       (nxtC t0).P :: (nxtVs ts).map VR.P = List.replicate (j + 1) 2 ++ 3 :: l') ∨
-    (∃ (q : Nat) (L' R' : List Nat) (os : List ORec), 1 ≤ q ∧ (∃ (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat)), (outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p').1 = 0 ∧ (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r', (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts ∧ ¬ ((t0.1.1.nextPass t0.2).O = 3 → ∃ z, 1 ≤ (t0.1.1.nextPass t0.2).k ∧ (t0.1.1.nextPass t0.2).E = fld ((t0.1.1.nextPass t0.2).k + z) (t0.1.1.nextPass t0.2).k)) ∧ (∀ y ∈ os, y.Ok) ∧
+    (∃ (q : Nat) (L' R' : List Nat) (os : List ORec), 1 ≤ q ∧ q = (outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p').2 ∧ (∃ (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat)), (outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p').1 = 0 ∧ (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r', (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).zip (List.replicate (j + 1) 2 ++ 3 :: l')) = t0 :: ts ∧ ¬ ((t0.1.1.nextPass t0.2).O = 3 → ∃ z, 1 ≤ (t0.1.1.nextPass t0.2).k ∧ (t0.1.1.nextPass t0.2).E = fld ((t0.1.1.nextPass t0.2).k + z) (t0.1.1.nextPass t0.2).k)) ∧ (∀ y ∈ os, y.Ok) ∧
       os.map ORec.dgO = (((loopRun n c vs r s p).cs ++ [(outRec (loopRun n c vs r s p).c' (loopRun n c vs r s p).r',
         (loopRun n c vs r s p).r', (loopRun n c vs r s p).s')]).map fun t => t.1.dg) ∧
       znttLogic.Reach
@@ -10548,7 +10193,7 @@ theorem passStepF (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
       have hmm : ∀ q ∈ t0 :: ts, q.1.1.m = 0 := fun q hq =>
         hmzs q.1 (List.of_mem_zip (hmem q hq)).1
       obtain ⟨L', R', os, hok, hdos, hr, hLR⟩ := faNextF _ hGP t0 ts hh hmm hwO e z he hE hne
-      refine ⟨p'.2, L', R', os, hp', ⟨t0, ts, by rw [← hpEq]; exact hk, hz, hcmp0⟩, hok, ?_, hfal.trans hr, ?_⟩
+      refine ⟨p'.2, L', R', os, hp', by rw [hpEq], ⟨t0, ts, by rw [← hpEq]; exact hk, hz, hcmp0⟩, hok, ?_, hfal.trans hr, ?_⟩
       · rw [hdos]
         have hcl : cs.length = n + 1 := by
           have := congrArg List.length hPc
@@ -10592,17 +10237,17 @@ theorem failA (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) (m b n : Nat) (vs
     (r s : Nat) (hP2 : GoodW (1 :: ((Q'' ++ [1]) ++ NnTail m b)))
     (hrs : r + 1 + s = c.w) (hlen : vs.length = n) (hc : CurInv c) (hvs : ∀ x ∈ vs, x.Ok) (hom : OutM vs)
     (hEF : ∀ x ∈ vs, EF x) (hp : 1 ≤ p.2) (hm0 : c.m = 0) (hvm : ∀ x ∈ vs, x.m = 0) (hnc : ¬ PassCmp n r vs) :
-    ∃ L' R' : List Nat, OdOut' ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (m + 1 + b) (L' ++ R') ∧
+    ∃ L' R' : List Nat, OdOut' ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (m + 1 + b) (p.1 + p.2) (L' ++ R') ∧
       znttLogic.Reach
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
           [] c 0 r s vs) [])
         (hd QNTT.ODL L' R') := by
-  obtain ⟨L, R, os, p', hok, hdos, hp', hr, hLR⟩ := passLoopF Wf hW ((Q'' ++ [1]) ++ NnTail m b) hP2 n vs c [] p r s []
+  obtain ⟨L, R, os, p', hok, hdos, hp', hps, hr, hLR⟩ := passLoopF Wf hW ((Q'' ++ [1]) ++ NnTail m b) hP2 n vs c [] p r s []
     ((c :: vs).map VR.dg) hlen hc hvs hom hEF (by intro x hx; simp at hx) hp hrs hm0 hvm rfl
     (by intro y hy; simp at hy) (by simp) hnc
   refine ⟨L, R, ?_, hr⟩
   rw [hLR]
-  exact odOutF _ Wf (Q'' ++ [1]) hW m b p' hp' hP2 os hok (by intro h; rw [h] at hdos; simp at hdos) hdos
+  exact odOutF _ Wf (Q'' ++ [1]) hW m b p' hp' hP2 os hok (by intro h; rw [h] at hdos; simp at hdos) hdos _ hps
 
 def passPOf (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) : Nat × Nat :=
   outP (loopRun n c vs r s p).c' (loopRun n c vs r s p).r' (loopRun n c vs r s p).p'
@@ -10637,6 +10282,14 @@ theorem FOk_inv {m n : Nat} {c : VR} {vs : List VR} {r s j : Nat} {p : Nat × Na
       FOk m n (nxtC t0) (nxtVs ts) (nxtR t0) (nxtS t0) (0, (passPOf n c vs r s p).2) (j + 1) l' :=
   h.2.2 t0 ts hz
 
+
+theorem passPOf_sum (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat) (hp : 1 ≤ p.2) :
+    1 ≤ (passPOf n c vs r s p).2 ∧ (passPOf n c vs r s p).1 + (passPOf n c vs r s p).2 = p.1 + p.2 := by
+  have := loopRun_psum n c vs r s p hp
+  unfold passPOf
+  exact ⟨outP_pos _ _ _ this.1, by rw [outP_sum _ _ _ this.1, this.2]⟩
+
+
 /-- All passes of one assignment, without the semantic hypothesis: refuted (`ODL`, parsable tape) or successful (`SU1`). -/
 theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
     ∀ (m b n : Nat) (vs : List VR) (c : VR) (p : Nat × Nat) (r s j : Nat) (L : List Nat),
@@ -10644,7 +10297,7 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
     r + 1 + s = c.w → vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → (∀ x ∈ vs, EF x) → 1 ≤ p.2 →
     2 ≤ c.w → (∀ x ∈ vs, 2 ≤ x.w) → c.m = 0 → (∀ x ∈ vs, x.m = 0) →
     c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L → m ≤ L.length →
-    (∃ L' R' : List Nat, OdOut' ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (m + 1 + b) (L' ++ R') ∧
+    (∃ L' R' : List Nat, OdOut' ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (m + 1 + b) (p.1 + p.2) (L' ++ R') ∧
       znttLogic.Reach
         (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: ((Q'' ++ [1]) ++ NnTail m b)))
           [] c 0 r s vs) [])
@@ -10689,6 +10342,8 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
       have hpO : passPOf n c vs r s p = p' := by
         obtain ⟨lo, hlo, _, hpEq⟩ := hLo
         unfold passPOf; rw [hlo]; exact hpEq.symm
+      have hsum : p'.1 + p'.2 = p.1 + p.2 := by
+        have := (passPOf_sum n c vs r s p hp).2; rw [hpO] at this; exact this
       rcases hlast with ⟨k, hk, h1⟩ | ⟨hk, h1⟩
       · right
         have hu := goodW_reg Wf (List.replicate (k + 1) 2 ++ List.replicate p'.2 3) _ hW
@@ -10705,14 +10360,14 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
         have hu := goodW_reg Wf (List.replicate p'.2 3) _ hW (BitsD.rep _ 3 (by simp))
           (by intro h; have := congrArg List.length h; simp at this; omega) hP2'
         obtain ⟨o, os, hok, hdg, hex⟩ := tapeOutP_ex cs hcs' hne
-        obtain ⟨R', hT, hr⟩ : ∃ R', OdOut ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (0 + 1 + b) R' ∧
+        obtain ⟨R', hT, hr⟩ : ∃ R', OdOut ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (0 + 1 + b) (p.1 + p.2) R' ∧
             znttLogic.Reach
               (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 ::
                 (Q'' ++ [1] ++ [3] ++ List.replicate b 2))) [] c 0 r s vs) [])
               (hd QNTT.ODL (Wf ++ [1]) R') := by
           refine ⟨(List.replicate p'.2 3 ++ 1 :: ((Q'' ++ [1]) ++ List.replicate 0 3 ++ 2 :: List.replicate b 2)) ++
             sepRest (o :: os), ⟨List.replicate p'.2 3, 0, b, o, os, BitsD.rep _ 3 (by simp),
-            by intro h; have := congrArg List.length h; simp at this; omega, by omega, ?_, hok, hdg.trans hD, ?_⟩, ?_⟩
+            by intro h; have := congrArg List.length h; simp at this; omega, by simp; omega, by omega, ?_, hok, hdg.trans hD, ?_⟩, ?_⟩
           · simpa [List.append_assoc] using hu
           · simp [List.append_assoc]
           · rw [hex] at h1
@@ -10738,8 +10393,11 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
     obtain ⟨hcsOk, hst⟩ := hstep
     have hP2'' : GoodW (1 :: ((Q'' ++ [1]) ++ List.replicate a 3 ++ 3 :: 2 :: List.replicate b 2)) := goodW_shiftNn _ a b hP2
     rcases hst with ⟨k, q, hSo, h1⟩ | ⟨q, t0, ts, hq, hqe, hk0, hcmpt, hz, h1, hrs1, hlen1, hc1', hvs1, hom1, hcw1, hvw1, hm1, hvm1, hfl1⟩ |
-        ⟨q, L', R', os, hq, hX3, hok, hdos, h1, hLR⟩
-    · obtain ⟨R', hO, hr⟩ : ∃ R', OdOut ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (a + 1 + 1 + b) R' ∧
+        ⟨q, L', R', os, hq, hqe3, hX3, hok, hdos, h1, hLR⟩
+    · have hsumO : (k + 1) + q = p.1 + p.2 := by
+        have hs := (passPOf_sum n c vs r s p hp).2
+        unfold passPOf at hs; rw [hSo] at hs; exact hs
+      obtain ⟨R', hO, hr⟩ : ∃ R', OdOut ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) (a + 1 + 1 + b) (p.1 + p.2) R' ∧
           znttLogic.Reach
             (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 ::
               ((Q'' ++ [1]) ++ List.replicate (a + 2) 3 ++ List.replicate b 2))) [] c 0 r s vs) [])
@@ -10754,7 +10412,7 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
             2 :: List.replicate b 2)) ++ sepRest (o :: os),
           ⟨(2 :: List.replicate k 2) ++ List.replicate q 3, a + 1, b, o, os,
             bd_app (BitsD.cons (by simp) (BitsD.rep _ 2 (by simp))) (BitsD.rep _ 3 (by simp)),
-            by intro h; have := congrArg List.length h; simp at this, by omega, ?_, hok,
+            by intro h; have := congrArg List.length h; simp at this, by simp; omega, by omega, ?_, hok,
             hdg.trans (dg_runAll_pos n c vs r s p hm0 hvm hlen), ?_⟩, ?_⟩
         · rw [List.replicate_succ' (n := a) (a := 3)]; simpa [List.append_assoc, List.replicate_succ] using hu
         · simp [List.append_assoc]
@@ -10788,8 +10446,14 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
         simp [nxtC, nxtVs, nxtW, dg_curG, dg_nextPass, dg_dec, List.map_map, Function.comp_def]
       have hqe' : (0, q) = (0, (passPOf n c vs r s p).2) := by rw [hqe]; rfl
       have hcm : ((nxtW t0).O = 3 → ∃ z, 1 ≤ (nxtW t0).k ∧ (nxtW t0).E = fld ((nxtW t0).k + z) (nxtW t0).k) := hcmpt
+      have hq0 : (0, q).1 + (0, q).2 = p.1 + p.2 := by
+        have hsum := (passPOf_sum n c vs r s p hp).2
+        have hk0' : (passPOf n c vs r s p).1 = 0 := hk0
+        have hqe2 : q = (passPOf n c vs r s p).2 := hqe
+        simp only; omega
       rcases hih with ⟨L', R', ho, hr, hnf⟩ | ⟨T, ho, hr, hf⟩
-      · refine Or.inl ⟨L', R', by rw [hEq] at ho; rwa [show a + 1 + (b + 1) = a + 1 + 1 + b by omega] at ho, h1.trans hr, fun hF => hnf ?_⟩
+      · rw [hq0] at ho
+        refine Or.inl ⟨L', R', by rw [hEq] at ho; rwa [show a + 1 + (b + 1) = a + 1 + 1 + b by omega] at ho, h1.trans hr, fun hF => hnf ?_⟩
         rw [hqe']; exact (FOk_inv hF hz).2
       · exact Or.inr ⟨T, by rw [hEq] at ho; rwa [show b + 1 + a + 1 = b + (a + 1) + 1 by omega] at ho, h1.trans hr,
           FOk_succ hc1 hk0 hz hcm (by rw [← hqe']; exact hf)⟩
@@ -10798,7 +10462,12 @@ theorem passesRunF (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
         simpa [List.append_assoc] using hP2''
       have hdgE := dg_runAll_pos n c vs r s p hm0 hvm hlen
       have hne : os ≠ [] := by intro h; rw [h] at hdos; simp at hdos
-      have hO := odOutF ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) hW a (b + 1) (0, q) hq hP2n os hok hne (by rw [hdos, hdgE])
+      have hO := odOutF ((c :: vs).map VR.dg) Wf (Q'' ++ [1]) hW a (b + 1) (0, q) hq hP2n os hok hne (by rw [hdos, hdgE]) (p.1 + p.2) (by
+        obtain ⟨t0, ts, hk3, _⟩ := hX3
+        have hsum := (passPOf_sum n c vs r s p hp).2
+        have hk0' : (passPOf n c vs r s p).1 = 0 := hk3
+        have hqe2 : q = (passPOf n c vs r s p).2 := hqe3
+        simp only; omega)
       have hnF : ¬ FOk (a + 1) n c vs r s p j (y :: l') := by
         intro hF
         obtain ⟨t0, ts, hk, hz, hn⟩ := hX3
@@ -10821,7 +10490,7 @@ theorem assignRunF (Wf : List Nat) (hW : BitsD Wf) (Kf Cf : List Nat) (hK : Bits
     (hfl : c.P :: vs.map VR.P = List.replicate j 2 ++ 3 :: L) (hL : m ≤ L.length) :
     let st := hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 ::
           (((Kf ++ 1 :: Cf) ++ [1]) ++ NnTail m b))) [] c 0 r s vs) []
-    (∃ u v os' X R'', Rest u v ∧ ¬ FOk m n c vs r s p j L ∧ StepInfo ((c :: vs).map VR.dg) Wf Kf Cf (m + 1 + b) v os' ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
+    (∃ u v os' X R'', Rest u v ∧ ¬ FOk m n c vs r s p j L ∧ StepInfo ((c :: vs).map VR.dg) Wf Kf Cf (m + 1 + b) (p.1 + p.2) v os' ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
       znttLogic.Reach st (hd QNTT.WI0 X (3 :: R''))) ∨
     (∃ (A : List Nat) (n0 : Nat), StepNone ((c :: vs).map VR.dg) ∧ ¬ FOk m n c vs r s p j L ∧ znttLogic.Reach st (hd QNTT.BEEP A []) ∧
       ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
@@ -10835,7 +10504,7 @@ theorem assignRunF (Wf : List Nat) (hW : BitsD Wf) (Kf Cf : List Nat) (hK : Bits
   intro st
   rcases passesRunF Wf hW (Kf ++ 1 :: Cf) m b n vs c p r s j L hP2 hrs hlen hc hvs hom hEF hp hcw hvw hm0 hvm hfl hL with
     ⟨L', R', hT, hr, hnF⟩ | ⟨T, hT, hr, hF⟩
-  · rcases odlNext3 _ Wf Kf Cf hW hK hC _ L' R' hT with ⟨u, v, os', X, R'', hv, si, e, h⟩ | ⟨A, n0, sn, hb, X, hX, hXr⟩
+  · rcases odlNext3 _ Wf Kf Cf hW hK hC _ (p.1 + p.2) L' R' hT with ⟨u, v, os', X, R'', hv, si, e, h⟩ | ⟨A, n0, sn, hb, X, hX, hXr⟩
     · exact Or.inl ⟨u, v, os', X, R'', hv, hnF, si, e, hr.trans h⟩
     · exact Or.inr (Or.inl ⟨A, n0, sn, hnF, hr.trans hb, X, hX, hXr⟩)
   · obtain ⟨N, hN⟩ := sucRestart _ Wf Kf Cf (b + m) T hW hK hC hT
@@ -10942,7 +10611,7 @@ theorem entryRun (Wf : List Nat) (hW : BitsD Wf) (Kf Cf : List Nat) (hK : BitsD 
     let vs := (os.map fun x => x.vr 2).map VR.dec
     let st := hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 ::
           (((Kf ++ 1 :: Cf) ++ [1]) ++ NnTail n 0))) [] c 0 ((o.vr 3).k - 1) ((o.vr 3).w - (o.vr 3).k) vs) []
-    (∃ u v os' X R'', Rest u v ∧ ¬ FOk n n c vs ((o.vr 3).k - 1) ((o.vr 3).w - (o.vr 3).k) p 0 (List.replicate n 2) ∧ StepInfo ((c :: vs).map VR.dg) Wf Kf Cf (n + 1 + 0) v os' ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
+    (∃ u v os' X R'', Rest u v ∧ ¬ FOk n n c vs ((o.vr 3).k - 1) ((o.vr 3).w - (o.vr 3).k) p 0 (List.replicate n 2) ∧ StepInfo ((c :: vs).map VR.dg) Wf Kf Cf (n + 1 + 0) (p.1 + p.2) v os' ∧ X ++ 3 :: R'' = (v ++ [1, 1]) ++ tapeL os' ∧
       znttLogic.Reach st (hd QNTT.WI0 X (3 :: R''))) ∨
     (∃ (A : List Nat) (n0 : Nat), StepNone ((c :: vs).map VR.dg) ∧ ¬ FOk n n c vs ((o.vr 3).k - 1) ((o.vr 3).w - (o.vr 3).k) p 0 (List.replicate n 2) ∧ znttLogic.Reach st (hd QNTT.BEEP A []) ∧
       ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
@@ -11105,9 +10774,9 @@ theorem AOkD_iff (n : Nat) (o : ORec) (os : List ORec) (s : Nat) (hok : ∀ x �
   rw [h1, h2]
 
 /-- Odometer iteration with all earlier assignments refuted. -/
-inductive DIterS (n : Nat) : List DG → Nat → List DG → Nat → Prop
-  | refl (D s) : DIterS n D s D s
-  | step {D D2 D3 s s2 s3} : DStep D D2 → ¬ AOkD n D s → DIterS n D2 s2 D3 s3 → DIterS n D s D3 s3
+inductive DIterS (n s : Nat) : List DG → List DG → Prop
+  | refl (D) : DIterS n s D D
+  | step {D D2 D3} : DStep D D2 → ¬ AOkD n D s → DIterS n s D2 D3 → DIterS n s D D3
 
 theorem gw_par (k c n : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) :
     GoodW (1 :: (((List.replicate k 3 ++ 1 :: List.replicate c 3) ++ [1]) ++ NnTail n 0)) := by
@@ -11165,9 +10834,9 @@ theorem LpOut.pre {Wf Kf Cf n st st2 D s} (h : znttLogic.Reach st st2) (h2 : LpO
 theorem assignLoop (a k c : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) (n : Nat) :
     ∀ (B s : Nat) (o : ORec) (os : List ORec), ph ((o :: os).map ORec.dgO) = B → 1 ≤ s → os.length = n →
       (∀ x ∈ o :: os, x.Ok) → (∀ x ∈ o :: os, 2 ≤ x.acc.length) →
-      ∃ D' sE, DIterS n ((o :: os).map ORec.dgO) s D' sE ∧
+      ∃ D', DIterS n s ((o :: os).map ORec.dgO) D' ∧
         LpOut (List.replicate a 3) (List.replicate k 3) (List.replicate c 3) n
-          (loopSt (List.replicate a 3) (List.replicate k 3) (List.replicate c 3) n s o os) D' sE := by
+          (loopSt (List.replicate a 3) (List.replicate k 3) (List.replicate c 3) n s o os) D' s := by
   intro B
   induction B using Nat.strongRecOn with
   | _ B ih =>
@@ -11179,7 +10848,7 @@ theorem assignLoop (a k c : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) (n : Nat) :
   dsimp only at hent
   rw [hD] at hent
   rcases hent with ⟨u, v, os', X, R'', hrest, hnF, si, e, hr⟩ | hbeep | hsucc
-  · obtain ⟨S0, a', b', o1, os1, hS0, hS0ne, hN, hN1, hok1, hdg1, hst1, hv⟩ := si
+  · obtain ⟨S0, a', b', o1, os1, hS0, hS0ne, hSL, hN, hN1, hok1, hdg1, hst1, hv⟩ := si
     obtain ⟨o2, os2, rfl, hl2, hok2, hacc2⟩ := odo_ok (o1 :: os1) os' hok1 hst1
     have hdec := odo_dec (o1 :: os1) (o2 :: os2) hok1 hst1
     rw [hdg1] at hdec
@@ -11192,6 +10861,8 @@ theorem assignLoop (a k c : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) (n : Nat) :
     obtain ⟨s1, hs1⟩ : ∃ s1, S0.length = s1 + 1 := ⟨S0.length - 1, by
       have : S0 ≠ [] := hS0ne
       have := List.length_pos_iff.2 this; omega⟩
+    have hSs : s1 + 1 = s := by have := hSL; simp at this; omega
+    subst hSs
     obtain ⟨k', rfl⟩ : ∃ k', k = k' + 1 := ⟨k - 1, by omega⟩
     obtain ⟨c', rfl⟩ : ∃ c', c = c' + 1 := ⟨c - 1, by omega⟩
     have hvf : v = List.replicate a 3 ++ (1 :: List.replicate (s1 + 1) 3 ++ (1 :: List.replicate (k' + 1) 3 ++
@@ -11220,15 +10891,15 @@ theorem assignLoop (a k c : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) (n : Nat) :
       rw [← hyx]; exact hacc y hy
     have hnext := nextEntry X R'' v hNoB hrv o2 os2 hok2 hacc2' e
     rw [hvE', hs1] at hnext
-    obtain ⟨D', sE, hit, hout⟩ := ih _ (by omega) (s1 + 1) o2 os2 rfl (by omega) hlen2 hok2 hacc2'
-    refine ⟨D', sE, DIterS.step ⟨o1, os1, o2, os2, hok1, hdg1, hst1, rfl⟩ ?_ hit, ?_⟩
-    · rw [AOkD_iff n o os s hok]; exact hnF
+    obtain ⟨D', hit, hout⟩ := ih _ (by omega) (s1 + 1) o2 os2 rfl (by omega) hlen2 hok2 hacc2'
+    refine ⟨D', DIterS.step ⟨o1, os1, o2, os2, hok1, hdg1, hst1, rfl⟩ ?_ hit, ?_⟩
+    · rw [AOkD_iff n o os (s1 + 1) hok]; exact hnF
     · exact LpOut.pre (hr.trans hnext) hout
   · obtain ⟨A, n0, sn, hnF, hb, X, hX, hXr⟩ := hbeep
-    refine ⟨_, s, DIterS.refl _ _, Or.inl ⟨A, n0, sn, ?_, hb, X, hX, hXr⟩⟩
+    refine ⟨_, DIterS.refl _, Or.inl ⟨A, n0, sn, ?_, hb, X, hX, hXr⟩⟩
     rw [AOkD_iff n o os s hok]; exact hnF
   · obtain ⟨N, T, hs, hf, h1, h2⟩ := hsucc
-    refine ⟨_, s, DIterS.refl _ _, Or.inr ⟨N, T, hs, ?_, h1, h2⟩⟩
+    refine ⟨_, DIterS.refl _, Or.inr ⟨N, T, hs, ?_, h1, h2⟩⟩
     rw [AOkD_iff n o os s hok]; exact hf
 
 

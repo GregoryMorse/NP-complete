@@ -438,3 +438,8 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
   (`AOkD_iff`).  `DIterS` = odometer iteration with all earlier assignments refuted.
 * `assignLoop` now returns `DIterS ... D' sE` plus `LpOut`, where the beep case has `¬AOkD` and the success case `AOkD`.
 * Remaining: S size invariance (`sE = s`), `AOkD ↔ evalC` on decoded digits, DG-level odometer coverage, bridge.
+
+### Stage: S-register size invariance
+* `OdOut`/`OdOut'`/`StepInfo` carry `S0.length = P`; `passLoopF` returns `p'.1 + p'.2 = p.1 + p.2` (`sAdv_sum`, `loopRun_psum`,
+  `passPOf_sum`); `assignLoop` therefore keeps the S size `s` constant over the whole odometer run (`DIterS n s`).
+* The older `Sem`-based line (`passStep`, `passesRun`, `assignRun`, `assignRun'`, `odlNext2`) was dead and is removed.
