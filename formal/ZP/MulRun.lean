@@ -803,9 +803,18 @@ theorem Dig_full (ds : List Dg) : Dig (full ds) := by
   obtain ⟨_, _, rfl⟩ := List.mem_map.mp hp
   exact Nat.le_refl _
 
+theorem rot_single : rot [false] = [false] := by
+  unfold rot
+  rw [List.length_singleton, Nat.mod_one]
+  rfl
+
+theorem rotN_single : ∀ k, rotN k [false] = [false]
+  | 0 => rfl
+  | k + 1 => by simp [rotN, rot_single, rotN_single k]
+
 theorem runM (W : List Nat) (hW : NoB W) :
     ∀ (T : Nat) (R : List Bool) (g : Nat) (z : Zp) (ds : List Dg) (q : List (List Bool)),
-      InvR R → 1 ≤ g → z.WF → Dig ds → ds ≠ [] → valr ds = T → q ≠ [] → Cap q (g + z.Lw.length) →
+      InvR R → 1 ≤ g → z.WF → Dig ds → ds ≠ [] → valr ds = T → (q ≠ [] ∨ R = [false]) → Cap q (g + z.Lw.length) →
       ∃ ds' ST', Dig ds' ∧ ds'.map Prod.fst = ds.map Prod.fst ∧ NoB ST' ∧
         zmulLogic.Reach (Bd R g z W (FWr ds) (stext q))
           (REm (runMulAux T R z.list z.Rt.length q) W (FWr ds') ST')
@@ -860,7 +869,7 @@ theorem runM (W : List Nat) (hW : NoB W) :
             ((rotN (iota z.c) R).getD 1 false)).Lw.length) :=
           hcap.mono (by omega)
         obtain ⟨ds2, ST', hd2, hl2, hS2, ih⟩ := runM W hW T _ g' _ ds1 q
-          (inv_rotN (inv_rot hR1) _) hg' (Zp.mv_WF _ _ _) hd1 hne1 (by omega) hq hcap'
+          (inv_rotN (inv_rot hR1) _) hg' (Zp.mv_WF _ _ _) hd1 hne1 (by omega) (hq.imp_right fun h => by rw [h]; simp [rotN_single, rot_single]) hcap'
         rw [Zp.mv_list, Zp.mv_len] at ih
         refine ⟨ds2, ST', hd2, hl2.trans (by simpa using hl1), hS2, ?_⟩
         exact (lift (hcd.trans hdec)).trans (hm.trans ih)
@@ -871,7 +880,10 @@ theorem runM (W : List Nat) (hW : NoB W) :
           rw [if_pos hd']
           obtain ⟨r0, rest, hRe⟩ := sw_form hR1 ht' hd'
           cases q with
-          | nil => exact absurd rfl hq
+          | nil =>
+            rcases hq with h | h
+            · exact absurd rfl h
+            · rw [h, rotN_single] at hRe; simp at hRe
           | cons f0 rq =>
             have hf : false ∈ r0 :: true :: false :: rest := by simp
             rw [hRe] at hcd hdec hR1 ⊢
@@ -887,7 +899,7 @@ theorem runM (W : List Nat) (hW : NoB W) :
                 rw [← Lw_len z]
                 omega
             obtain ⟨ds2, ST', hd2, hl2, hS2, ih⟩ := runM W hW T _ g' (zsw z f0) ds1 (rq ++ [z.Lt]) (inv_rotN (inv_rot hR1) _) hg'
-              (zsw_WF z f0) hd1 hne1 (by omega) (by simp) hcapN
+              (zsw_WF z f0) hd1 hne1 (by omega) (Or.inl (by simp)) hcapN
             rw [zsw_list] at ih
             refine ⟨ds2, ST', hd2, hl2.trans (by simpa using hl1), hS2, ?_⟩
             have e : (f0 :: rq ++ [z.Lt]).headD [] = f0 := rfl
