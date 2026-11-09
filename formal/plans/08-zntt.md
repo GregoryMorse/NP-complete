@@ -230,3 +230,7 @@ iterating `cursorLoop`/`colAdvance` over a whole pass, pass-start interface, odo
 and `beepStepZ`. The BEEP→SU0 step is a single `zstep` (the checker's `Reach` never leaves the beep state, as in
 `Pair.beepStep`), not a `Reach`. Remaining: odometer semantic walk (`OR`/`odo`), pass loop, restart interface, power sums,
 merge, pair lemma, bridge, spec, entries.
+
+### Progress: odometer field lemmas
+Added `odInc` (no-carry increment → `WI0`), `odCarry` (reset string, set first cell, → `ODM`), `od0Walk`, `beepStepC`
+(BEEP→SU0 as one `zstep` for any last cell). Remaining odometer work: the `OR`/`odo` semantic walk over whole records.

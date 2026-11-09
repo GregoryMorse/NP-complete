@@ -5999,5 +5999,15 @@ theorem odCarry (P0 f R : List Nat) (n : Nat) (hP : Sym4 P0) (hf : BitsD f) (hn 
     simpa using h1
   simpa using h1'.trans (h2.trans (h3.trans (h4.trans (h5.trans h6))))
 
+theorem beepStepC (A R : List Nat) (c : Nat) (hc : c ∈ [1, 2, 3]) :
+    znttLogic.zstep (hd QNTT.BEEP (A ++ [c]) R) = some (hd QNTT.SU0 A (c :: R)) := by
+  have e1 : (⟨QNTT.BEEP, [Item.blk 0 .id, .sym c].reverse, [.blk 1 .id], true⟩ : SC).den [A, R]
+      = hd QNTT.BEEP (A ++ [c]) R := den_tape (by osimp) (by osimp)
+  have e2 : (⟨QNTT.SU0, [Item.blk 0 .id].reverse, [.sym c, .blk 1 .id], true⟩ : SC).den [A, R]
+      = hd QNTT.SU0 A (c :: R) := den_tape (by osimp) (by osimp)
+  rw [← e1, ← e2]
+  simp at hc
+  rcases hc with rfl | rfl | rfl <;> exact cstep_zstep (by decide +kernel)
+
 end ZP.NTT
 
