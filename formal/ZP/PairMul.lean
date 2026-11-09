@@ -647,4 +647,154 @@ theorem beepStepM (j s Y : List Nat) :
   rw [← e1, ← e2]
   exact cstep_zstep (by decide +kernel)
 
+/-- Erase the storage (first cell 1). -/
+theorem ea2c1 (A : List Nat) (T : List Nat) (hA : Sym4 A) (hT : NoB T) :
+    zmulLogic.Reach (hdR QMul.EAs2 (A) (1 :: (T)))
+      (hd Q.EBs (A ++ (0 :: (List.replicate T.length 0 ++ ([0])))) ([])) := by
+  have hV : Valid [ALL, NB] [A, T] := Valid.cons hA (Valid.cons hT (Valid.nil _))
+  exact checkFT (env := [A, T]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase the storage (first cell 2). -/
+theorem ea2c2 (A : List Nat) (T : List Nat) (hA : Sym4 A) (hT : NoB T) :
+    zmulLogic.Reach (hdR QMul.EAs2 (A) (2 :: (T)))
+      (hd Q.EBs (A ++ (0 :: (List.replicate T.length 0 ++ ([0])))) ([])) := by
+  have hV : Valid [ALL, NB] [A, T] := Valid.cons hA (Valid.cons hT (Valid.nil _))
+  exact checkFT (env := [A, T]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 2, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase the storage (first cell 3). -/
+theorem ea2c3 (A : List Nat) (T : List Nat) (hA : Sym4 A) (hT : NoB T) :
+    zmulLogic.Reach (hdR QMul.EAs2 (A) (3 :: (T)))
+      (hd Q.EBs (A ++ (0 :: (List.replicate T.length 0 ++ ([0])))) ([])) := by
+  have hV : Valid [ALL, NB] [A, T] := Valid.cons hA (Valid.cons hT (Valid.nil _))
+  exact checkFT (env := [A, T]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 3, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+theorem zeros_eq (Z : List Nat) (h : ∀ a ∈ Z, a ∈ B0) : Z = List.replicate Z.length 0 := by
+  apply List.eq_replicate_iff.mpr
+  refine ⟨rfl, fun a ha => ?_⟩
+  have := h a ha
+  simpa [B0] using this
+
+theorem rep_b0 (k : Nat) : ∀ a ∈ List.replicate k 0, a ∈ B0 := fun a ha => by
+  rw [List.eq_of_mem_replicate ha]; simp [B0]
+
+theorem zmem (Z : List Nat) (h : ∀ a ∈ Z, a = 0) : ∀ a ∈ Z, a ∈ B0 := fun a ha => by
+  simp [B0, h a ha]
+
+/-- Erase the fuel and the storage. -/
+theorem eraseEB (A F ST : List Nat) (hA : Sym4 A) (hF : NoB F) (hST : NoB ST) :
+    ∃ Z, (∀ a ∈ Z, a ∈ B0) ∧ zmulLogic.Reach (hdR Q.EAs A (F ++ 0 :: ST)) (hd Q.EBs (A ++ Z) []) := by
+  have h1 := eaF A F ST hA hF hST.sym4
+  have hA2 : Sym4 (A ++ (List.replicate F.length 0 ++ [0])) :=
+    hA.app ((Sym4.rep _ 0 (by simp [ALL])).app (Sym4.cons (by simp [ALL]) Sym4.nil))
+  cases ST with
+  | nil =>
+    have h2 := ea2nil _ hA2
+    refine ⟨List.replicate F.length 0 ++ [0], ?_, (h1.trans h2).of_eq rfl (by simp)⟩
+    exact zmem _ (by intro a ha; simp at ha; omega)
+  | cons x T =>
+    have hx : x ∈ NB := hST x (List.mem_cons_self ..)
+    have hT : NoB T := fun y hy => hST y (List.mem_cons_of_mem _ hy)
+    have key : zmulLogic.Reach (hdR QMul.EAs2 (A ++ (List.replicate F.length 0 ++ [0])) (x :: T))
+        (hd Q.EBs (A ++ (List.replicate F.length 0 ++ [0]) ++ 0 :: (List.replicate T.length 0 ++ [0])) []) →
+        ∃ Z, (∀ a ∈ Z, a ∈ B0) ∧ zmulLogic.Reach (hdR Q.EAs A (F ++ 0 :: x :: T)) (hd Q.EBs (A ++ Z) []) := by
+      intro h2
+      refine ⟨(List.replicate F.length 0 ++ [0]) ++ 0 :: (List.replicate T.length 0 ++ [0]), ?_,
+        (h1.trans h2).of_eq rfl (by simp)⟩
+      exact zmem _ (by intro a ha; simp at ha; omega)
+    simp only [NB, List.mem_cons, List.not_mem_nil, or_false] at hx
+    rcases hx with rfl | rfl | rfl
+    · exact key (ea2c1 _ T hA2 hT)
+    · exact key (ea2c2 _ T hA2 hT)
+    · exact key (ea2c3 _ T hA2 hT)
+
+theorem pad0 (q : Nat) (A Z : List Nat) (h : ∀ a ∈ Z, a ∈ B0) : hd q A (0 :: Z) = hd q A [] := by
+  have hz := zeros_eq Z h
+  calc hd q A (0 :: Z) = hd q A (List.replicate (Z.length + 1) 0) := by
+        rw [List.replicate_succ, ← hz]
+    _ = hd q A ([] ++ List.replicate (Z.length + 1) 0) := by simp
+    _ = hd q A [] := hd_pad q A [] _
+
+theorem pad1 (q : Nat) (A Z : List Nat) (h : ∀ a ∈ Z, a ∈ B0) : hd q A (1 :: Z) = hd q A [1] := by
+  have hz := zeros_eq Z h
+  calc hd q A (1 :: Z) = hd q A ([1] ++ List.replicate Z.length 0) := by
+        rw [← hz]; rfl
+    _ = hd q A [1] := hd_pad q A [1] _
+
+theorem okTailM (j s F ST : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hST : NoB ST) :
+    zmulLogic.Reach (hdR Q.DP31 (1 :: (j ++ 1 :: (s ++ [1]))) (1 :: (F ++ 0 :: ST)))
+      (hd Q.SINC (1 :: (j ++ 1 :: s)) []) := by
+  have hA0 : Sym4 (1 :: (j ++ 1 :: s)) :=
+    Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL]) hs.sym4))
+  have hA : Sym4 (1 :: (j ++ 1 :: (s ++ [1]))) :=
+    Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL])
+      (hs.sym4.app (Sym4.cons (by simp [ALL]) Sym4.nil))))
+  have hR : Sym4 (F ++ 0 :: ST) := hF.sym4.app (Sym4.cons (by simp [ALL]) hST.sym4)
+  have h1 := dp31 _ _ hA hR
+  have hA' : Sym4 (1 :: (j ++ 1 :: (s ++ [1])) ++ [0]) :=
+    hA.app (Sym4.cons (by simp [ALL]) Sym4.nil)
+  obtain ⟨Z, hZ, h2⟩ := eraseEB _ F ST hA' hF hST
+  have hZ' : ∀ a ∈ 0 :: Z, a ∈ B0 := by
+    intro a ha
+    rcases List.mem_cons.mp ha with rfl | ha
+    · simp [B0]
+    · exact hZ a ha
+  have h3 := ebM (1 :: (j ++ 1 :: s)) (0 :: Z) hA0 hZ'
+  have h4 := h1.trans (h2.trans (h3.of_eq (by simp) rfl))
+  refine h4.of_eq rfl ?_
+  rw [pad0 _ _ _ hZ']
+
+theorem badTailM (j s F ST : List Nat) (hj : Bits j) (hs : Bits s) (hF : NoB F) (hST : NoB ST) :
+    zmulLogic.Reach (hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 2]))) (F ++ 0 :: ST))
+      (hd Q.JINC (1 :: j) [1]) := by
+  have hA : Sym4 (1 :: (j ++ 1 :: (s ++ [1, 2]))) :=
+    Sym4.cons (by simp [ALL]) (hj.sym4.app (Sym4.cons (by simp [ALL])
+      (hs.sym4.app (Sym4.cons (by simp [ALL]) (Sym4.cons (by simp [ALL]) Sym4.nil)))))
+  obtain ⟨Z, hZ, h2⟩ := eraseEB _ F ST hA hF hST
+  have h3 := ebZ j s Z hj hs hZ
+  have h4 := h2.trans (h3.of_eq (by simp) rfl)
+  refine h4.of_eq rfl ?_
+  rw [pad1 _ _ _ (by
+    intro a ha
+    simp only [List.mem_append, List.mem_cons] at ha
+    rcases ha with ha | rfl | rfl | ha
+    · rw [List.eq_of_mem_replicate ha]; simp [B0]
+    · simp [B0]
+    · simp [B0]
+    · exact hZ a ha)]
+
+theorem sincLM (A : List Nat) (hA : NoB A) : ∀ (r : List Bool) (k : Nat),
+    zmulLogic.Reach (hd Q.SINC (A ++ 1 :: bitsOf r.reverse) (List.replicate k 2))
+      (hdR QMul.NI (A ++ 1 :: (bitsOf (incR r).reverse ++ List.replicate k 2)) [])
+  | [], k => (sincEM A (List.replicate k 2) hA (rep_z2 k)).of_eq rfl (by rw [rep_snoc_eq]; rfl)
+  | false :: r, k =>
+    (sinc0M A (bitsOf r.reverse) (List.replicate k 2) hA (Bits.ofB _) (rep_z2 k)).of_eq
+      (by simp [bitsOf]) (by simp [incR, bitsOf])
+  | true :: r, k =>
+    ((sinc1M A (bitsOf r.reverse) (List.replicate k 2) hA (Bits.ofB _) (rep_z2 k)).of_eq
+      (by simp [bitsOf]) rfl).trans
+      ((sincLM A hA r (k + 1)).of_eq rfl (by simp [incR, bitsOf, List.replicate_succ]))
+
+theorem jincLM : ∀ (r : List Bool) (k : Nat),
+    zmulLogic.Reach (hd Q.JINC (1 :: bitsOf r.reverse) (List.replicate k 2 ++ [1]))
+      (hdR QMul.NI (1 :: (bitsOf (incR r).reverse ++ (List.replicate k 2 ++ [1]))) [])
+  | [], k => (jincEM (List.replicate k 2) (rep_z2 k)).of_eq rfl (by rw [rep_cons_comm]; rfl)
+  | false :: r, k =>
+    (jinc0M (bitsOf r.reverse) (List.replicate k 2) (Bits.ofB _) (rep_z2 k)).of_eq
+      (by simp [bitsOf]) (by simp [incR, bitsOf])
+  | true :: r, k =>
+    ((jinc1M (bitsOf r.reverse) (List.replicate k 2) (Bits.ofB _) (rep_z2 k)).of_eq
+      (by simp [bitsOf]) rfl).trans
+      ((jincLM r (k + 1)).of_eq rfl (by simp [incR, bitsOf, List.replicate_succ]))
+
+
 end ZP.Mul
