@@ -470,3 +470,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: next-pass records as start records
 `esN` (E values after a pass), `Efin_mkStart`, `finE_mkSL`, `nextPass_mk`, `nextRecs_eq`: a list of records with the right dg/m/E, zipped with pass flags and `nextPass`ed, is `mkSL (t+1) 0 D es'`. Remaining for `foks_step`: instantiate it with `passCsOf` (dg via `dg_runAll_pos`, m via `loopRun_m0`, E via `passEs`, `loopRs`).
+
+### Stage note: `passNext`
+`passRs`, `esN_length`, `dec_KEq`, `DOk_w`, `passNext`: the next-pass records of the machine pass (finished records `nextPass`ed with the next flags) are exactly `mkSL (t+1) 0 D (esN p D es vl)`, `vl` the node values. Remaining for `foks_step`: the compare and S-check sides, flags `replicate (j+1) 2 ++ 3 :: L'` vs `fl (t+1)`, and the `hcm` side clause.

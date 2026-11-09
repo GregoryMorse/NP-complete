@@ -12258,5 +12258,160 @@ theorem nextRecs_eq : ∀ (qs : List VR) (flags : List Nat) (D : List DG) (es' :
     rw [ih]
 
 
+
+theorem passRs (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : ValsOk p t N πs ds vals)
+    (n j : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × Nat) (hl : vs.length = n) (hN : j + n + 1 = N)
+    (hI : ColInv p t j πs ds vals (c :: vs)) (hr : r = c.k - 1) :
+    (passCsOf n c vs r s pp).map (fun q => q.2.1) = (List.range (n + 1)).map fun i => vals.getD (j + i) 0 := by
+  have h2 := loopRs p t N πs ds vals hp hV n j c vs r s pp hl hN hI hr
+  unfold passCsOf
+  rw [List.map_append, h2.2.2.1, List.range_succ, List.map_append]
+  simp [h2.2.2.2]
+
+theorem esN_length (p : Nat) : ∀ (D : List DG) (es vl : List Nat), D.length = es.length → D.length = vl.length →
+    (esN p D es vl).length = D.length
+  | [], [], _, _, _ => rfl
+  | [], _ :: _, _, h, _ => by simp at h
+  | _ :: _, [], _, h, _ => by simp at h
+  | g :: gs, e :: es, [], _, h => by simp at h
+  | g :: gs, e :: es, v :: vl, h1, h2 => by
+    simp [esN, esN_length p gs es vl (by simpa using h1) (by simpa using h2)]
+
+theorem zip_fld (p : Nat) : ∀ (D : List DG) (es' : List Nat), (∀ g ∈ D, g.2.2.2.2.1 = p) →
+    (D.zip es').map (fun q => fld q.1.2.2.2.2.1 (q.2 + 1)) = es'.map (fun e => fld p (e + 1)) ∨ D.length ≠ es'.length
+  | [], [], _ => Or.inl rfl
+  | [], _ :: _, _ => Or.inr (by simp)
+  | _ :: _, [], _ => Or.inr (by simp)
+  | g :: gs, e :: es, h => by
+    rcases zip_fld p gs es (fun x hx => h x (by simp [hx])) with h1 | h1
+    · left; simp [h1, h g (by simp)]
+    · right; simpa using h1
+
+theorem dec_KEq (v : VR) : KEq (VR.dec v) v := by
+  have h1 := dec_EO v
+  have h2 := dec_fields' v
+  exact ⟨h1.2, h2.1, by rw [h1.1], fun _ => h1.1⟩
+
+
+theorem curG_k (v : VR) (h : VI v) : v.curG.k = v.k := by
+  rw [(curG_f v h).2.2.1]; exact (dec_fields' v).2.2.1
+
+theorem DOk_w {p : Nat} {D : List DG} {es : List Nat} (h : DOk p D es) :
+    (∀ g ∈ D, g.2.2.2.2.1 = p) ∧ (∀ e ∈ es, e < p) := by
+  obtain ⟨hl, _, h3⟩ := h
+  constructor
+  · intro g hg
+    obtain ⟨i, hi, hgi⟩ := List.getElem_of_mem hg
+    have hi' : i < es.length := by omega
+    exact (h3 i g es[i] (by rw [List.getElem?_eq_getElem hi, hgi]) (List.getElem?_eq_getElem hi')).1
+  · intro e he
+    obtain ⟨i, hi, hei⟩ := List.getElem_of_mem he
+    have hi' : i < D.length := by omega
+    exact (h3 i D[i] e (List.getElem?_eq_getElem hi') (by rw [List.getElem?_eq_getElem hi, hei])).2.2
+
+theorem zip_nextPass : ∀ (xs : List (VR × Nat × Nat)) (fs : List Nat),
+    (xs.zip fs).map (fun q => q.1.1.nextPass q.2) = ((xs.map (fun q => q.1)).zip fs).map (fun q => q.1.nextPass q.2)
+  | [], _ => rfl
+  | x :: xs, [] => rfl
+  | x :: xs, f :: fs => by simp [List.zip_cons_cons]; exact zip_nextPass xs fs
+
+theorem passNext (p t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (y0 : VR) (ys : List VR)
+    (hy : mkSL t 0 D es = y0 :: ys) (S : Nat) :
+    ((passCsOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).zip
+        ((List.range' 0 (ys.length + 1)).map (fl (t + 1)))).map (fun q => q.1.1.nextPass q.2) =
+      mkSL (t + 1) 0 D (esN p D es ((List.range (ys.length + 1)).map fun i =>
+        (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) []).getD i 0)) := by
+  have hlen := hD.1
+  have hp := hD.2.1
+  have hL : (y0 :: ys).length = D.length := by rw [← hy]; exact mkSL_length t 0 D es hlen
+  have hSR := mkSL_startRec p t D es hD
+  rw [hy] at hSR
+  have hSR' : ∀ idx y, (y0 :: ys)[idx]? = some y →
+      StartRec p (if idx = t then 1 else 0) ((D.map fun g => g.2.2.1).getD idx 0) ((D.map fun g => g.1).getD idx 0) y := hSR
+  have hlen2 : (D.map fun g => g.2.2.1).length = (D.map fun g => g.1).length := by simp
+  have hV := valsOk_decRecs p t (D.map fun g => g.2.2.1) (D.map fun g => g.1) hlen2
+  generalize hvals : valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) [] = vals at hV ⊢
+  have hN : 0 + ys.length + 1 = (D.map fun g => g.2.2.1).length := by rw [List.length_map]; simp only [List.length_cons] at hL; omega
+  rw [← hN] at hV
+  have hI := startColInv p t _ _ vals (by omega) y0 ys hSR'
+  have hVI : ∀ x ∈ y0 :: ys, VI x := fun x hx => by
+    obtain ⟨i, hlt, hi⟩ := List.getElem_of_mem hx
+    exact (hSR' i x (by rw [List.getElem?_eq_getElem hlt, hi])).1
+  have hvy0 : VI y0 := hVI y0 (by simp)
+  have hvys : ∀ x ∈ ys, VI x := fun x hx => hVI x (by simp [hx])
+  have hr : y0.k - 1 = y0.curG.k - 1 := by rw [curG_k y0 hvy0]
+  have hm0 : y0.curG.m = 0 := by rw [(dg_curG y0).2]; exact hvy0.2
+  have hvs0 : ∀ x ∈ ys.map VR.dec, x.m = 0 := by
+    intro x hx
+    simp only [List.mem_map] at hx
+    obtain ⟨z, hz, rfl⟩ := hx
+    rw [(dg_dec z).2]; exact (hvys z hz).2
+  have hcl : (passCsOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).length = ys.length + 1 := by
+    have := loopRun_cs_length ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) (by simp)
+    unfold passCsOf; simp [this]
+  rw [zip_nextPass]
+  have hqlen : ((passCsOf ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)).map (fun q => q.1)).length = ys.length + 1 := by
+    simp [hcl]
+  have hesl : (esN p D es ((List.range (ys.length + 1)).map fun i => vals.getD i 0)).length = D.length :=
+    esN_length p D es _ hlen (by simp; simp only [List.length_cons] at hL; omega)
+  apply nextRecs_eq _ _ D _ 0 (t + 1)
+  · have h1 := dg_runAll_pos ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) hm0 hvs0 (by simp)
+    rw [List.map_map]
+    unfold passCsOf
+    have e2 : ((y0.curG :: ys.map VR.dec).map VR.dg) = D := by
+      rw [← mkSL_dg t 0 D es hlen, hy]
+      simp [dg_curG, List.map_map, Function.comp_def, (dg_dec _).1]
+    rw [← e2, ← h1]
+    rfl
+  · intro q hq
+    simp only [List.mem_map] at hq
+    obtain ⟨q', hq', rfl⟩ := hq
+    have hm := loopRun_m0 ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) hm0 hvs0 (by simp)
+    unfold passCsOf at hq'
+    simp only [List.mem_append, List.mem_singleton] at hq'
+    rcases hq' with h | h
+    · exact hm.1 q' h
+    · rw [h]; simp only; rw [(outRec_m _ _).1]; exact hm.2
+  · have hcE : y0.curG.O = 3 → y0.curG.E = fld y0.curG.E.length 1 := by
+      intro h3
+      have hk0 := curG_KEq y0 (by have := hvy0.1.Elen; omega)
+      have hO3 : y0.O = 3 := by rw [← hk0.1]; exact h3
+      have e1 : y0.curG.E = fld y0.E.length 1 := by simp [VR.curG, VR.cur, hO3, VR.dec]
+      have hl1 : 1 ≤ y0.E.length := by have := hvy0.1.Elen; omega
+      rw [e1, fld_len _ _ hl1]
+    have h1 := passEs ys.length y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S) (by simp)
+      (curG_f y0 hvy0).1 (by
+        intro x hx
+        simp only [List.mem_map] at hx
+        obtain ⟨z, hz, rfl⟩ := hx
+        exact ⟨z.dec_ok (hvys z hz).1, by rw [(dg_dec z).2]; exact (hvys z hz).2⟩) hcE
+    have h2 := passRs p t _ _ _ vals (by omega) hV ys.length 0 y0.curG (ys.map VR.dec) (y0.k - 1) (y0.w - y0.k) (0, S)
+      (by simp) rfl hI hr
+    rw [List.map_map]
+    simp only [Function.comp_def] at h1 ⊢
+    rw [h1, h2]
+    have hk : finE (y0.curG :: ys.map VR.dec) ((List.range (ys.length + 1)).map fun i => vals.getD (0 + i) 0) =
+        finE (y0 :: ys) ((List.range (ys.length + 1)).map fun i => vals.getD (0 + i) 0) := by
+      apply finE_congr
+      · simp
+      · intro i a b ha hb
+        cases i with
+        | zero => simp at ha hb; subst ha; subst hb; exact curG_KEq y0 (by have := hvy0.1.Elen; omega)
+        | succ i =>
+          simp only [List.getElem?_cons_succ, List.getElem?_map, Option.map_eq_some_iff] at ha hb
+          obtain ⟨z, hz, rfl⟩ := ha
+          have hzb : z = b := Option.some.inj (hz.symm.trans hb)
+          subst hzb; exact dec_KEq z
+    rw [hk, ← hy]
+    simp only [Nat.zero_add]
+    rw [finE_mkSL p t 0 D es _ hp (DOk_w hD).1 (DOk_w hD).2 hlen (by simp; simp only [List.length_cons] at hL; omega)]
+    have hz := zip_fld p D (esN p D es ((List.range (ys.length + 1)).map fun i => vals.getD i 0)) (DOk_w hD).1
+    rcases hz with hz | hz
+    · exact hz.symm
+    · exact absurd hesl.symm hz
+  · rw [hesl]
+  · rw [hqlen]
+
+
 end ZP.NTT
 
