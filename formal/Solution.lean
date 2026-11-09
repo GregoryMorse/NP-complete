@@ -33,5 +33,8 @@ theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
     ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN :=
   ZP.NTT.znttQuasihalts_iff_sentence h
 
+theorem ZP.zmul_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmulMachine ↔ ZP.SentenceMul :=
+  ZP.zmulQuasihalts_iff_sentence
+
 theorem ZP.twin_quasihalts_iff : ZP.Quasihalts ZP.twinMachine ↔ ¬ ZP.TwinPrimes :=
   ZP.twinQuasihalts_iff

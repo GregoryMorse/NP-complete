@@ -212,3 +212,21 @@ Runs with long `J` and `s` that hit the 4·10^9-step cap print `ABNORMAL ... STE
 Next (unchanged order): the shift-chain, terminator and pop loops as Lean lemmas, `switchStep` with the hypothesis
 above, `MulRun` (the `runMul` theorem over `zmulLogic.Reach`, carrying `StorRel` and `Cap`), the `mK*` check
 (`mulCheck`), `pair_mainMul`, `MainMul`, Challenge/Solution entries.
+
+## Status: DONE (2026-11)
+
+`ZP.zmulQuasihalts_iff_sentence : Quasihalts zmulMachine ↔ SentenceMul` is proved (axioms: propext, Classical.choice,
+Quot.sound), with the Challenge/Solution/comparator entry `ZP.zmul_quasihalts_iff_sentence`. The files:
+
+- `MulInterp MulRot MulFuel MulSwitch MulRun`: the copied interpreter lemmas, the switch, and `runM` (the whole guest run,
+  carrying `StorRel` and `Cap`; one-entry program `[false]` with an empty queue is allowed by `R = [false]`).
+- `PairMul`: the outer layer: `decFuelM` (fuel `M 1^(n+1)` plus `|J|` short blocks, one empty stack per position of `J`),
+  `setupM`, `runFromM`, the dispatch and erase tails (`okTailM`, `badTailM`, `beepStepM`), `sincLM`, `jincLM`.
+- `MulCheck`: the output check. `convLoopM` (the zfac conversion with a generic right part), `yLoop`/`xLoopOk`/`xLoopBad`
+  (`z = x y` by marking: `y` outer, `x` inner, with `r = a * c` deciding `FR1`/`FR0`), `mulPhase`, the set-up
+  `checkPre` (`mK*`, the copy of `s`, `TS`), `haltPhase`, `mainPhase`, `pair_mainMul`.
+- `MainMul`: `zmulPairData` and the top theorem.
+
+Lessons: segments with several passes over variable blocks generate fine with `/tmp/gen_lib.py`-style symbolic
+execution as long as every block is a self-loop in its state; the three result cases of the check are separated
+by lemmas on the explicit list shapes (`lay1_last3`), not by case splits inside the generator.

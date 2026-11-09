@@ -67,10 +67,11 @@ Plans for the rest are in `plans/`.
 | Z_FACTOR (324) | `ZP.zfacQuasihalts_iff_sentence`, `ZP.zfac_quasihalts_iff_InP` | `DefsF ChecksF TableF LogicF CompileF PairF MainF` |
 | Z_DLOG (400) | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
 | Z_GI (415) | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
+| Z_MUL (408) | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulCheck MainMul` |
 | Z_NTT (550) | `ZP.zntt_quasihalts_iff_sentence` (hypothesis `ZP.PrimeEx`) | `DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
 
-In progress (plans 07, 09, 10): Z_MUL on branch `lean-n3-p07`; the 19-state twin-prime beeper (`TableTwin`);
-Z_coNP (`TableConp LogicConp LogicBaseConp CompileConp ExtChecksConp`: table, logical machine, compilation
+The 19-state twin-prime beeper (`TableTwin`, `TwinRound`, `MainTwin`) is done: `ZP.twin_quasihalts_iff`.
+In progress (plan 10): Z_coNP (`TableConp LogicConp LogicBaseConp CompileConp ExtChecksConp`: table, logical machine, compilation
 certificate and its base `zcBase` are done).
 
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the

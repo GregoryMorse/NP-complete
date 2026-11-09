@@ -11,6 +11,8 @@ public import ZP.DefsNTT
 public import ZP.TableNTT
 public import ZP.DefsTwin
 public import ZP.TableTwin
+public import ZP.DefsMul
+public import ZP.TableMul
 
 public section
 
@@ -50,6 +52,10 @@ theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.Sent
 /-- Z_NTT: the prime `1 + n i` is supplied by the hypothesis `PrimeEx` (Dirichlet for `≡ 1 mod n`). -/
 theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
     ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN := by
+  sorry
+
+/-- Z_MUL: the guest also has a queue of stacks; the output must be numbers `z, x, y` with `z = x y`. -/
+theorem ZP.zmul_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmulMachine ↔ ZP.SentenceMul := by
   sorry
 
 /-- The 19-state twin-prime beeper: it quasihalts iff there are finitely many twin primes. -/
