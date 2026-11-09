@@ -122,6 +122,8 @@ public import ZP.MulRun
 public import ZP.PairMul
 public import ZP.MulCheck
 public import ZP.MainMul
+public import ZP.ConpRot
+public import ZP.ConpFuel
 public import ZP.DefsConp
 public import ZP.ChecksConp
 public import ZP.GenericP
