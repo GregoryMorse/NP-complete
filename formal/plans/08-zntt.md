@@ -262,3 +262,8 @@ on the digit list. Remaining: pass loop, restart interface, power sums, merge, p
 `PreOk`, the register shape `Wf ++ 1 :: (0^p.1 1^p.2 ++ 1 :: P2)` and the semantic obligation `PassCmp n r vs` (the compare
 hypothesis `hcmp` for every cursor reached; to be proved by the semantic layer). It ends at the last cursor (`vs = []`).
 Remaining: the last-record broadcast and `CA4 → PE0`, compare failure branch, `PA0` interface, power sums, merge, pair lemma, bridge.
+
+### Progress: last record of a pass
+`caLast` (`CA1 → PE0` at the last record), `lastEnd` (from `curTapeG … c a 0 s []` to `PE0` on `Pm ++ tailB (pre ++ [c.done a s])`),
+`lastStepN`/`lastStepO` (non-output / output last cursor). Together with `passLoop` a whole pass reaches `PE0`. Remaining: compare failure
+branch, `PE0 → PM/FL → …` composition of a pass with `peMore/peLast`, restart interface, power sums, merge, pair lemma, bridge.
