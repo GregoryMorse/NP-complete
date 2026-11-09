@@ -8490,5 +8490,90 @@ theorem passesRun (Wf : List Nat) (hW : BitsD Wf) (Q'' : List Nat) :
       · exact Or.inl ⟨L', R', ho, h1.trans hr⟩
       · exact Or.inr ⟨T, ho, h1.trans hr⟩
 
+
+theorem vis_m0 (v : VR) (h : v.m = 0) : v.vis.m = 0 := by unfold VR.vis; split <;> simp [h]
+theorem inc_m0 (v : VR) (h : v.m = 0) : v.inc.m = 0 := by simpa [VR.inc] using h
+theorem dec_m0 (v : VR) (h : v.m = 0) : v.dec.m = 0 := by unfold VR.dec; split <;> simp [h]
+theorem curG_m0 (v : VR) (h : v.m = 0) : v.curG.m = 0 := by
+  unfold VR.curG VR.cur VR.dec; split <;> split <;> simp [h]
+
+theorem stepList_m0 : ∀ vs : List VR, (∀ v ∈ vs, v.m = 0) → ∀ w ∈ stepList vs, w.m = 0
+  | [], _ => by simp [stepList]
+  | v :: vs, h => by
+    intro w hw
+    simp only [stepList, List.mem_cons, List.mem_map] at hw
+    rcases hw with rfl | ⟨x, hx, rfl⟩
+    · exact vis_m0 _ (inc_m0 _ (h v (by simp)))
+    · exact vis_m0 _ (h x (by simp [hx]))
+
+theorem stepN_m0 (r : Nat) : ∀ (vs : List VR), (∀ v ∈ vs, v.m = 0) → ∀ w ∈ stepN r vs, w.m = 0 := by
+  induction r with
+  | zero => intro vs h; simpa [stepN] using h
+  | succ r ih => intro vs h; exact ih _ (stepList_m0 vs h)
+
+theorem nextPass_m (c : VR) (x : Nat) : (c.nextPass x).m = c.m := rfl
+
+theorem loopRun_m0 : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (p : Nat × Nat),
+    c.m = 0 → (∀ x ∈ vs, x.m = 0) → vs.length = n →
+    (∀ t ∈ (loopRun n c vs r s p).cs, t.1.m = 0) ∧ (loopRun n c vs r s p).c'.m = 0 := by
+  intro n
+  induction n with
+  | zero => intro c vs r s p hc hvs hl; simp [loopRun, hc]
+  | succ n ih =>
+    intro c vs r s p hc hvs hl
+    have hlen' := stepN_length r vs
+    obtain ⟨w, ws, hw⟩ : ∃ w ws, stepN r vs = w :: ws := by
+      cases h : stepN r vs with
+      | nil => rw [h] at hlen'; simp at hlen'; omega
+      | cons w ws => exact ⟨w, ws, rfl⟩
+    have hmz := stepN_m0 r vs hvs
+    rw [hw] at hmz
+    have hlenws : (ws.map VR.dec).length = n := by
+      rw [hw] at hlen'; simp at hlen'; simp; omega
+    have ih' := ih w.curG (ws.map VR.dec) (w.k - 1) (w.w - w.k) (outP c r p)
+      (curG_m0 _ (hmz w (by simp)))
+      (by intro x hx; simp only [List.mem_map] at hx; obtain ⟨y, hy, rfl⟩ := hx; exact dec_m0 _ (hmz y (by simp [hy])))
+      hlenws
+    simp only [loopRun, hw]
+    refine ⟨?_, ih'.2⟩
+    intro t ht
+    simp only [List.mem_cons] at ht
+    rcases ht with rfl | ht
+    · rw [(outRec_m c r).1]; exact hc
+    · exact ih'.1 t ht
+
+
+/-- A finished record as an odometer record. -/
+def VR.toO (t : VR) (r s : Nat) : ORec :=
+  { F := 2, O := t.O, Pf := t.P, acc := List.replicate r 2 ++ 3 :: List.replicate s 2, E := t.E,
+    d := t.n, r := t.n + 1 + t.s, z := t.a, k := t.c + 1, m := t.t }
+
+theorem VR.done_body_toO (t : VR) (ht : t.Ok) (hm : t.m = 0) (r s : Nat) :
+    (t.done r s).body = (t.toO r s).tape := by
+  have h1 := t.toRcA_tl ht (List.replicate r 2 ++ 3 :: List.replicate s 2)
+  have h2 : (t.done r s).tl = (t.toRcA (List.replicate r 2 ++ 3 :: List.replicate s 2)).tl := rfl
+  rw [Rc.body_eq, h2, h1]
+  simp only [VR.done, VR.toRcA, ORec.tape, VR.toO]
+  have hb : t.b = therm t.n (t.n + 1 + t.s) := by
+    simp [VR.b, therm, hm]
+  have hu : t.u = winStr t.a (t.c + 1) t.t := by simp [VR.u, winStr]
+  rw [hb, hu]
+
+theorem tailB_toO : ∀ (cs : List (VR × Nat × Nat)), (∀ t ∈ cs, t.1.Ok ∧ t.1.m = 0) →
+    tailB (cs.map fun t => t.1.done t.2.1 t.2.2) = sepRest (cs.map fun t => t.1.toO t.2.1 t.2.2)
+  | [], _ => by simp [tailB, sepRest]
+  | t :: cs, h => by
+    have ih := tailB_toO cs (fun x hx => h x (by simp [hx]))
+    simp only [List.map_cons, tailB, sepRest, ih]
+    rw [VR.done_body_toO _ (h t (by simp)).1 (h t (by simp)).2]
+
+theorem toO_ok (t : VR) (ht : t.Ok) (r s : Nat) (hrs : r + 1 + s = t.w) : (t.toO r s).Ok :=
+  { hF := by
+      have h1 := ht.O; have h2 := ht.P
+      simp at h1 h2
+      simp [VR.toO]; omega,
+    acc := bd_app (BitsD.rep _ _ (by simp)) (fun x hx => by simp at hx; rcases hx with rfl | hx <;> simp_all),
+    E := ht.E, d := by simp [VR.toO], k := by simp [VR.toO] }
+
 end ZP.NTT
 
