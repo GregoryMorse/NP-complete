@@ -5950,5 +5950,30 @@ theorem od0Walk {u v : List Nat} (h : Rest u v) :
     have h2 := ih (A ++ [1] ++ [3]) R (hA1.app (by intro y hy; simp at hy; subst hy; simp [ALL])) hR
     simpa using h1.trans (h1'.trans h2)
 
+theorem odiZeros (A R : List Nat) (j : Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODI A (List.replicate j 2 ++ R)) (hdR QNTT.ODI (A ++ List.replicate j 2) R) := by
+  have hV : Valid [ALL, [2], ALL] [A, List.replicate j 2, R] :=
+    Valid.cons hA (Valid.cons (repSet j 2) (Valid.cons hR (Valid.nil _)))
+  exact checkFF (env := [A, List.replicate j 2, R]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 .id]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Inside one record's digit string: skip the leading zeros and the run of ones of the
+counter, then increment the first `0` (the no-carry case) by entering `WI0`. -/
+theorem odInc (A : List Nat) (z o : Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODI A (List.replicate z 2 ++ 3 :: (List.replicate o 3 ++ 2 :: R)))
+      (hd QNTT.WI0 (A ++ List.replicate z 2 ++ 3 :: List.replicate o 3) (3 :: R)) := by
+  have h1 := odiZeros A (3 :: (List.replicate o 3 ++ 2 :: R)) z hA
+    (Sym4.cons (by simp [ALL]) (Sym4.app (sym4_rep o 3 (by simp [ALL])) (Sym4.cons (by simp [ALL]) hR)))
+  have hA1 : Sym4 (A ++ List.replicate z 2) := hA.app (sym4_rep z 2 (by simp [ALL]))
+  have h2 := odi3 (A ++ List.replicate z 2) (List.replicate o 3 ++ 2 :: R) hA1
+    (Sym4.app (sym4_rep o 3 (by simp [ALL])) (Sym4.cons (by simp [ALL]) hR))
+  have hA2 : Sym4 (A ++ List.replicate z 2 ++ [3]) := hA1.app (by intro y hy; simp at hy; subst hy; simp [ALL])
+  have h3 := odjOnes (A ++ List.replicate z 2 ++ [3]) (2 :: R) o hA2 (Sym4.cons (by simp [ALL]) hR)
+  have hA3 : Sym4 (A ++ List.replicate z 2 ++ [3] ++ List.replicate o 3) := hA2.app (sym4_rep o 3 (by simp [ALL]))
+  have h4 := odjZero _ R hA3 hR
+  simpa using h1.trans (h2.trans (h3.trans h4))
+
 end ZP.NTT
 
