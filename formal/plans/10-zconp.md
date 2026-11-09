@@ -1,5 +1,7 @@
 # 10 — Z_coNP (`native/zconp.py`, 317 states): `Quasihalts zconpMachine ↔ SentenceConp`
 
+**Status: done.** `ZP.zconpQuasihalts_iff_sentence` (`ZP/MainConp.lean`) is in `Challenge.lean`, `Solution.lean`, `comparator.json`; axioms: propext, Classical.choice, Quot.sound.
+
 Prerequisites: plan 01 (generic pipeline), the zp2 development (`Run`, `Pair`, `Logical`), and the lessons of
 plan 07 (a machine that changes zp2 transitions which `zpBase` keeps needs its own base, and segments through
 changed transitions are stated for the machine itself and combined with base lemmas via `Ext.reach`). Plan 06's
