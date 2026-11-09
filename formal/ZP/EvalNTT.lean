@@ -7558,5 +7558,22 @@ theorem scBridge (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
     _ _ (by simp [List.append_assoc]) hnX hsY
   simpa [List.append_assoc] using this
 
+
+/-- After a non-final pass with `S ≠ 0` (it starts with a `0`): refuted, `ODL` with the tape unchanged on the right. -/
+theorem scFail (Wf : List Nat) (hW : BitsD Wf) (S' T X Y : List Nat) (hS : BitsD S') (hT : Sym4 T)
+    (hXY : X ++ Y = Wf ++ 1 :: (2 :: S' ++ T)) (hX : NoB X) (hY : Sym4 Y) :
+    znttLogic.Reach (hd QNTT.SC X Y) (hd QNTT.ODL (Wf ++ [1]) (2 :: (S' ++ T))) := by
+  have sW := hW.sym4
+  have sS : Sym4 S' := hS.sym4
+  have a2 : (2 : Nat) ∈ ALL := by simp [ALL]
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have h0 := sc0Scan X Y hX hY
+  rw [hXY] at h0
+  have b1 := sc1Block [] Wf (1 :: (2 :: S' ++ T)) Sym4.nil hW (by simp [*])
+  have b2 := sc1M ([] ++ Wf) (2 :: S' ++ T) (by simp [*]) (by simp [*])
+  have b3 := sc2Zero ([] ++ Wf ++ [1]) (S' ++ T) (by simp [*]) (by simp [*])
+  simp only [List.nil_append, List.append_assoc, List.cons_append] at h0 b1 b2 b3 ⊢
+  exact h0.trans (b1.trans (b2.trans b3))
+
 end ZP.NTT
 
