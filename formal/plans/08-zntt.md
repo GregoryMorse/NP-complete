@@ -308,3 +308,9 @@ To prove, per pass:
 1. case split on `p'.1`;
 2. `GoodW (1 :: Q ++ 3^(a+2) 2^b)` implies `GoodW (1 :: Q ++ 3^a ++ 3 :: 2 :: 2^b)`;
 3. split `pre'` as `pre0 ++ r :: r2 :: post` with `r.Pf = 3`, `r.acc ≠ []`, `pre0` all `Pf = 2`. This needs `PreOk` to record where the input flag sits.
+
+### Progress: SC bridge and failure path to the odometer (`ZP/EvalNTT.lean`, no sorry)
+- `scBridge`: `SC` with `S = 0` (block `3^q`) goes to `RZ1`, with the input flag moved from `r` to `r2`. It uses `scPm` and `goodW_swap_tail`.
+- `scFail`: `SC` with `S` starting with `0` goes to `ODL`.
+- `goodW_rest` and `odFail`: from `ODL` on `Pm ++ 1 :: 1 :: tapeL (o :: os)`, the prefix walk reaches `ODH`, and `odoWalk` then gives `WI0` for the next assignment or `BEEP`.
+Remaining: `passMore2`'s `pre'` has to be shown to have the form `pre0 ++ r :: r2 :: post` (P-flag pattern) for `scBridge`; the same for the `FL` failure leaves; `PassCmp` semantics; the ORec↔Rc tie after a pass; the `PA0` restart; entries.

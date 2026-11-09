@@ -7575,5 +7575,42 @@ theorem scFail (Wf : List Nat) (hW : BitsD Wf) (S' T X Y : List Nat) (hS : BitsD
   simp only [List.nil_append, List.append_assoc, List.cons_append] at h0 b1 b2 b3 ⊢
   exact h0.trans (b1.trans (b2.trans b3))
 
+
+theorem goodW_rest : ∀ {u : List Nat}, GoodW u → ∃ v, Rest u v := by
+  intro u h
+  induction h with
+  | nil => exact ⟨[], Rest.nil⟩
+  | bit hb _ ih => obtain ⟨v, hv⟩ := ih; exact ⟨_, Rest.bit hb hv⟩
+  | mb hb _ ih => obtain ⟨v, hv⟩ := ih; exact ⟨_, Rest.mb hb hv⟩
+
+
+/-- A failed assignment: from `ODL` on `Pm ++ 1 :: 1 :: tapeL (o :: os)` to the next assignment (`WI0`) or the overflow `BEEP`. -/
+theorem odFail (u : List Nat) (hu : GoodW u) (o : ORec) (os : List ORec) (hos : ∀ x ∈ o :: os, x.Ok)
+    (L R : List Nat) (hXY : L ++ R = u ++ 1 :: 1 :: tapeL (o :: os)) (hL : NoB L) (hR : Sym4 R) :
+    ∃ v, Rest u v ∧
+      (∀ os', odoStepR (o :: os) = some os' → ∃ X R', X ++ 3 :: R' = (v ++ [1, 1]) ++ tapeL os' ∧
+        znttLogic.Reach (hd QNTT.ODL L R) (hd QNTT.WI0 X (3 :: R'))) ∧
+      (odoStepR (o :: os) = none →
+        znttLogic.Reach (hd QNTT.ODL L R) (hd QNTT.BEEP ((v ++ [1, 1]) ++ tapeL (resetAll (o :: os))) [])) := by
+  obtain ⟨v, hv⟩ := goodW_rest hu
+  refine ⟨v, hv, ?_⟩
+  have sT : Sym4 (tapeL (o :: os)) := tapeL_sym4 _ (fun x hx => hos x hx)
+  have a1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have s1 : Sym4 (1 :: tapeL (o :: os)) := Sym4.cons a1 sT
+  have h0 := odlScan L R hL hR
+  rw [hXY] at h0
+  have h1 := od0Walk hv [] (1 :: 1 :: tapeL (o :: os)) Sym4.nil (Sym4.cons a1 s1)
+  have h2 := od0M ([] ++ v) (1 :: tapeL (o :: os)) (by simpa using hv.sym4_dst) s1
+  have h3 := od0mM ([] ++ v ++ [1]) (tapeL (o :: os)) (by simpa using hv.sym4_dst.app (sym4_cell 1 (by simp))) sT
+  have hw := odoWalk os o ([] ++ v ++ [1] ++ [1]) hos
+    (by simpa using hv.sym4_dst.app (Sym4.cons a1 (Sym4.cons a1 Sym4.nil)))
+  simp only [List.nil_append, List.append_assoc, List.cons_append] at h0 h1 h2 h3 hw ⊢
+  have hc := h0.trans (h1.trans (h2.trans h3))
+  refine ⟨fun os' h => ?_, fun h => ?_⟩
+  · obtain ⟨X, R', e, hr⟩ := hw.1 os' h
+    exact ⟨X, R', by simpa using e, hc.trans hr⟩
+  · have := hw.2 h
+    simpa using hc.trans this
+
 end ZP.NTT
 
