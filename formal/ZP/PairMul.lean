@@ -16,6 +16,8 @@ namespace ZP.Mul
 
 open ZP
 
+def B0 : List Nat := [0]
+
 /-! ## Small facts -/
 
 theorem Bits.rev {u : List Nat} (h : Bits u) : Bits u.reverse := fun a ha => h a (List.mem_reverse.mp ha)
@@ -499,5 +501,150 @@ theorem runFromM (Pb Xb : List Bool) (ds : List Dg) (hds : Dig ds) (hne : ds ≠
   rw [ht] at h2
   rw [stext_rep] at h2
   exact ⟨ds', ST', hd', hl', hS', h1.trans (by simpa using h2)⟩
+
+/-- Halt with output 0: the dispatch reaches the beep state. -/
+theorem dHalt0 (j : List Nat) (s : List Nat) (Fp : List Nat) (hj : Bits j) (hs : Bits s) (hFp : Sym4 Fp) :
+    zmulLogic.Reach (hdR Q.DP10 ([1]) (j ++ (1 :: (s ++ (1 :: (1 :: (Fp)))))))
+      (hdR Q.DP30 (1 :: (j ++ (1 :: (s ++ ([1]))))) (1 :: (Fp))) := by
+  have hV : Valid [bits, bits, ALL] [j, s, Fp] := Valid.cons hj (Valid.cons hs (Valid.cons hFp (Valid.nil _)))
+  exact checkFF (env := [j, s, Fp]) (E := []) (k := 4) hV trivial
+    (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .blk 2 .id])
+    (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 1, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The outcome 1 erases the first `M` of the fuel. -/
+theorem dp31 (A : List Nat) (R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
+    zmulLogic.Reach (hdR Q.DP31 (A) (1 :: (R)))
+      (hdR Q.EAs (A ++ ([0])) (R)) := by
+  have hV : Valid [ALL, ALL] [A, R] := Valid.cons hA (Valid.cons hR (Valid.nil _))
+  exact checkFF (env := [A, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase the fuel. -/
+theorem eaF (A : List Nat) (F : List Nat) (Rest : List Nat) (hA : Sym4 A) (hF : NoB F) (hRest : Sym4 Rest) :
+    zmulLogic.Reach (hdR Q.EAs (A) (F ++ (0 :: (Rest))))
+      (hdR QMul.EAs2 (A ++ (List.replicate F.length 0 ++ ([0]))) (Rest)) := by
+  have hV : Valid [ALL, NB, ALL] [A, F, Rest] := Valid.cons hA (Valid.cons hF (Valid.cons hRest (Valid.nil _)))
+  exact checkFF (env := [A, F, Rest]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.blk 1 .id, .sym 0, .blk 2 .id])
+    (ls' := [.blk 0 .id, .blk 1 (.const 0), .sym 0]) (rs' := [.blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- The storage is empty. -/
+theorem ea2nil (A : List Nat) (hA : Sym4 A) :
+    zmulLogic.Reach (hdR QMul.EAs2 (A) ([]))
+      (hd Q.EBs (A) ([])) := by
+  have hV : Valid [ALL] [A] := Valid.cons hA (Valid.nil _)
+  exact checkFT (env := [A]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id]) (rs := [])
+    (ls' := [.blk 0 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase the storage. -/
+theorem ea2cons (A : List Nat) (T : List Nat) (hA : Sym4 A) (hT : NoB T) :
+    zmulLogic.Reach (hdR QMul.EAs2 (A) (1 :: (T)))
+      (hd Q.EBs (A ++ (0 :: (List.replicate T.length 0 ++ ([0])))) ([])) := by
+  have hV : Valid [ALL, NB] [A, T] := Valid.cons hA (Valid.cons hT (Valid.nil _))
+  exact checkFT (env := [A, T]) (E := []) (k := 4) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Sweep back to `M_2`: the next `s`. -/
+theorem ebM (A : List Nat) (Z : List Nat) (hA : Sym4 A) (hZ : ∀ a ∈ Z, a ∈ B0) :
+    zmulLogic.Reach (hd Q.EBs (A ++ (1 :: (Z))) ([]))
+      (hd Q.SINC (A) (0 :: (Z))) := by
+  have hV : Valid [ALL, B0] [A, Z] := Valid.cons hA (Valid.cons hZ (Valid.nil _))
+  exact checkTT (env := [A, Z]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs := [])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 0, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Sweep back to the flag: the next `J`. -/
+theorem ebZ (j : List Nat) (s : List Nat) (Z : List Nat) (hj : Bits j) (hs : Bits s) (hZ : ∀ a ∈ Z, a ∈ B0) :
+    zmulLogic.Reach (hd Q.EBs (1 :: (j ++ (1 :: (s ++ (1 :: (2 :: (Z))))))) ([]))
+      (hd Q.JINC (1 :: (j)) (1 :: (List.replicate s.length 0 ++ (0 :: (0 :: (Z)))))) := by
+  have hV : Valid [bits, bits, B0] [j, s, Z] := Valid.cons hj (Valid.cons hs (Valid.cons hZ (Valid.nil _)))
+  exact checkTT (env := [j, s, Z]) (E := []) (k := 5) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2, .blk 2 .id]) (rs := [])
+    (ls' := [.sym 1, .blk 0 .id]) (rs' := [.sym 1, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- Increment `s`: all ones, one more digit. -/
+theorem sincEM (A : List Nat) (Z : List Nat) (hA : NoB A) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zmulLogic.Reach (hd Q.SINC (A ++ ([1])) (Z))
+      (hdR QMul.NI (A ++ (1 :: (Z ++ ([2])))) ([])) := by
+  have hV : Valid [NB, Z2] [A, Z] := Valid.cons hA (Valid.cons hZ (Valid.nil _))
+  exact checkTF (env := [A, Z]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Increment `s`: a `0` becomes `1`. -/
+theorem sinc0M (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zmulLogic.Reach (hd Q.SINC (A ++ (1 :: (r ++ ([2])))) (Z))
+      (hdR QMul.NI (A ++ (1 :: (r ++ (3 :: (Z))))) ([])) := by
+  have hV : Valid [NB, bits, Z2] [A, r, Z] := Valid.cons hA (Valid.cons hr (Valid.cons hZ (Valid.nil _)))
+  exact checkTF (env := [A, r, Z]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3, .blk 2 .id]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Increment `s`: carry. -/
+theorem sinc1M (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zmulLogic.Reach (hd Q.SINC (A ++ (1 :: (r ++ ([3])))) (Z))
+      (hd Q.SINC (A ++ (1 :: (r))) (2 :: (Z))) := by
+  have hV : Valid [NB, bits, Z2] [A, r, Z] := Valid.cons hA (Valid.cons hr (Valid.cons hZ (Valid.nil _)))
+  exact checkTT (env := [A, r, Z]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3]) (rs := [.blk 2 .id])
+    (ls' := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 2, .blk 2 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Increment `J`: all ones. -/
+theorem jincEM (Z : List Nat) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zmulLogic.Reach (hd Q.JINC ([1]) (Z ++ ([1])))
+      (hdR QMul.NI (1 :: (Z ++ (2 :: ([1])))) ([])) := by
+  have hV : Valid [Z2] [Z] := Valid.cons hZ (Valid.nil _)
+  exact checkTF (env := [Z]) (E := []) (k := 4) hV trivial
+    (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1])
+    (ls' := [.sym 1, .blk 0 .id, .sym 2, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Increment `J`: a `0` becomes `1`. -/
+theorem jinc0M (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zmulLogic.Reach (hd Q.JINC (1 :: (r ++ ([2]))) (Z ++ ([1])))
+      (hdR QMul.NI (1 :: (r ++ (3 :: (Z ++ ([1]))))) ([])) := by
+  have hV : Valid [bits, Z2] [r, Z] := Valid.cons hr (Valid.cons hZ (Valid.nil _))
+  exact checkTF (env := [r, Z]) (E := []) (k := 3) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 2]) (rs := [.blk 1 .id, .sym 1])
+    (ls' := [.sym 1, .blk 0 .id, .sym 3, .blk 1 .id, .sym 1]) (rs' := [])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Increment `J`: carry. -/
+theorem jinc1M (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+    zmulLogic.Reach (hd Q.JINC (1 :: (r ++ ([3]))) (Z ++ ([1])))
+      (hd Q.JINC (1 :: (r)) (2 :: (Z ++ ([1])))) := by
+  have hV : Valid [bits, Z2] [r, Z] := Valid.cons hr (Valid.cons hZ (Valid.nil _))
+  exact checkTT (env := [r, Z]) (E := []) (k := 1) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 3]) (rs := [.blk 1 .id, .sym 1])
+    (ls' := [.sym 1, .blk 0 .id]) (rs' := [.sym 2, .blk 1 .id, .sym 1])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- The one step out of the beep state. -/
+theorem beepStepM (j s Y : List Nat) :
+    zmulLogic.zstep (hdR Q.DP30 (1 :: (j ++ 1 :: (s ++ [1]))) (1 :: Y)) =
+      some (hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 2]))) Y) := by
+  have e1 : (⟨Q.DP30, [Item.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1].reverse,
+      [.sym 1, .blk 2 .id], false⟩ : SC).den [j, s, Y] = hdR Q.DP30 (1 :: (j ++ 1 :: (s ++ [1]))) (1 :: Y) :=
+    den_tapeR (by osimp) (by osimp)
+  have e2 : (⟨Q.EAs, [Item.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 2].reverse,
+      [.blk 2 .id], false⟩ : SC).den [j, s, Y] = hdR Q.EAs (1 :: (j ++ 1 :: (s ++ [1, 2]))) Y :=
+    den_tapeR (by osimp) (by osimp)
+  rw [← e1, ← e2]
+  exact cstep_zstep (by decide +kernel)
 
 end ZP.Mul
