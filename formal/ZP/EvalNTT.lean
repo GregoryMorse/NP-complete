@@ -6225,5 +6225,16 @@ theorem odCarryEndTherm (P0 : List Nat) (r : Nat) (hr : 1 ≤ r) (hP : Sym4 P0) 
   have h := odCarryEnd P0 (List.replicate (n + 1) 3) n hP (bitsD_rep3 _) (by simp)
   simpa [therm] using h
 
+/-- A window string `0^z 1^k 0^m`; its digit is the right end `z + k` of the run of ones. -/
+def winStr (z k m : Nat) : List Nat := List.replicate z 2 ++ List.replicate k 3 ++ List.replicate m 2
+
+/-- Incrementing a window moves its right end by one (`m ≥ 1`). -/
+theorem odWinInc (A : List Nat) (z k m : Nat) (R : List Nat) (hk : 1 ≤ k) (hA : Sym4 A) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODI A (winStr z k (m + 1) ++ R))
+      (hd QNTT.WI0 (A ++ List.replicate z 2 ++ List.replicate k 3) (3 :: (List.replicate m 2 ++ R))) := by
+  obtain ⟨o, rfl⟩ : ∃ o, k = o + 1 := ⟨k - 1, by omega⟩
+  have h := odInc A z o (List.replicate m 2 ++ R) hA ((sym4_rep m 2 (by simp [ALL])).app hR)
+  simpa [winStr, List.replicate_succ] using h
+
 end ZP.NTT
 
