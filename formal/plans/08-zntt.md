@@ -267,3 +267,8 @@ Remaining: the last-record broadcast and `CA4 → PE0`, compare failure branch, 
 `caLast` (`CA1 → PE0` at the last record), `lastEnd` (from `curTapeG … c a 0 s []` to `PE0` on `Pm ++ tailB (pre ++ [c.done a s])`),
 `lastStepN`/`lastStepO` (non-output / output last cursor). Together with `passLoop` a whole pass reaches `PE0`. Remaining: compare failure
 branch, `PE0 → PM/FL → …` composition of a pass with `peMore/peLast`, restart interface, power sums, merge, pair lemma, bridge.
+
+### Progress: whole pass (non-final)
+`passMore`: `passLoop` + `lastStepN/O` + `peMore` — from the first cursor `RFL` to the check state `SC`, when `Nn = 1^(a+2) 0^b`
+(more passes follow). Remaining for a pass: the final-pass variant (`peLast` → `FL0`), then `SC`/`PM` → next pass, failure branches,
+restart interface, power sums, merge, pair lemma, bridge.

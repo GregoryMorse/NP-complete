@@ -6992,5 +6992,57 @@ theorem lastStepO (n : Nat) (c : VR) (hc : c.Ok) (hF : c.F = 3) (hO : c.O = 3) (
   · simp [curTapeG, hO, VR.b, VR.u, List.append_assoc, tailVR]
 
 
+/-- One whole evaluation pass, ending in the check `SC` (more passes follow: `Nn = 1^(a+2) 0^b`). -/
+theorem passMore (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b : Nat)
+    (hP2 : GoodW (1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2))) :
+    ∀ (n : Nat) (vs : List VR) (c : VR) (pre : List Rc) (p : Nat × Nat) (r s : Nat),
+    vs.length = n → CurInv c → (∀ x ∈ vs, x.Ok) → OutM vs → PreOk pre → 1 ≤ p.2 → PassCmp n r vs →
+    ∃ (p' : Nat × Nat) (pre' : List Rc), PreOk pre' ∧ pre' ≠ [] ∧
+      znttLogic.Reach
+        (hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate p.1 2 ++ List.replicate p.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2)))
+          pre c 0 r s vs) [])
+        (hd QNTT.SC (Wf ++ 1 :: (List.replicate p'.1 2 ++ List.replicate p'.2 3 ++ 1 :: Q) ++ List.replicate a 3)
+          (3 :: 2 :: (List.replicate b 2 ++ tailB pre')) ) := by
+  intro n vs c pre p r s hlen hc hvs hom hpre hp hcmp
+  obtain ⟨p', pre', c', r', s', hc', hpre', hp', h1⟩ :=
+    passLoop Wf hW (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) hP2 n vs c pre p r s hlen hc hvs hom hpre hp hcmp
+  obtain ⟨hcOk, hF, hOut⟩ := hc'
+  have finish : ∀ (p'' : Nat × Nat) (pre'' : List Rc), PreOk pre'' → pre'' ≠ [] → 1 ≤ p''.2 →
+      znttLogic.Reach
+        (hd QNTT.PE0 ((Wf ++ 1 :: (List.replicate p''.1 2 ++ List.replicate p''.2 3 ++ 1 :: (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2))) ++
+          tailB pre'') [])
+        (hd QNTT.SC (Wf ++ 1 :: (List.replicate p''.1 2 ++ List.replicate p''.2 3 ++ 1 :: Q) ++ List.replicate a 3)
+          (3 :: 2 :: (List.replicate b 2 ++ tailB pre''))) := by
+    intro p'' pre'' hpre'' hne hp''
+    obtain ⟨x, xs, rfl⟩ := List.exists_cons_of_ne_nil hne
+    have hG := pm_good Wf (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) hW hP2 p'' hp''
+    have hxs : ∀ y ∈ x :: xs, y.Ok := fun y hy => (hpre'' y hy).1
+    have hrest : NoB (x.body ++ tailB xs) := by
+      have := tailB_noB (x :: xs) hxs
+      simp only [tailB, NoB_cons_iff] at this
+      exact this.2.2
+    have h := peMore (Wf ++ 1 :: (List.replicate p''.1 2 ++ List.replicate p''.2 3 ++ 1 :: Q)) a b
+      (x.body ++ tailB xs) (by simpa [List.append_assoc] using hG) hrest
+    simpa [tailB, List.append_assoc] using h
+  by_cases hO : c'.O = 2
+  · have hPm := pm_good Wf (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) hW hP2 p' hp'
+    have h2 := lastStepN c' hcOk hF hO _ hPm pre' hpre' r' s'
+    exact ⟨p', pre' ++ [c'.done r' s'], preOk_done pre' hpre' c' hcOk r' s', by simp, h1.trans
+      (h2.trans (finish p' _ (preOk_done pre' hpre' c' hcOk r' s') (by simp) hp'))⟩
+  · have hO3 : c'.O = 3 := by have := hcOk.O; simp at this; omega
+    obtain ⟨hm, e, he, hew, hE⟩ := hOut hO3
+    have hElen := hcOk.Elen
+    have h2 := lastStepO c'.n c' hcOk hF hO3 hm rfl Wf hW (Q ++ List.replicate (a + 2) 3 ++ List.replicate b 2) hP2
+      pre' hpre' s' c'.E.length hElen r' p' e hp' he hew hE
+    have hb := eAdv_bounds c'.E.length (r' * c'.n) e he hew
+    have hElen' := hcOk.Elen
+    rw [hE, fld_len _ _ hew] at hElen'
+    have hc'' : ({ c' with E := fld c'.E.length (eAdv c'.E.length (r' * c'.n) e) } : VR).Ok :=
+      { F := hcOk.F, O := hcOk.O, P := hcOk.P, k1 := hcOk.k1, kw := hcOk.kw, E := fld_bits _ _,
+        Elen := by show 2 ≤ (fld c'.E.length (eAdv c'.E.length (r' * c'.n) e)).length; rw [fld_len _ _ hb.2]; exact hElen' }
+    have hpo := preOk_done pre' hpre' _ hc'' r' s'
+    exact ⟨sAdv (r' * c'.n) p', _, hpo, by simp, h1.trans (h2.trans (finish _ _ hpo (by simp) (sAdv_pos _ p' hp')))⟩
+
+
 end ZP.NTT
 
