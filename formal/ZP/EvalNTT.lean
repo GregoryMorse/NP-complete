@@ -6206,5 +6206,24 @@ theorem odRecIncTherm (A : List Nat) (F O Pf : Nat) (acc E : List Nat) (d r : Na
   rw [et]
   simpa [List.replicate_succ] using h
 
+theorem bitsD_rep3 (k : Nat) : BitsD (List.replicate k 3) := by
+  intro y hy; simp [List.mem_replicate] at hy; simp [hy.2]
+
+/-- A maximal thermometer digit carries: it resets to `therm 0 r` and the scan moves to the next record. -/
+theorem odCarryNextTherm (P0 : List Nat) (r : Nat) (R : List Nat) (hr : 1 ≤ r) (hP : Sym4 P0) (hR : Sym4 R) :
+    znttLogic.Reach (hdR QNTT.ODJ (P0 ++ 1 :: List.replicate r 3) (1 :: 1 :: R))
+      (hdR QNTT.ODH (P0 ++ 1 :: therm 0 r ++ [1, 1]) R) := by
+  obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
+  have h := odCarryNext P0 (List.replicate (n + 1) 3) R n hP (bitsD_rep3 _) (by simp) hR
+  simpa [therm] using h
+
+/-- The overflow of the last thermometer digit: beep. -/
+theorem odCarryEndTherm (P0 : List Nat) (r : Nat) (hr : 1 ≤ r) (hP : Sym4 P0) :
+    znttLogic.Reach (hdR QNTT.ODJ (P0 ++ 1 :: List.replicate r 3) [])
+      (hd QNTT.BEEP (P0 ++ 1 :: therm 0 r) []) := by
+  obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
+  have h := odCarryEnd P0 (List.replicate (n + 1) 3) n hP (bitsD_rep3 _) (by simp)
+  simpa [therm] using h
+
 end ZP.NTT
 
