@@ -494,3 +494,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: the pass chain
 `H0`, `DOk_esN`, `cmp_split`, `chain`: for `D` with `O` pattern `2^(N-n)3^n`, `t+m+1 = n_ref`, `(H0 t D es ∧ FOkS m n D es t L p) ↔ (evalFrom n_ref p recs t (m+1) (es.drop (N-n_ref))).isSome`. Induction on `m` over `foks_base`/`foks_step` and `evalPass_sem`. Next: instantiate at `t=0`, `es = 1…` with `AOkD_eq` and `evalC_eq` to get `AOkD ↔ evalC`.
+
+### Stage note: `AOkD ↔ evalC`
+`AOkD_evalC`: for `D` with `O` pattern `2^(N-n)3^n`, `w = p ≥ 2` and `1 ≤ n_ref ≤ N`, `AOkD (n_ref-1) (N-1) D p ↔ evalC n_ref p (decRecs πs ds) = true`. The machine assignment loop's per-assignment success is the reference verdict. Remaining: odometer link (`DIterS` ↔ `Rt`/`OS`), `hasCircuit` from `assignLoop`, and the bridge assembly.

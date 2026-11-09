@@ -13081,5 +13081,42 @@ theorem chain (p nr n : Nat) (D : List DG) (hn : D.length = n + 1) (hnrN : nr �
       exact hq (hcond.2 ⟨c0, a, b⟩)
 
 
+
+theorem AOkD_evalC (p nr n : Nat) (D : List DG) (hp : 2 ≤ p) (hn : D.length = n + 1) (hnr : 1 ≤ nr)
+    (hnrN : nr ≤ n + 1)
+    (hHO : D.map (fun g => g.2.2.2.2.2) = List.replicate (n + 1 - nr) 2 ++ List.replicate nr 3)
+    (hg : ∀ g ∈ D, g.2.2.2.2.1 = p ∧ (g.2.2.2.2.2 = 2 ∨ g.2.2.2.2.2 = 3)) :
+    AOkD (nr - 1) n D p ↔
+      evalC nr p (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) = true := by
+  rw [AOkD_eq (nr - 1) n D p (fun g h => by have := (hg g h).1; omega)]
+  have hDok : DOk p D (List.replicate D.length 1) := by
+    refine ⟨by simp, hp, ?_⟩
+    intro i g e hgi he
+    have hmem : g ∈ D := List.mem_of_getElem? hgi
+    have he1 : e = 1 := by
+      have := List.mem_of_getElem? he
+      exact (by simpa using this : ¬D = [] ∧ e = 1).2
+    exact ⟨(hg g hmem).1, (hg g hmem).2, by omega⟩
+  have hH0 : H0 0 D (List.replicate D.length 1) := by
+    intro g e hgh heh _
+    cases D with
+    | nil => simp at hgh
+    | cons a b =>
+      simp only [List.length_cons, List.replicate_succ, List.head?_cons, Option.some.injEq] at heh
+      simp [← heh]
+  have hc := chain p nr n D hn hnrN hHO (nr - 1) 0 (List.replicate D.length 1) (List.replicate n 2)
+    (by omega) hDok (by simp)
+  have hl : (List.replicate D.length 1).drop (n + 1 - nr) = List.replicate nr 1 := by
+    rw [List.drop_replicate, hn]; congr 1; omega
+  rw [hl] at hc
+  rw [evalC_eq]
+  have : (H0 0 D (List.replicate D.length 1) ∧ FOkS (nr - 1) n D (List.replicate D.length 1) 0 (List.replicate n 2) p) ↔
+      FOkS (nr - 1) n D (List.replicate D.length 1) 0 (List.replicate n 2) p :=
+    ⟨fun h => h.2, fun h => ⟨hH0, h⟩⟩
+  rw [← this, hc]
+  have e : nr - 1 + 1 = nr := by omega
+  rw [e]
+
+
 end ZP.NTT
 
