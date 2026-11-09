@@ -314,3 +314,9 @@ To prove, per pass:
 - `scFail`: `SC` with `S` starting with `0` goes to `ODL`.
 - `goodW_rest` and `odFail`: from `ODL` on `Pm ++ 1 :: 1 :: tapeL (o :: os)`, the prefix walk reaches `ODH`, and `odoWalk` then gives `WI0` for the next assignment or `BEEP`.
 Remaining: `passMore2`'s `pre'` has to be shown to have the form `pre0 ++ r :: r2 :: post` (P-flag pattern) for `scBridge`; the same for the `FL` failure leaves; `PassCmp` semantics; the ORec↔Rc tie after a pass; the `PA0` restart; entries.
+
+### Progress: pass chaining (`ZP/EvalNTT.lean`, no sorry)
+`flagSplit`, `scStep` (SC with `S = 0` from the flag pattern `2^j 3 l` of the finished records), `passStartRZ1`, `scStart` (SC -> `FAL` of the next pass),
+`VR.nextPass_ok`, `tailVR_doneX`, `faNext` (`FAL` on the finished records `doneX` -> `RFL` at the first cursor of the next pass, given the compare hypothesis).
+So the cycle `passMore2 -> scStart -> faNext -> passMore2` is now composable; the induction over passes (state invariant: `PassCmp`, flags, `Nn` counter) is what remains,
+plus the last pass (`passLast2 -> flOk` / failure leaves), the semantics (`PassCmp` = `evaluate`), `PA0` restart, entries.

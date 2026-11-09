@@ -7733,5 +7733,59 @@ theorem scStart (Wf : List Nat) (hW : BitsD Wf) (Q : List Nat) (a b q : Nat)
   simp only [tailB, List.append_assoc, List.cons_append] at h1 h2 ⊢
   exact h1.trans h2
 
+
+theorem VR.nextPass_ok (c : VR) (hc : c.Ok) (x : Nat) (hx : x ∈ [2, 3]) (hw2 : 2 ≤ c.w) : (c.nextPass x).Ok :=
+  { F := by simp [VR.nextPass], O := hc.O, P := hx,
+    k1 := by simp only [VR.nextPass]; split <;> omega,
+    kw := by simp only [VR.nextPass]; split <;> omega,
+    E := hc.E, Elen := hc.Elen }
+
+theorem tailVR_doneX : ∀ l : List ((VR × Nat × Nat) × Nat),
+    (∀ p ∈ l, p.1.1.Ok ∧ p.1.2.1 + 1 + p.1.2.2 = p.1.1.w ∧ 2 ≤ p.1.1.w ∧ p.2 ∈ [2, 3]) →
+    tailP (l.map fun p => p.1.1.doneX p.1.2.1 p.1.2.2 p.2) = tailVR (l.map fun p => p.1.1.nextPass p.2)
+  | [], _ => by simp [tailP, tailVR]
+  | p :: l, h => by
+    have hp := h p (by simp)
+    have := done_ps_vr p.1.1 hp.1 p.1.2.1 p.1.2.2 p.2 hp.2.1 hp.2.2.1 hp.2.2.2
+    have ih := tailVR_doneX l (fun q hq => h q (by simp [hq]))
+    simp only [List.map_cons, tailP, tailVR, List.flatten_cons]
+    simp only [tailVR] at ih
+    rw [ih, ← this]
+    simp
+
+
+/-- The start of the next pass: from `FAL` on the finished records (with their new input flags) to the first cursor. -/
+theorem faNext (Pm : List Nat) (hP : GoodW Pm) (t0 : (VR × Nat × Nat) × Nat) (ts : List ((VR × Nat × Nat) × Nat))
+    (h : ∀ p ∈ t0 :: ts, p.1.1.Ok ∧ p.1.2.1 + 1 + p.1.2.2 = p.1.1.w ∧ 2 ≤ p.1.1.w ∧ p.2 ∈ [2, 3])
+    (hcmp : (t0.1.1.nextPass t0.2).O = 3 → ∃ z, 1 ≤ (t0.1.1.nextPass t0.2).k ∧
+      (t0.1.1.nextPass t0.2).E = fld ((t0.1.1.nextPass t0.2).k + z) (t0.1.1.nextPass t0.2).k) :
+    znttLogic.Reach
+      (hd QNTT.FAL (Pm ++ [1, 1] ++ (t0.1.1.doneX t0.1.2.1 t0.1.2.2 t0.2).ps.body ++
+        tailP (ts.map fun p => p.1.1.doneX p.1.2.1 p.1.2.2 p.2)) [])
+      (hd QNTT.RFL (curTapeG Pm [] (t0.1.1.nextPass t0.2).curG 0 ((t0.1.1.nextPass t0.2).k - 1)
+        ((t0.1.1.nextPass t0.2).w - (t0.1.1.nextPass t0.2).k)
+        ((ts.map fun p => p.1.1.nextPass p.2).map VR.dec)) []) := by
+  have h0 := h t0 (by simp)
+  have hws : ∀ x ∈ ts.map (fun p => p.1.1.nextPass p.2), x.Ok := by
+    intro x hx; simp only [List.mem_map] at hx; obtain ⟨p, hp, rfl⟩ := hx
+    have := h p (by simp [hp]); exact VR.nextPass_ok _ this.1 _ this.2.2.2 this.2.2.1
+  have hw := VR.nextPass_ok _ h0.1 _ h0.2.2.2 h0.2.2.1
+  have e1 := done_ps_vr t0.1.1 h0.1 t0.1.2.1 t0.1.2.2 t0.2 h0.2.1 h0.2.2.1 h0.2.2.2
+  have e2 := tailVR_doneX ts (fun p hp => h p (by simp [hp]))
+  have hLe : Pm ++ 1 :: 1 :: ([(t0.1.1.nextPass t0.2).F, (t0.1.1.nextPass t0.2).O, (t0.1.1.nextPass t0.2).P] ++
+      1 :: ((t0.1.1.nextPass t0.2).tl ++ tailVR (ts.map fun p => p.1.1.nextPass p.2))) =
+      Pm ++ [1, 1] ++ (t0.1.1.doneX t0.1.2.1 t0.1.2.2 t0.2).ps.body ++
+        tailP (ts.map fun p => p.1.1.doneX p.1.2.1 p.1.2.2 p.2) := by
+    rw [e2]
+    have := congrArg (fun l => Pm ++ l ++ tailVR (ts.map fun p => p.1.1.nextPass p.2)) e1
+    simp only [VR.recd, List.append_assoc, List.cons_append, List.nil_append] at this ⊢
+    simpa using this.symm
+  have hL : NoB (Pm ++ 1 :: 1 :: ([(t0.1.1.nextPass t0.2).F, (t0.1.1.nextPass t0.2).O, (t0.1.1.nextPass t0.2).P] ++
+      1 :: ((t0.1.1.nextPass t0.2).tl ++ tailVR (ts.map fun p => p.1.1.nextPass p.2)))) := by
+    have := NoB_app_iff.2 ⟨hP.noB, NoB_app_iff.2 ⟨hw.recd_noB, tailVR_noB _ hws⟩⟩
+    simpa [VR.recd, List.append_assoc] using this
+  rw [← hLe]
+  exact faG' _ Pm hL hP _ hw _ hws hcmp rfl
+
 end ZP.NTT
 
