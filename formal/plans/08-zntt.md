@@ -443,3 +443,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 * `OdOut`/`OdOut'`/`StepInfo` carry `S0.length = P`; `passLoopF` returns `p'.1 + p'.2 = p.1 + p.2` (`sAdv_sum`, `loopRun_psum`,
   `passPOf_sum`); `assignLoop` therefore keeps the S size `s` constant over the whole odometer run (`DIterS n s`).
 * The older `Sem`-based line (`passStep`, `passesRun`, `assignRun`, `assignRun'`, `odlNext2`) was dead and is removed.
+
+### Stage note: passes (m) vs records (n) separated
+`entryRun`/`assignLoop` now take `m ≤ n`: the number of passes (`m+1`, `NnTail m b`) is independent of the record count `n = os.length`. Build green, 0 open sorries. Next: `AOkD m n D s ↔ evalC` on decoded digits, then bridge assembly.
