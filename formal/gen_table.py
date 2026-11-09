@@ -42,6 +42,8 @@ TABLES = {
     'zdlog_native': ('zdlMachine', 'D'),
     'zgi_native': ('zgiMachine', 'G'),
     'zntt_native': ('znttMachine', 'NTT'),
+    'twinprime_native': ('twinMachine', 'Twin'),
+    'zconp_native': ('zconpMachine', 'Conp'),
 }
 
 

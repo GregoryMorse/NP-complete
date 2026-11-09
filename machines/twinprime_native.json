@@ -1,0 +1,33 @@
+{
+ "name": "twinprime_native",
+ "states": 19,
+ "start": 0,
+ "beep": 5,
+ "sha256": "41157fa5e3a4c7fe525c6e68771a6846725b04d77e7349c14c95531740ba76d3",
+ "reference": "twin/design.py (lesser_twins)",
+ "design": "twin/README.md",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0",
+ "state_names": [
+  "C4",
+  "C5",
+  "C1",
+  "G1",
+  "G2",
+  "BP",
+  "B",
+  "Y1",
+  "Y2",
+  "A",
+  "W",
+  "Z1",
+  "Z2",
+  "V",
+  "X1",
+  "X2",
+  "X3",
+  "H0",
+  "H1"
+ ],
+ "standard_text": "1RB1LA_1RC0RD_1LA1RC_---0RE_0LF0LH_0LO---_0LN0LH_0LI1LH_1RJ1LI_0LK0RL_0RJ1LK_0RM1RL_1RG1RM_0LO1LN_1RC1LP_1RS1LQ_1RC1LR_1RS1LR_0RD1RS",
+ "property": "visits the beep state exactly once per lesser twin prime p >= 3; quasihalts iff there are finitely many twin primes"
+}
