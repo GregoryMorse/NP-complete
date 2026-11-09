@@ -10860,5 +10860,195 @@ theorem entryRun (Wf : List Nat) (hW : BitsD Wf) (Kf Cf : List Nat) (hK : BitsD 
   exact assignRunF Wf hW Kf Cf hK hC n 0 n vs c p ((o.vr 3).k - 1) ((o.vr 3).w - (o.vr 3).k) 0
     (List.replicate n 2) hP2 (by omega) (by simp [vs, hlen]) hcI hvs hom hEFv hp (by omega) hvw hcm hvm hfl (by simp)
 
+
+theorem entry_dg (o : ORec) (os : List ORec) (ho : o.Ok) (hos : ∀ x ∈ os, x.Ok)
+    (_ha : 2 ≤ o.acc.length) :
+    ((o.vr 3).curG :: ((os.map fun x => x.vr 2).map VR.dec)).map VR.dg = (o :: os).map ORec.dgO := by
+  have h1 : ((o.vr 3).curG).dg = o.dgO := by
+    rw [(dg_curG _).1]
+    have := o.d; have hd := ho.d; have hk := ho.k
+    simp [VR.dg, ORec.vr, ORec.dgO]; omega
+  simp only [List.map_cons, h1]
+  congr 1
+  simp only [List.map_map]
+  apply List.map_congr_left
+  intro x hx
+  simp only [Function.comp]
+  rw [(dg_dec _).1]
+  have hd := (hos x hx).d
+  simp [VR.dg, ORec.vr, ORec.dgO]; omega
+
+theorem odo_ok : ∀ (os os' : List ORec), (∀ x ∈ os, x.Ok) → odoStepR os = some os' →
+    ∃ o2 os2, os' = o2 :: os2 ∧ os'.length = os.length ∧ (∀ x ∈ o2 :: os2, x.Ok) ∧
+      (o2 :: os2).map (fun x => x.acc.length) = os.map (fun x => x.acc.length)
+  | [], os', _, h => by simp [odoStepR] at h
+  | o :: os, os', hok, h => by
+    have ho := hok o (by simp)
+    unfold odoStepR at h
+    cases hn : o.next with
+    | inl o' =>
+      rw [hn] at h
+      simp at h; subst h
+      have hok' : o'.Ok ∧ o'.acc = o.acc := by
+        simp only [ORec.next] at hn
+        split at hn
+        · injection hn with hn; subst hn
+          exact ⟨{ ho with d := by simp only; have := ho.d; omega }, rfl⟩
+        · split at hn
+          · injection hn with hn; subst hn
+            exact ⟨{ ho with d := by simp only; have := ho.d; omega, k := by simp only; omega }, rfl⟩
+          · injection hn
+      refine ⟨o', os, rfl, by simp, ?_, by simp [hok'.2]⟩
+      intro x hx
+      simp only [List.mem_cons] at hx
+      rcases hx with rfl | hx
+      · exact hok'.1
+      · exact hok x (by simp [hx])
+    | inr o' =>
+      rw [hn] at h
+      simp only [Option.map_eq_some_iff] at h
+      obtain ⟨os2, hs2, rfl⟩ := h
+      obtain ⟨o3, os3, rfl, hl, hk3, ha3⟩ := odo_ok os os2 (fun x hx => hok x (by simp [hx])) hs2
+      have hok' : o'.Ok ∧ o'.acc = o.acc := by
+        simp only [ORec.next] at hn
+        split at hn
+        · injection hn
+        · split at hn
+          · injection hn
+          · injection hn with hn; subst hn
+            exact ⟨{ ho with d := by simp only; have := ho.d; omega, k := by simp only; omega }, rfl⟩
+      refine ⟨o', o3 :: os3, rfl, ?_, ?_, ?_⟩
+      · simp at hl ⊢; omega
+      · intro x hx
+        simp only [List.mem_cons] at hx
+        rcases hx with rfl | hx
+        · exact hok'.1
+        · exact hk3 x (by simpa using hx)
+      · simp [hok'.2, ha3]
+
+
+/-- One odometer step on digit tuples. -/
+def DStep (D D2 : List (Nat × Nat × Nat × Nat × Nat)) : Prop :=
+  ∃ (o : ORec) (os : List ORec) (o2 : ORec) (os2 : List ORec), (∀ x ∈ o :: os, x.Ok) ∧ (o :: os).map ORec.dgO = D ∧
+    odoStepR (o :: os) = some (o2 :: os2) ∧ (o2 :: os2).map ORec.dgO = D2
+
+inductive DIter : List (Nat × Nat × Nat × Nat × Nat) → List (Nat × Nat × Nat × Nat × Nat) → Prop
+  | refl (D) : DIter D D
+  | step {D D2 D3} : DStep D D2 → DIter D2 D3 → DIter D D3
+
+theorem gw_par (k c n : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) :
+    GoodW (1 :: (((List.replicate k 3 ++ 1 :: List.replicate c 3) ++ [1]) ++ NnTail n 0)) := by
+  obtain ⟨k', rfl⟩ : ∃ k', k = k' + 1 := ⟨k - 1, by omega⟩
+  obtain ⟨c', rfl⟩ : ∃ c', c = c' + 1 := ⟨c - 1, by omega⟩
+  have t3 : GoodW (1 :: List.replicate (n + 1) 3) :=
+    GoodW.mb (b := 3) (by simp) (GoodW.bits (BitsD.rep n 3 (by simp)))
+  have t2 : GoodW (1 :: (List.replicate (c' + 1) 3 ++ 1 :: List.replicate (n + 1) 3)) :=
+    GoodW.mb (b := 3) (by simp) (GoodW.app (GoodW.bits (BitsD.rep c' 3 (by simp))) t3)
+  have t1 : GoodW (1 :: (List.replicate (k' + 1) 3 ++ 1 :: (List.replicate (c' + 1) 3 ++ 1 :: List.replicate (n + 1) 3))) :=
+    GoodW.mb (b := 3) (by simp) (GoodW.app (GoodW.bits (BitsD.rep k' 3 (by simp))) t2)
+  simpa [NnTail, List.append_assoc] using t1
+
+theorem map_f_bits {l : List Nat} (h : BitsD l) :
+    l.map (fun x => if x = 1 then 1 else 3) = List.replicate l.length 3 := by
+  apply List.eq_replicate_iff.2
+  refine ⟨by simp, fun y hy => ?_⟩
+  simp only [List.mem_map] at hy
+  obtain ⟨x, hx, rfl⟩ := hy
+  have := h x hx
+  simp at this
+  rcases this with rfl | rfl <;> simp
+
+theorem par_form (a k c n a' b' : Nat) (S0 : List Nat) (hS0 : BitsD S0) (hN : a' + b' = n + 1 + 0) :
+    (List.replicate a 3 ++ 1 :: (S0 ++ 1 :: (((List.replicate k 3 ++ 1 :: List.replicate c 3) ++ [1]) ++ List.replicate a' 3 ++ List.replicate b' 2))).map
+      (fun x => if x = 1 then 1 else 3) =
+    List.replicate a 3 ++ 1 :: (List.replicate S0.length 3 ++ 1 :: (((List.replicate k 3 ++ 1 :: List.replicate c 3) ++ [1]) ++ NnTail n 0)) := by
+  simp only [List.map_append, List.map_cons, List.map_replicate, map_f_bits hS0, NnTail]
+  simp [List.append_assoc]
+  omega
+
+
+def loopSt (Wf Kf Cf : List Nat) (n s : Nat) (o : ORec) (os : List ORec) :=
+  hd QNTT.RFL (curTapeG (Wf ++ 1 :: (List.replicate 0 2 ++ List.replicate s 3 ++ 1 ::
+          (((Kf ++ 1 :: Cf) ++ [1]) ++ NnTail n 0))) [] (o.vr 3).curG 0 ((o.vr 3).k - 1)
+          ((o.vr 3).w - (o.vr 3).k) ((os.map fun x => x.vr 2).map VR.dec)) []
+
+def LpOut (Wf Kf Cf : List Nat) (n : Nat) (st : ZC) (D : List (Nat × Nat × Nat × Nat × Nat)) : Prop :=
+  (∃ (A : List Nat) (n0 : Nat), StepNone D ∧ znttLogic.Reach st (hd QNTT.BEEP A []) ∧
+      ∃ X, znttLogic.zstep (hd QNTT.BEEP A []) = some X ∧
+        znttLogic.Reach X (hdR QNTT.PA0 [3] (1 :: (Kf.map (fun x => if x = 1 then 1 else 3) ++ 1 ::
+          ((Cf.map (fun x => if x = 1 then 1 else 3) ++ [3]) ++ 1 ::
+            (List.replicate (n + 1 + 0) 3 ++ List.replicate (n0 + 1) 0)))))) ∨
+    (∃ N : Nat, ∃ T, SuOut D Wf (Kf ++ 1 :: Cf) (0 + n + 1) T ∧
+      znttLogic.Reach st (hdR QNTT.SU1 [] T) ∧
+      znttLogic.Reach (hdR QNTT.SU1 [] T) (hdR QNTT.PA0 [3] (1 :: (Kf ++ 1 :: (Cf ++ 1 :: (List.replicate (0 + n + 1 + 1) 3 ++
+        List.replicate (N + 1) 0))))))
+
+theorem LpOut.pre {Wf Kf Cf n st st2 D} (h : znttLogic.Reach st st2) (h2 : LpOut Wf Kf Cf n st2 D) :
+    LpOut Wf Kf Cf n st D := by
+  rcases h2 with ⟨A, n0, sn, hb, X, hX, hr⟩ | ⟨N, T, hs, h1, h3⟩
+  · exact Or.inl ⟨A, n0, sn, h.trans hb, X, hX, hr⟩
+  · exact Or.inr ⟨N, T, hs, h.trans h1, h3⟩
+
+theorem assignLoop (a k c : Nat) (hk : 1 ≤ k) (hc : 1 ≤ c) (n : Nat) :
+    ∀ (B s : Nat) (o : ORec) (os : List ORec), ph ((o :: os).map ORec.dgO) = B → 1 ≤ s → os.length = n →
+      (∀ x ∈ o :: os, x.Ok) → (∀ x ∈ o :: os, 2 ≤ x.acc.length) →
+      ∃ D', DIter ((o :: os).map ORec.dgO) D' ∧
+        LpOut (List.replicate a 3) (List.replicate k 3) (List.replicate c 3) n
+          (loopSt (List.replicate a 3) (List.replicate k 3) (List.replicate c 3) n s o os) D' := by
+  intro B
+  induction B using Nat.strongRecOn with
+  | _ B ih =>
+  intro s o os hB hs hlen hok hacc
+  have hP2 := gw_par k c n hk hc
+  have hent := entryRun (List.replicate a 3) (BitsD.rep _ _ (by simp)) (List.replicate k 3) (List.replicate c 3)
+    (BitsD.rep _ _ (by simp)) (BitsD.rep _ _ (by simp)) n o os hlen hok hacc (0, s) hs hP2
+  have hD := entry_dg o os (hok o (by simp)) (fun x hx => hok x (by simp [hx])) (hacc o (by simp))
+  dsimp only at hent
+  rw [hD] at hent
+  rcases hent with ⟨u, v, os', X, R'', hrest, si, e, hr⟩ | hbeep | hsucc
+  · obtain ⟨S0, a', b', o1, os1, hS0, hS0ne, hN, hN1, hok1, hdg1, hst1, hv⟩ := si
+    obtain ⟨o2, os2, rfl, hl2, hok2, hacc2⟩ := odo_ok (o1 :: os1) os' hok1 hst1
+    have hdec := odo_dec (o1 :: os1) (o2 :: os2) hok1 hst1
+    rw [hdg1] at hdec
+    have hlen1 : (o1 :: os1).length = (o :: os).length := by
+      simpa using congrArg List.length hdg1
+    have hlen2 : os2.length = n := by
+      simp at hl2 hlen1; omega
+    have hvE := par_form a k c n a' b' S0 hS0 hN
+    have hvE' := hv.trans hvE
+    obtain ⟨s1, hs1⟩ : ∃ s1, S0.length = s1 + 1 := ⟨S0.length - 1, by
+      have : S0 ≠ [] := hS0ne
+      have := List.length_pos_iff.2 this; omega⟩
+    obtain ⟨k', rfl⟩ : ∃ k', k = k' + 1 := ⟨k - 1, by omega⟩
+    obtain ⟨c', rfl⟩ : ∃ c', c = c' + 1 := ⟨c - 1, by omega⟩
+    have hvf : v = List.replicate a 3 ++ (1 :: List.replicate (s1 + 1) 3 ++ (1 :: List.replicate (k' + 1) 3 ++
+        (1 :: List.replicate (c' + 1) 3 ++ (1 :: List.replicate (n + 1) 3)))) := by
+      rw [hvE', hs1]; simp [NnTail, List.append_assoc]
+    have hrv : Rest v v := by
+      rw [hvf]
+      exact Rest.app (rest_rep a) (Rest.app (rest_blk s1) (Rest.app (rest_blk k') (Rest.app (rest_blk c') (rest_blk n))))
+    have hnb : NoB ((v ++ [1, 1]) ++ tapeL (o2 :: os2)) := by
+      have h1 : NoB v := hrest.goodW.noB
+      exact NoB_app_iff.2 ⟨NoB_app_iff.2 ⟨h1, by intro x hx; simp at hx; simp [hx, NB]⟩, tapeL_noB _ hok2⟩
+    have hNoB : NoB X := by
+      rw [← e] at hnb; exact (NoB_app_iff.1 hnb).1
+    have hm : (o2 :: os2).map (fun x => x.acc.length) = (o :: os).map (fun x => x.acc.length) := by
+      rw [hacc2]
+      have := congrArg (List.map (fun t : Nat × Nat × Nat × Nat × Nat => t.2.2.2.2)) hdg1
+      simpa [List.map_map, Function.comp_def, ORec.dgO] using this
+    have hacc2' : ∀ x ∈ o2 :: os2, 2 ≤ x.acc.length := by
+      intro x hx
+      have h1 : x.acc.length ∈ (o2 :: os2).map (fun x => x.acc.length) := List.mem_map_of_mem hx
+      rw [hm] at h1
+      obtain ⟨y, hy, hyx⟩ := List.mem_map.1 h1
+      rw [← hyx]; exact hacc y hy
+    have hnext := nextEntry X R'' v hNoB hrv o2 os2 hok2 hacc2' e
+    rw [hvE', hs1] at hnext
+    obtain ⟨D', hit, hout⟩ := ih _ (by omega) (s1 + 1) o2 os2 rfl (by omega) hlen2 hok2 hacc2'
+    refine ⟨D', DIter.step ⟨o1, os1, o2, os2, hok1, hdg1, hst1, rfl⟩ hit, ?_⟩
+    exact LpOut.pre (hr.trans hnext) hout
+  · exact ⟨_, DIter.refl _, Or.inl hbeep⟩
+  · exact ⟨_, DIter.refl _, Or.inr hsucc⟩
+
 end ZP.NTT
 

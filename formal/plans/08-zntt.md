@@ -397,3 +397,6 @@ loop along `odoStepR`, then the correspondence with `evalC`.
 
 ### Stage: Sem-free assignment run (`assignRunF`)
 `assignRunF` runs one whole assignment with no `Sem` hypothesis: outcomes are next assignment (WI0 with `Rest u v`), beep (`zstep` + PA0), or success (`SuOut` + SU1). Remaining: the loop along `odoStepR` and the link to `evalC`/`hasCircuit`.
+
+### Stage: assignment loop (`assignLoop`)
+`StepInfo`/`StepNone` expose the odometer step (or exhaustion) from `odlNext3`/`assignRunF`; `ph`/`odo_dec` is a mixed-radix measure that strictly decreases along `odoStepR`; `entryRun` derives all `assignRunF` hypotheses from an ORec list; `assignLoop` iterates assignments (`DIter` on digit tuples) until the odometer is exhausted (beep, `StepNone`) or a success (`SuOut`). Remaining: tie the digits/`stepN` semantics to `evalC`/`hasCircuit`, then the pair lemma / Challenge entries.
