@@ -234,3 +234,12 @@ merge, pair lemma, bridge, spec, entries.
 ### Progress: odometer field lemmas
 Added `odInc` (no-carry increment → `WI0`), `odCarry` (reset string, set first cell, → `ODM`), `od0Walk`, `beepStepC`
 (BEEP→SU0 as one `zstep` for any last cell). Remaining odometer work: the `OR`/`odo` semantic walk over whole records.
+
+### Odometer spec (read from `ref/zntt_ref.py`, to be formalised)
+`has_circuit c n` quantifies over `recs : Π j < N, (Option (Fin j)) × Fin p` (N = c·n): for record `j`, `u_j ∈ {None} ∪ [0, j)`
+and `b_j ∈ [0, p)`. The machine counts per record a `b` string of length `p` (thermometer `1^(b+1) 0^…`: `ODI/ODJ` pass the
+ones, the first `0` becomes `1`) and a `u` string of length `j+1` (`ODM → ODI/ODJ`, leading `0`s allowed). A full string
+(`ODJ` hits `M`) is reset to `1 0…` (`odCarry`) and the carry moves to the next string, `odCarryNext` to the next record,
+`odCarryEnd` past the last one (beep). The semantic walk to prove: `odoNext` on the list of (digit, radix) pairs is a
+mixed-radix successor, visits every element of `∏ recChoices` exactly once, and the machine step lemmas
+(`odRecInc`, `odCarryInc`, `odCarryInc0`, `odCarryNext`, `odCarryEnd`) realise it.
