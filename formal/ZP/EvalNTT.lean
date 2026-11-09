@@ -11961,5 +11961,48 @@ theorem loopEs : ∀ (n : Nat) (c : VR) (vs : List VR) (r s : Nat) (pp : Nat × 
           subst hzb
           exact decVis_KEq r z (hvs' z (List.mem_of_getElem? hz))
 
+
+theorem decRecs_getD : ∀ (πs ds : List Nat) (i : Nat), i < πs.length → πs.length = ds.length →
+    (decRecs πs ds).getD i (none, 0) = (ptrOf (πs.getD i 0), ds.getD i 0)
+  | [], _, i, h, _ => by simp at h
+  | π :: πs, [], i, _, h => by simp at h
+  | π :: πs, d :: ds, 0, _, _ => by simp [decRecs]
+  | π :: πs, d :: ds, i + 1, h, hl => by
+    simp only [decRecs, List.getD_cons_succ]
+    exact decRecs_getD πs ds i (by simpa using h) (by simpa using hl)
+
+theorem decRecs_length : ∀ (πs ds : List Nat), πs.length = ds.length → (decRecs πs ds).length = πs.length
+  | [], [], _ => rfl
+  | [], _ :: _, h => by simp at h
+  | _ :: _, [], h => by simp at h
+  | π :: πs, d :: ds, h => by simp [decRecs, decRecs_length πs ds (by simpa using h)]
+
+theorem valsOk_decRecs (p t : Nat) (πs ds : List Nat) (hl : πs.length = ds.length) :
+    ValsOk p t πs.length πs ds (valsAux t p 0 (decRecs πs ds) []) := by
+  intro i hi
+  have := valsAux_get t p (decRecs πs ds) 0 [] rfl i (Nat.zero_le _) (by rw [decRecs_length πs ds hl]; omega)
+  rw [this, Nat.sub_zero, decRecs_getD πs ds i hi hl]
+
+
+/-- Reference passes `t, t+1, …` (`k` of them) starting from register `E`. -/
+def evalFrom (n p : Nat) (recs : List Rec) : Nat → Nat → List Nat → Option (List Nat)
+  | _, 0, E => some E
+  | t, k + 1, E => (evalPass n p recs t E).bind (evalFrom n p recs (t + 1) k)
+
+theorem fold_evalFrom (n p : Nat) (recs : List Rec) : ∀ (k t : Nat) (st : Option (List Nat)),
+    (List.range' t k).foldl (fun st u => st.bind fun E => evalPass n p recs u E) st =
+      st.bind (evalFrom n p recs t k)
+  | 0, t, st => by cases st <;> simp [evalFrom]
+  | k + 1, t, st => by
+    rw [List.range'_succ, List.foldl_cons, fold_evalFrom n p recs k (t + 1)]
+    cases st <;> simp [evalFrom]
+
+theorem evalC_eq (n p : Nat) (recs : List Rec) :
+    evalC n p recs = (evalFrom n p recs 0 n (List.replicate n 1)).isSome := by
+  unfold evalC
+  rw [List.range_eq_range', fold_evalFrom]
+  rfl
+
+
 end ZP.NTT
 

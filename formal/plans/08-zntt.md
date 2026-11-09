@@ -458,3 +458,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: E register after a pass
 `Efin`, `finE`, `KEq`, `outRec_Efin`, `loopEs`: the finished records' E fields are `Efin v r` = `fld w (e'+1)` with `e'-1 = (r·n) mod w` for `O=3` records (unchanged for `O=2`), as a function of the start records and node values. Since `nextPass` is a field copy, next-pass records are `mkV`-shaped (dg, flag, E) — next: the one-pass transfer lemma and the induction over `FOk`.
+
+### Stage note: reference side as a chain
+`valsOk_decRecs` (node values = `valsAux` satisfy `ValsOk`), `evalFrom`/`evalC_eq` (`evalC` as a chain of `evalPass` steps from pass `t`). Next: the one-pass transfer (`FOk (m+1) …` ↔ compare ∧ sum check ∧ `FOk m …` on the updated E list) and induction on `m`.
