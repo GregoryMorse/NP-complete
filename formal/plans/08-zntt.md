@@ -272,3 +272,13 @@ branch, `PE0 → PM/FL → …` composition of a pass with `peMore/peLast`, rest
 `passMore`: `passLoop` + `lastStepN/O` + `peMore` — from the first cursor `RFL` to the check state `SC`, when `Nn = 1^(a+2) 0^b`
 (more passes follow). Remaining for a pass: the final-pass variant (`peLast` → `FL0`), then `SC`/`PM` → next pass, failure branches,
 restart interface, power sums, merge, pair lemma, bridge.
+
+### Where plan 08 stands (summary for the next session)
+Proved (all in `ZP/EvalNTT.lean`, sorry-free): primality/record build, `witnessInit`, pass start `RZ0 → FAL → RFL`, column steps,
+`passLoop`, `lastStepN/O`, `passMore` (→ `SC`), `passLast` (→ `FL0`), `scPm`/`flOk`, success/beep `suOk`/`beepOk`, the odometer
+(`odoWalk`, `odoStepR_digs`), failure leaves into `ODL`.
+Remaining, in order:
+1. *Bridge* `Rc` (after `scPm`/`passStartAll`: `r.ps` records) ↔ `VR` (cursor form) for the next pass; chain `scPm → passStartAll → FAL→RFL → passMore/passLast`.
+2. *Semantics*: `PassCmp` and the value recursion (`stepN` = push evaluation `val`), power sums, tie to `evaluate` of `ref/zntt_ref.py`.
+3. Failure compositions into `ODL`, then `odlScan`/`od0Walk`/`odoWalk` → `WI0` (`witnessInit`) for the next assignment.
+4. `PA0` restart interface with `PrimeNTT`/`RulerNTT`, merge, pair lemma, `evalC`, Challenge/Solution entries.
