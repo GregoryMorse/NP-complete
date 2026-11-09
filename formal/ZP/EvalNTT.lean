@@ -11710,5 +11710,38 @@ theorem cover : ∀ (os : List ORec) (πs ds : List Nat),
         have hH := lift_head (setD os πs ds) (head_reach o a0 a1 a2 a3 π d h1 h2)
         exact hT.trans hH
 
+
+theorem Rt.det_step {α : Type} {R : α → α → Prop} (hf : ∀ a b c, R a b → R a c → b = c) {b x e : α}
+    (hx : R b x) (h : Rt R b e) : b = e ∨ Rt R x e := by
+  induction h with
+  | refl => exact Or.inl rfl
+  | tail _ hr ih =>
+    rcases ih with rfl | ih
+    · exact Or.inr (by rw [hf _ _ _ hr hx]; exact Rt.refl _)
+    · exact Or.inr (Rt.tail ih hr)
+
+/-- Along a deterministic step relation, a state reachable from `a` precedes a terminal state reachable from `a`. -/
+theorem Rt.det_term {α : Type} {R : α → α → Prop} (hf : ∀ a b c, R a b → R a c → b = c) {a x e : α}
+    (hx : Rt R a x) (he : Rt R a e) (ht : ∀ y, ¬ R e y) : Rt R x e := by
+  induction hx with
+  | refl => exact he
+  | tail _ hr ih =>
+    rcases Rt.det_step hf hr ih with rfl | h
+    · exact absurd hr (ht _)
+    · exact h
+
+theorem OS_det : ∀ a b c, OS a b → OS a c → b = c := by
+  intro a b c h1 h2
+  unfold OS at h1 h2
+  rw [h1] at h2
+  exact Option.some.inj h2
+
+/-- Coverage plus determinism: if the odometer from an initial list terminates, every in-range digit assignment is visited. -/
+theorem odo_all_visited (os e : List ORec) (hI : ∀ x ∈ os, x.z = 0 ∧ x.k = 1 ∧ x.d = 0 ∧ 1 ≤ x.r)
+    (he : Rt OS os e) (ht : odoStepR e = none) (πs ds : List Nat) (hF : Fit os πs ds) :
+    Rt OS (setD os πs ds) e ∧ Rt OS os (setD os πs ds) :=
+  ⟨Rt.det_term OS_det (cover os πs ds hI hF) he (fun y hy => by unfold OS at hy; rw [ht] at hy; simp at hy),
+    cover os πs ds hI hF⟩
+
 end ZP.NTT
 
