@@ -446,3 +446,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: passes (m) vs records (n) separated
 `entryRun`/`assignLoop` now take `m ≤ n`: the number of passes (`m+1`, `NnTail m b`) is independent of the record count `n = os.length`. Build green, 0 open sorries. Next: `AOkD m n D s ↔ evalC` on decoded digits, then bridge assembly.
+
+### Stage note: pass compare as node values
+`CmpE`/`passCmp_iff`: under `ColInv`, `PassCmp n r vs` is exactly the pointwise check of each `O=3` record's carried E register against the node value `vals[j+i+1]` (same induction as `loopVals`). Next: E-register update `E' = E·d`, S-register check, chaining over passes in `FOk`.

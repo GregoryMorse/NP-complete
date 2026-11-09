@@ -11596,5 +11596,102 @@ theorem odo_all_visited (os e : List ORec) (hI : ∀ x ∈ os, x.z = 0 ∧ x.k =
   ⟨Rt.det_term OS_det (cover os πs ds hI hF) he (fun y hy => by unfold OS at hy; rw [ht] at hy; simp at hy),
     cover os πs ds hI hF⟩
 
+
+/-- Compare clause of the `O = 3` records against a list of node values. -/
+def CmpE : List VR → List Nat → Prop
+  | [], _ => True
+  | _ :: _, [] => True
+  | x :: xs, v :: vl => (x.O = 3 → ∃ z, 1 ≤ v + 1 ∧ x.E = fld (v + 1 + z) (v + 1)) ∧ CmpE xs vl
+
+theorem CmpE_congr : ∀ (xs ys : List VR) (vl : List Nat), xs.length = ys.length →
+    (∀ (i : Nat) (x y : VR), xs[i]? = some x → ys[i]? = some y → x.O = y.O ∧ x.E = y.E) → (CmpE xs vl ↔ CmpE ys vl)
+  | [], [], _, _, _ => Iff.rfl
+  | [], _ :: _, _, h, _ => by simp at h
+  | _ :: _, [], _, h, _ => by simp at h
+  | x :: xs, y :: ys, [], _, _ => by simp [CmpE]
+  | x :: xs, y :: ys, v :: vl, hl, h => by
+    have h0 := h 0 x y (by simp) (by simp)
+    have ih := CmpE_congr xs ys vl (by simpa using hl) (fun i a b ha hb => h (i + 1) a b (by simpa using ha) (by simpa using hb))
+    simp only [CmpE, h0.1, h0.2, ih]
+
+theorem passCmp_iff (p t N : Nat) (πs ds vals : List Nat) (hp : 0 < p) (hV : ValsOk p t N πs ds vals) :
+    ∀ (n j : Nat) (c : VR) (vs : List VR) (r : Nat), vs.length = n → j + n + 1 = N →
+      ColInv p t j πs ds vals (c :: vs) → r = c.k - 1 →
+      (PassCmp n r vs ↔ CmpE vs ((List.range n).map fun i => vals.getD (j + i + 1) 0)) := by
+  intro n
+  induction n with
+  | zero =>
+    intro j c vs r hl hN hI hr
+    have hvs : vs = [] := List.length_eq_zero_iff.1 hl
+    subst hvs
+    simp [PassCmp, CmpE]
+  | succ n ih =>
+    intro j c vs r hl hN hI hr
+    obtain ⟨v0, vs', rfl⟩ : ∃ v0 vs', vs = v0 :: vs' := by
+      cases vs with
+      | nil => simp at hl
+      | cons a b => exact ⟨a, b, rfl⟩
+    have hrj : r = vals.getD j 0 := by
+      rw [hr]; exact cursor_val p t N πs ds vals hV j c _ (by omega) hI
+    have h0 := hI 1 v0 (by simp)
+    simp only [show ¬ ((1:Nat) = 0) from by decide, if_false] at h0
+    have hhead := recI_head p _ j _ _ vals v0 r hp h0 hrj
+    have hI' : ColInv p t (j + 1) πs ds vals
+        (VR.curG (incVisN r v0) :: (vs'.map (visN r)).map VR.dec) := by
+      intro idx x hx
+      cases idx with
+      | zero =>
+        simp only [List.getElem?_cons_zero, Option.some.injEq] at hx
+        subst hx
+        have e : (if (0:Nat) = 0 then (if j + 1 = 0 then 0 else vals.getD (j + 1 - 1) 0) else 0) = r := by
+          simp [hrj]
+        rw [e]; exact hhead
+      | succ idx =>
+        simp only [List.getElem?_cons_succ, List.getElem?_map, Option.map_eq_some_iff] at hx
+        obtain ⟨y, ⟨z, hz, rfl⟩, rfl⟩ := hx
+        have hz' : (c :: v0 :: vs')[idx + 2]? = some z := by simpa using hz
+        have h1 := hI (idx + 2) z hz'
+        have e : j + 1 + (idx + 1) = j + (idx + 2) := by omega
+        rw [e]
+        simp only [show ¬ (idx + 2 = 0) from by omega, if_false] at h1
+        simp only [show ¬ (idx + 1 = 0) from by omega, if_false]
+        exact recI_tail p _ j _ _ vals z r hp h1 hrj
+    obtain ⟨g1, g2, g3, g4, g5, g6⟩ := curG_f (incVisN r v0) (incVisN_val r v0 h0.1).1
+    have df := dec_fields' (incVisN r v0)
+    have hr' : (incVisN r v0).k - 1 = (VR.curG (incVisN r v0)).k - 1 := by rw [g3, df.2.2.1]
+    have hl' : ((vs'.map (visN r)).map VR.dec).length = n := by simp at hl ⊢; omega
+    have IH := ih (j + 1) (VR.curG (incVisN r v0)) _ ((incVisN r v0).k - 1) hl' (by omega) hI' hr'
+    have iv := incVisN_val r v0 h0.1
+    -- value of the head
+    have hval : (incVisN r v0).k - 1 = vals.getD (j + 1) 0 := by
+      have := cursor_val p t N πs ds vals hV (j + 1) _ _ (by omega) hI'
+      rw [hr'] ; exact this
+    have hk1 : 1 ≤ (incVisN r v0).k := iv.1.1.k1 |> fun h => by omega
+    have hkv : (incVisN r v0).k = vals.getD (j + 1) 0 + 1 := by omega
+    simp only [PassCmp, stepN_cons]
+    rw [IH]
+    have hmap : CmpE (vs'.map fun x => x) ((List.range n).map fun i => vals.getD (j + 1 + i + 1) 0) ↔
+        CmpE ((vs'.map (visN r)).map VR.dec) ((List.range n).map fun i => vals.getD (j + 1 + i + 1) 0) := by
+      apply CmpE_congr
+      · simp
+      · intro i x y hx hy
+        simp only [List.getElem?_map, Option.map_eq_some_iff] at hx hy
+        obtain ⟨a, ha, rfl⟩ := hx
+        obtain ⟨b, ⟨c', hc', rfl⟩, rfl⟩ := hy
+        have : a = c' := by rw [ha] at hc'; exact Option.some.inj hc'
+        subst this
+        have hv := hI (i + 2) a (by simpa using ha)
+        have vv := visIter r a (by exact hv.1)
+        refine ⟨by simp [(dec_EO _).2, vv.2.2.2.2.2.2.1], by simp [(dec_EO _).1, vv.2.2.2.2.2.2.2.1]⟩
+    rw [List.range_succ_eq_map, List.map_cons, CmpE]
+    have hrange : (List.map (fun i => vals.getD (j + i + 1) 0) (List.map Nat.succ (List.range n))) =
+        List.map (fun i => vals.getD (j + 1 + i + 1) 0) (List.range n) := by
+      rw [List.map_map]; apply List.map_congr_left; intro i _
+      simp only [Function.comp]; congr 1; omega
+    rw [hrange, List.map_id'] at *
+    rw [← hmap]
+    obtain ⟨_, _, _, _, _, _, hO, hE, _, _⟩ := iv
+    rw [hO, hE, hkv]
+
 end ZP.NTT
 
