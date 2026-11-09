@@ -6129,5 +6129,62 @@ theorem odCarryEnd (P0 f : List Nat) (n : Nat) (hP : Sym4 P0) (hf : BitsD f) (hn
   have h6 := odnEnd _ hP3
   simpa using h1'.trans (h2.trans (h3.trans (h4.trans (h5.trans h6))))
 
+/-! ## The odometer's abstract successor (mixed radix) -/
+
+/-- Digits `(d, r)` with `d < r`, least significant first. -/
+def odoNext : List (Nat × Nat) → Option (List (Nat × Nat))
+  | [] => none
+  | (d, r) :: rest =>
+    if d + 1 < r then some ((d + 1, r) :: rest)
+    else (odoNext rest).map ((0, r) :: ·)
+
+def odoVal : List (Nat × Nat) → Nat
+  | [] => 0
+  | (d, r) :: rest => d + r * odoVal rest
+
+def odoSize : List (Nat × Nat) → Nat
+  | [] => 1
+  | (_, r) :: rest => r * odoSize rest
+
+def OdoWF (l : List (Nat × Nat)) : Prop := ∀ p ∈ l, p.1 < p.2
+
+theorem odoNext_val : ∀ (l l' : List (Nat × Nat)), OdoWF l → odoNext l = some l' →
+    odoVal l' = odoVal l + 1 := by
+  intro l
+  induction l with
+  | nil => intro l' _ h; simp [odoNext] at h
+  | cons p rest ih =>
+    obtain ⟨d, r⟩ := p
+    intro l' hwf h
+    have hd : d < r := hwf (d, r) (by simp)
+    have hrest : OdoWF rest := fun q hq => hwf q (by simp [hq])
+    by_cases hc : d + 1 < r
+    · simp [odoNext, hc] at h; subst h
+      simp [odoVal]; omega
+    · simp [odoNext, hc] at h
+      obtain ⟨l'', hl'', rfl⟩ := h
+      have := ih l'' hrest hl''
+      have hdr : d + 1 = r := by omega
+      simp [odoVal, this, Nat.mul_add]
+      omega
+
+/-- No successor exactly when every digit is maximal. -/
+theorem odoNext_none : ∀ l : List (Nat × Nat), OdoWF l → odoNext l = none →
+    ∀ p ∈ l, p.1 + 1 = p.2 := by
+  intro l
+  induction l with
+  | nil => intro _ _ p hp; simp at hp
+  | cons q rest ih =>
+    obtain ⟨d, r⟩ := q
+    intro hwf h p hp
+    have hd : d < r := hwf (d, r) (by simp)
+    have hrest : OdoWF rest := fun q hq => hwf q (by simp [hq])
+    by_cases hc : d + 1 < r
+    · simp [odoNext, hc] at h
+    · simp [odoNext, hc] at h
+      simp at hp; rcases hp with rfl | hp
+      · simp; omega
+      · exact ih hrest h p hp
+
 end ZP.NTT
 
