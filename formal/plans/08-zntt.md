@@ -430,3 +430,11 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 ### Stage: FOk through passesRunF
 `passPOf`, `FOk` (compare + S-register check of every pass), `FOk_succ`/`FOk_inv`. `passesRunF` now returns
 `¬FOk` with the refuted (ODL) outcome and `FOk` with the success (SU1) outcome.
+
+### Stage: FOk through assignRunF / entryRun / assignLoop
+* `DG` digit tuples now carry `(w, O)` in the last slot; `ORec.Ok`/`VR.Ok` carry `E.length = w` (`Elw`), so
+  the pass-start records `ORec.vr` are a function of the digit tuple (`vrD`, `vr_eq_vrD`).
+* `AOkD n D s` = full success of one assignment, as a function of the digit list and the S size
+  (`AOkD_iff`).  `DIterS` = odometer iteration with all earlier assignments refuted.
+* `assignLoop` now returns `DIterS ... D' sE` plus `LpOut`, where the beep case has `¬AOkD` and the success case `AOkD`.
+* Remaining: S size invariance (`sE = s`), `AOkD ↔ evalC` on decoded digits, DG-level odometer coverage, bridge.
