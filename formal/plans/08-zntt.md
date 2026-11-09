@@ -488,3 +488,6 @@ of its three outcomes, ready to be threaded through `passesRunF`/`assignRunF` to
 
 ### Stage note: index forms for the chain
 `cmpD_iff`, `valsL_head` (node value of record 0 is `[t=0]`), `sumOD_idx` (S sum as a sum over the last `n` records), `foldl_add_sum`, `sum_map_mod`. Next: `evalPass` characterised in the same terms, then the induction over `m`.
+
+### Stage note: `evalPass_sem`
+`evalPass_sem`: for `DOk` digits with `O` pattern `2^(N-n)3^n`, `evalPass n p recs t (es.drop (N-n))` is `some (esN … |>.drop (N-n))` exactly when `CmpD D es vl ∧ (Σ val·digit ≡ 0 ↔ t ≠ n-1)`, else `none` (with helpers `esN_getD`, `HO_get`, `HO_lt`, `sum_map_mod2`, `decRecs_snd`). Next: induction over `m` combining with `foks_step`/`foks_base` to get `AOkD ↔ evalC`.

@@ -12813,5 +12813,161 @@ theorem sumOD_idx : ∀ (a b : Nat) (D : List DG) (vl : List Nat),
     simp [List.map_map, Function.comp_def, Nat.add_comm 1]
 
 
+
+theorem decRecs_snd : ∀ (πs ds : List Nat), πs.length = ds.length → (decRecs πs ds).map Prod.snd = ds
+  | [], [], _ => rfl
+  | [], _ :: _, h => by simp at h
+  | _ :: _, [], h => by simp at h
+  | π :: πs, d :: ds, h => by simp [decRecs, decRecs_snd πs ds (by simpa using h)]
+
+theorem getD_drop_nat (l : List Nat) (a k : Nat) : (l.drop a).getD k 0 = l.getD (a + k) 0 := by
+  simp [List.getD_eq_getElem?_getD, List.getElem?_drop]
+
+theorem valsL_getD (p t : Nat) (D : List DG) (i : Nat) (hi : i < D.length) :
+    (valsL p t D).getD i 0 =
+      (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) []).getD i 0 := by
+  unfold valsL
+  simp [List.getD_eq_getElem?_getD, hi]
+
+theorem sum_map_mod2 {α : Type} (p : Nat) (f : α → Nat) : ∀ l : List α,
+    ((l.map fun x => f x % p).sum) % p = (l.map f).sum % p
+  | [] => by simp
+  | x :: xs => by
+    simp only [List.map_cons, List.sum_cons]
+    rw [Nat.add_mod, sum_map_mod2 p f xs, ← Nat.add_mod]
+    rw [Nat.add_mod (f x) _ p]; simp [Nat.mod_mod]
+
+theorem esN_getD (p : Nat) : ∀ (D : List DG) (es vl : List Nat) (i : Nat), D.length = es.length →
+    D.length = vl.length → i < D.length →
+    (esN p D es vl).getD i 0 =
+      (if (D.map fun g => g.2.2.2.2.2).getD i 0 = 2 then es.getD i 0 else (vl.getD i 0 * (D.map fun g => g.1).getD i 0) % p)
+  | [], _, _, i, _, _, h => by simp at h
+  | g :: gs, [], _, i, h, _, _ => by simp at h
+  | g :: gs, e :: es, [], i, _, h, _ => by simp at h
+  | g :: gs, e :: es, v :: vl, 0, _, _, _ => by simp [esN]
+  | g :: gs, e :: es, v :: vl, i + 1, h1, h2, h3 => by
+    simp only [esN, List.getD_cons_succ, List.map_cons]
+    exact esN_getD p gs es vl i (by simpa using h1) (by simpa using h2) (by simpa using h3)
+
+theorem HO_get (D : List DG) (a b : Nat) (hHO : D.map (fun g => g.2.2.2.2.2) = List.replicate a 2 ++ List.replicate b 3)
+    (k : Nat) (hk : k < b) : ∃ g, D[a + k]? = some g ∧ g.2.2.2.2.2 = 3 := by
+  have hl : D.length = a + b := by
+    have := congrArg List.length hHO; simpa using this
+  have h1 : a + k < D.length := by omega
+  refine ⟨D[a + k], List.getElem?_eq_getElem h1, ?_⟩
+  have := congrArg (fun l => l[a + k]?) hHO
+  simp only [List.getElem?_map, List.getElem?_eq_getElem h1, Option.map_some] at this
+  rw [List.getElem?_append_right (by simp)] at this
+  simp only [List.length_replicate, Nat.add_sub_cancel_left, List.getElem?_replicate, hk, if_true] at this
+  exact Option.some.inj this
+
+theorem HO_lt (D : List DG) (a b : Nat) (hHO : D.map (fun g => g.2.2.2.2.2) = List.replicate a 2 ++ List.replicate b 3)
+    (i : Nat) (hi : i < a) (g : DG) (hg : D[i]? = some g) : g.2.2.2.2.2 = 2 := by
+  have := congrArg (fun l => l[i]?) hHO
+  simp only [List.getElem?_map, hg, Option.map_some] at this
+  rw [List.getElem?_append_left (by simpa using hi)] at this
+  simp only [List.getElem?_replicate, hi, if_true] at this
+  exact Option.some.inj this
+
+open Classical in
+/-- One reference pass in digit terms. -/
+theorem evalPass_sem (p nr t : Nat) (D : List DG) (es : List Nat) (hD : DOk p D es) (hnr : nr ≤ D.length)
+    (hHO : D.map (fun g => g.2.2.2.2.2) = List.replicate (D.length - nr) 2 ++ List.replicate nr 3) :
+    evalPass nr p (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) t (es.drop (D.length - nr)) =
+      if CmpD D es (valsL p t D) ∧ (SumOD D (valsL p t D) % p = 0 ↔ t ≠ nr - 1) then
+        some ((esN p D es (valsL p t D)).drop (D.length - nr)) else none := by
+  have hlen := hD.1
+  have hp := hD.2.1
+  have hl2 : (D.map fun g => g.2.2.1).length = (D.map fun g => g.1).length := by simp
+  have hrl : (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)).length = D.length := by
+    rw [decRecs_length _ _ hl2]; simp
+  have hsnd := decRecs_snd (D.map fun g => g.2.2.1) (D.map fun g => g.1) hl2
+  have hvl : (valsL p t D).length = D.length := valsL_length p t D
+  have hcmp := cmpD_iff D es (valsL p t D) hlen hvl.symm
+  have hcmpk : CmpD D es (valsL p t D) ↔ ∀ k, k < nr → es.getD (D.length - nr + k) 0 = (valsL p t D).getD (D.length - nr + k) 0 := by
+    rw [hcmp]
+    constructor
+    · intro h k hk
+      obtain ⟨g, hg, hO⟩ := HO_get D _ _ hHO k hk
+      exact h _ g hg hO
+    · intro h i g hg hO
+      by_cases hi : i < D.length - nr
+      · have := HO_lt D _ _ hHO i hi g hg; omega
+      · have hk : i - (D.length - nr) < nr := by
+          have : i < D.length := by
+            refine Classical.byContradiction fun hc => ?_
+            rw [List.getElem?_eq_none (by omega)] at hg; simp at hg
+          omega
+        have := h (i - (D.length - nr)) hk
+        rw [show D.length - nr + (i - (D.length - nr)) = i by omega] at this
+        exact this
+  unfold evalPass
+  simp only [hrl, List.map_drop, hsnd]
+  have hall : ((List.range nr).all fun k =>
+      (valsAux t p 0 (decRecs (D.map fun g => g.2.2.1) (D.map fun g => g.1)) []).getD (D.length - nr + k) 0 ==
+        (es.drop (D.length - nr)).getD k 0) = true ↔
+      ∀ k, k < nr → es.getD (D.length - nr + k) 0 = (valsL p t D).getD (D.length - nr + k) 0 := by
+    simp only [List.all_eq_true, List.mem_range, beq_iff_eq, getD_drop_nat]
+    constructor
+    · intro h k hk
+      have := h k hk
+      rw [valsL_getD p t D _ (by omega)]; exact this.symm
+    · intro h k hk
+      have := h k hk
+      rw [valsL_getD p t D _ (by omega)] at this; exact this.symm
+  have hA : CmpD D es (valsL p t D) → ((List.range nr).map fun k =>
+      (es.drop (D.length - nr)).getD k 0 * ((D.map fun g => g.1).drop (D.length - nr)).getD k 0 % p) =
+      (esN p D es (valsL p t D)).drop (D.length - nr) := by
+    intro hC
+    have hCk := hcmpk.1 hC
+    apply List.ext_getElem?
+    intro k
+    by_cases hk : k < nr
+    · rw [List.getElem?_map, List.getElem?_range hk, List.getElem?_drop]
+      have hi : D.length - nr + k < D.length := by omega
+      have hel : (esN p D es (valsL p t D)).length = D.length := esN_length p D es _ hlen hvl.symm
+      rw [List.getElem?_eq_getElem (by omega : D.length - nr + k < (esN p D es (valsL p t D)).length)]
+      simp only [Option.map_some, Option.some.injEq]
+      have hg := esN_getD p D es (valsL p t D) (D.length - nr + k) hlen hvl.symm hi
+      obtain ⟨g, hgk, hgO⟩ := HO_get D _ _ hHO k hk
+      have hO : (D.map fun g => g.2.2.2.2.2).getD (D.length - nr + k) 0 = 3 := by
+        simp [List.getD_eq_getElem?_getD, hgk, hgO]
+      rw [hO, if_neg (by decide)] at hg
+      rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (by omega)] at hg
+      simp only [Option.getD_some] at hg
+      rw [hg, getD_drop_nat, getD_drop_nat, hCk k hk]
+    · rw [List.getElem?_eq_none (by simp; omega), List.getElem?_eq_none (by
+        have hel : (esN p D es (valsL p t D)).length = D.length := esN_length p D es _ hlen hvl.symm
+        simp [hel]; omega)]
+  have hB : CmpD D es (valsL p t D) → (List.foldl (fun x1 x2 => x1 + x2) 0
+      ((esN p D es (valsL p t D)).drop (D.length - nr))) % p = SumOD D (valsL p t D) % p := by
+    intro hC
+    have hCk := hcmpk.1 hC
+    rw [← hA hC, foldl_add_sum, Nat.zero_add,
+      sum_map_mod2 p (fun k => (es.drop (D.length - nr)).getD k 0 * ((D.map fun g => g.1).drop (D.length - nr)).getD k 0),
+      sumOD_idx _ _ D (valsL p t D) hHO hvl.symm]
+    congr 2
+    apply List.map_congr_left; intro k hk
+    rw [getD_drop_nat, getD_drop_nat, hCk k (List.mem_range.1 hk)]
+  split
+  · rename_i hall1
+    have hC := hcmpk.2 (hall.1 hall1)
+    rw [hA hC, hB hC]
+    split
+    · rename_i hs
+      rw [if_neg]
+      rintro ⟨_, h2⟩
+      generalize SumOD D (valsL p t D) % p = X at hs h2
+      cases hxb : (X == 0) <;> cases hyb : (t == nr - 1) <;> simp_all
+    · rename_i hs
+      have hcnd : CmpD D es (valsL p t D) ∧ (SumOD D (valsL p t D) % p = 0 ↔ t ≠ nr - 1) := by
+        refine ⟨hC, ?_⟩
+        generalize SumOD D (valsL p t D) % p = X at hs ⊢
+        cases hxb : (X == 0) <;> cases hyb : (t == nr - 1) <;> simp_all
+      rw [if_pos hcnd]
+  · rename_i hall1
+    rw [if_neg (fun h => hall1 (hall.2 (hcmpk.1 h.1)))]
+
+
 end ZP.NTT
 
