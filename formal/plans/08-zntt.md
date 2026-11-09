@@ -345,3 +345,7 @@ Remaining: chain `passStep` by induction on `a` into `lastCycle` (needs `Q = Q''
 `passesRun`: from `RFL` at the first cursor of the first pass, with the counter `Nn = 1^(m+1) 0^b`, the whole run of `m` non-final passes and the last pass either refutes (`ODL`) or succeeds (`SU1`).
 In both cases the tape has the form `u ++ tailB pre'` with `u` a good prefix and `pre'` finished records (`Ok`, nonempty).
 Remaining: show `Sem` from `evaluate` (`PassCmp` = the push-evaluation recursion; power sums); the ORec form of the finished records so that `odFail` applies to the `ODL` outcome; `SU1` -> `PA0` (existing `suOk`) restart; the `RulerNTT` / `PrimeNTT` interface; entries.
+
+### Progress: outcome in odometer form
+`passesRun` now ends (`ODL` or `SU1`) with `TapeOutO`: the tape is `u ++ sepRest (o :: os)` with `u` good and `o :: os` odometer records (`ORec.Ok`) built by `VR.toO` from the finished records (`m = 0` invariant, `tailB_toO`, `VR.done_body_toO`).
+So `odFail` (`ODL` -> next assignment `WI0` / overflow `BEEP`) now applies directly to the `ODL` outcome. Remaining: digits unchanged by the passes (`n`, `s`, window sum), `Sem` from `evaluate`, `SU1` -> `PA0`, entries.
