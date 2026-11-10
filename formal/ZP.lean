@@ -1,12 +1,6 @@
 module
 
-public import ZP.Defs
-public import ZP.Table
-public import ZP.TablePP
-public import ZP.TablePS
-public import ZP.TableF
-public import ZP.TableD
-public import ZP.TableG
+public import ZP.AllDefs
 public import ZP.Abstract
 public import ZP.Bridge
 public import ZP.LTM
@@ -32,13 +26,10 @@ public import ZP.GenStep
 public import ZP.Logical
 public import ZP.Compile
 public import ZP.Checks
-public import ZP.DefsPP
 public import ZP.ChecksPP
 public import ZP.CompilePP
 public import ZP.CompileConp
 public import ZP.ExtChecksConp
-public import ZP.TableTwin
-public import ZP.DefsTwin
 public import ZP.ChecksTwin
 public import ZP.TwinTM
 public import ZP.TwinRound
@@ -46,22 +37,18 @@ public import ZP.MainTwin
 public import ZP.Count
 public import ZP.PairPP
 public import ZP.MainPP
-public import ZP.DefsPS
 public import ZP.ChecksPS
 public import ZP.CompilePS
 public import ZP.PairPS
 public import ZP.MainPS
-public import ZP.DefsF
 public import ZP.ChecksF
 public import ZP.CompileF
 public import ZP.PairF
 public import ZP.MainF
-public import ZP.DefsD
 public import ZP.ChecksD
 public import ZP.CompileD
 public import ZP.PairD
 public import ZP.MainD
-public import ZP.DefsG
 public import ZP.ChecksG
 public import ZP.CompileG
 public import ZP.PairG
@@ -80,10 +67,8 @@ public import ZP.CheckG11
 public import ZP.CheckG12
 public import ZP.PairMainG
 public import ZP.MainG
-public import ZP.DefsNTT
 public import ZP.PadNTT
 public import ZP.AbstractNTT
-public import ZP.TableNTT
 public import ZP.LogicNTT
 public import ZP.CompileNTT
 public import ZP.RulerNTT
@@ -92,7 +77,6 @@ public import ZP.EvalNTT
 public import ZP.EvalNTT2
 public import ZP.PrimeNTT
 public import ZP.MainNTT
-public import ZP.DefsMul
 public import ZP.CompileMul
 public import ZP.Complexity
 public import ZP.GuestTM
@@ -125,7 +109,6 @@ public import ZP.MulCheck
 public import ZP.MainMul
 public import ZP.ConpRot
 public import ZP.ConpFuel
-public import ZP.DefsConp
 public import ZP.ChecksConp
 public import ZP.GenericP
 public import ZP.ConpGad
