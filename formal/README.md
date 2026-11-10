@@ -7,7 +7,7 @@ cache download and build. The layout follows the
 
 | file | role |
 |---|---|
-| `Challenge.lean` | the advertised statement (one deliberate `sorry`) |
+| `Challenge.lean` | the advertised statements (one deliberate `sorry` each) |
 | `Solution.lean` | the same declaration, proved from the development |
 | `ZP/Defs.lean` | **trusted surface**: TMs, quasihalting, guest semantics (`ref/zp2_ref.py`), the Σ₂ sentence |
 | `ZP/Table.lean` | the literal 278-state table, generated from `machines/zp_native.tbl` by `gen_table.py` |

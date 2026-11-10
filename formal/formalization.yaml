@@ -4,14 +4,19 @@ version: "v0.4"
 project:
   name: "A beeping busy beaver machine for the Σ₂ form of P vs NP"
   description: >-
-    An explicit one-tape, two-symbol Turing machine with a designated beep state
-    (Aaronson's beeping busy beaver convention), given as a literal transition
-    table (278 states). The advertised theorem says the machine, run from the blank tape, is in
-    its beep state only finitely often iff an explicit Σ₂ sentence holds: some
-    candidate program decides a fixed self-padded NP-complete language within a
-    polynomial clock on every instance. The equivalence of that sentence with
-    P = NP is proved on paper in the accompanying repository and is not part of the
-    formal statement.
+    Explicit one-tape, two-symbol Turing machines with a designated beep state
+    (Aaronson's beeping busy beaver convention), given as literal transition tables,
+    together with core-Lean proofs (no Mathlib) that each machine, run from the blank
+    tape, beeps only finitely often exactly when a stated Sigma_2 sentence holds.
+    The flagship machine (278 states) is equivalent to the Sigma_2 form of P = NP:
+    some candidate program decides a fixed self-padded NP-complete language within a
+    polynomial clock on every instance. The equivalence of that sentence with P = NP
+    is also proved in Lean (ZP.Cx.sentence_iff_PeqNP) for the Turing-machine models
+    defined in the development. The same guest interpreter yields machines for further
+    Sigma_2 statements (prime-power and prime-square variants, factoring, discrete
+    logarithm, graph isomorphism, an NTT-based variant over least primes 1 + n i,
+    multiplication, and a co-NP verifier variant), and a 19-state machine that
+    quasihalts iff there are finitely many twin primes.
   authors:
     - "Gregory Morse"
   license: "Apache-2.0"
@@ -30,20 +35,23 @@ sources:
   - title: "The Busy Beaver Frontier"
     authors:
       - "Scott Aaronson"
-    type: article
+    type: paper
     location: "SIGACT News 51(3), 2020"
     relationship: background
     note: "Defines beeping busy beavers and quasihalting, and observes that Σ₂ statements reduce to quasihalting."
 
 status:
   scope: >-
-    Formalized and proved: the definitions of the machine, quasihalting, the guest
-    semantics and the sentence (ZP/Defs.lean); the abstract program quasihalts iff
-    the sentence holds (ZP/Abstract.lean). Not yet proved: that the literal table
-    simulates the abstract program beep for beep (ZP.zp_macroSim in ZP/Bridge.lean,
-    one sorry); the transfer of quasihalting from such a simulation is proved. Not
-    formalized at all: the sentence is equivalent to P = NP.
-  sorry_count: 1
+    Formalized and proved, with no remaining sorry outside the deliberate Challenge
+    placeholders: the definitions of the machines, quasihalting, the guest semantics
+    and the sentences (ZP/Defs*.lean, tables in ZP/Table*.lean); for each of the ten
+    advertised machines, quasihalting of the literal table is equivalent to its
+    sentence (abstract program, logical-machine macro simulation, compilation to the
+    table); and Sentence iff P = NP for the flagship machine (ZP/Hard.lean). The
+    equivalence of the other sentences with natural complexity-theoretic statements
+    is stated informally in the docs and is not formalized. The existence of primes
+    1 + n i used by the NTT machine is proved in core Lean (ZP/Cyclo.lean).
+  sorry_count: 0
   sorry_in_definitions: 0
   axioms: []
 
@@ -62,21 +70,66 @@ automation:
   notes: "Human-directed design; AI-assisted implementation and proofs; review status below."
 
 fidelity:
-  divergences: "The formal statement stops at the Σ₂ sentence; its equivalence with P = NP is paper-only."
+  divergences: "The Challenge statements stop at the Sigma_2 sentences. The equivalence Sentence iff P = NP for the flagship machine is proved in the development but is not itself a Challenge statement; for the other machines the relation of the sentence to its informal reading is documented in docs/native.md only. None known after comparing definitions against the Python reference implementations by kernel-evaluated examples."
 
 review:
   status: "self-assessed"
   reviewers:
     - "none"
-  notes: "Definitions cross-checked against the Python reference by kernel-evaluated examples (ZP/Checks.lean)."
+  notes: "Definitions cross-checked against the Python reference by kernel-evaluated examples (ZP/Checks.lean). The Lean proofs are checked in GitHub Actions CI, including the Palomar Comparator."
 
 alignment:
   namespace: "ZP"
   statements:
-    - source: "docs/spec.md, Theorem (Tier 1 part)"
+    - source: "docs/native.md and docs/spec.md (zp)"
       lean: "ZP.zp_quasihalts_iff_sentence"
       module: "Challenge"
-      status: "partial"
-      note: "Proved from ZP.abstractQuasihalts_iff_sentence and the bridge ZP.zp_quasihalts_iff_abstract, which rests on the open ZP.zp_macroSim."
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zpp)"
+      lean: "ZP.zpp_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zps)"
+      lean: "ZP.zps_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zfac)"
+      lean: "ZP.zfac_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zdl)"
+      lean: "ZP.zdl_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zgi)"
+      lean: "ZP.zgi_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zntt)"
+      lean: "ZP.zntt_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zmul)"
+      lean: "ZP.zmul_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (zconp)"
+      lean: "ZP.zconp_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and docs/spec.md (twin)"
+      lean: "ZP.twin_quasihalts_iff"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
 
 acknowledgements: "Lean 4 core; the Palomar template's layout and Comparator setup."
