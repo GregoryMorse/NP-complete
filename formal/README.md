@@ -61,20 +61,22 @@ Beyond the P = NP machine (`zpMachine`), the same development proves, for the ma
 corresponding Σ₂ sentence (and, via `ZP/GenericP.lean`, to the truth function being in P).
 Plans for the rest are in `plans/`.
 
-| machine | theorem (comparator-checked) | files |
-|---|---|---|
-| Z_PP (295 states) | `ZP.zppQuasihalts_iff_sentence`, `ZP.zpp_quasihalts_iff_InP` | `DefsPP ChecksPP TablePP LogicPP CompilePP PairPP MainPP`, `Count` |
-| Z_PSPACE (291) | `ZP.zpsQuasihalts_iff_sentence`, `ZP.zps_quasihalts_iff_InP` | `DefsPS ChecksPS TablePS LogicPS CompilePS PairPS MainPS` |
-| Z_FACTOR (324) | `ZP.zfacQuasihalts_iff_sentence`, `ZP.zfac_quasihalts_iff_InP` | `DefsF ChecksF TableF LogicF CompileF PairF MainF` |
-| Z_DLOG (400) | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
-| Z_GI (415) | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
-| Z_MUL (408) | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulCheck MainMul` |
-| Z_coNP (317) | `ZP.zconpQuasihalts_iff_sentence` | `DefsConp TableConp LogicBaseConp LogicConp CompileConp ChecksConp ConpRot ConpFuel ConpInterp ConpRun ConpGad ConpSearch ConpPair MainConp` |
-| Z_NTT (550) | `ZP.zntt_quasihalts_iff_sentence` | `PrimeNum Totient Cyclo DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
+| machine (states) | selected Challenge theorem (comparator-checked) | other proved statements | files |
+|---|---|---|---|
+| Z_P (278) | `ZP.zp_quasihalts_iff_sentence` | `ZP.Cx.sentence_iff_PeqNP` | `Defs Table Abstract Bridge Logic … Hard` (see above) |
+| Z_PP (295) | `ZP.zpp_quasihalts_iff_sentence` | `ZP.zppQuasihalts_iff_sentence`, `ZP.zpp_quasihalts_iff_InP` | `DefsPP ChecksPP TablePP LogicPP CompilePP PairPP MainPP`, `Count` |
+| Z_PSPACE (291) | `ZP.zps_quasihalts_iff_sentence` | `ZP.zpsQuasihalts_iff_sentence`, `ZP.zps_quasihalts_iff_InP` | `DefsPS ChecksPS TablePS LogicPS CompilePS PairPS MainPS` |
+| Z_FACTOR (324) | `ZP.zfac_quasihalts_iff_sentence` | `ZP.zfacQuasihalts_iff_sentence`, `ZP.zfac_quasihalts_iff_InP` | `DefsF ChecksF TableF LogicF CompileF PairF MainF` |
+| Z_DLOG (400) | `ZP.zdl_quasihalts_iff_sentence` | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
+| Z_GI (415) | `ZP.zgi_quasihalts_iff_sentence` | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
+| Z_NTT (469) | `ZP.zntt_quasihalts_iff_sentence` | `ZP.NTT.znttQuasihalts_iff_sentence`, `ZP.primeEx` | `PrimeNum Totient Cyclo DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
+| Z_MUL (403) | `ZP.zmul_quasihalts_iff_sentence` | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulCheck MainMul` |
+| Z_coNP (317) | `ZP.zconp_quasihalts_iff_sentence` | `ZP.zconpQuasihalts_iff_sentence` | `DefsConp TableConp LogicBaseConp LogicConp CompileConp ChecksConp ConpRot ConpFuel ConpInterp ConpRun ConpGad ConpSearch ConpPair MainConp` |
+| twin primes (19) | `ZP.twin_quasihalts_iff` | | `DefsTwin TableTwin TwinRound MainTwin` |
 
-The 19-state twin-prime beeper (`TableTwin`, `TwinRound`, `MainTwin`) is done: `ZP.twin_quasihalts_iff`.
-In progress (plan 10): Z_coNP (`TableConp LogicConp LogicBaseConp CompileConp ExtChecksConp`: table, logical machine, compilation
-certificate and its base `zcBase` are done).
+State counts are those of the literal tables selected in `Challenge.lean` (`machines/*_native.tbl`). All ten Challenge
+theorems are proved in `Solution.lean`; the older state counts quoted in `plans/` (e.g. 550 for Z_NTT, 408 for Z_MUL)
+refer to earlier designs.
 
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
 transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair
