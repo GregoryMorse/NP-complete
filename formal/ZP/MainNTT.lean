@@ -6,11 +6,12 @@ public import ZP.EvalNTT2
 public import ZP.PrimeNTT
 public import ZP.AbstractNTT
 public import ZP.PairF
+public import ZP.Cyclo
 
 @[expose] public section
 
 /-!
-# The NTT machine quasihalts iff `SentenceN primeN` (under `PrimeEx`)
+# The NTT machine quasihalts iff `SentenceN primeN` (unconditionally; `PrimeEx` is proved in `ZP.Cyclo`)
 
 `layNTT c n` is the pair start (`PA0`, `P = 1`, `K = 3`, `C = c`, `Nn = n`). `pair_ntt` composes the prime
 ruler, the record build, the assignment loop and its two continuations. `PairDataN` along the abstract
@@ -231,8 +232,8 @@ theorem znttQuasihalts_iff_abstract (hex : PrimeEx) : Quasihalts znttMachine ↔
     (quasihalts_iff_of_macroSimB (Cert.macroSimB_of_logic znttCert znttCert_ok S)).trans
       (by unfold AbstractQN; simp only [Classical.not_not])
 
-/-- Headline theorem for plan 08 (`PrimeEx` is the stated hypothesis). -/
-theorem znttQuasihalts_iff_sentence (hex : PrimeEx) : Quasihalts znttMachine ↔ SentenceN primeN :=
-  (znttQuasihalts_iff_abstract hex).trans (sentenceN_iff hex)
+/-- Headline theorem for plan 08; `PrimeEx` is proved in `ZP.Cyclo`, so no hypothesis remains. -/
+theorem znttQuasihalts_iff_sentence : Quasihalts znttMachine ↔ SentenceN primeN :=
+  (znttQuasihalts_iff_abstract primeEx).trans (sentenceN_iff primeEx)
 
 end ZP.NTT

@@ -69,7 +69,7 @@ Plans for the rest are in `plans/`.
 | Z_GI (415) | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
 | Z_MUL (408) | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulCheck MainMul` |
 | Z_coNP (317) | `ZP.zconpQuasihalts_iff_sentence` | `DefsConp TableConp LogicBaseConp LogicConp CompileConp ChecksConp ConpRot ConpFuel ConpInterp ConpRun ConpGad ConpSearch ConpPair MainConp` |
-| Z_NTT (550) | `ZP.zntt_quasihalts_iff_sentence` (hypothesis `ZP.PrimeEx`) | `DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
+| Z_NTT (550) | `ZP.zntt_quasihalts_iff_sentence` | `PrimeNum Totient Cyclo DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
 
 The 19-state twin-prime beeper (`TableTwin`, `TwinRound`, `MainTwin`) is done: `ZP.twin_quasihalts_iff`.
 In progress (plan 10): Z_coNP (`TableConp LogicConp LogicBaseConp CompileConp ExtChecksConp`: table, logical machine, compilation
