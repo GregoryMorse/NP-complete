@@ -13,7 +13,7 @@ project:
     polynomial clock on every instance. The equivalence of that sentence with P = NP
     is also proved in Lean (ZP.Cx.sentence_iff_PeqNP) for the Turing-machine models
     defined in the development. The same guest interpreter yields machines for further
-    Sigma_2 statements (prime-power and prime-square variants, factoring, discrete
+    Sigma_2 statements (P = PP and P = PSPACE, factoring, discrete
     logarithm, graph isomorphism, an NTT-based variant over least primes 1 + n i,
     multiplication, and a co-NP verifier variant), and a 19-state machine that
     quasihalts iff there are finitely many twin primes.
@@ -39,6 +39,11 @@ sources:
     location: "SIGACT News 51(3), 2020"
     relationship: background
     note: "Defines beeping busy beavers and quasihalting, and observes that Σ₂ statements reduce to quasihalting."
+
+related_formalizations:
+  - id: "https://github.com/calr3/tinycryptids/tree/main/twinprimes"
+    relationship: "independent"
+    note: "C. Reams' earlier 18-state twin-prime beeper, proved in Lean (Oct 2026). It marks a beep transition rather than a beep state; under this repository's beeping-busy-beaver convention (a state entered only at beeps) the same-family design here has 19 states, and 18 when counted Reams' way. The selected twin-prime machine and its Lean proof are independent work; see twin/README.md for the comparison."
 
 status:
   scope: >-

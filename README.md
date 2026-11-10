@@ -35,8 +35,9 @@ History is in `docs/history.md`.
 **What is new and what is not.** That P = NP is a Σ₂ sentence, and that Σ₂ sentences can be
 encoded as quasihalting, is folklore (Donat; da Costa–Doria; Aaronson's survey). The
 contribution is the explicit, reproducible, state-counted table, the construction
-machinery, and the validation. To our knowledge this is the first explicit machine for
-P vs NP. That claim has not yet been checked against the bbchallenge Discord history.
+machinery, and the validation. Whether an explicit machine for P vs NP of this kind has been
+published before is unknown: no priority claim is made, and no literature or bbchallenge search has
+been done.
 
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
 (`docs/spec.md` §2, *Caution*). The equivalence has a paper proof (`docs/spec.md`). The
