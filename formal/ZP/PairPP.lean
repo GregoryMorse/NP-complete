@@ -2,7 +2,7 @@ module
 
 public import ZP.Pair
 public import ZP.CompilePP
-public import ZP.DefsPP
+public import ZP.AllDefs
 public import ZP.Count
 
 @[expose] public section

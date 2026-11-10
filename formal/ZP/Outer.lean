@@ -1,6 +1,6 @@
 module
 
-public import ZP.Defs
+public import ZP.AllDefs
 public import ZP.Logic
 public import ZP.LogicBase
 public import ZP.ExtChecks

@@ -2,7 +2,7 @@ module
 
 public import ZP.ConpGad
 public import ZP.ConpSearch
-public import ZP.DefsConp
+public import ZP.AllDefs
 
 @[expose] public section
 

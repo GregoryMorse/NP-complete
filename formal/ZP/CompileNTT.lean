@@ -2,7 +2,7 @@ module
 
 public import ZP.Compile
 public import ZP.LogicNTT
-public import ZP.TableNTT
+public import ZP.AllDefs
 
 @[expose] public section
 

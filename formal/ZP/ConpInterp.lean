@@ -1,7 +1,7 @@
 module
 
 public import ZP.ConpFuel
-public import ZP.Defs
+public import ZP.AllDefs
 public import ZP.Logic
 public import ZP.SymExec
 public import ZP.LogicConp

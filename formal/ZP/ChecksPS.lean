@@ -1,6 +1,6 @@
 module
 
-public import ZP.DefsPS
+public import ZP.AllDefs
 
 @[expose] public section
 
