@@ -51,8 +51,8 @@ theorem ZP.zdl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zdlMachine ↔ ZP.Sent
 theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.SentenceG := by
   sorry
 
-/-- Z_NTT: the prime `1 + n i` is supplied by the hypothesis `PrimeEx` (Dirichlet for `≡ 1 mod n`). -/
-theorem ZP.zntt_quasihalts_iff_sentence (h : ZP.PrimeEx) :
+/-- Z_NTT: `primeN n` is the least prime `1 + n i`, `i ≥ 1` (it exists for every `n ≥ 1`; proved in the solution). -/
+theorem ZP.zntt_quasihalts_iff_sentence :
     ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN := by
   sorry
 

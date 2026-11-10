@@ -534,3 +534,11 @@ inside the segment), `zntPairData : PairDataN`, `znttQuasihalts_iff_sentence (he
 `SentenceN`, `isPrimeN`, `PrimeEx`, `primeN` moved to the trusted `DefsNTT`. `Challenge.lean`/`Solution.lean`/
 `comparator.json` carry `ZP.zntt_quasihalts_iff_sentence (h : PrimeEx)`; axioms: propext, Classical.choice, Quot.sound.
 Full `lake build` green, 0 open sorries outside `Challenge.lean`.
+
+## Update: `PrimeEx` proved in core
+
+The hypothesis `PrimeEx` has been eliminated. `ZP/PrimeNum.lean` (primes, Fermat's little theorem, order/gcd lemma),
+`ZP/Totient.lean` (Gauss `Σ φ(e) = n`) and `ZP/Cyclo.lean` prove `ZP.primeEx : PrimeEx` without Mathlib:
+for `a` a multiple of `n`, `cycv a d` is the quotient of `a^d - 1` by the product of `cycv a e` over proper divisors `e`
+(its prime factors are primitive, hence `≡ 1 mod d`), and size bounds with `K`-constants show `cycv a n ≥ 2` for `a = n · 2K(n)`.
+The headline theorem `ZP.zntt_quasihalts_iff_sentence` is now unconditional (statements above that mention the hypothesis are historical).
