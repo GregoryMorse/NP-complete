@@ -2,7 +2,7 @@ module
 
 public import ZP.PairF
 public import ZP.CompileG
-public import ZP.DefsG
+public import ZP.AllDefs
 
 @[expose] public section
 

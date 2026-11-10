@@ -1,7 +1,5 @@
 module
 
-public import ZP.DefsG
-
 @[expose] public section
 
 /-!

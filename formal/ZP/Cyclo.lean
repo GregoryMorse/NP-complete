@@ -2,7 +2,7 @@ module
 
 public import ZP.PrimeNum
 public import ZP.Totient
-public import ZP.DefsNTT
+public import ZP.AllDefs
 
 @[expose] public section
 

@@ -2,7 +2,7 @@ module
 
 public import ZP.Compile
 public import ZP.LogicPP
-public import ZP.TablePP
+public import ZP.AllDefs
 
 @[expose] public section
 

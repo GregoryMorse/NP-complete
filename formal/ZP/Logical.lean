@@ -1,6 +1,6 @@
 module
 
-public import ZP.Defs
+public import ZP.AllDefs
 public import ZP.LogicalG
 public import ZP.Abstract
 public import ZP.Bridge

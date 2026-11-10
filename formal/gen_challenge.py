@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Generate Challenge.lean: a self-contained module (Lean core only) made of the trusted
+"""Generate Challenge.lean and ZP/AllDefs.lean: a self-contained module (Lean core only) made of the trusted
 definition files in the import closure of the old Challenge, followed by `challenge_statements.lean.in`.
 
 Palomar compiles the Challenge alone against Lean core, so it may not import project modules.
+ZP/AllDefs.lean is the same definition block as a project module, so that the development and
+the Challenge elaborate the definitions identically (Lean reuses equal `match` helpers within one
+module, which would otherwise make the compiled terms differ).  The per-file sources ZP/Defs*.lean,
+ZP/Table*.lean are the generator inputs; nothing imports them.
 `python3 gen_challenge.py --check` verifies that Challenge.lean is up to date."""
 import re, sys
 from pathlib import Path
@@ -65,11 +69,14 @@ defs = re.sub(r'(namespace ZP\n)\n', r'\1', defs)
 defs = re.sub(r'(\]\n)\n(?=def \w+Rows\d+ )', r'\1', defs)
 stm = (ROOT / 'challenge_statements.lean.in').read_text()
 out = ('module\n\n@[expose] public section\n\n' + defs.strip('\n') + '\n\n' + stm)
+alldefs = 'module\n\n@[expose] public section\n\n' + defs.strip('\n') + '\n'
 f = ROOT / 'Challenge.lean'
+fa = ROOT / 'ZP' / 'AllDefs.lean'
 if '--check' in sys.argv:
-    if f.read_text() != out:
-        sys.exit('Challenge.lean is out of date: run python3 gen_challenge.py')
+    if f.read_text() != out or fa.read_text() != alldefs:
+        sys.exit('Challenge.lean / ZP/AllDefs.lean are out of date: run python3 gen_challenge.py')
     print('Challenge.lean up to date')
 else:
     f.write_text(out)
+    fa.write_text(alldefs)
     print(len(out.splitlines()), 'lines', len(out.encode()), 'bytes')

@@ -1,7 +1,5 @@
 module
 
-public import ZP.DefsNTT
-
 @[expose] public section
 
 /-!

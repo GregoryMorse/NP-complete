@@ -1,7 +1,7 @@
 module
 
 public import ZP.ConpRun
-public import ZP.DefsConp
+public import ZP.AllDefs
 
 @[expose] public section
 

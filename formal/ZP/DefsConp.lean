@@ -1,7 +1,6 @@
 module
 
 public import ZP.Defs
-public import ZP.DefsMul
 
 @[expose] public section
 

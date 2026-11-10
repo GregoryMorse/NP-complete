@@ -3,7 +3,7 @@ module
 public import ZP.ConpRot
 public import ZP.ConpFuel
 public import ZP.ConpInterp
-public import ZP.DefsConp
+public import ZP.AllDefs
 
 @[expose] public section
 

@@ -4,7 +4,7 @@ public import ZP.MulSwitch
 public import ZP.MulInterp
 public import ZP.MulFuel
 public import ZP.ExtChecks
-public import ZP.DefsMul
+public import ZP.AllDefs
 
 @[expose] public section
 

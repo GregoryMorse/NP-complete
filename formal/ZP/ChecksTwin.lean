@@ -1,7 +1,6 @@
 module
 
-public import ZP.DefsTwin
-public import ZP.TableTwin
+public import ZP.AllDefs
 
 @[expose] public section
 

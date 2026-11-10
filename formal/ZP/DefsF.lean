@@ -2,7 +2,6 @@ module
 
 public import ZP.Defs
 public import ZP.TableF
-public import ZP.DefsPS
 
 @[expose] public section
 
