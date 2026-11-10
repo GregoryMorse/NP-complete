@@ -57,6 +57,8 @@ jobs:
           persist-credentials: false
       - name: Source rules and sorry census
         run: python3 formal/scripts/check_sources.py
+      - name: Challenge.lean and ZP/AllDefs.lean match the definition sources
+        run: python3 formal/gen_challenge.py --check
       - name: Generated tables match machines/*.tbl
         run: |
           for m in zp_native zpp_native zps_native zfactor_native zdlog_native zgi_native twinprime_native zconp_native zmul_native; do
