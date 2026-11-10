@@ -44,6 +44,12 @@ related_formalizations:
   - id: "https://github.com/calr3/tinycryptids/tree/main/twinprimes"
     relationship: "independent"
     note: "C. Reams' earlier 18-state twin-prime beeper, proved in Lean (Oct 2026). It marks a beep transition rather than a beep state; under this repository's beeping-busy-beaver convention (a state entered only at beeps) the same-family design here has 19 states, and 18 when counted Reams' way. The selected twin-prime machine and its Lean proof are independent work; see twin/README.md for the comparison."
+  - id: "https://wiki.bbchallenge.org/wiki/TMBR:_October_2026"
+    relationship: "independent"
+    note: "Records Mira's (GPT-6.1 Terra) P = NP beeper (BBB(290)) and NP = coNP beeper (BBB(284)) of 2026-10-31, initially unformalized. Parallel, independent work on the same problem; this repository does not build on it."
+  - id: "https://wiki.bbchallenge.org/wiki/TMBR:_November_2026"
+    relationship: "independent"
+    note: "Records Mira-Cult's Lean formalization of a 285-state P = NP beeper (2026-11-04) and 284-/266-state NP = coNP beepers (2026-11-06; the 284-state table is Lean-formalized), parallel to this repository's 278-state P = NP, P = PP and P = PSPACE machines (announced 2026-11-01) and its ten Lean formalizations (completed 2026-11-09). State counts differ in convention: designated beep state here, designated beep transition there. The prior-art relationship was checked against the bbchallenge Discord and wiki by the author."
 
 status:
   scope: >-
