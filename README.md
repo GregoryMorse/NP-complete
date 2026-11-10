@@ -35,8 +35,13 @@ History is in `docs/history.md`.
 **What is new and what is not.** That P = NP is a Σ₂ sentence, and that Σ₂ sentences can be
 encoded as quasihalting, is folklore (Donat; da Costa–Doria; Aaronson's survey). The
 contribution is the explicit, reproducible, state-counted table, the construction
-machinery, and the validation. To our knowledge this is the first explicit machine for
-P vs NP. That claim has not yet been checked against the bbchallenge Discord history.
+machinery, and the validation. It is **not** the first explicit machine for P vs NP: the bbchallenge
+wiki records a P = NP beeper by Mira (GPT-6.1 Terra) on 2026-10-31 (BBB(290); [TMBR October 2026](https://wiki.bbchallenge.org/wiki/TMBR:_October_2026)),
+with a Lean-formalized 285-state P = NP beeper announced by Mira-Cult on 2026-11-04 and 284- and 266-state
+NP = coNP beepers on 2026-11-06 ([TMBR November 2026](https://wiki.bbchallenge.org/wiki/TMBR:_November_2026)).
+The same page records this repository's 278-, 295- and 291-state machines (P = NP, P = PP, P = PSPACE;
+announced 2026-11-01) and the ten Lean formalizations completed on 2026-11-09. State counts are not directly comparable:
+this repository uses a designated beep state, Mira-Cult's headline counts use designated beep transitions.
 
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
 (`docs/spec.md` §2, *Caution*). The equivalence has a paper proof (`docs/spec.md`). The
