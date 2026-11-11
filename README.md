@@ -55,9 +55,10 @@ abstract program, and the compilation to the table. No `sorry` is left. See `for
 
 ## How it works (one paragraph)
 L is a self-padded NP-complete language. An instance s *is* a guest program; s ∈ L iff
-that program accepts some certificate c with rep(c) ≤ rep(s) within |s| steps. Z_P
+that program accepts some certificate c ∈ {0,1}^(|s|+1) within |s|+1 steps (Z_P v2, the
+submitted 278-state machine; see `docs/native.md`). Z_P
 enumerates candidate deciders J = 1, 2, …. For each instance s = 1, 2, … it computes
-[s ∈ L] by brute force and runs J on s with clock (|s|+2)^{|J|}. On the first mismatch
+[s ∈ L] by brute force and runs J on s with clock (|s|+2)^(|J|+1) − 1. On the first mismatch
 it beeps and moves to J+1. A correct polynomial-time decider for L exists iff P = NP, and
 by padding it eventually appears with a large enough clock. One guest interpreter serves
 both as the brute-force checker and as the candidate executor. Construction of the native machines:
