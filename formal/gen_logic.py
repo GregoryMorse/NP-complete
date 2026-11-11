@@ -111,6 +111,10 @@ MACH = {
     'zconp': ('zconp', 'zconp_native', 'zconp', 'Conp', None),
     'zmul': ('zmul', 'zmul_native', 'zmul', 'Mul', None),
     'zbpp': ('zbpp', 'zbpp_native', 'zbpp', 'BPP', None),
+    'zppoly': ('zppoly', 'zppoly_native', 'zppoly', 'Poly', None),
+    'zlp': ('zlp', 'zlp_native', 'zlp', 'LP', None),
+    'zlnl': ('zlnl', 'zlnl_native', 'zlnl', 'LNL', None),
+    'zmm': ('zmm', 'zmm_native', 'zmm', 'MM', 'zmul'),
 }
 DERIVED = ('zpp', 'zps', 'zfac', 'zdl', 'zgi')   # machines whose changes define zpBase
 

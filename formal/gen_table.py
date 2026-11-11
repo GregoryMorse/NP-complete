@@ -46,6 +46,10 @@ TABLES = {
     'zconp_native': ('zconpMachine', 'Conp'),
     'zmul_native': ('zmulMachine', 'Mul'),
     'zbpp_native': ('zbppMachine', 'BPP'),
+    'zppoly_native': ('zppolyMachine', 'Poly'),
+    'zlp_native': ('zlpMachine', 'LP'),
+    'zlnl_native': ('zlnlMachine', 'LNL'),
+    'zmm_native': ('zmmMachine', 'MM'),
 }
 
 

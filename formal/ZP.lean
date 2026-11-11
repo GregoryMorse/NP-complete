@@ -8,6 +8,10 @@ public import ZP.Logic
 public import ZP.LogicBase
 public import ZP.LogicPP
 public import ZP.LogicBPP
+public import ZP.LogicMM
+public import ZP.LogicLNL
+public import ZP.LogicLP
+public import ZP.LogicPoly
 public import ZP.LogicPS
 public import ZP.LogicF
 public import ZP.LogicD
@@ -31,6 +35,10 @@ public import ZP.ChecksPP
 public import ZP.ChecksBPP
 public import ZP.CompilePP
 public import ZP.CompileBPP
+public import ZP.CompileMM
+public import ZP.CompileLNL
+public import ZP.CompileLP
+public import ZP.CompilePoly
 public import ZP.CompileConp
 public import ZP.ExtChecksConp
 public import ZP.ChecksTwin
