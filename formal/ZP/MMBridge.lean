@@ -134,4 +134,121 @@ theorem gx_ext (f : Nat → Bool) (l m : Nat) (h : l ≤ m) (hf : ∀ k, l ≤ k
       unfold gx at this
       simp [this, hf m h1]
 
+theorem gx_congr (F G : Nat → Bool) : ∀ n, (∀ k, k < n → F k = G k) → gx n F = gx n G := by
+  intro n
+  induction n with
+  | zero => intro _; rfl
+  | succ n ih =>
+    intro h
+    unfold gx
+    rw [List.range_succ, List.foldl_append, List.foldl_append]
+    have := ih (fun k hk => h k (by omega))
+    unfold gx at this
+    simp [this, h n (by omega)]
+
+theorem getD_take_append_rep (x : List Nat) (m j : Nat) (hj : j < m) :
+    ((x ++ List.replicate m 2).take m).getD j 2 = x.getD j 2 := by
+  simp only [List.getD_eq_getElem?_getD, List.getElem?_take, hj, if_true, List.getElem?_append]
+  by_cases h : j < x.length
+  · simp [h]
+  · simp only [h, if_false, List.getElem?_replicate]
+    have : x[j]? = none := by simp; omega
+    simp [this]
+    split <;> simp
+
+theorem eq_rep2 (l : List Nat) (m : Nat) (hb : Bits l) (hl : l.length = m) :
+    l = List.replicate m 2 ↔ ∀ j, j < m → bt (l.getD j 2) = false := by
+  constructor
+  · intro h j hj
+    subst h
+    simp [bt, List.getD_eq_getElem?_getD, hj]
+  · intro h
+    apply List.ext_getElem (by simp [hl])
+    intro j hj1 hj2
+    have hjm : j < m := by omega
+    have := h j hjm
+    have hm : l[j] ∈ l := List.getElem_mem hj1
+    rcases mem_bits (hb _ hm) with h2 | h2
+    · simp [h2]
+    · exfalso
+      simp [List.getD_eq_getElem?_getD, hj1, h2, bt] at this
+
+theorem rowEq (m : Nat) (B : Nat → Nat → Bool) (a out : List Bool) (i : Nat) (hm : m ≠ 0) :
+    let Rws := (List.range m).map (fun k => (List.range m).map (fun j => sy (B k j)))
+    let Atot := ((a.map sy).drop (i * m))
+    let C := (((out.map sy).drop (i * m)) ++ List.replicate m 2).take m
+    accRow Rws (Atot.take m) C = List.replicate m 2 ↔
+      ∀ j, j < m → out.getD (i * m + j) false = gx m (fun k => a.getD (i * m + k) false && B k j) := by
+  intro Rws Atot C
+  have hRlen : Rws.length = m := by simp [Rws]
+  have hAs : ∀ s ∈ Atot.take m, s = 2 ∨ s = 3 := fun s hs => by
+    have := List.mem_of_mem_take hs
+    have := List.mem_of_mem_drop this
+    obtain ⟨b, _, rfl⟩ := List.mem_map.mp this
+    cases b <;> simp [sy]
+  have hClen : C.length = m := by
+    simp [C, List.length_take]
+  have hC : Bits C := fun x hx => by
+    have := List.mem_of_mem_take hx
+    rcases List.mem_append.mp this with h | h
+    · obtain ⟨b, _, rfl⟩ := List.mem_map.mp (List.mem_of_mem_drop h)
+      cases b <;> simp [sy, bits]
+    · rw [List.eq_of_mem_replicate h]; simp [bits]
+  have hR : ∀ r ∈ Rws, Bits r ∧ r.length = C.length := fun r hr => by
+    obtain ⟨k, _, rfl⟩ := List.mem_map.mp hr
+    refine ⟨fun x hx => ?_, by simp [hClen]⟩
+    obtain ⟨j, _, rfl⟩ := List.mem_map.mp hx
+    cases B k j <;> simp [sy, bits]
+  have hI := accFold_inv (Atot.take m) (Rws.take (Atot.take m).length) C hC
+    (fun r hr => hR r (List.mem_of_mem_take hr))
+  have hE : accRow Rws (Atot.take m) C = accFold (Atot.take m) (Rws.take (Atot.take m).length) C :=
+    accFoldE_id _ _ (fun r hr => by rw [hI.2]; exact (hR r (List.mem_of_mem_drop hr)).2)
+      (fun x hx => by rcases mem_bits (hI.1 x hx) with h | h; exact Or.inl h; exact Or.inr h)
+  have hAcc : Bits (accRow Rws (Atot.take m) C) := by rw [hE]; exact hI.1
+  have hAl : (accRow Rws (Atot.take m) C).length = m := by rw [hE, hI.2, hClen]
+  rw [eq_rep2 _ m hAcc hAl]
+  refine forall_congr' (fun j => forall_congr' (fun hj => ?_))
+  rw [accRow_col Rws (Atot.take m) C hAs hC hR j (by omega), prodCol_eq j _ _ (by
+    rw [List.length_take]; simp [hRlen])]
+  have hC1 : bt (C.getD j 2) = out.getD (i * m + j) false := by
+    have e1 : C.getD j 2 = ((out.map sy).drop (i * m)).getD j 2 := getD_take_append_rep _ m j hj
+    rw [e1]
+    simp only [List.getD_eq_getElem?_getD, List.getElem?_drop] at *
+    have := bt_getD_map out (i * m + j)
+    simp only [List.getD_eq_getElem?_getD] at this
+    rw [show i * m + j = i * m + j from rfl]
+    exact this
+  have hlm : (List.take m Atot).length ≤ m := by rw [List.length_take]; omega
+  have hpt : ∀ k, k < (List.take m Atot).length →
+      (bt ((List.take m Atot).getD k 2) && bt (((List.take (List.take m Atot).length Rws).getD k []).getD j 2)) =
+      (a.getD (i * m + k) false && B k j) := by
+    intro k hk
+    have hkm : k < m := by omega
+    have e1 : (List.take m Atot).getD k 2 = (a.map sy).getD (i * m + k) 2 := by
+      simp only [List.getD_eq_getElem?_getD, List.getElem?_take, List.getElem?_drop, hkm, if_true, Atot]
+    have e2 : (List.take (List.take m Atot).length Rws).getD k [] = Rws.getD k [] := by
+      simp only [List.getD_eq_getElem?_getD, List.getElem?_take, hk, if_true]
+    have e3 : Rws.getD k [] = (List.range m).map (fun j => sy (B k j)) := by
+      simp [Rws, List.getD_eq_getElem?_getD, List.getElem?_map, hkm]
+    have e4 : ((List.range m).map (fun j => sy (B k j))).getD j 2 = sy (B k j) := by
+      simp [List.getD_eq_getElem?_getD, List.getElem?_map, hj]
+    rw [e1, e2, e3, e4, bt_getD_map, bt_sy]
+  have hcongr := gx_congr _ (fun k => a.getD (i * m + k) false && B k j) _ hpt
+  have hext : gx m (fun k => a.getD (i * m + k) false && B k j) =
+      gx (List.take m Atot).length (fun k => a.getD (i * m + k) false && B k j) := by
+    by_cases hl : (List.take m Atot).length = m
+    · rw [hl]
+    · apply gx_ext _ _ _ hlm
+      intro k hk
+      have hl2 : (List.take m Atot).length < m := by omega
+      have hl3 : Atot.length < m := by rw [List.length_take] at hl2; omega
+      have : a.length ≤ i * m + k := by
+        simp only [Atot, List.length_drop, List.length_map] at hl3 hk hl2
+        rw [List.length_take] at hk
+        simp only [Atot, List.length_drop, List.length_map] at hk
+        omega
+      simp [List.getD_eq_getElem?_getD, List.getElem?_eq_none this]
+  rw [hC1, hcongr, ← hext]
+  cases out.getD (i * m + j) false <;> cases gx m (fun k => a.getD (i * m + k) false && B k j) <;> simp
+
 end ZP.Mul.MM
