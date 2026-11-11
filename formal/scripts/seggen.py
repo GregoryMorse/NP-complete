@@ -80,6 +80,9 @@ class Gen:
                 out.append(('s', SYM[t]))
             elif t.startswith('$'):
                 out.append(('s', sub[t[1:]]))
+            elif '->' in t:
+                nm, tgt = t.split('->')
+                out.append(('b', idx[nm], SYM[tgt]))
             elif t in idx:
                 v = vars_[idx[t]]
                 if v.kind == 'empty':
@@ -111,6 +114,10 @@ class Gen:
                 run.append(str(SYM[t]))
             elif t.startswith('$'):
                 run.append(str(params[t[1:]]))
+            elif '->' in t:
+                nm, tgt = t.split('->')
+                flush()
+                parts.append('List.replicate (%s).length %d' % (idx[nm].expr, SYM[tgt]))
             else:
                 v = idx[t]
                 if v.kind == 'empty':
