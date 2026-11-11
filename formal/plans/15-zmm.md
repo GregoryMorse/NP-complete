@@ -213,3 +213,23 @@ Chain for one C row (all proved): fetchA/E (FA -> J1) ; bRow x m ; rsLoop ; toFA
 Remaining: the A-used-up exits (N2 B / N3 B -> VC1 -> verdict 1), dry row (first row: D0/D1/D3 with Mr = M, N4, RBM)
 and setup glue (X0..X3, GC entry), fetch edge cases (FA/FB meeting blank), verdict wiring, row/rows loop,
 MMSpec bridge, mmPhase, haltPhaseMM, pair_mainMM, Main, shared files, `#print axioms`.
+
+### Design notes for the remaining parts (end of session 6)
+
+Setup chain (zmm.py): `hdR mK1 [1] (Rw ++ 1 :: (j ++ 1 :: (s ++ 1 :: Y)))` -> (mkChain with [1] instead of [2], zmmLogic copy needed)
+`hdR GC (1 :: Rw ++ 1 :: j ++ [1]) (s ++ 0 :: Y)` -> gcLoop (MMPair) -> `hdR GC (s.reverse ++ V ++ s) (0 :: Y)`, V = 1 :: Rw ++ 1 :: j ++ [1]
+-> `GC B -> X0 F`: X0..X3a sweep back over s, j, Rw, Ms to the copy s' = w.reverse ++ [0] ++ replicate m 3; X3 over the ruler, X3 on `0` writes the
+hole H and enters SM; exits to VC3 (m = 0, s empty, s = 1^m, w empty) are `vSetup*` (MMVerdict).
+smStart(w0) + smLoop (MMSetupLoop) shift w by one and write Mr = M; the blank below w is the hole of rbLoop2 (MMN2): result
+`hdR RS1 (w.reverse ++ [0, 1]) (0 :: replicate m 3 ++ 1 :: out...)` i.e. P on top of B, acc = ruler 1^m (symbol 3), hole at the bottom.
+Then rsLoop, toFA (F0 = w.reverse, Bd = []), FA.
+
+Dry cycle (first row, no boundary): FA bit -> FB over the rest of w -> `FB B -> K D0`, D0 sweeps up over w to P, D1 over Bd, D3 marks the first
+ruler 1 as 0 (3 -> 2), Z1, G2 back to J1 at the cell below P (as in `rowEndBad`, which already covers the segment after D1 with Brem replaced by the boundary).
+After m cycles the ruler is 0^m: `rowEndOK`-like exit to Q2 (qPass), then N2 reads a bit (not the boundary) -> N4 (passes the remaining w), `N4 B -> K RB2`
+(RB loop through A, `RBM` writes the boundary M at the hole, the hole continues as P through B: `rbLoop` + `rbLoop2`), RS1.
+A used up: N2 B / N3 B exits -> `vEndUsed` (MMVerdict).  w too short: FA/J1/FB meeting a blank -> `vEndShort*`.
+Dispatch after the verdict: `verdictTail0/1` end in `hdR DP3o (Lq ++ replicate .. ++ ... ++ 1 :: J ++ 1 :: sv ++ [1]) (1 :: Y2)` which matches the
+`okTailM`/`badTailM` entry shapes after `hdR_rep0` (blank prefixes drop).
+Remaining work items, in order: dryCycle lemma (reuse rowEndBad pieces), dryEnd (Q2 exit + N4 path), setup glue (mkChain', X-sweep), row/rows loop
+(induction on rows: [m x (bRow, rsLoop, toFA, fetch)] ; rowEnd ; qPass ; nMore), `checkMM` bridge (MMSpec), mmPhase, pair, Main, shared files.
