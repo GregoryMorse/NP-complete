@@ -16,21 +16,20 @@ theorem zppolyChk0 : Cert.allFrom 0 32 (Cert.checkQ zppolyCert) = true := by dec
 theorem zppolyChk1 : Cert.allFrom 32 32 (Cert.checkQ zppolyCert) = true := by decide +kernel
 theorem zppolyChk2 : Cert.allFrom 64 32 (Cert.checkQ zppolyCert) = true := by decide +kernel
 theorem zppolyChk3 : Cert.allFrom 96 32 (Cert.checkQ zppolyCert) = true := by decide +kernel
-theorem zppolyChk4 : Cert.allFrom 128 32 (Cert.checkQ zppolyCert) = true := by decide +kernel
-theorem zppolyChk5 : Cert.allFrom 160 8 (Cert.checkQ zppolyCert) = true := by decide +kernel
+theorem zppolyChk4 : Cert.allFrom 128 26 (Cert.checkQ zppolyCert) = true := by decide +kernel
 
-theorem zppolyLogic_len : zppolyLogic.table.length = 168 := by decide +kernel
+theorem zppolyLogic_len : zppolyLogic.table.length = 154 := by decide +kernel
 
 def zppolyBeepOK : Bool :=
-  Cert.allFrom 0 168 fun q =>
+  Cert.allFrom 0 154 fun q =>
     decide ((Cert.cEntry zppolyCert q = zppolyMachine.beep) ↔ (q = zppolyLogic.beep))
 
 theorem zppolyBeepOK_true : zppolyBeepOK = true := by decide +kernel
 
 theorem zppolyCert_ok : zppolyCert.OK where
   chk q hq := by
-    have hq' : q < 168 := by
-      have : zppolyCert.L.table.length = 168 := zppolyLogic_len
+    have hq' : q < 154 := by
+      have : zppolyCert.L.table.length = 154 := zppolyLogic_len
       omega
     by_cases h0 : q < 32
     · exact Cert.allFrom_spec _ _ 0 q zppolyChk0 (by omega) (by omega)
@@ -40,12 +39,10 @@ theorem zppolyCert_ok : zppolyCert.OK where
         · exact Cert.allFrom_spec _ _ 64 q zppolyChk2 (by omega) (by omega)
         · by_cases h3 : q < 128
           · exact Cert.allFrom_spec _ _ 96 q zppolyChk3 (by omega) (by omega)
-          · by_cases h4 : q < 160
-            · exact Cert.allFrom_spec _ _ 128 q zppolyChk4 (by omega) (by omega)
-            · exact Cert.allFrom_spec _ _ 160 q zppolyChk5 (by omega) (by omega)
+          · exact Cert.allFrom_spec _ _ 128 q zppolyChk4 (by omega) (by omega)
   beep q hq := by
-    have hq' : q < 168 := by
-      have : zppolyCert.L.table.length = 168 := zppolyLogic_len
+    have hq' : q < 154 := by
+      have : zppolyCert.L.table.length = 154 := zppolyLogic_len
       omega
     exact of_decide_eq_true (Cert.allFrom_spec _ _ 0 q zppolyBeepOK_true (by omega) (by omega))
   e0 := by decide +kernel

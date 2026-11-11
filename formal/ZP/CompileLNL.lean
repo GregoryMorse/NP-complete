@@ -17,21 +17,20 @@ theorem zlnlChk1 : Cert.allFrom 32 32 (Cert.checkQ zlnlCert) = true := by decide
 theorem zlnlChk2 : Cert.allFrom 64 32 (Cert.checkQ zlnlCert) = true := by decide +kernel
 theorem zlnlChk3 : Cert.allFrom 96 32 (Cert.checkQ zlnlCert) = true := by decide +kernel
 theorem zlnlChk4 : Cert.allFrom 128 32 (Cert.checkQ zlnlCert) = true := by decide +kernel
-theorem zlnlChk5 : Cert.allFrom 160 32 (Cert.checkQ zlnlCert) = true := by decide +kernel
-theorem zlnlChk6 : Cert.allFrom 192 25 (Cert.checkQ zlnlCert) = true := by decide +kernel
+theorem zlnlChk5 : Cert.allFrom 160 28 (Cert.checkQ zlnlCert) = true := by decide +kernel
 
-theorem zlnlLogic_len : zlnlLogic.table.length = 217 := by decide +kernel
+theorem zlnlLogic_len : zlnlLogic.table.length = 188 := by decide +kernel
 
 def zlnlBeepOK : Bool :=
-  Cert.allFrom 0 217 fun q =>
+  Cert.allFrom 0 188 fun q =>
     decide ((Cert.cEntry zlnlCert q = zlnlMachine.beep) ↔ (q = zlnlLogic.beep))
 
 theorem zlnlBeepOK_true : zlnlBeepOK = true := by decide +kernel
 
 theorem zlnlCert_ok : zlnlCert.OK where
   chk q hq := by
-    have hq' : q < 217 := by
-      have : zlnlCert.L.table.length = 217 := zlnlLogic_len
+    have hq' : q < 188 := by
+      have : zlnlCert.L.table.length = 188 := zlnlLogic_len
       omega
     by_cases h0 : q < 32
     · exact Cert.allFrom_spec _ _ 0 q zlnlChk0 (by omega) (by omega)
@@ -43,12 +42,10 @@ theorem zlnlCert_ok : zlnlCert.OK where
           · exact Cert.allFrom_spec _ _ 96 q zlnlChk3 (by omega) (by omega)
           · by_cases h4 : q < 160
             · exact Cert.allFrom_spec _ _ 128 q zlnlChk4 (by omega) (by omega)
-            · by_cases h5 : q < 192
-              · exact Cert.allFrom_spec _ _ 160 q zlnlChk5 (by omega) (by omega)
-              · exact Cert.allFrom_spec _ _ 192 q zlnlChk6 (by omega) (by omega)
+            · exact Cert.allFrom_spec _ _ 160 q zlnlChk5 (by omega) (by omega)
   beep q hq := by
-    have hq' : q < 217 := by
-      have : zlnlCert.L.table.length = 217 := zlnlLogic_len
+    have hq' : q < 188 := by
+      have : zlnlCert.L.table.length = 188 := zlnlLogic_len
       omega
     exact of_decide_eq_true (Cert.allFrom_spec _ _ 0 q zlnlBeepOK_true (by omega) (by omega))
   e0 := by decide +kernel

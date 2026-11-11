@@ -1,8 +1,8 @@
 {
  "name": "zlnl_native",
- "logical_states": 210,
- "states": 468,
- "beep_state": 5,
+ "logical_states": 182,
+ "states": 415,
+ "beep_state": 6,
  "merge": "exact",
  "pair_encoding": {
   "B": "00",
@@ -11,6 +11,6 @@
   "1": "11"
  },
  "reference": "ref/znl_ref.py",
- "sha256": "b5d90183bb96b52b7401cf8c41decab5ba3eff7ca7adc002b0b72ca8ce5b54c1",
+ "sha256": "c0c078ba64fcf57a7deea426262b85701e22043e9f521942bef7d1a9f88e9778",
  "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
 }

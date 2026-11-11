@@ -17,21 +17,20 @@ theorem zlpChk1 : Cert.allFrom 32 32 (Cert.checkQ zlpCert) = true := by decide +
 theorem zlpChk2 : Cert.allFrom 64 32 (Cert.checkQ zlpCert) = true := by decide +kernel
 theorem zlpChk3 : Cert.allFrom 96 32 (Cert.checkQ zlpCert) = true := by decide +kernel
 theorem zlpChk4 : Cert.allFrom 128 32 (Cert.checkQ zlpCert) = true := by decide +kernel
-theorem zlpChk5 : Cert.allFrom 160 32 (Cert.checkQ zlpCert) = true := by decide +kernel
-theorem zlpChk6 : Cert.allFrom 192 21 (Cert.checkQ zlpCert) = true := by decide +kernel
+theorem zlpChk5 : Cert.allFrom 160 23 (Cert.checkQ zlpCert) = true := by decide +kernel
 
-theorem zlpLogic_len : zlpLogic.table.length = 213 := by decide +kernel
+theorem zlpLogic_len : zlpLogic.table.length = 183 := by decide +kernel
 
 def zlpBeepOK : Bool :=
-  Cert.allFrom 0 213 fun q =>
+  Cert.allFrom 0 183 fun q =>
     decide ((Cert.cEntry zlpCert q = zlpMachine.beep) ↔ (q = zlpLogic.beep))
 
 theorem zlpBeepOK_true : zlpBeepOK = true := by decide +kernel
 
 theorem zlpCert_ok : zlpCert.OK where
   chk q hq := by
-    have hq' : q < 213 := by
-      have : zlpCert.L.table.length = 213 := zlpLogic_len
+    have hq' : q < 183 := by
+      have : zlpCert.L.table.length = 183 := zlpLogic_len
       omega
     by_cases h0 : q < 32
     · exact Cert.allFrom_spec _ _ 0 q zlpChk0 (by omega) (by omega)
@@ -43,12 +42,10 @@ theorem zlpCert_ok : zlpCert.OK where
           · exact Cert.allFrom_spec _ _ 96 q zlpChk3 (by omega) (by omega)
           · by_cases h4 : q < 160
             · exact Cert.allFrom_spec _ _ 128 q zlpChk4 (by omega) (by omega)
-            · by_cases h5 : q < 192
-              · exact Cert.allFrom_spec _ _ 160 q zlpChk5 (by omega) (by omega)
-              · exact Cert.allFrom_spec _ _ 192 q zlpChk6 (by omega) (by omega)
+            · exact Cert.allFrom_spec _ _ 160 q zlpChk5 (by omega) (by omega)
   beep q hq := by
-    have hq' : q < 213 := by
-      have : zlpCert.L.table.length = 213 := zlpLogic_len
+    have hq' : q < 183 := by
+      have : zlpCert.L.table.length = 183 := zlpLogic_len
       omega
     exact of_decide_eq_true (Cert.allFrom_spec _ _ 0 q zlpBeepOK_true (by omega) (by omega))
   e0 := by decide +kernel

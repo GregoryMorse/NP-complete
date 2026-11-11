@@ -1,11 +1,11 @@
-# 12 — Z_PPOLY (`native/zppoly.py`, 362 states): `Quasihalts zppolyMachine ↔ SentencePoly`
+# 12 — Z_PPOLY (`native/zppoly.py`, 325 states): `Quasihalts zppolyMachine ↔ SentencePoly`
 
 Prerequisites: plan 01 (generic pipeline) and the zp2 development. The verifier phase
 is zp2's unchanged; the new parts are the **outer loop** (a four-level enumeration) and
 the **charge** of the advice length against the fuel.
 
 Reference: `ref/zppoly_ref.py`; design: `docs/native.md` § "NP ⊆ P/poly"; machine:
-`native/zppoly.py` (166 logical states).
+`native/zppoly.py` (145 logical states).
 
 ## 1. Trusted definitions (`ZP/DefsPoly.lean`, mirrors `ref/zppoly_ref.py`)
 

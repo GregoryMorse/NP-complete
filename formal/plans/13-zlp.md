@@ -1,4 +1,4 @@
-# 13 — Z_LP (`native/zlp.py`, 426 states): `Quasihalts zlpMachine ↔ SentenceLP`
+# 13 — Z_LP (`native/zlp.py`, 373 states): `Quasihalts zlpMachine ↔ SentenceLP`
 
 Prerequisites: plan 01, and the lessons of plan 07 (a new guest model on the zp2
 interpreter: the rotation, fuel and peek lemmas survive, the act and halt segments are
