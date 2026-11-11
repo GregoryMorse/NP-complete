@@ -178,3 +178,29 @@ Update: also done and compiling: `rsEnd`/`rsLoop` (MMJ, MMRSLoop), `bRow` (MMBRo
 update `jc`, from `hdR J1` to `hdR RS1`; `jc_bits`).
 Remaining: X-phase setup glue, toFA/fetch (G1, GA, FA..FE, G2), dry row/D3, Q pass loop, N1-N5, verdict wiring,
 row loop, MMSpec bridge, mmPhase, haltPhaseMM, pair_mainMM, Main, shared files, `#print axioms`.
+
+### Check-phase layouts (Lean order: index ascending = toward M_g; F = toward LOWER indices, K = toward higher)
+
+Doc layout (physical): `M_g out Ms [acc, hole H] Mr [B rows, hole P] M [A] s-end`. In Lean ascending order this is read
+right to left: `s-end, A.reverse (consumed entries are 1 = M at the top), boundary 1, B cells (done part above P), P = 0,
+..., Mr, acc, H, Ms = 1, out.reverse, M_g`.  `hd q A R`: head on the last cell of `A`; `hdR q A R`: head on `R[0]`.
+
+Stable states (all proved for the row part; lemma names in ZP/MM*.lean):
+- `J1` (start of a j-step): `hdR J1 (F0 ++ Vt.reverse) (v :: 0 :: (Bp ++ a :: (Xs.reverse ++ 0 :: (ALr ++ 1 :: Tl))))`;
+  `v` = next B cell (head), `0` = P, `Bp` = done part of B, `a` = Mr (1 = M for a = 0, 0 = blank for a = 1),
+  `Xs` = unprocessed acc cells (x adjacent to the hole H), `ALr` = processed acc cells, `1` = Ms, `Tl` = out ...
+  `bRow` (MMBRow): a whole B row J1 -> `hdR RS1 (F0 ++ 0 :: (Vt.reverse ++ v :: Bp ++ [1])) (0 :: (zipWith (jc a) .. ).reverse ++ ALr ++ 1 :: Tl)`.
+- `RS1` -> `G1` (`rsLoop`): hole H slides to Ms; `hd G1 (Lq ++ X ++ [0]) (1 :: R)`.
+- `G1` -> `FA` (`toFA`): `hd FA F0 (0 :: Bd ++ 1 :: X ++ 0 :: 1 :: R0)`, `F0 = Au ++ replicate (q+1) 1 ++ Brem`.
+- `FA` -> `J1` next row (`fetchA0/1`: next A entry is a bit, Brem nonempty; `fetchE0`: A used up, a = 0).
+- Not yet: `FA` meets `1` (Brem empty, row complete) -> `D0` -> D1 (over Bd) -> D3 (acc = 0 check; a 1 -> Z1 -> J1 fails
+  at the boundary: wrong, outcome 0) -> `Q2` (Q pass: each iteration blanks one acc `0`, takes the last unconsumed out cell
+  y: blanks it, writes y into the blanked acc cell; out used up reads as 0) -> `N1..N5` (more rows? A used up: VC1) -> `RB` shift (P back in front of B).
+  `FA` meets blank (w ended inside B) -> `VC1` verdict 1; `FB` meets blank (no boundary yet) -> `D0` dry row.
+- Verdict: `VC1..VC3, VF*, E1..E4, VW1` stage 1 (MMVerdict), stage 2 `verdictTail0/1` (MMVerdict2).
+
+### Status (end of session 4)
+New and compiling: MMFetch (single-cell moves), MMLoops (generic fLoop/kLoop), MMFetch2 (g1/ga/g2 loops, toFA),
+MMFetch3 (fetchA0/1, fetchE0), plus everything listed earlier.
+Remaining: D0/D1/D3 and the dry-row marking; Q pass loop; N1-N5 and the RB shift; setup glue X0..X3 and GC entry;
+row/rows loop and wiring; MMSpec bridge; mmPhase; haltPhaseMM; pair_mainMM; Main; shared files; `#print axioms`.
