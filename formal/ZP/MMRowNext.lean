@@ -87,4 +87,52 @@ theorem rowDoneUsed (q m : Nat) (Bd Os Cb0 J sv Y2 : List Nat) (hBd : Bits Bd) (
         have : Sym4 Cb0 := fun a ha => by rw [hCb0 a (by simp [ha])]; simp [ALL]
         simp [sym4_app_iff, sym4_cons_iff, *]) (by simp)
 
+theorem rowDoneMore (Au Bd' Os Rest : List Nat) (x x1 q m e : Nat) (hAu : Bits Au) (hx : x ∈ bits) (hx1 : x1 ∈ bits)
+    (hBd : Bits Bd') (hOs : Bits Os) (he : e = 0 ∨ e = 1) (hRest : Sym4 Rest) :
+    zmmLogic.Reach
+      (hdR QMM.RS1 (Au ++ x :: List.replicate q 1 ++ 1 :: 0 :: (x1 :: Bd' ++ [1]))
+        (0 :: List.replicate m 2 ++ 1 :: (Os ++ e :: Rest)))
+      (hdR QMM.RS1 (Au ++ x :: List.replicate q 1 ++ 1 :: x1 :: Bd' ++ [0, 1])
+        (0 :: ((Os.reverse ++ List.replicate m 2).take m).reverse ++ [] ++
+          1 :: (Os.take (Os.length - m) ++ List.replicate (min m Os.length) 0 ++ e :: Rest))) := by
+  have h0 : (0 : Nat) ∈ ALL := by simp [ALL]
+  have h1 : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hrep : Sym4 (List.replicate q 1) := sym4_rep q 1 h1
+  have hx4 : x ∈ ALL := by rcases mem_bits hx with rfl | rfl <;> simp [ALL]
+  have hq : Sym4 (Au ++ x :: List.replicate q 1) := by
+    have := hAu.sym4
+    simp [sym4_app_iff, sym4_cons_iff, *]
+  have hOe : Sym4 (Os ++ e :: Rest) := by
+    refine Sym4.app hOs.sym4 (Sym4.cons ?_ hRest)
+    rcases he with rfl | rfl <;> simp [ALL]
+  have hBd1 : Bits (x1 :: Bd') := Bits.cons hx1 hBd
+  have s0 := rowFinOK (Au ++ x :: List.replicate q 1) (x1 :: Bd') (List.replicate m 2) (Os ++ e :: Rest) hq hBd1
+    (fun a ha => List.eq_of_mem_replicate ha) (bits_rep2 m) hOe
+  have hA : Sym4 (Au ++ x :: List.replicate q 1 ++ 1 :: 0 :: (x1 :: Bd') ++ [1]) := by
+    have h3 := hBd1.sym4
+    have h4 := hAu.sym4
+    have h5 : x1 ∈ ALL := by rcases mem_bits hx1 with rfl | rfl <;> simp [ALL]
+    have h6 := hBd.sym4
+    simp [sym4_app_iff, sym4_cons_iff, *]
+  have s1 := qPass _ hA m [] Os Rest e he Bits.nil hOs hRest
+  have hR1 : Sym4 (0 :: ((Os.reverse ++ List.replicate m 2).take m).reverse ++ [] ++
+      1 :: (Os.take (Os.length - m) ++ List.replicate (min m Os.length) 0 ++ e :: Rest)) := by
+    have h2 : ∀ a ∈ ((Os.reverse ++ List.replicate m 2).take m).reverse, a ∈ ALL := by
+      intro a ha
+      rw [List.mem_reverse] at ha
+      have := List.mem_of_mem_take ha
+      rw [List.mem_append, List.mem_reverse] at this
+      rcases this with h | h
+      · exact hOs.sym4 a h
+      · rw [List.eq_of_mem_replicate h]; simp [ALL]
+    have h3 : ∀ a ∈ Os.take (Os.length - m), a ∈ ALL := fun a ha => hOs.sym4 a (List.mem_of_mem_take ha)
+    have h4 : ∀ a ∈ List.replicate (min m Os.length) 0, a ∈ ALL := fun a ha => by
+      rw [List.eq_of_mem_replicate ha]; simp [ALL]
+    have h5 : e ∈ ALL := by rcases he with rfl | rfl <;> simp [ALL]
+    simp [sym4_app_iff, sym4_cons_iff, h0, h1, h5]
+    exact ⟨h2, h3, h4, hRest⟩
+  have s2 := nMore Au Bd' _ q x x1 hAu.sym4 hx hx1 hBd hR1
+  simp only [List.append_assoc, List.cons_append, List.nil_append, List.singleton_append] at s0 s1 s2 ⊢
+  exact s0.trans (s1.trans s2)
+
 end ZP.Mul.MM
