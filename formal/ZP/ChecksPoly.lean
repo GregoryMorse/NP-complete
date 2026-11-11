@@ -1,6 +1,7 @@
 module
 
-public import ZP.DefsPoly
+public import ZP.DevPolyDefs
+public import ZP.AllDefs
 
 @[expose] public section
 
