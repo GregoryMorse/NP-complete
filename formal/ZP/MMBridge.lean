@@ -48,4 +48,37 @@ theorem accFold_col : ∀ (As : List Nat) (Rws : List (List Nat)) (C : List Nat)
       · exact Or.inl h
       · exact Or.inr h
 
+theorem accFoldE_id : ∀ (Rws : List (List Nat)) (C : List Nat), (∀ r ∈ Rws, r.length = C.length) →
+    (∀ x ∈ C, x = 2 ∨ x = 3) → accFoldE Rws C = C
+  | [], C, _, _ => rfl
+  | V :: Rws, C, hR, hC => by
+    have hz : List.zipWith (jc 1) V C = C := by
+      have hl := hR V (by simp)
+      clear hR
+      induction V generalizing C with
+      | nil => cases C with
+        | nil => rfl
+        | cons _ _ => simp at hl
+      | cons v V ih =>
+        cases C with
+        | nil => simp at hl
+        | cons x C =>
+          simp only [List.zipWith_cons_cons, List.cons.injEq]
+          refine ⟨by simp [jc], ih C (fun y hy => hC y (by simp [hy])) (by simpa using hl)⟩
+    simp only [accFoldE]
+    rw [hz]
+    exact accFoldE_id Rws C (fun r hr => hR r (by simp [hr])) hC
+
+theorem accRow_col (Rws : List (List Nat)) (As C : List Nat) (hA : ∀ s ∈ As, s = 2 ∨ s = 3) (hC : Bits C)
+    (hR : ∀ r ∈ Rws, Bits r ∧ r.length = C.length) (j : Nat) (hj : j < C.length) :
+    bt ((accRow Rws As C).getD j 2) = xor (bt (C.getD j 2)) (prodCol As (Rws.take As.length) j) := by
+  have hR1 : ∀ r ∈ Rws.take As.length, Bits r ∧ r.length = C.length := fun r hr => hR r (List.mem_of_mem_take hr)
+  have hI := accFold_inv As (Rws.take As.length) C hC hR1
+  have hE := accFoldE_id (Rws.drop As.length) (accFold As (Rws.take As.length) C)
+    (fun r hr => by rw [hI.2]; exact (hR r (List.mem_of_mem_drop hr)).2)
+    (fun x hx => by rcases mem_bits (hI.1 x hx) with h | h; exact Or.inl h; exact Or.inr h)
+  have : accRow Rws As C = accFold As (Rws.take As.length) C := hE
+  rw [this]
+  exact accFold_col As _ C hA hC hR1 j hj
+
 end ZP.Mul.MM
