@@ -203,6 +203,9 @@ class Gen:
                     split.append('rcases mem_bits %s with rfl | rfl' % hyp)
                 elif sorted(vals) == [0, 2, 3]:
                     split.append('rcases %s with rfl | rfl | rfl' % hyp)
+                elif sorted(vals) == [1, 3]:
+                    split.append('rcases (show %s = 1 ∨ %s = 3 by simpa [O13] using %s) with rfl | rfl'
+                                 % (p, p, hyp))
                 elif sorted(vals) == [1, 2, 3]:
                     split.append('rcases (show %s = 1 ∨ %s = 2 ∨ %s = 3 by simpa [NB] using %s) with rfl | rfl | rfl'
                                  % (p, p, p, hyp))
