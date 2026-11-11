@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 ROOTS = ['ZP.Defs', 'ZP.Table', 'ZP.DefsPP', 'ZP.DefsBPP', 'ZP.TablePoly', 'ZP.TableLP', 'ZP.TableLNL', 'ZP.TableMM', 'ZP.DefsPS', 'ZP.DefsF', 'ZP.DefsD', 'ZP.DefsG',
-         'ZP.DefsNTT', 'ZP.TableNTT', 'ZP.DefsTwin', 'ZP.TableTwin', 'ZP.DefsMul', 'ZP.TableMul',
+         'ZP.DefsNTT', 'ZP.TableNTT', 'ZP.DefsTwin', 'ZP.TableTwin', 'ZP.DefsMul', 'ZP.DefsMM', 'ZP.TableMul',
          'ZP.DefsConp', 'ZP.TableConp', 'ZP.DefsPoly']
 WIDTH = 600
 
