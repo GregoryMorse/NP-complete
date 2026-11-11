@@ -93,6 +93,10 @@ def main():
                   binders(vs), vs,
                   ('UDW', False, '', 'M Jr M s M Y B Z'),
                   ('QC', True, 'M M M Jr', 'M s M Y B Z')))
+    import re
+    pair = open('ZP/Pair.lean').read()
+    m = re.search(r'((?:/--[^\n]*-/\n)?theorem blkDecStep .*?)\n\n', pair, re.S)
+    print(m.group(1).replace('zpLogic', 'zlnlLogic') + '\n')
     print('end ZP.MH')
 
 
