@@ -204,3 +204,12 @@ New and compiling: MMFetch (single-cell moves), MMLoops (generic fLoop/kLoop), M
 MMFetch3 (fetchA0/1, fetchE0), plus everything listed earlier.
 Remaining: D0/D1/D3 and the dry-row marking; Q pass loop; N1-N5 and the RB shift; setup glue X0..X3 and GC entry;
 row/rows loop and wiring; MMSpec bridge; mmPhase; haltPhaseMM; pair_mainMM; Main; shared files; `#print axioms`.
+
+### Status (end of session 5)
+Also done and compiling: MMRowEnd/MMRowEnd2 (`rowEndOK`: acc all 0 -> Q2; `rowEndBad`: first 1 marked, back to J1 at the boundary),
+MMQ/MMQ2/MMQ3 (Q pass: `qPass` with loaded bits `((Os.reverse ++ replicate k 2).take k).reverse ++ Wl` and the taken out cells blanked),
+MMN/MMN2 (`nMore`: Q2 at Mr -> N1..N5 -> RB2 shift -> `hdR RS1`, next A entry exists).
+Chain for one C row (all proved): fetchA/E (FA -> J1) ; bRow x m ; rsLoop ; toFA ; ... ; rowEndOK ; qPass ; nMore ; rsLoop ...
+Remaining: the A-used-up exits (N2 B / N3 B -> VC1 -> verdict 1), dry row (first row: D0/D1/D3 with Mr = M, N4, RBM)
+and setup glue (X0..X3, GC entry), fetch edge cases (FA/FB meeting blank), verdict wiring, row/rows loop,
+MMSpec bridge, mmPhase, haltPhaseMM, pair_mainMM, Main, shared files, `#print axioms`.
