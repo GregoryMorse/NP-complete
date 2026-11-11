@@ -3,30 +3,36 @@
 Z_MUL (native/zmul.py) with a new output check.  The guest model, the switch,
 the fuel, the copy of s next to out and the dispatch are zmul's; H stays M.
 
-Check layout (logical direction = physical left, away from M_g):
+Check layout (logical direction F = physical left, away from M_g):
 
-    M_g out Ms 1^m Mr [B rows, P] [A] s-end a [acc_old] sep [acc_new] end
+    M_g out Ms [acc with the hole H] Mr [B rows with the hole P] M [A] s-end
 
+* s = 1^m 0 w: B = the first m^2 cells of w, A = the rest (rows of m, the
+  last padded with 0s), row-major; C = A B over GF(2) (ref/zmm_ref.py).
 * out = c_0 c_1 ..; consumed cells become blank (from the M_g side); missing
-  cells read as 0.  Ms is H.  The 0 after the ruler 1^m becomes Mr.
-* P is the only blank of w.  It starts in front of B (w is shifted by one) and
-  slides through B: one cell per j-step (the cell after P moves into P).  After
-  a row P sits after B; the reverse shift puts it back.
-* A is consumed from its front; consumed cells are M.  a is the A cell of the
-  current B row, kept in the a-cell: the first bit after the M-run that follows
-  s-end.  Consumed acc_old cells are M.
-* A j-step reads v after P, goes to the acc, consumes the front o of acc_old
-  and appends o xor (a v) to acc_new; then P slides.  When acc_old is used up
-  the B row is done: mark the ruler, fetch the next a (A's front, or 0 past A's
-  end, or 0 in the dry row), and acc_new becomes acc_old.
-* When the ruler is used up the row is done.  The first row is a dry run with
-  a = 0 that only finds the end of B: its last j-step finds A's first cell
-  after P, which becomes the first a.  Every other row compares acc_new with
-  the next m cells of out, fetches the next row's first a (A used up: correct),
-  zeroes the acc and shifts B back.
-* If P reaches s-end in the dry row, A is empty: correct.
+  cells read as 0.  Ms is zp2's H.
+* acc: the m ruler cells, one blank hole H among them.  The cell after H is the
+  current column j; H moves one cell per j-step and is rewound after a B row.
+* Mr holds a, the A entry of the current B row: M = 0, B = 1.
+* P is the only blank of B.  It starts in front of B and slides through it: one
+  cell per j-step (the cell after P moves into P).  The cell v that moved is
+  multiplied by a and XORed into acc[j].  When H reaches Mr the B row is done:
+  Mr := M, rewind H, fetch the next a (the front of A, consumed as M; past A's
+  end: 0).  When P reaches the B/A boundary the C row is done.
+* Setup: the 0 after 1^m becomes H, w moves one cell F (the cell after the
+  ruler becomes Mr), and the reverse shift RB puts P in front of B.
+* The first row is a dry row with a = 0 that finds the end of B: there is no
+  B/A boundary yet, and after each B row D3 marks one ruler 1 as 0; when the
+  ruler is all 0, m B rows are done and P is at B's end.
+* Row end: D3 checks acc = 0^m (a 1 is marked and sent on into J1, which then
+  meets the B/A boundary: wrong).  The Q pass loads the next m cells of out
+  into the acc (missing cells read as 0; after the dry row: c_0's row), so a
+  row is right iff its products XOR the acc back to 0.  Then N asks for more
+  rows (A left) and RB shifts B back (after the dry row: all of w, inserting
+  the B/A boundary M at P).
+* P meets s-end (w ends inside B) or A is used up after a row: correct.
 * Verdict o: blanks between M_g and Ms become 0, Ms becomes o, everything
-  further left is erased (four blank-terminated stretches), then zp2's ER1.
+  further F is erased (four blank-terminated stretches), then zp2's ER1.
 """
 import zmul
 
@@ -44,194 +50,150 @@ def build():
     redo = {('GC', B), ('ER1', M)}
     for k in [k for k in m.d if k[0] in DROP or k in redo]:
         del m.d[k]
-    t = m.t
+    base = set(q for q, _ in m.d)
+
+    def t(q, syms, w, mv, n):
+        assert q not in base or q in ('GC', 'ER1'), q
+        m.t(q, syms, w, mv, n)
     t('ER1', M, '.', 'R', 'mK1')                # H stays M (Ms)
     t('GC', B, '.', F, 'X0')
-    # ---------------- setup ----------------
+    # ---------------- setup: Ms 1^m 0 w  ->  Ms 1^m H Mr P w ----------------
     t('X0', BITS, '.', F, 'X0')
     t('X0', M, '.', F, 'X1')                    # M_1
     t('X1', BITS, '.', F, 'X1')
     t('X1', M, '.', F, 'X2')                    # M_g
     t('X2', BITS, '.', F, 'X2')
-    t('X2', M, '.', F, 'X3')                    # Ms
+    t('X2', M, '.', F, 'X3a')                   # Ms
+    t('X3a', '1', '.', F, 'X3')
+    t('X3a', '0B', '.', K, 'VC3')               # m = 0: C is empty
     t('X3', '1', '.', F, 'X3')
-    t('X3', '0B', M, F, 'SH')                   # Mr
-    t('SH', B, '.', F, 'AI')
+    t('X3', '0', B, F, 'SM')                    # the hole H of the accumulator
+    t('X3', B, '.', K, 'VC3')                   # no 0: w is empty
+    t('SM', B, '.', K, 'VC3')                   # w is empty
     for x in BITS:
-        t('SH', x, B, F, 'SH' + x)              # P in front of w
+        t('SM', x, M, F, 'SM' + x)              # Mr (a = 0); w moves by one
         for y in BITS:
-            t('SH' + x, y, x, F, 'SH' + y)
-        t('SH' + x, B, x, F, 'AI')
-    t('AI', B, '.', F, 'AI2')
-    t('AI2', B, '0', K, 'AB0')                  # a = 0
-    t('AB0', BITS, '.', K, 'AB0')
-    t('AB0', B, '.', K, 'AB1')
-    t('AB1', BITS, '.', K, 'AB1')
-    t('AB1', B, '.', K, 'AB2')
-    t('AB2', BITS, '.', K, 'AB2')
-    t('AB2', M, '.', K, 'AB3')
-    t('AB3', '0', '.', K, 'AB3')
-    t('AB3', '1', '0', F, 'AF1')                # acc_old := 0^m
-    t('AB3', M, '.', F, 'RR')
-    t('AF1', '0', '.', F, 'AF1')
-    t('AF1', M, '.', F, 'AF2')
-    t('AF2', BITS, '.', F, 'AF2')
-    t('AF2', B, '.', F, 'AF3')
-    t('AF3', BITS, '.', F, 'AF3')
-    t('AF3', B, '.', F, 'AF4')
-    t('AF4', BITS, '.', F, 'AF4')
-    t('AF4', B, '0', K, 'AB0')
-    t('RR', '0', '1', F, 'RR')
-    t('RR', M, '.', F, 'RR2')
-    t('RR2', BITS, '.', F, 'RR2')
-    t('RR2', B, '.', F, 'J1')
+            t('SM' + x, y, x, F, 'SM' + y)
+        t('SM' + x, B, x, F, 'RB1')             # then P in front of B (shift from the end)
+    # ---------------- dry row: count m B rows on the ruler ----------------
+    t('D0', NB, '.', K, 'D0')
+    t('D0', B, '.', K, 'D1')                    # P
+    t('D1', BITS, '.', K, 'D1')
+    t('D1', 'MB', '.', K, 'D3')                 # Mr
+    t('D3', '0', '.', K, 'D3')
+    t('D3', '1', '0', F, 'Z1')                  # mark; next B row (a = 0); at a row end: J1 fails
+    t('D3', B, '.', F, 'Q2')                    # all 0: load the next out row
     # ---------------- j-step ----------------
-    t('J0', B, '.', F, 'J1')
-    t('J1', B, '.', K, 'VB')                    # P at s-end in the dry row: A empty
-    t('J1', '1', '.', F, 'JF1')
-    t('J1', '0M', '.', F, 'JF0')
+    t('J1', B, '.', K, 'VC1')                   # P at s-end: |w| <= m^2
+    t('J1', M, '.', K, 'VFa')                   # row done but acc != 0 (see D3)
     for v in BITS:
-        t('JF' + v, NB, '.', F, 'JF' + v)
-        t('JF' + v, B, '.', F, 'JA' + v)
-        t('JA' + v, M, '.', F, 'JA' + v)
-        for a in BITS:
-            t('JA' + v, a, '.', F, 'JC' + str(int(a) & int(v)))
+        t('J1', v, B, K, 'S' + v)               # slide P
+        t('S' + v, B, v, K, 'T' + v)
+        t('T' + v, BITS, '.', K, 'T' + v)
+        t('T' + v, M, '.', K, 'W0')             # a = 0
+        t('T' + v, B, '.', K, 'W' + v)          # a = 1
     for p in BITS:
-        t('JC' + p, M, '.', F, 'JC' + p)
-        for o in BITS:
-            t('JC' + p, o, M, F, 'JW' + str(int(o) ^ int(p)))
-        t('JC' + p, B, '.', K, 'TR1')           # acc_old used up: B row done
+        t('W' + p, BITS, '.', K, 'W' + p)
+        t('W' + p, B, '.', F, 'U' + p)          # H
+        for x in BITS:
+            t('U' + p, x, B, K, 'Y' + str(int(x) ^ int(p)) + 'c')
     for c in BITS:
-        t('JW' + c, BITS, '.', F, 'JW' + c)
-        t('JW' + c, B, '.', F, 'JX' + c)
-        t('JX' + c, BITS, '.', F, 'JX' + c)
-        t('JX' + c, B, c, K, 'JB')
-    t('JB', NB, '.', K, 'JB')
-    t('JB', B, '.', K, 'JB2')
-    t('JB2', NB, '.', K, 'JB2')
-    t('JB2', B, '.', K, 'JB3')
-    t('JB3', NB, '.', K, 'JB3')
-    t('JB3', B, '.', F, 'SL1')
+        t('Y' + c + 'c', B, c, F, 'Y2')
+    t('Y2', B, '.', F, 'Z0')
+    t('Z0', BITS, '.', F, 'Z1')
+    t('Z0', 'MB', M, K, 'RS1')                  # B row done: Mr := M, rewind H
+    t('Z1', BITS, '.', F, 'Z1')
+    t('Z1', 'MB', '.', F, 'G2')
+    t('G2', BITS, '.', F, 'G2')
+    t('G2', B, '.', F, 'J1')
+    # ---------------- rewind the accumulator hole ----------------
+    t('RS1', B, '.', K, 'RS2')
     for x in BITS:
-        t('SL1', x, B, K, 'SL2' + x)            # slide P
-        t('SL2' + x, B, x, F, 'J0')
-    # ---------------- next B row ----------------
-    t('TR1', NB, '.', K, 'TR1')
-    t('TR1', B, '.', K, 'TR2')
-    t('TR2', NB, '.', K, 'TR2')
-    t('TR2', B, '.', K, 'TR3')
-    t('TR3', BITS, '.', K, 'TR3')
-    t('TR3', M, '.', K, 'TR4')
-    t('TR4', '0', '.', K, 'TR4')
-    t('TR4', '1', '0', K, 'TR5')
-    t('TR4', M, '.', F, 'RE1')                  # m = 0
-    t('TR5', '1', '.', F, 'FA1')
-    t('TR5', M, '.', F, 'RE1')                  # last B row done: row done
-    t('FA1', '0', '.', F, 'FA1')
-    t('FA1', M, '.', F, 'FA2')
-    t('FA2', BITS, '.', F, 'FA2')
-    t('FA2', B, '.', F, 'FA3')
-    t('FA3', NB, '.', F, 'FA3')
-    t('FA3', B, '.', K, 'FA4')
-    t('FA4', BITS, '.', K, 'FA4')
-    t('FA4', M, '.', F, 'FA5')
-    t('FA4', B, '.', F, 'FC0')                  # dry row: a = 0
-    t('FA5', '0', M, F, 'FC0')
-    t('FA5', '1', M, F, 'FC1')
-    t('FA5', B, '.', F, 'FE0')                  # past A's end: a = 0
-    for a in BITS:
-        t('FC' + a, NB, '.', F, 'FC' + a)
-        t('FC' + a, B, '.', F, 'FE' + a)
-        t('FE' + a, M, '.', F, 'FE' + a)
-        t('FE' + a, BITS, M, F, 'FG' + a)
-        t('FG' + a, M, '.', F, 'FG' + a)
-        t('FG' + a, B, a, K, 'FR1')
-    t('FR1', NB, '.', K, 'FR1')
-    t('FR1', B, '.', K, 'FR2')
-    t('FR2', NB, '.', K, 'FR2')
-    t('FR2', B, '.', F, 'J1')
-    # ---------------- row done ----------------
-    t('RE1', '0', '1', F, 'RE1')
-    t('RE1', M, '.', F, 'RE2')
-    t('RE2', BITS, '.', F, 'RE2')
-    t('RE2', B, '.', F, 'RE3')
-    t('RE3', '0', M, F, 'DC0')                  # dry row: A's first cell is a
-    t('RE3', '1', M, F, 'DC1')
-    t('RE3', M, '.', F, 'CF4')                  # compare acc_new with out
-    for a in BITS:
-        t('DC' + a, NB, '.', F, 'DC' + a)
-        t('DC' + a, B, '.', F, 'SE' + a)
-        t('SE' + a, M, '.', F, 'SE' + a)
-        t('SE' + a, BITS, M, F, 'SG' + a)
-        t('SG' + a, M, '.', F, 'SG' + a)
-        t('SG' + a, B, a, F, 'ZR')
-    t('ZR', NB, '0', F, 'ZR')
-    t('ZR', B, '.', K, 'ZB')
-    t('ZB', NB, '.', K, 'ZB')
-    t('ZB', B, '.', K, 'ZB2')
-    t('ZB2', NB, '.', K, 'ZB2')
-    t('ZB2', B, '.', K, 'RS1')
+        t('RS2', x, B, F, 'RS3' + x)
+        t('RS3' + x, B, x, K, 'RS1')
+    t('RS2', M, '.', F, 'G1')                   # Ms
+    t('G1', 'B01', '.', F, 'G1')
+    t('G1', M, '.', F, 'GA')                    # Mr
+    t('GA', BITS, '.', F, 'GA')
+    t('GA', B, '.', F, 'FA')
+    # ---------------- next a ----------------
+    t('FA', BITS, '.', F, 'FB')
+    t('FA', M, '.', K, 'D0')                    # P at B's end: row done, check acc = 0
+    t('FA', B, '.', K, 'VC1')                   # w ends with B: |w| <= m^2
+    t('FB', BITS, '.', F, 'FB')
+    t('FB', M, '.', F, 'FC')
+    t('FB', B, '.', K, 'D0')                    # no boundary yet: dry row
+    t('FC', M, '.', F, 'FC')
+    t('FC', B, '.', K, 'FD0')                   # past A's end: a = 0
     for x in BITS:
-        t('RS1', x, B, F, 'RSW' + x)            # shift B back
-        t('RSW' + x, B, x, K, 'RS0')
-    t('RS0', B, '.', K, 'RS1')
-    t('RS1', M, '.', F, 'J0')
-    t('CM', M, '.', F, 'CM')
-    t('CM', B, '.', K, 'NF')
+        t('FC', x, M, K, 'FD' + x)
+        t('FD' + x, NB, '.', K, 'FD' + x)
+        t('FD' + x, B, '.', K, 'FE' + x)        # P
+        t('FE' + x, BITS, '.', K, 'FE' + x)
+        t('FE' + x, 'MB', M if x == '0' else B, F, 'G2')   # Mr := a
+    # ---------------- row done: check acc = 0, load the next out row ----------------
+    t('Q2', B, '.', F, 'Q2')
+    t('Q2', '0', B, K, 'Q4')
+    t('Q2', M, '.', F, 'N1')                    # Mr: row loaded
+    t('Q4', 'B01', '.', K, 'Q4')
+    t('Q4', M, '.', K, 'Q5')                    # Ms
+    t('Q5', BITS, '.', K, 'Q5')
+    t('Q5', 'BM', '.', F, 'Q6')
+    t('Q6', M, '.', F, 'Q80')                   # out used up: 0
+    for y in BITS:
+        t('Q6', y, B, F, 'Q7' + y)
+        t('Q7' + y, BITS, '.', F, 'Q7' + y)
+        t('Q7' + y, M, '.', F, 'Q8' + y)
+        t('Q8' + y, BITS, '.', F, 'Q8' + y)
+        t('Q8' + y, B, y, F, 'Q2')
+    # ---------------- more rows? then shift B back ----------------
+    t('N1', BITS, '.', F, 'N1')
+    t('N1', B, '.', F, 'N2')                    # P
+    t('N2', M, '.', F, 'N3')
+    t('N2', BITS, '.', F, 'N4')
+    t('N2', B, '.', K, 'VC1')                   # A used up
+    t('N3', M, '.', F, 'N3')
+    t('N3', BITS, '.', K, 'N5')                 # more rows: shift B back into P
+    t('N5', M, '.', K, 'N5')
+    t('N5', B, '.', K, 'RB2')                   # P
+    t('N3', B, '.', K, 'VC1')                   # A used up
+    t('N4', BITS, '.', F, 'N4')
+    t('N4', M, '.', F, 'N3')
+    t('N4', B, '.', K, 'RB2')                   # after the dry row: shift w, inserting the B/A boundary
+    t('RB1', B, '.', K, 'RB2')
     for x in BITS:
-        t('CM', x, M, K, 'CB' + x)
-        t('CB' + x, NB, '.', K, 'CB' + x)
-        t('CB' + x, B, '.', K, 'CB2' + x)
-        t('CB2' + x, NB, '.', K, 'CB2' + x)
-        t('CB2' + x, B, '.', K, 'CB3' + x)
-        t('CB3' + x, NB, '.', K, 'CB3' + x)
-        t('CB3' + x, B, '.', K, 'CB4' + x)
-        t('CB4' + x, BITS, '.', K, 'CB4' + x)
-        t('CB4' + x, M, '.', K, 'CB5' + x)
-        t('CB5' + x, BITS, '.', K, 'CB5' + x)
-        t('CB5' + x, M, '.', K, 'CB6' + x)
-        t('CB6' + x, BITS, '.', K, 'CB6' + x)
-        t('CB6' + x, 'BM', '.', F, 'CB7' + x)
-        t('CB7' + x, x, B, F, 'CF1')
-        t('CB7' + x, str(1 - int(x)), '.', K, 'VF0')    # mismatch
-    t('CB70', M, '.', F, 'CF2')                 # out used up: 0
-    t('CB71', M, '.', K, 'VF0')
-    t('CF1', BITS, '.', F, 'CF1')
-    t('CF1', M, '.', F, 'CF2')
-    t('CF2', BITS, '.', F, 'CF2')
-    t('CF2', M, '.', F, 'CF3')
-    t('CF3', BITS, '.', F, 'CF3')
-    t('CF3', B, '.', F, 'CF4')
-    t('CF4', NB, '.', F, 'CF4')
-    t('CF4', B, '.', F, 'CF5')
-    t('CF5', NB, '.', F, 'CF5')
-    t('CF5', B, '.', F, 'CM')
-    t('NF', NB, '.', K, 'NF')
-    t('NF', B, '.', K, 'NF2')
-    t('NF2', NB, '.', K, 'NF2')
-    t('NF2', B, '.', K, 'NF3')
-    t('NF3', BITS, '.', K, 'NF3')
-    t('NF3', M, '.', F, 'NF4')
-    t('NF4', '0', M, F, 'DC0')
-    t('NF4', '1', M, F, 'DC1')
-    t('NF4', B, '.', K, 'VB')                   # A used up: correct
-    # ---------------- verdict ----------------
-    t('VB', NB, '.', K, 'VB')
-    t('VB', B, '.', K, 'VC')
-    t('VC', BITS, '.', K, 'VC')
-    t('VC', M, '.', K, 'VD')
-    t('VD', BITS, '.', K, 'VD')
-    t('VD', M, '.', K, 'VF1')
-    for o in BITS:
-        q = 'VF' + o
-        t(q, '01B', '.', K, q)
-        t(q, M, '.', F, 'FB' + o)
-        t('FB' + o, B, '0', F, 'FB' + o)
-        t('FB' + o, BITS, '.', F, 'FB' + o)
-        t('FB' + o, M, o, F, 'E1')
-    for i in range(1, 5):
-        t('E%d' % i, NB, B, F, 'E%d' % i)
-        t('E%d' % i, B, '.', F if i < 4 else K, 'E%d' % (i + 1) if i < 4 else 'ER1')
+        t('RB2', x, B, F, 'RB3' + x)
+        t('RB3' + x, B, x, K, 'RB1')
+    t('RB2', B, '.', F, 'RBM')
+    t('RBM', B, M, K, 'RB1')
+    t('RB2', M, '.', K, 'RS1')                  # Mr: P is in front of B
+    # ---------------- verdict: Ms := o, erase right of Ms, blanks of out -> 0 ----------------
+    t('VC1', B, '.', K, 'VC2')
+    t('VC1', NB, '.', K, 'VC1')
+    t('VC2', BITS, '.', K, 'VC2')
+    t('VC2', 'MB', '.', K, 'VC3')
+    t('VC3', 'B01', '.', K, 'VC3')
+    t('VC3', M, '1', F, 'E1')
+    t('VFa', B, '.', K, 'VFb')
+    t('VFb', BITS, '.', K, 'VFb')
+    t('VFb', M, '.', K, 'VF0')
+    t('VF0', 'B01', '.', K, 'VF0')
+    t('VF0', M, '0', F, 'E1')
+    t('E1', BITS, B, F, 'E1')
+    t('E1', B, '.', F, 'E2')                    # H
+    t('E2', BITS, B, F, 'E2')
+    t('E2', 'MB', B, F, 'E3')                   # Mr
+    t('E3', BITS, B, F, 'E3')
+    t('E3', B, '.', F, 'E4')                    # P
+    t('E4', NB, B, F, 'E4')
+    t('E4', B, '.', K, 'VW1')                    # s-end
+    t('VW1', B, '.', K, 'VW1')
+    t('VW1', BITS, '.', K, 'VW2')                 # o
+    t('VW2', BITS, '.', K, 'VW2')
+    t('VW2', B, '0', K, 'VW2')
+    t('VW2', M, '.', F, 'VW3')                    # M_g
+    t('VW3', BITS, '.', F, 'VW3')
+    t('VW3', B, '.', F, 'ER1')
     return m
 
 

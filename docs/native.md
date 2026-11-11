@@ -464,25 +464,27 @@ one square product with `A` padded when `r < m`; either way the input has at lea
 `max(m², r·m)` cells. If `|w| ≤ m²`, `C` is empty.
 
 The check works on the copy of `s` that Z_MUL makes next to `out` (`H` stays `M` and
-is the separator `Ms`; the `0` after `1^m` becomes `Mr`). It is a row-by-row XOR with an
-accumulator at the far end:
+is the separator `Ms`). The ruler `1^m` is reused as the accumulator, so the check
+needs no space beyond `s`:
 
-    M_g out Ms 1^m Mr [B, P] [A] s-end a [acc_old] sep [acc_new] end
+    M_g out Ms [acc, hole H] Mr [B, hole P] M [A] s-end
 
-- `P` is the only blank of `w`. It starts in front of `B` (`w` is shifted by one) and
-  slides through `B`, one cell per step: the cell after `P` moves into `P`. A
-  reverse shift puts it back after each row.
-- A step reads `v` after `P`, consumes the front `o` of `acc_old` (it becomes `M`) and
-  appends `o xor (a·v)` to `acc_new`. When `acc_old` is used up, a row of `B` is done.
-  Then the ruler `1^m` is marked, the next `a` is fetched (the front of `A`, which
-  becomes `M`; 0 past the end of `A`), and `acc_new` becomes `acc_old`.
-- The first row is a dry run with `a = 0`. It only finds the end of `B`: its last step
-  reads the first cell of `A`, which becomes the first `a`. If `P` reaches the end of
-  `w` in the dry run, `A` is empty and the check passes.
-- After every other row, `acc_new` is compared cell by cell with the next `m` cells of
-  `out` (consumed from the `M_g` side; missing cells read as 0), the next row's first
-  `a` is fetched (none left: the check passes), the accumulator is zeroed and `B` is
-  shifted back.
+- Setup: the `0` after `1^m` becomes the hole `H`, `w` moves one cell (its first cell
+  becomes `Mr`), and a reverse shift leaves `P`, the only blank of `B`, in front of `B`.
+  `Mr` holds `a`, the `A` entry of the current row of `B` (`M` = 0, blank = 1).
+- A step moves the cell `v` after `P` into `P` (so `P` slides through `B`), XORs
+  `a·v` into the accumulator cell after `H`, and moves `H` one cell on. When `H`
+  reaches `Mr` a row of `B` is done: `Mr` is reset, `H` is rewound, and the next `a`
+  is fetched (the front of `A`, which becomes `M`; 0 past the end of `A`). When `P`
+  reaches the `B`/`A` boundary a row of `C` is done.
+- The first row is a dry run with `a = 0`. It finds the end of `B` by counting: each
+  row of `B` marks one ruler `1` as `0`, and when none is left the boundary `M` is
+  inserted at `P` (the reverse shift moves all of `w`). If `P` reaches the end of `w`
+  first, `|w| ≤ m²` and the check passes.
+- At every row end the accumulator must be `0^m` (a 1 left: the check fails); then the
+  next `m` cells of `out` (consumed from the `M_g` side; missing cells read as 0) are
+  loaded into it. So the products of a row XOR the accumulator back to 0 iff the row
+  of `out` is right. If `A` is used up the check passes; otherwise `B` is shifted back.
 - Outcome `o`: the blanks between `M_g` and `Ms` become 0, `Ms` becomes `o`, the four
   blank-terminated stretches further left are erased, and zp2's `ER1` takes over.
 

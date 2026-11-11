@@ -6,7 +6,7 @@ Only the check after a proper halt changes. So the work is (a) making the Z_MUL
 lemmas usable from a second machine and (b) one new check routine.
 
 Reference: `ref/zmm_ref.py`; design: `docs/native.md` § "Linear-time GF(2) matrix
-product"; machine: `native/zmm.py` (248 logical states: zmul minus its check, plus 105
+product"; machine: `native/zmm.py` (212 logical states: zmul minus its check, plus 70
 check states).
 
 ## 1. Trusted definitions (`ZP/DefsMM.lean`, mirrors `ref/zmm_ref.py`)
@@ -45,8 +45,8 @@ python3 formal/gen_table.py zmm_native zmmMachine && python3 formal/gen_logic.py
 
 Add `'zmm': ('zmm', 'zmm_native', 'zmm', 'MM', None)` to `gen_logic.py`. zmm changes 2
 zmul transitions (`GC,B` now goes to `X0`; `ER1,M` keeps `M`), removes zmul's
-check (`TS TS2 RW HPF HPD SW CA* DR DE DU mP* mY* mX* mZ* FR0 FE`; `FR1` is reused
-as a name for a new state) and adds 105 states.
+check (`TS TS2 RW HPF HPD SW CA* DR DE DU mP* mY* mX* mZ* FR0 FR1 FE`) and adds 70
+states (none reuses a zmul name; `build()` asserts this).
 
 **Sharing Z_MUL's proof.** `MulRun`, `MulSwitch`, `PairMul` (up to the check) are
 stated for `zmulLogic.Reach`. Define `zmCore` = `zmulLogic` minus the transitions
@@ -65,48 +65,55 @@ Prove `zmCore_ext_zmulLogic` and `zmCore_ext_zmmLogic` by `decide +kernel` in
 
 ## 3. The check (`ZP/MMCheck.lean`, `ZP/MMRow.lean`)
 
-Logical direction = physical left. Print tapes on the Python machine at `X3`, `J1`,
-`TR4`, `RE3`, `CM`, `NF4`, `VF0`, `VF1`, `E4` for the instances of
+Logical direction F = physical left. Print tapes on the Python machine at `X3`, `J1`,
+`Z0`, `RS2`, `FA`, `D3`, `Q2`, `N2`, `RB2`, `E1` for the instances of
 `tests/test_native.py::test_matmul_instances` before writing statements
-(`formal/scripts/symexec.py` with `LOGIC=LogicMM LOGICID=zmm`).
+(`formal/scripts/symexec.py` with `LOGIC=LogicMM LOGICID=zmm`; the docstring of
+`native/zmm.py` explains each phase).
 
 Layout during the check, read from `M_g` (see `docs/native.md`):
 
-    M_g  0^c out'  Ms  1^(m-k) 0^k  Mr  B'  [A: M^q A']  s-end  M^e a M^u acc_old  sep  acc_new  end
+    M_g  B^c out'  Ms  acc[0..j) H acc[j+1..m)  Mr  B'  M  [A: M^q A']  s-end
 
-where `out'` is the unconsumed part of `out` (the consumed `c` cells are blank),
-`B'` is `B` with one blank `P` (the cells before `P` are shifted back by one), `q`
-cells of `A` are consumed, and `k` ruler cells are marked.
+where `out'` is the unconsumed part of `out` (the consumed `c` cells are blank), the
+accumulator occupies the `m` ruler cells with one hole `H` (the cell after `H` is
+column `j`; `H` sits just before `Mr` between B rows), `Mr` is `M` (`a = 0`) or blank
+(`a = 1`), `B'` is `B` with one blank `P` (cells before `P` are shifted one cell
+towards `M_g`), and `q` cells of `A` are consumed. In the dry row there is no `M`
+between `B'` and `A`, and the accumulator holds the ruler (`1`s not yet marked, `0`s
+marked).
 
-1. **Setup** (`X0`–`X3`, `SH*`, `AI*`, `AB*`, `AF*`, `RR*`): from `GC`'s exit to `J1`
-   with `P` in front of `B`, `a = 0`, `acc_old = 0^m`, `acc_new` empty. Three loops: the
-   ruler skip in `X3`, the shift chain `SH*` (one lemma over `w`), the ruler copy
-   `AB3 … AF4` (`m` iterations).
-2. **j-step** (`J0 J1 JF* JA* JC* JW* JX* JB* SL*`): one lemma. Pre: the layout with
-   `P` before cell `v`, `acc_old = o :: rest`. Post: `P` after `v`, `acc_old = rest`,
-   `acc_new ++ [o xor (a && v)]`. Each `JF/JA/…` is a skip loop of the shape already
-   proved in `MulCheck` (`dloopM`-style); reuse the skip lemmas.
-3. **B row** (`m` j-steps, then `acc_old` empty): induction on `j`. Result:
-   `acc_new = zipWith (xor) acc_old (a · B_k)`.
-4. **Next B row** (`TR1`–`TR5`, `FA*`, `FC*`, `FE*`, `FG*`, `FR*`): mark the ruler; if a
-   `1` is left, fetch `a'` (front of `A`, or `0` past its end, or `0` in the dry row:
-   `FA4` meets `P` before any `M`), write it into `sep`, and return to `J1`. If not,
-   `RE1`.
-5. **Row** (induction on `k`): from the start of a row, `acc_new` at the row end is
-   `acc_init xor Σ_k a_k · B_k`. With `acc_init = 0^m` this is row `i` of `C`.
-6. **Row end** (`RE*`, `DC*`, `SE*`, `SG*`, `ZR`, `ZB*`, `RS*`, `CM`, `CB*`, `CF*`,
-   `NF*`):
-   - dry row (`RE3` reads a bit): it becomes the first `a`, the accumulator is zeroed,
-     `B` is shifted back;
-   - other rows: `acc_new` is compared with the next `m` cells of `out` (padded); a
-     mismatch goes to `VF0`; then `NF4` fetches the next row's first `a` (none: `VB`,
-     outcome 1), zeroes the accumulator, shifts `B` back.
-   The reverse shift `RS*` is the inverse of the slides of 2.–3. (one lemma over
-   `B`).
-7. **Dry row and empty `A`**: `J1` reading `s-end` means `|w| ≤ m²`; outcome 1.
-8. **Verdict** (`VB VC VD VF* FB* E1–E4`): to `Ms`, blanks of the consumed `out` to 0,
-   `Ms := o`, erase the four stretches, then `ER1`. One lemma per entry point (three:
-   `VB`, `VF0` from the out region, `VF1` from `Ms`).
+1. **Setup** (`X0`–`X3`, `X3a`, `SM*`, then `RB*` from the end): from `GC`'s exit to
+   `RS1` (which rewinds `H` from the ruler's end to its front) with `H` in place of the `0`,
+   `Mr = M`, `P` in front of `B`. Loops: the skip loops `X0`–`X3`, the one-cell shift
+   `SM0/SM1` over `w` (one lemma), the reverse shift `RB*` (one lemma over a bit
+   string, reused in 6.).
+2. **j-step** (`J1 S* T* W* U* Y*c Y2 Z0 Z1 G2`): one lemma. Pre: `P` before `v`,
+   `H` before `acc[j]`. Post: `P` after `v`, `acc[j] := acc[j] xor (a && v)`, `H` after
+   it. `Z0` then sees either another accumulator cell (`Z1 → G2 → J1`) or `Mr` (B row
+   done, `Mr := M`, `RS1`). All loops are skip loops of the `MulCheck` shape.
+3. **B row** (`m` j-steps): induction on `j`. Result: `acc := acc xor a · B_k`.
+4. **Rewind and next a** (`RS1 RS2 RS3* G1 GA FA FB FC FD* FE*`): `RS*` moves `H` back to
+   the front (`m` swaps, one lemma); then `FA` looks after `P`: a bit and then a `M`
+   later (`FC`) fetches the front of `A` (or 0 past its end, `FC` on blank) into `Mr` and
+   returns to `G2 → J1`; `FB` on blank (no boundary: dry row) goes to `D0`; `FA` on `M`
+   (`P` at the boundary: row done) goes to `D0` too.
+5. **Row** (induction on `k`): from the start of a row with `acc = out_i`, after `m` B
+   rows `acc = out_i xor (row i of C)`.
+6. **Row end** (`D0 D1 D3`, `Q2 Q4 Q5 Q6 Q7* Q8*`, `N1`–`N5`, `RB*`):
+   - `D3` scans the accumulator: `0`s are skipped; a `1` is marked `0` and sent to `Z1`.
+     In the dry row this is the B-row counter (next B row with `a = 0`, `Mr` still `M`).
+     After a real row the next `J1` reads the boundary `M`: `VFa`, outcome 0.
+   - all `0`: `Q2` loads the next `m` cells of `out` into the accumulator, one cell per
+     round trip (`Q6` reads a bit and blanks it; `Ms` reached: 0).
+   - `N1`–`N5`: `A` used up (blank after `P` or after the `M`s): `VC1`, outcome 1; else
+     `RB*` shifts `B` back into `P` (dry row: `N4` shifts all of `w` from its end,
+     `RBM` inserting the boundary `M` at `P`).
+7. **Short `w`**: `J1` or `FA` reading `s-end` (blank) means `|w| ≤ m²`; outcome 1.
+8. **Verdict** (`VC1 VC2 VC3`, `VFa VFb VF0`, `E1–E4`, `VW1–VW3`): to `Ms`, `Ms := o`,
+   erase the four stretches (`acc`, up to `Mr`, `B'`, the rest of `w`), then blanks of
+   the consumed `out` to 0 (`VW*`), then `ER1`. One lemma per entry point (`VC1`,
+   `VC3` from setup with `m = 0` or `w = []`, `VFa`).
 9. **Check theorem**:
 
 ```lean
@@ -114,9 +121,9 @@ theorem mmPhase (out s : List Bool) … :
     zmmLogic.Reach (hdR QMM.X0 …) (… ER1 with outcome (checkMM out s) …)
 ```
 
-The bridge to `checkMM`: the rows are compared in order, so the run reaches
-`VF0` iff some row `i < r` differs from `padTo` of `out`'s slice `[i m, (i+1) m)`, and
-`VB` otherwise. Prove `checkMM out s = true ↔ ∀ i < mmRows s, row i matches` in
+The bridge to `checkMM`: the rows are checked in order, so the run reaches `VFa` iff
+some row `i < r` differs from `padTo` of `out`'s slice `[i m, (i+1) m)`, and `VC*`
+otherwise. Prove `checkMM out s = true ↔ ∀ i < mmRows s, row i matches` in the
 `DefsMM`-adjacent (untrusted) file `ZP/MMSpec.lean`.
 
 ## 4. Pair lemma and top
