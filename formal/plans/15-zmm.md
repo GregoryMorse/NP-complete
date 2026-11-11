@@ -235,3 +235,23 @@ DONE (MMDry, MMDry2, incl. dryFin = dryOK+qPass+dryN, item 1 dry-end glue comple
 (induction on rows: [m x (bRow, rsLoop, toFA, fetch)] ; rowEnd ; qPass ; nMore), `checkMM` bridge (MMSpec), mmPhase, pair, Main, shared files.
 
 Round note: MMExit (nUsed: Q2 at Mr, A used up -> N1,N2,N3 -> vEndUsed -> VW1) and MMVerdict3 (vw1Ok/vw1Bad: VW1 [0] (Z ++ o :: outr ++ Cb ++ 1::J ++ 1::sv ++ 0::1::Y2), Z all 0 with |Z| >= 2 -> hdR DP31/DP30 (1::J++1::sv++[1]) (1::Y2), ready for okTailM / beepStepM+badTailM with Y2 = F ++ 0 :: ST) are done. Still open: vEndShort glue from FA/FB/J1 blank exits, setup glue, row/rows loops, bridge, mmPhase..Main, shared files (merge landmark-machines first).
+
+## Row / rows loop: explicit invariants (to be proved; only the cited lemmas exist in Lean)
+
+Notation: `hd q A R` head on the last cell of A, `hdR q A R` head on R[0]. `acc` holds symbols 2 (bit 0) / 3 (bit 1), length m;
+in the dry row the ruler uses 3 = unmarked, 2 = marked.
+
+1. B row (`bRow`, MMBRow, proved): P before `B[k][j..]`, acc updated by `jc a v x` on columns < j, hole H after column j-1.
+   After m steps: `hdR RS1 (B' ++ [0,1]) ...`, acc = acc0 xor (a . B_k), Mr := M.
+2. Row-start state `RowSt(accIn)`: `hdR RS1 (Wp ++ 1 :: Bd ++ [0,1]) (0 :: accIn ++ 1 :: outRest ++ Cb ++ 1 :: J ++ 1 :: sv ++ 0 :: 1 :: Y2)`,
+   `Wp` the passed part of w, `Bd` the remaining B bits, `outRest` the out cells after the current row, `Cb` the blanks of consumed out cells.
+3. One row = m rounds. Round: `rsLoop` (rewind H), `toFA`, fetch `a = A[i][k]` (`fetchA0/1`; 0 past the end: `fetchE0`), `bRow`.
+   Invariant after round k: acc = out_i xor (fold over k' < k of A[i][k'] . B_k') in the order of `mmC`'s foldl; P is before B row k+1; q = k+1 M's consumed.
+   Induction on k; base: state after setup or after `nMore`.
+4. Row end: `FA` meets M -> `D0..D3`: `rowEndOK` iff acc is all 2s (i.e. out_i = C_i), else `rowEndBad` -> `vEndBad` (outcome 0, `vw1Bad`).
+   After OK: `qPass` (k = m) loads out_{i+1}, then `nMore` (A not used up) or `nUsed` (A used up: outcome 1, `vw1Ok`).
+5. Rows induction `Rows(r)`: from `RowSt(out_i)`, if rows i..i+r-1 match, reach `RowSt(out_{i+r})`; otherwise the verdict-0 exit.
+   End: A used up after `mmRows s` rows -> `nUsed`. Bridge: `padTo (mmC s).length out == mmC s` iff all rows match
+   (`padTo`, `flatMap` of length `mmRows * m`).
+6. Dry first row: `dryBad` m times (ruler 3 -> 2), then `dryFin`; needs |w| >= m^2. Short w: `vEndShort*` start at `hdR FA [] (0 :: ...)` = `hd FA [0] ...`
+   and `hdR J1 []`, so no extra glue beyond `hd_snoc`.
