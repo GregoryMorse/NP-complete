@@ -44,7 +44,10 @@ announced 2026-11-01) and the ten Lean formalizations completed on 2026-11-09. S
 this repository uses a designated beep state, Mira-Cult's headline counts use designated beep transitions.
 
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
-(`docs/spec.md` §2, *Caution*). The equivalence has a paper proof (`docs/spec.md`). The
+(`docs/spec.md` §2, *Caution*). For the submitted 278-state machine the account of the construction is
+`docs/native.md` and the Lean development in `formal/` (including `ZP.Cx.sentence_iff_PeqNP`); `docs/spec.md` is the
+**earlier specification** of the 1371-state v1 machine (a different guest model, certificate bound and clock), kept for
+history and for the general method. The
 compiler is validated by tests at every layer. The Lean development (`formal/`, Palomar layout, core Lean only) states
 `Quasihalts zpMachine ↔ Sentence` for the literal 278-state table. It proves every
 layer: the abstract program, the bridge, the logical machine's simulation of the
@@ -57,8 +60,8 @@ enumerates candidate deciders J = 1, 2, …. For each instance s = 1, 2, … it 
 [s ∈ L] by brute force and runs J on s with clock (|s|+2)^{|J|}. On the first mismatch
 it beeps and moves to J+1. A correct polynomial-time decider for L exists iff P = NP, and
 by padding it eventually appears with a large enough clock. One guest interpreter serves
-both as the brute-force checker and as the candidate executor. Spec and proofs:
-[`docs/spec.md`](docs/spec.md).
+both as the brute-force checker and as the candidate executor. Construction of the native machines:
+[`docs/native.md`](docs/native.md); earlier (v1) specification: [`docs/spec.md`](docs/spec.md).
 
 ## Pipeline
 ```
@@ -90,7 +93,7 @@ and on reading 1. `---` marks an unreachable transition. The beep state's index 
 `.json`. Machines are too large for single-letter state names, so states are decimal.
 
 ## Validation summary
-See `docs/spec.md` §5. In brief:
+See `docs/spec.md` §5 (earlier specification). In brief:
 - **Counter machine vs reference:** beep-for-beep agreement.
 - **TM vs counter machine:** lockstep at every instruction boundary.
 - **Controlled candidate lists:** exactly the predicted beeps, then silence.
