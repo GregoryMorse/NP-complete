@@ -26,6 +26,16 @@ theorem sym4_cons_iff {a : Nat} {v : List Nat} : Sym4 (a :: v) <-> a ∈ ALL /\\
 
 theorem sym4_rep (q c : Nat) (h : c ∈ ALL) : Sym4 (List.replicate q c) := Sym4.rep q c h
 
+theorem hdR_cons0 (q : Nat) (A R : List Nat) : hdR q (0 :: A) R = hdR q A R := by
+  rw [hdR_eq'', hdR_eq'']
+  simp only [List.reverse_cons, sapp_append]
+  show (⟨q, sapp A.reverse (scons 0 blank), sapp R blank⟩ : ZC) = _
+  rw [scons_blank]
+
+theorem hd_cons0 (q : Nat) (Y R : List Nat) (c : Nat) :
+    hd q (0 :: Y ++ [c]) R = hd q (Y ++ [c]) R := by
+  rw [hd_snoc, hd_snoc, hdR_cons0]
+
 theorem fbLoop (X : List Nat) (hX : Bits X) (L R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
     zmmLogic.Reach (hd Q.FB (L ++ X) R) (hd Q.FB L (X ++ R)) :=
   fLoop Q.FB (fun c => c = 2 ∨ c = 3)
@@ -63,6 +73,7 @@ theorem fetchA{d} (Au' Br Bd X R0 : List Nat) (b q : Nat) (hAu : Bits Au') (hBr 
   have e0 : Au' ++ {x} :: (List.replicate q 1 ++ 1 :: (Br ++ [b])) =
       (Au' ++ {x} :: (List.replicate q 1 ++ 1 :: Br)) ++ [b] := by simp
   rw [e0]
+  clear e0
   -- FA reads the last bit of B
   have s0 : zmmLogic.Reach (hd QMM.FA ((Au' ++ {x} :: (List.replicate q 1 ++ 1 :: Br)) ++ [b])
         (0 :: Bd ++ 1 :: X ++ 0 :: 1 :: R0))
@@ -128,9 +139,27 @@ theorem fetchA{d} (Au' Br Bd X R0 : List Nat) (b q : Nat) (hAu : Bits Au') (hBr 
   simp only [List.append_assoc, List.cons_append, List.nil_append, List.singleton_append] at s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 ⊢
   exact s0.trans (s1.trans (s2.trans (s3.trans (s4.trans (s5.trans (s6.trans (s7.trans (s8.trans (s9.trans s10)))))))))
 '''
+TMPL = TMPL
+T2 = TMPL.replace("(Au' Br Bd X R0 : List Nat)", "(Br Bd X R0 : List Nat)").replace("(hAu : Bits Au') ", "").replace("  have hAu4 := hAu.sym4\n", "")
+T2 = T2.replace("fetchA{d}", "fetchE{d}")
+T2 = T2.replace("Au' ++ {x} :: (List.replicate q 1 ++ 1 :: (Br ++ [b]))", "List.replicate q 1 ++ 1 :: (Br ++ [b])")
+T2 = T2.replace("(Au' ++ {x} :: (List.replicate q 1 ++ 1 :: Br))", "(List.replicate q 1 ++ 1 :: Br)")
+T2 = T2.replace("Au' ++ {x} :: (List.replicate q 1 ++ 1 :: Br)", "List.replicate q 1 ++ 1 :: Br")
+T2 = T2.replace("Au' ++ {x} :: (List.replicate q 1 ++ [1])", "List.replicate q 1 ++ [1]")
+T2 = T2.replace("Au' ++ {x} :: List.replicate q 1", "List.replicate q 1")
+T2 = T2.replace("(Au' ++ [{x}])", "([] : List Nat)")
+T2 = T2.replace("{fc} Au'", "fcB []")
+T2 = T2.replace("Au' ++ 1 :: (List.replicate q 1 ++ 1 :: (Br ++ [b])) ++ [0]", "0 :: (List.replicate q 1 ++ 1 :: (Br ++ [b])) ++ [0]")
+T2 = T2.replace("Au' ++ 1 :: (List.replicate q 1 ++ 1 :: (Br ++ [b]))", "0 :: (List.replicate q 1 ++ 1 :: (Br ++ [b]))")
+T2 = T2.replace("(Au' ++ [1])", "[0]")
+T2 = T2.replace("  have hx : ({x} : Nat) ∈ ALL := by simp [ALL]\n", "")
+T2 = T2.replace("hd QMM.J1 (0 :: (List.replicate q 1 ++ 1 :: (Br ++ [b])))", "hd QMM.J1 (List.replicate q 1 ++ 1 :: (Br ++ [b]))")
+T2 = T2.replace("  rw [hd_snoc] at s6 s8\n", "  rw [hd_snoc] at s6 s8\n  have key : ∀ R : List Nat, hd QMM.J1 (0 :: (List.replicate q 1 ++ 1 :: (Br ++ [b]))) R = hd QMM.J1 (List.replicate q 1 ++ 1 :: (Br ++ [b])) R := by\n    intro R\n    have e1 : (0 :: (List.replicate q 1 ++ 1 :: (Br ++ [b]))) = (0 :: (List.replicate q 1 ++ 1 :: Br)) ++ [b] := by simp\n    have e2 : (List.replicate q 1 ++ 1 :: (Br ++ [b])) = (List.replicate q 1 ++ 1 :: Br) ++ [b] := by simp\n    rw [e1, e2, hd_cons0]\n")
 out = HEAD
 for d, x, w, fc in ((0, 2, 1, 'fcZ'), (1, 3, 0, 'fcO')):
     out += TMPL.replace('{d}', str(d)).replace('{x}', str(x)).replace('{w}', str(w)).replace('{fc}', fc)
+T2 = T2.replace('  exact s0.trans', '  rw [key] at s10\n  exact s0.trans')
+out += T2.replace('{d}', '0').replace('{x}', '2').replace('{w}', '1')
 out += '\nend ZP.Mul.MM\n'
 p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'ZP', 'MMFetch3.lean')
 open(p, 'w').write(out)
