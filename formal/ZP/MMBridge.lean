@@ -107,4 +107,31 @@ theorem prodCol_eq (j : Nat) : ∀ (As : List Nat) (Rws : List (List Nat)), As.l
     rw [prodCol_eq j As Rws (by simpa using h)]
     simp
 
+theorem bt_sy (b : Bool) : bt (sy b) = b := by cases b <;> simp [bt, sy]
+
+theorem bt_getD_map (l : List Bool) (i : Nat) : bt ((l.map sy).getD i 2) = l.getD i false := by
+  simp only [List.getD_eq_getElem?_getD, List.getElem?_map]
+  cases h : l[i]? with
+  | none => simp [bt]
+  | some b => simp [bt_sy]
+
+theorem getD_take_drop (l : List Nat) (a m k d : Nat) :
+    ((l.drop a).take m).getD k d = if k < m then l.getD (a + k) d else d := by
+  simp only [List.getD_eq_getElem?_getD, List.getElem?_take, List.getElem?_drop]
+  by_cases h : k < m <;> simp [h]
+
+theorem gx_ext (f : Nat → Bool) (l m : Nat) (h : l ≤ m) (hf : ∀ k, l ≤ k → f k = false) : gx m f = gx l f := by
+  induction m with
+  | zero => have : l = 0 := by omega
+            subst this; rfl
+  | succ m ih =>
+    by_cases hl : l = m + 1
+    · subst hl; rfl
+    · have h1 : l ≤ m := by omega
+      unfold gx
+      rw [List.range_succ, List.foldl_append]
+      have := ih h1
+      unfold gx at this
+      simp [this, hf m h1]
+
 end ZP.Mul.MM
