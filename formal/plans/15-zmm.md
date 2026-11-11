@@ -149,8 +149,16 @@ verdict, `mmPhase`, pair lemma, top.
 
 ## Checklist
 
-- [ ] `DefsMM` + checks; generated files, certificate
-- [ ] `zmCore`, Ext facts, Z_MUL lemmas over `zmCore`
+- [x] `DefsMM` + checks; generated files, certificate (ZP/DefsMM.lean, ZP/ExtChecksMM.lean)
+- [x] Ext facts (`zmBase_ext_zmmLogic`; no zmCore needed), Z_MUL lemmas retargeted (MMHalt, MMSwitch, MMRun, MMPair)
 - [ ] setup, j-step, B row, next B row
 - [ ] row end (dry, compare, fetch), reverse shift, verdict
 - [ ] `mmPhase`, `pair_mainMM`, `zmmQuasihalts_iff_sentence`, Challenge/Solution
+
+### Status (end of session 2)
+
+Remaining: segment families via symbolic executor (setup SM/RB loops, j-step with
+jc a v x := if a = 0 and v = 3 then 5 - x else x, B row induction, RS rewind, toFA,
+fetch, dry row/D3, Q pass, N1-N5 shift, verdict stages 1 and 2), row loop, bridge
+checkMM <-> row-wise in ZP/MMSpec.lean, mmPhase, haltPhaseMM, pair_mainMM, Main,
+Challenge/Solution/comparator.
