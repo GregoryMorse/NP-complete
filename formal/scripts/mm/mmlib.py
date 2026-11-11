@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen_lib as G
 S = G.S
 G.KIND.update({'B0': [0], 'bits1': [1, 2, 3], 'M1': [1], 'B01': [0, 2, 3], 'BM': [0, 1]})
-G.HYP.update({'B0': '(h{n} : ∀ a ∈ {n}, a ∈ B0)', 'M1': '(h{n} : ∀ a ∈ {n}, a = 1)', 'B01': '(h{n} : ∀ a ∈ {n}, a ∈ B01)'})
+G.HYP.update({'B0': '(h{n} : ∀ a ∈ {n}, a ∈ B0)', 'M1': '(h{n} : ∀ a ∈ {n}, a ∈ M1s)', 'B01': '(h{n} : ∀ a ∈ {n}, a ∈ B01)'})
 G.SETN.update({'B0': 'B0', 'M1': 'M1s', 'B01': 'B01'})
 KIND, HYP, SETN = G.KIND, G.HYP, G.SETN
 qn = G.qn

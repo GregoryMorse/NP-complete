@@ -25,4 +25,5 @@ spec('vSetupZero', 'm = 0: outcome 1, up to `VW1`.', VS, cfg('X3a', TOP, 2, ['wr
 spec('vSetupEmpty', 's is empty: outcome 1, up to `VW1`.', VS, cfg('X3a', TOP, 0, []), 'VW1')
 spec('vSetupOnes', 's = 1^m: outcome 1, up to `VW1`.', VS, cfg('X3', TOP + ['on'], 0, []), 'VW1')
 spec('vSetupNoW', 'w is empty: outcome 1, up to `VW1`.', VS, cfg('SM', TOP + ['on', 0], 0, []), 'VW1')
+print('def M1s : List Nat := [1]\ndef B01 : List Nat := [0, 2, 3]\n')
 print('\n'.join(OUT))
