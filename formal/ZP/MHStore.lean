@@ -146,4 +146,22 @@ theorem ucs_shape (u : List Nat) (ps : List Nat) : ucs u ps = [] ∨ ∃ S, ucs 
     rw [ucs_snoc]
     simp [uc]
 
+
+theorem cellN_cases (c : Option Bool) : cellN c = 0 ∨ cellN c = 2 ∨ cellN c = 3 := by
+  rcases c with _ | _ | _ <;> simp [cellN]
+
+theorem Sym4.uc {u : List Nat} (hu : Bits u) (p mk : Nat) (hmk : mk ∈ ALL) : Sym4 (uc u p mk) := by
+  intro a ha
+  simp only [ZP.MH.uc, List.mem_cons, List.mem_append] at ha
+  rcases ha with rfl | (h | rfl | h)
+  · simp [ALL]
+  · exact hu.sym4 a (List.mem_of_mem_take h)
+  · exact hmk
+  · exact hu.sym4 a (List.mem_of_mem_drop h)
+
+theorem sym4_storeOf (x : List Bool) (pos : List Nat) (cur : Nat) : Sym4 (storeOf x pos cur) := by
+  have hu := Bits.uOf x
+  unfold storeOf cfg
+  exact ((NoB.ucs hu _).sym4.app (Sym4.uc hu _ 0 (by simp [ALL]))).app (NoB.ucs hu _).sym4
+
 end ZP.MH
