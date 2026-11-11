@@ -173,3 +173,8 @@ Note: F moves toward lower indices; in Lean order the machine runs on `hd` forms
 Remaining: X-phase setup glue (X0..X3, SM entry, entry from GC), rsFin/rsLoop, B-row induction
 over jMore/jLast, toFA/fetch, dry row/D3, Q pass loop, N1-N5, row loop, MMSpec bridge, mmPhase,
 haltPhaseMM, pair_mainMM, Main, Challenge/Solution/comparator, `#print axioms`.
+
+Update: also done and compiling: `rsEnd`/`rsLoop` (MMJ, MMRSLoop), `bRow` (MMBRow: n j-steps with the accumulator
+update `jc`, from `hdR J1` to `hdR RS1`; `jc_bits`).
+Remaining: X-phase setup glue, toFA/fetch (G1, GA, FA..FE, G2), dry row/D3, Q pass loop, N1-N5, verdict wiring,
+row loop, MMSpec bridge, mmPhase, haltPhaseMM, pair_mainMM, Main, shared files, `#print axioms`.
