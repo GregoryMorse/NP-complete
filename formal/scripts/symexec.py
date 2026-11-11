@@ -12,18 +12,24 @@ IDENT = os.environ.get('LOGICID', 'zp')
 SRC = open(os.path.join(HERE, '..', 'ZP', LOGIC + '.lean')).read()
 
 
+ROWS = os.environ.get('ROWS', IDENT + 'Logic')   # row prefix; ROWS=mhBase for ZP/LogicBaseMH.lean
+BASEFILES = os.environ.get('QFILES', '')          # extra files whose `def X : Nat := n` give names
+
+
 def _rows():
     rows = []
-    for k in range(len(re.findall(r'def %sLogicRows\d+ ' % IDENT, SRC))):
-        m = re.search(r'def %sLogicRows%d : List \(List Nat\) :=\s*\[(.*?)\]\n' % (IDENT, k), SRC, re.S)
+    for k in range(len(re.findall(r'def %sRows\d+ ' % ROWS, SRC))):
+        m = re.search(r'def %sRows%d : List \(List Nat\) :=\s*\[(.*?)\]\n' % (ROWS, k), SRC, re.S)
         body = m.group(1)
         rows += [list(map(int, x.split(','))) for x in re.findall(r'\[([0-9, ]+)\]', body)]
     return rows
 
 
 TABLE = _rows()
-BEEP = int(re.search(r'def %sLogic : LTM := ⟨%sLogicRows, (\d+)⟩' % (IDENT, IDENT), SRC).group(1))
+BEEP = int(re.search(r'def \w+ : LTM := ⟨%sRows, (\d+)⟩' % ROWS, SRC).group(1))
 _BASE = open(os.path.join(HERE, '..', 'ZP', 'Logic.lean')).read()
+for _f in filter(None, BASEFILES.split(',')):
+    _BASE += open(os.path.join(HERE, '..', 'ZP', _f + '.lean')).read()
 Q = {n: int(v) for n, v in re.findall(r'def (\w+) : Nat := (\d+)', _BASE + SRC)}
 QN = {v: n for n, v in Q.items()}
 
