@@ -81,4 +81,30 @@ theorem accRow_col (Rws : List (List Nat)) (As C : List Nat) (hA : ∀ s ∈ As,
   rw [this]
   exact accFold_col As _ C hA hC hR1 j hj
 
+/-- The inner loop of `mmC`. -/
+def gx (n : Nat) (f : Nat → Bool) : Bool := (List.range n).foldl (fun acc k => xor acc (f k)) false
+
+theorem foldl_shift (f : Nat → Bool) : ∀ (l : List Nat) (b : Bool),
+    l.foldl (fun acc k => xor acc (f k)) b = xor b (l.foldl (fun acc k => xor acc (f k)) false)
+  | [], b => by simp
+  | k :: l, b => by
+    simp only [List.foldl_cons]
+    rw [foldl_shift f l (xor b (f k)), foldl_shift f l (xor false (f k))]
+    cases b <;> cases f k <;> cases l.foldl (fun acc k => xor acc (f k)) false <;> rfl
+
+theorem gx_succ (n : Nat) (f : Nat → Bool) : gx (n + 1) f = xor (f 0) (gx n (fun k => f (k + 1))) := by
+  unfold gx
+  rw [List.range_succ_eq_map, List.foldl_cons, List.foldl_map, foldl_shift]
+  simp
+
+theorem prodCol_eq (j : Nat) : ∀ (As : List Nat) (Rws : List (List Nat)), As.length ≤ Rws.length →
+    prodCol As Rws j = gx As.length (fun k => bt (As.getD k 2) && bt ((Rws.getD k []).getD j 2))
+  | [], Rws, _ => by simp [prodCol, gx]
+  | s :: As, [], h => by simp at h
+  | s :: As, V :: Rws, h => by
+    rw [List.length_cons, gx_succ]
+    simp only [prodCol]
+    rw [prodCol_eq j As Rws (by simpa using h)]
+    simp
+
 end ZP.Mul.MM
