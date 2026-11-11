@@ -53,4 +53,49 @@ theorem drop_rev (O : List Nat) (m : Nat) : (O.drop m).reverse = O.reverse.take 
   · congr 1; omega
   · rw [List.drop_of_length_le (by omega), List.drop_of_length_le (by omega)]
 
+theorem lastRow (m : Nat) (Rws : List (List Nat)) (hRws : ∀ r ∈ Rws, Bits r ∧ r.length = m) (hlen : Rws.length = m)
+    (hm : m ≠ 0) (Atot C Orest Cb0 J sv Y2 : List Nat) (q : Nat) (hA : ∀ s ∈ Atot, s = 2 ∨ s = 3)
+    (hle : Atot.length ≤ m) (hC : Bits C) (hClen : C.length = m) (hO : Bits Orest) (hCb0 : ∀ a ∈ Cb0, a = 0)
+    (hJ : Bits J) (hsv : Bits sv) (hY2 : Sym4 Y2) :
+    (accRow Rws Atot C = List.replicate m 2 →
+      zmmLogic.Reach
+        (hdR QMM.RS1 (Atot.reverse ++ List.replicate q 1 ++ 1 :: stor Rws ++ 0 :: [] ++ [1])
+          (0 :: C.reverse ++ 1 :: (Orest.reverse ++ Cb0 ++ 1 :: J ++ 1 :: sv ++ 0 :: 1 :: Y2)))
+        (hdR Q.DP31 (1 :: (J ++ 1 :: (sv ++ [1]))) (1 :: Y2))) ∧
+    (accRow Rws Atot C ≠ List.replicate m 2 →
+      zmmLogic.Reach
+        (hdR QMM.RS1 (Atot.reverse ++ List.replicate q 1 ++ 1 :: stor Rws ++ 0 :: [] ++ [1])
+          (0 :: C.reverse ++ 1 :: (Orest.reverse ++ Cb0 ++ 1 :: J ++ 1 :: sv ++ 0 :: 1 :: Y2)))
+        (hdR Q.DP30 (1 :: (J ++ 1 :: (sv ++ [1]))) (1 :: Y2))) := by
+  have hCne : C ≠ [] := fun h => hm (by rw [h] at hClen; simpa using hClen.symm)
+  have hAb : Bits Atot := fun t ht => by rcases hA t ht with rfl | rfl <;> simp [bits]
+  have eS : stor Rws = stor (Rws.take Atot.length ++ Rws.drop Atot.length) := by rw [List.take_append_drop]
+  have hl : Atot.length = (Rws.take Atot.length).length := by
+    rw [List.length_take]; omega
+  have hR : ∀ r ∈ Rws.take Atot.length ++ Rws.drop Atot.length, Bits r ∧ r.length = C.length := by
+    rw [List.take_append_drop]; intro r hr; rw [hClen]; exact hRws r hr
+  have hI := accFold_inv Atot (Rws.take Atot.length) C hC (fun r hr => hR r (List.mem_append.mpr (Or.inl hr)))
+  have hI2 := accFoldE_inv (Rws.drop Atot.length) (accFold Atot (Rws.take Atot.length) C) hI.1 (fun r hr => by
+    rw [hI.2]; exact hR r (List.mem_append.mpr (Or.inr hr)))
+  have hacc : accRow Rws Atot C = accFoldE (Rws.drop Atot.length) (accFold Atot (Rws.take Atot.length) C) := rfl
+  rw [eS]
+  constructor
+  · intro hf
+    rw [hacc] at hf
+    exact rowLastUsed Atot _ _ C Orest.reverse Cb0 J sv Y2 q m hl hA hCne hC hR hf (fun a ha => hO a (List.mem_reverse.mp ha))
+      hCb0 hJ hsv hY2
+  · intro hf
+    have hb := hI2.1
+    have hne : (accRow Rws Atot C).reverse ≠ List.replicate (accRow Rws Atot C).reverse.length 2 := by
+      intro h
+      apply hf
+      have h' := congrArg List.reverse h
+      rw [List.reverse_reverse, List.length_reverse, List.reverse_replicate] at h'
+      rw [h']
+      have : (accRow Rws Atot C).length = m := by rw [hacc, hI2.2, hI.2, hClen]
+      rw [this]
+    obtain ⟨Z, Y, e, hZ, hY⟩ := split3 _ (fun a ha => hb a (List.mem_reverse.mp ha)) hne
+    exact rowLastBad Atot _ _ C Z Y Orest.reverse Cb0 J sv Y2 q hl hA hCne hC hR hZ hY e
+      (fun a ha => hO a (List.mem_reverse.mp ha)) (fun a ha => by simp [B0, hCb0 a ha]) hJ hsv hY2
+
 end ZP.Mul.MM
