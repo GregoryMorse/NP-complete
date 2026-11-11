@@ -71,14 +71,14 @@ MACHINES = {
     'zntt_native': (zntt, lambda max_beeps: ((b, '1' * c, '1' * n) for b, c, n in
                                             zntt_ref.zp_beeps(max_beeps)), None),
     'zbpp_native': (zbpp, zbpp_ref.zp_beeps, None),
-    'zppoly_native': (zppoly, lambda max_beeps: ((b, K, '0' * n) for b, K, n in
+    'zppoly_native': (zppoly, lambda max_beeps: ((b, K[::-1], '0' * n) for b, K, n in
                                                 zppoly_ref.zp_beeps(max_beeps=max_beeps)), None),
     'zlp_native': (zlp, zmh_ref.zp_beeps, None),
     'zlnl_native': (zlnl, znl_ref.zp_beeps, None),
     'zmm_native': (zmm, zmm_ref.zp_beeps, None),
 }
 # the NTT machine beeps with (C, Nn) in tape fields 3 and 4, the P/poly machine
-# with (K, s) in fields 1 and 3 (field 2 is the advice a, with one cell blanked)
+# with (K, s) in fields 1 and 3 (field 2 is the advice a; K is stored last bit first)
 FIELDS = {'zntt_native': (3, 4), 'zppoly_native': (1, 3)}
 # the second NTT refutation (c = 2) is far out of reach, and so is the second
 # P/poly refutation (the reference needs every advice program up to length
@@ -394,15 +394,26 @@ def test_multihead_act():
 
 def test_ppoly_events(n=6):
     """The P/poly machine passes lengths (SOV: K, a, s) and beeps (BEEPX: K, s)
-    in the order of zppoly_ref.events."""
+    in the order of zppoly_ref.events (the tape holds K last bit first).  SOV
+    is also the overflow state of a + 1: an SOV is an event when the deletion
+    loop of a (DL5) follows at once."""
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'esim'),
                            os.path.join(ROOT, 'native', 'esim.c')])
-    got = []
-    for e in esim.events(zppoly.build(), ['SOV', 'BEEPX'], n, maxsteps=10**9)[:n]:
-        f = e[2].strip('B').split('M') if len(e) == 3 else None
-        got.append(('ok', f[1], len(f[3]), f[2]) if e[0] == 'SOV' else
-                   ('beep', f[1], len(f[3])) if e[0] == 'BEEPX' else e)
-    assert got == list(zppoly_ref.events(max_events=n)), got
+    m = zppoly.build()
+    maxev = 16 * n
+    while True:
+        evs = esim.events(m, ['SOV', 'DL5', 'BEEPX'], maxev, maxsteps=10**9)
+        got = []
+        for i, e in enumerate(evs):
+            if e[0] == 'DL5' or e[0] == 'SOV' and not (i + 1 < len(evs) and evs[i + 1][0] == 'DL5'):
+                continue
+            f = e[2].strip('B').split('M') if len(e) == 3 else None
+            got.append(('ok', f[1][::-1], len(f[3]), f[2]) if e[0] == 'SOV' else
+                       ('beep', f[1][::-1], len(f[3])) if e[0] == 'BEEPX' else e)
+        if len(got) > n or evs[-1][0] != 'END':
+            break
+        maxev *= 2
+    assert got[:n] == list(zppoly_ref.events(max_events=n)), got
 
 
 def test_compiled(n=None):

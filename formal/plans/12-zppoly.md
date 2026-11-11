@@ -54,6 +54,9 @@ every `a` of length `≤ budget` gets a wrong `s`, so `a` runs past the budget. 
 measure for "K is left after finitely many steps" is `(n, rank a, s)` lexicographic,
 bounded by the first bad `n`.
 
+On the tape `K` is stored reversed; the layout function writes `K.reverse` and the
+`K + 1` segment proves `rev (succ K) = incL (rev K)` for the left-to-right increment.
+
 Then generalize `LMacroSimC` (`ZP/LogicalG.lean`) to an abstract step on `(K, n, a, s)`,
 or encode the state as a pair `(K, code (n, a, s))` and reuse it with a custom step;
 pick whichever needs fewer changes to `lmacroSim_of_pairs`. Write a design note first.
@@ -64,39 +67,73 @@ pick whichever needs fewer changes to `lmacroSim_of_pairs`. Write a design note 
 python3 formal/gen_table.py zppoly_native zppolyMachine && python3 formal/gen_logic.py zppoly
 ```
 
-zppoly changes 13 zp2 transitions (`BD3,M`, `BN3,M`, `DG3,M`, `DP10,M`, `DP11,M`,
-`DP40,1`, `DP41,M`, `EBj,M`, `JINC,0`, `JOV2,B`, `SOV,B`, `VG3,M`, `WB2,B`), removes
-`BEEP` and `JE3`, and adds 39 states. The beep state is `BEEPX`. Define `zpolyBase` =
-`zpBase` minus the changed transitions (plan 07 pattern) and retarget the surviving
-zp2 lemmas.
+zppoly overrides zp2 inside `native/zppoly.py` (zp2 itself is unchanged):
+
+- **12 changed zp2 transitions**: `BN3,M`, `DG3,M`, `VG3,M`, `DP10,M`, `DP11,M` (one
+  more field to skip), `CX,1`, `CX,M`, `CX,B` (BLK dispatch), `WB2,B` (charge),
+  `EBj,M` (wrong answer), `SOV,B` (correct answer, overflow), `JOV2,B` (start and
+  `K + 1`).
+- **8 new transitions on zp2 states**, all on keys that zp2 leaves undefined, so they act
+  as fresh exits: `GC,B`, `PK1,M`, `EL2,M` (charge), `SOV,M`, `FB,0` (`a + 1` carry),
+  `JOV2,0`, `JOV2,1`, `JOV2,M` (`JOV2` writes `M` on any cell).
+- **Deleted zp2 states**: `BD1`–`BD6` (zp2's BLK dispatch by counting fields), `JE3`,
+  `JINC`, `JOV` (zp2's `J + 1`).
+- **25 new states**: `BNA`, `DGA`, `VGA`, `DPX0`, `DPX1` (field skips); `CXC`, `CXV`,
+  `CXD` (dispatch); `CHS`, `CK`, `CK2`, `CK3`, `CD`, `U`, `V` (charge); `Z3`, `BEEPX`,
+  `KINC`, `J2` (beep, `K + 1`); `ZS`, `AOV3` (wrong); `DL5`, `DL1`, `DL3`, `DL4`
+  (correct).
+
+The beep state is `BEEPX`. zp2's `BEEP` keeps its transition (`BEEP,M → 0,R,EAs`) but
+is not the beep state: it only marks a wrong answer (the flag cell becomes `0`, so
+`EBs` goes to `EBj`). Define `zpolyBase` = `zpBase` minus the changed and deleted
+transitions (plan 07 pattern) and retarget the surviving zp2 lemmas. A zp2 lemma whose
+run never reads one of the 8 new keys holds unchanged; the ones whose run ends on such
+a key (the copy loop at `GC`, the fuel loop at `PK1`, the exhaustion at `EL2`, the
+counter at `SOV`) get a new exit case instead of the zp2 one.
 
 ## 4. Layout and phases
 
-Between runs: `M_g K M_1 a M_a s M_2 C M_3 fuel` (verifier phase),
-`M_g K M_1 a M_a s M_2 M [1] M_3 fuel` (decider phase). The extra field `a` sits
-between `M_1` and `s`: every navigation that zp2 does by counting fields gets one more
-field (`BNA`, `BDA`, `DGA`, `VGA`, `DPX*`). Restate zp2's layout functions with the
-field and check, segment by segment, that only the counts change.
+Between runs: `M_g rev(K) M_1 a M_a s M_2 C M_3 fuel` (verifier phase),
+`M_g rev(K) M_1 a M_a s M_2 M [1] M_3 fuel` (decider phase). **`K` is stored last bit
+first** (`rev K` on the tape), so that the shortlex `K + 1` runs left to right from
+`M_g`; the walker only uses `|K|`. The extra field `a` sits between `M_1` and `s`: every
+navigation that zp2 does by counting fields gets one more field (`BNA`, `DGA`, `VGA`,
+`DPX*`). Restate zp2's layout functions with the field and check, segment by segment,
+that only the counts change.
 
-Print tapes on the Python machine at `GRB`, `WB2`, `CHS`, `CA`, `XD1*`, `CDN`, `BEEPX`,
-`WRG`, `ZS`, `AINC`, `AOV*`, `SOV`, `DL*` for `K = ''` and `K = '0'` before writing
-statements.
+Print tapes on the Python machine at `GRB`, `WB2`, `CHS`, `CD`, `U`, `PK1`, `EL2`,
+`BEEPX`, `J2`, `ZS`, `SINC`, `SOV`, `FB`, `AOV3`, `DL*` for `K = ''` and `K = '0'`
+before writing statements (run the logical machine and print `logic.show(tape, h)` on
+entry to those states).
 
 | phase | reuse | new |
 |---|---|---|
 | verifier (truth of `s ∈ L`) | zp2's verifier loop, with the extra field | field-skip segments |
-| decider fuel | zp2's walker, with `K` for `J` | `WB2,B → CHS` (no `H` yet) |
-| **charge** | zp2's `DEC`/`RF`/`RG` odometer lemma (`ZP/Fuel.lean`) | loop `CA → XR b → XD1 b … → XK b → CA`: blank a cell of `a`, decrement the fuel once, restore the cell. Exhaustion `XD1 b, M → BEEPX` |
-| decider run | zp2's `runFrom` with code `a`, source `s`, fuel = clock − `|a|` | `CDN` writes `H` |
-| beep | — | `BEEPX → EXC → EXD → EXG → JINC → JX1 → JX2 → GRB` (erase right of `M_1`, `K + 1`) |
-| wrong | — | `WRG → EAs …  EBj → ZS → AINC → (AOV …)`: `s := 0^n`, `a := a + 1` with the shift on a carry |
-| correct | zp2 `SINC` (binary on `s`) | `SOV → DL5 → DL1 … DL4`: append a cell to `s`, delete `a` cell by cell |
+| BLK dispatch | zp2's copy loop up to its exit `CX` | `CX` reads the cell after `M_2`. `1 → CXC`: the field `C`; `CXC,B` and `CX,B` (`C` with `n = 0`) write the last `1` and `FB` writes `M_3`; `CXC,M → CXV`: verifier fuel built `→ VG1`. `M → CXD`: decider fuel block built `→ DW1` |
+| decider fuel | zp2's walker, with `K` for `J` | `WB2,B → CHS` (`H` written) |
+| **charge** | zp2's guest copy `GC` (exit `GC,B`), zp2's odometer `FR … DEC1 … FBACK → PK1` (exit `PK1,M`) | `CHS → CK → CK2` blanks `M_a`, `CK3 → GC` copies `a` as tokens left of `H`; `GC,B` restores `M_a`, `CD` goes to the first token, `U` turns it into the marker `M_t`, `V` turns `H` into the gap and enters `FR`. After each decrement `PK1,M` blanks `M_t`, `U` puts it on the next token. No token left: `U,B` writes `H`, `U,M` (`a = ''`) keeps it; both go to `DG2` |
+| decider run | zp2's `runFrom` with code `a`, source `s`, fuel = clock − `\|a\|` | — |
+| beep | zp2's exhaustion `DEC1,M → EXH → GHH0 → EL1 → EL2` (`GHH0` turns `M_g` into `0`) | `EL2,M` (meets `M_t`) `→ Z3` restores `M_g` `→ BEEPX` |
+| `K + 1`, reset | zp2's eraser `VA3 → VA4 → FB → GRB` | `BEEPX`/`KINC`: `1 → 0` carry, `0 → 1 → J2` skips to `M_1`; carry out at `M_1`: `0`, then `JOV2` writes `M_1` one cell right. Then `VA3` erases right of `M_1`, `FB` writes `M_a`, `GRB` writes `M_2` |
+| wrong | zp2's `DP40/DP41 → BEEP → EAs … EBs → EBj`, zp2's `SINC` on `a` | `EBj,M → ZS`: `s := 0^n`, then `SINC` on `a`. Carry out of `a`: `SOV` meets `M_a`, `SOV,M` writes `0`, `FB,0` writes `M_a` over the first cell of `s`, `AOV3` appends a `0` |
+| correct | zp2 `EBs → SINC` (binary on `s`) | carry out of `s`: `SOV,B` appends a `0` `→ DL5 → DL1 … DL4`: delete `a` cell by cell (shift `M_a` and `s` left), `DL1,M → GRB` |
+
+`SINC` is the same increment for `s` and for `a` (from the right end, a carry moves
+left, `SINC,M → SOV`); `SOV` then runs right over the zeros and tells the two cases
+apart by what it meets: a blank after `s` (correct, `n + 1`) or `M_a` after `a`
+(wrong, `|a| + 1`).
 
 **The charge lemma.** Charging `|a|` units against a fresh odometer of value
 `budget K n` (zp2's `fuelVal` at the walker's end) either leaves value
 `budget K n − |a|` (then the decider run is zp2's run with clock `budget − |a|`) or
-exhausts it exactly when `|a| > budget K n`. One induction over the cells of `a`, using
-the decrement lemma of `ZP/Fuel.lean` per cell.
+exhausts it exactly when `|a| > budget K n`. One induction over the remaining tokens,
+with invariant `B… B M_t t_(i+1) … t_k gap M_g …` (blanks left of `M_t`, the tokens
+contiguous up to the gap), using the decrement lemma of `ZP/Fuel.lean` per token
+(`FR → … → FBACK → PK1`, then `PK1` skips the tokens to `M_t`). On exhaustion, `EL2`
+erases the tokens leftwards and meets `M_t` before any blank; in a guest run's
+exhaustion `EL2` must meet `B` (zp2's exit `EL3`) and never an `M`: prove that the
+cells left of the guest tape are blank there. After a completed charge all cells left
+of `H` are blank, which is what zp2's decider-run setup expects.
 
 ## 5. Top
 
@@ -114,8 +151,9 @@ reductions. A Lean version needs a definition of P/poly; write a design note fir
 ## Estimate
 
 ~4000–5500 lines, 3–4 sessions: (1) defs, checks, the abstract program and its
-quasihalting theorem; (2) base, layout with the extra field, field-skip segments,
-verifier phase; (3) charge lemma, decider phase; (4) beep/wrong/correct successors, the
+quasihalting theorem; (2) base, layout with the extra field and reversed `K`, field-skip
+segments, BLK dispatch, verifier phase; (3) charge lemma (token marker over zp2's
+odometer), decider phase; (4) beep/wrong/correct successors, the
 macro simulation on the new state space, top theorem.
 
 ## Checklist
@@ -123,6 +161,6 @@ macro simulation on the new state space, top theorem.
 - [ ] `DefsPoly` + `ChecksPoly`
 - [ ] `AbstractPoly`: four-level enumeration, `abstractPoly_quasihalts_iff`
 - [ ] generated files, certificate, `zpolyBase`
-- [ ] layout with `a`, verifier phase, decider fuel
+- [ ] layout with `a` and reversed `K`, BLK dispatch, verifier phase, decider fuel
 - [ ] charge lemma, decider run
 - [ ] beep / wrong / correct successors, macro simulation, `zppoly_quasihalts_iff_sentence`

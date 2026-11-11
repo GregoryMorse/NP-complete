@@ -367,16 +367,20 @@ iff **NP ⊆ P/poly** (`L` is NP-complete under polynomial-time reductions, whic
 preserve P/poly). Reference: `ref/zppoly_ref.py`.
 
 Layout: `M_g K M_1 a M_a s M_2 C M_3 …`. `K` plays `J`'s part (the walker builds
-`|K|+1` fuel blocks); the decider's code is `a`, the field before its source `s`, and
-`s` is a binary counter of fixed length `n`.
+`|K|+1` fuel blocks) and is stored last bit first, so `K + 1` runs from the left; the
+decider's code is `a`, the field before its source `s`, and `s` is a binary counter of
+fixed length `n`. After a block is built, the cell after `M_2` tells the phase (`1`:
+verifier fuel, `M`: decider fuel), instead of zp2's count of fields.
 
-- **Charge.** Before a decider run, each cell of `a` is blanked in turn (its bit kept in
-  the state) and the fuel is decremented once. Exhausting the fuel there means
-  `|a| > T(K, n)`: the machine beeps (`BEEPX`), erases everything right of `M_1` and
-  moves to `K + 1`, `n = 0`, `a = ''`.
+- **Charge.** Before a decider run, zp2's guest copy loop copies `a` to the left of
+  `M_g` as tokens. The fuel is then decremented once per token through zp2's own
+  odometer loop: each return of the loop moves a marker one token on. Exhausting the
+  fuel there means `|a| > T(K, n)`: the machine beeps (`BEEPX`), increments `K`, erases
+  everything right of `M_1` and goes on with `n = 0`, `a = ''`.
 - **Next instance.** Correct: `s + 1` in binary; an overflow appends a cell to `s`
-  (`n + 1`) and deletes `a` cell by cell. Wrong: `s := 0^n`, `a := a + 1` (shortlex; a
-  carry out of `a` lengthens it, shifting `M_a` and `s` by one cell).
+  (`n + 1`) and deletes `a` cell by cell. Wrong: `s := 0^n`, `a := a + 1` (shortlex,
+  with the same increment as `s`; a carry out of `a` lengthens it, shifting `M_a` by one
+  cell). zp2's beep state now only marks a wrong answer.
 
 Only the first refutation (`K = ''`, `n = 1`) is in reach of the tests; the second
 needs every advice program up to length `T('0', 4) = 35`. The tests also follow the
