@@ -381,4 +381,37 @@ theorem checkMM_iff (out s : List Bool) (hm : mmM s ≠ 0) :
       rw [hC, fm_get _ (fun i j => gx (mmM s) (fun k => mmA s i k && mmB s k j)) _ _ _ hi hj, this]
     · rw [if_neg hlt, List.getElem?_eq_none (by omega)]
 
+theorem fuel_rows (L m : Nat) (hm : m ≠ 0) : L ≤ (L + m - 1) / m * m := by
+  have h := Nat.div_add_mod (L + m - 1) m
+  have hl := Nat.mod_lt (L + m - 1) (Nat.pos_of_ne_zero hm)
+  rw [Nat.mul_comm] at h
+  omega
+
+theorem rows_eq (s : List Bool) (hm : mmM s ≠ 0) :
+    mmRows s = (((mmW s).drop (mmM s ^ 2)).length + mmM s - 1) / mmM s := by
+  simp [mmRows, hm, List.length_drop]
+
+/-- The machine's row test is exactly `checkMM`. -/
+theorem rowsOK_checkMM (out s : List Bool) (hm : mmM s ≠ 0) :
+    rowsOK (mmM s) ((List.range (mmM s)).map (fun k => (List.range (mmM s)).map (fun j => sy (mmB s k j))))
+      (mmRows s) (((mmW s).drop (mmM s ^ 2)).map sy)
+      ((((out.map sy)) ++ List.replicate (mmM s) 2).take (mmM s)) ((out.map sy).drop (mmM s)) ↔
+    checkMM out s = true := by
+  rw [checkMM_iff out s hm]
+  have hfuel : ((mmW s).drop (mmM s ^ 2)).length - 0 * mmM s ≤ mmRows s * mmM s := by
+    have := fuel_rows (((mmW s).drop (mmM s ^ 2)).length) (mmM s) hm
+    rw [rows_eq s hm]; simpa using this
+  have key := rowsOK_iff (mmM s) (mmB s) ((mmW s).drop (mmM s ^ 2)) out hm (mmRows s) 0 hfuel
+  simp only [Nat.zero_mul, List.drop_zero, Nat.zero_add, Nat.one_mul] at key
+  rw [key]
+  constructor
+  · intro h i hi j hj
+    have hlt : i * mmM s < ((mmW s).drop (mmM s ^ 2)).length := by
+      rw [rows_eq s hm, rows_lt _ _ _ hm] at hi; exact hi
+    exact h i (Nat.zero_le _) hlt j hj
+  · intro h i' _ hlt j hj
+    have hi : i' < mmRows s := by
+      rw [rows_eq s hm, rows_lt _ _ _ hm]; exact hlt
+    exact h i' hi j hj
+
 end ZP.Mul.MM
