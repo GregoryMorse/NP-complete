@@ -11,6 +11,8 @@ def kmove(name, q, c, w, q2, doc):
     spec(name, doc, V, (q, ['L', c], ['R']), (q2, ['L', w], ['R']), tt='TF')
 
 
+for c in (2, 3):
+    kmove('d0Step%d' % c, 'D0', c, c, 'D0', 'D0 passes the rest of w.')
 kmove('d0P', 'D0', 0, 0, 'D1', 'D0 on `P`.')
 for c in (2, 3):
     kmove('d1Step%d' % c, 'D1', c, c, 'D1', 'D1 passes a bit of B.')

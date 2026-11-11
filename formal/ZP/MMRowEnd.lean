@@ -10,6 +10,28 @@ namespace ZP.Mul.MM
 
 open ZP
 
+/-- D0 passes the rest of w. -/
+theorem d0Step2 (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.D0 (L ++ ([2])) (R))
+      (hdR QMM.D0 (L ++ ([2])) (R)) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 2]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- D0 passes the rest of w. -/
+theorem d0Step3 (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.D0 (L ++ ([3])) (R))
+      (hdR QMM.D0 (L ++ ([3])) (R)) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 3]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
 /-- D0 on `P`. -/
 theorem d0P (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
     zmmLogic.Reach (hd QMM.D0 (L ++ ([0])) (R))

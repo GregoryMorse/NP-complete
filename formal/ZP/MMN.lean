@@ -153,5 +153,71 @@ theorem rbEnd2 (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+/-- N2 reads a bit: the dry row ended. -/
+theorem n2Bit2 (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.N2 (L ++ ([2])) (R))
+      (hd QMM.N4 (L) (2 :: (R))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 2, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- N4 passes the rest of w. -/
+theorem n4Step2 (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.N4 (L ++ ([2])) (R))
+      (hd QMM.N4 (L) (2 :: (R))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 2, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- N2 reads a bit: the dry row ended. -/
+theorem n2Bit3 (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.N2 (L ++ ([3])) (R))
+      (hd QMM.N4 (L) (3 :: (R))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- N4 passes the rest of w. -/
+theorem n4Step3 (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.N4 (L ++ ([3])) (R))
+      (hd QMM.N4 (L) (3 :: (R))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTT (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 3]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id]) (rs' := [.sym 3, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- N4 meets the end of w. -/
+theorem n4End (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.N4 (L ++ ([0])) (R))
+      (hdR QMM.RB2 (L ++ ([0])) (R)) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 1) hV trivial
+    (ls := [.blk 0 .id, .sym 0]) (rs := [.blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0]) (rs' := [.blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
+/-- RB: the boundary `M` is written into the hole, the head moves to `P`. -/
+theorem rbBnd (L : List Nat) (R : List Nat) (hL : Sym4 L) (hR : Sym4 R) :
+    zmmLogic.Reach (hd QMM.RB1 (L ++ ([0])) (0 :: (R)))
+      (hdR QMM.RB1 (L ++ ([1])) (0 :: (R))) := by
+  have hV : Valid [ALL, ALL] [L, R] := Valid.cons hL (Valid.cons hR (Valid.nil _))
+  exact checkTF (env := [L, R]) (E := []) (k := 3) hV trivial
+    (ls := [.blk 0 .id, .sym 0]) (rs := [.sym 0, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 1]) (rs' := [.sym 0, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
 
 end ZP.Mul.MM

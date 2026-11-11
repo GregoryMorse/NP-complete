@@ -26,4 +26,10 @@ for x in (0, 1):
          ('RB2', ['L', 0], [x + 2, 'R']), ('RB1', ['L', x + 2], [0, 'R']), tt='FF')
 spec('rbEnd2', 'RB1 meets `Mr` right after the bits: rewind (RS1).', V,
      ('RB1', ['L', 0], [1, 'R']), ('RS1', ['L', 0, 1], ['R']), tt='TF')
+for c in (2, 3):
+    fmove('n2Bit%d' % c, 'N2', c, c, 'N4', 'N2 reads a bit: the dry row ended.')
+    fmove('n4Step%d' % c, 'N4', c, c, 'N4', 'N4 passes the rest of w.')
+kmove('n4End', 'N4', 0, 0, 'RB2', 'N4 meets the end of w.')
+spec('rbBnd', 'RB: the boundary `M` is written into the hole, the head moves to `P`.', V,
+     ('RB1', ['L', 0], [0, 'R']), ('RB1', ['L', 1], [0, 'R']), tt='TF')
 print('\n'.join(OUT))
