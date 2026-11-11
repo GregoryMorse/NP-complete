@@ -38,6 +38,7 @@ public import ZP.TwinTM
 public import ZP.TwinRound
 public import ZP.MainTwin
 public import ZP.Count
+public import ZP.PairBPP
 public import ZP.PairPP
 public import ZP.MainPP
 public import ZP.ChecksPS

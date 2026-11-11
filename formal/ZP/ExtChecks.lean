@@ -4,6 +4,7 @@ public import ZP.Ext
 public import ZP.Logic
 public import ZP.LogicBase
 public import ZP.LogicPP
+public import ZP.LogicBPP
 public import ZP.LogicPS
 public import ZP.LogicF
 public import ZP.LogicD
@@ -24,6 +25,7 @@ namespace ZP
 
 theorem zpBase_ext_zpLogic : zpBase.Ext zpLogic := LTM.ext_of_extB (by decide +kernel)
 theorem zpBase_ext_zppLogic : zpBase.Ext zppLogic := LTM.ext_of_extB (by decide +kernel)
+theorem zpBase_ext_zbppLogic : zpBase.Ext zbppLogic := LTM.ext_of_extB (by decide +kernel)
 theorem zpBase_ext_zpsLogic : zpBase.Ext zpsLogic := LTM.ext_of_extB (by decide +kernel)
 theorem zpBase_ext_zfacLogic : zpBase.Ext zfacLogic := LTM.ext_of_extB (by decide +kernel)
 theorem zpBase_ext_zdlLogic : zpBase.Ext zdlLogic := LTM.ext_of_extB (by decide +kernel)
