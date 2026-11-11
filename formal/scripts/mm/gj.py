@@ -23,8 +23,7 @@ spec('jLast', 'The last j-step of a B row: `Mr := M`, the hole is at the right e
 RV = [('Lq', 'ALL'), ('R', 'ALL')]
 spec('rsStep', 'Rewind: the hole swaps with its neighbour.', RV,
      ('RS1', ['Lq'], [0, '@x', 'R']), ('RS1', ['Lq', '@x'], [0, 'R']), params=[('x', 'bits')])
-RF = [('Fx', 'ALL'), ('Bpr', 'bits'), ('accr', 'bits'), ('Tl', 'ALL')]
-spec('rsFin', 'The hole is at the front: forward to the cell after `P`.', RF,
-     ('RS1', ['Fx', 0, 'Bpr', 1, 'accr'], [0, 1, 'Tl']), ('FA', ['Fx'], [0, 0, 'Bpr', 1, 'accr', 0, 1, 'Tl']) if False else ('FA', [], []), tt='FT') if False else None
+spec('rsEnd', 'Rewind exit: the head meets `Ms` and returns to the hole (state `G1`).', RV,
+     ('RS1', ['Lq'], [0, 1, 'R']), ('G1', ['Lq', 0], [1, 'R']), tt='FT')
 print('@[simp] def jc (a v x : Nat) : Nat := if a = 0 ∧ v = 3 then 5 - x else x\n')
 print('\n'.join(OUT))

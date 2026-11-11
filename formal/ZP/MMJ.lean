@@ -140,5 +140,16 @@ theorem rsStep (Lq : List Nat) (R : List Nat) (x : Nat) (hLq : Sym4 Lq) (hR : Sy
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 
+/-- Rewind exit: the head meets `Ms` and returns to the hole (state `G1`). -/
+theorem rsEnd (Lq : List Nat) (R : List Nat) (hLq : Sym4 Lq) (hR : Sym4 R) :
+    zmmLogic.Reach (hdR QMM.RS1 (Lq) (0 :: (1 :: (R))))
+      (hd QMM.G1 (Lq ++ ([0])) (1 :: (R))) := by
+  have hV : Valid [ALL, ALL] [Lq, R] := Valid.cons hLq (Valid.cons hR (Valid.nil _))
+  exact checkFT (env := [Lq, R]) (E := []) (k := 2) hV trivial
+    (ls := [.blk 0 .id]) (rs := [.sym 0, .sym 1, .blk 1 .id])
+    (ls' := [.blk 0 .id, .sym 0]) (rs' := [.sym 1, .blk 1 .id])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+
 
 end ZP.Mul.MM
