@@ -154,7 +154,10 @@ units, setup; (5) pair lemma, top.
       `runMHI L hext hGH x W hW np T R g pos cur ds ...`: from `Bd R g (mhRead x p) (1::(W++1::FWr ds))
       (0::storeOf x pos cur)` to `RE (runMHAux np x T R pos cur) (W++1::(FWr ds'++0::storeOf ..))`
       for any L with `mhBase.Ext L` and `GHStep L` (GH w d,M -> G2 w d). Shared with plan 14.
-- [ ] `MHUnits` (unit append, walker units, verifier units, setup)
+- [x] `MHUnitSeg` (generated) + `MHUnits` part 1 (commit d8b3004): `ustoreN x k`, `unitApp`, `walkUnits`
+- [ ] `MHUnits` part 2: shared `decFuel` with units (mhBase), zlp-only generated segments (UDW->GC2 dispatch,
+      gcStep, verifier/decider ends, glmEnd, post-run DP, VA3/EY erase), setup lemma (GLMD..segB),
+      verifier chain over `runMHI`, dPhase, compare/erase/successor phases
 - [ ] `PairLP` (pair lemma), `MainLP` (`zlpQuasihalts_iff_sentence`), Challenge/Solution/comparator
 - Tools: `scripts/seggen.py` emits checkTT/TF/FT/FF segment lemmas with auto-found fuel
   (see `gen_mhinterp.py` for usage); `scripts/symexec.py` takes `ROWS`/`QFILES` env vars.
