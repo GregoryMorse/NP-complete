@@ -28,7 +28,7 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | **Z_PPOLY native (quasihalts iff NP ⊆ P/poly)** | **362** | `machines/zppoly_native.txt` (`native/zppoly.py`, ref `ref/zppoly_ref.py`) |
 | **Z_LP native (quasihalts iff L = P)** | **426** | `machines/zlp_native.txt` (`native/zlp.py`, ref `ref/zmh_ref.py`) |
 | **Z_LNL native (quasihalts iff L = NL)** | **468** | `machines/zlnl_native.txt` (`native/zlnl.py`, ref `ref/znl_ref.py`) |
-| **Z_MATMUL native (quasihalts iff multitape TMs compute the GF(2) matrix product in linear time)** | **577** | `machines/zmm_native.txt` (`native/zmm.py`, ref `ref/zmm_ref.py`) |
+| **Z_MATMUL native (quasihalts iff multitape TMs compute the GF(2) matrix product in linear time)** | **494** | `machines/zmm_native.txt` (`native/zmm.py`, ref `ref/zmm_ref.py`) |
 | **twin-prime beeper native (quasihalts iff finitely many twin primes)** | **19** | `machines/twinprime_native.txt` (`twin/`; 18 with a beep transition, tying the best known) |
 | twin-prime beeper (counter-machine compile) | 265 | `machines/twinprime.txt` |
 

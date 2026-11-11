@@ -1,4 +1,4 @@
-# 15 — Z_MATMUL (`native/zmm.py`, 577 states): `Quasihalts zmmMachine ↔ SentenceMM`
+# 15 — Z_MATMUL (`native/zmm.py`, 494 states): `Quasihalts zmmMachine ↔ SentenceMM`
 
 Prerequisites: plan 07 (Z_MUL, done). This machine **is** Z_MUL with a new output
 check: the guest model, fuel, switch, run theorem, setup and dispatch are Z_MUL's.

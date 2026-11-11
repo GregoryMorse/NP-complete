@@ -452,7 +452,7 @@ with the rest of the far right (the erase loop after the comparison).
 The tests compare beeps with the references, run instances whose programs switch
 heads, and check the act on every storage with `|x| ≤ 3` and up to 3 heads.
 
-### Linear-time GF(2) matrix product (`native/zmm.py`, 577 states)
+### Linear-time GF(2) matrix product (`native/zmm.py`, 494 states)
 
 Z_MUL with a different output check (`ref/zmm_ref.py`): the guest model, the clock
 `T = (|s|+2)·2^|J| − 1`, the outer loop and the beep on the first wrong `s` are

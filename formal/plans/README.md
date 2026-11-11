@@ -22,7 +22,7 @@ machines (11–15).
 | 12 | [Z_PPOLY](12-zppoly.md) | 362 states | 01 | 4000–5500 | medium: new four-level abstract program; charge lemma |
 | 13 | [Z_LP](13-zlp.md) | 426 states | 01 (07's base lesson) | 5000–7000 | hard: new guest model (multihead read-only input) |
 | 14 | [Z_LNL](14-zlnl.md) | 468 states | 13 | 2500–3500 | medium: zp2 verifier with a one-way head + 13's decider |
-| 15 | [Z_MATMUL](15-zmm.md) | 577 states | 07 | 3000–4500 | medium: Z_MUL's proof shared through a common base, new check |
+| 15 | [Z_MATMUL](15-zmm.md) | 494 states | 07 | 3000–4500 | medium: Z_MUL's proof shared through a common base, new check |
 
 **Order:** 01 → 02 → 06 → 03 → 04 → 05 → 07 → 08; 07, 09 and 10 are independent of each other. Of the newer plans, 11 needs 02;
 13 comes before 14; 12 is independent; 15 needs 07 (done). Plans 02 and 06 are the cheapest
