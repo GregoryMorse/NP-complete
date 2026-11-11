@@ -152,6 +152,16 @@ theorem vRejC (j : List Nat) (s : List Nat) (Cp : List Nat) (Z : List Nat) (D : 
       (ls' := [.sym 1, .sym 2, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 3, .blk 2 .id, .sym 2, .blk 3 (.const 3), .sym 1, .sym 1, .blk 4 .id, .blk 5 (.const 3)])
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
+/-- Verifier fuel block done: write `H`, go to the guest source `C`. -/
+theorem blkVerL (j : List Nat) (s : List Nat) (C : List Nat) (hj : Bits j) (hs : Bits s) (hC : ∀ a ∈ C, a ∈ T3) :
+    zlnlLogic.Reach (hdR Q.COPY (1 :: (j ++ (1 :: s))) (1 :: (3 :: (C ++ (1 :: (1 :: (List.replicate s.length 3)))))))
+      (hdR Q.GC (1 :: (2 :: (1 :: (j ++ (1 :: (s ++ [1])))))) (3 :: (C ++ (1 :: (1 :: (List.replicate s.length 3 ++ [3])))))) := by
+  have hV : Valid [bits, bits, T3] [j, s, C] := Valid.cons hj (Valid.cons hs (Valid.cons hC (Valid.nil _)))
+  exact checkFF (env := [j, s, C]) (E := []) (k := 46) hV trivial
+    (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id]) (rs := [.sym 1, .sym 3, .blk 2 .id, .sym 1, .sym 1, .blk 1 (.const 3)])
+    (ls' := [.sym 1, .sym 2, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.sym 3, .blk 2 .id, .sym 1, .sym 1, .blk 1 (.const 3), .sym 3])
+    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
 /-- Verifier rejected at `C = 0`: truth flag `0`. -/
 theorem vUnder (j : List Nat) (s : List Nat) (Z : List Nat) (Fu : List Nat) (hj : Bits j) (hs : Bits s) (hZ : ∀ a ∈ Z, a ∈ Z2) (hFu : NoB Fu) :
     zlnlLogic.Reach (hdR Q.DP10 [1] (j ++ (1 :: (s ++ (1 :: (2 :: (Z ++ (1 :: Fu))))))))

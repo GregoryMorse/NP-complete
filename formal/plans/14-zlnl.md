@@ -75,7 +75,7 @@ and run lemma; (2) setup with the dummy cell, decider reuse, pair lemma, top.
 
 ## Checklist
 
-- [ ] `DefsLNL` + `ChecksLNL`; generated files, certificate, base
-- [ ] one-way act, `run1From`, halt without storage
-- [ ] verifier setup with the dummy cell, certificate loop with `run1`
+- [x] `DefsLNL` + `ChecksLNL`; generated files, certificate, base
+- [x] one-way act, `run1I` (`LNLSeg`, `LNLRun`), halt without storage; decider engine `runMHIL` (`MHLRun`)
+- [x] verifier setup with the dummy cell (`PairLNLSeg`, `PairLNLV`: `setupL`, `runFromL`, `vStepL`, `vLoopL`, `vFullL`, `vStartL`)
 - [ ] decider via plan 13, `pairLNL_main`, `zlnl_quasihalts_iff_sentence`

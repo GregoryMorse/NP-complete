@@ -4,7 +4,7 @@ import re
 
 pair = open('ZP/Pair.lean').read()
 
-NAMES = ['blkStart', 'copyBody', 'gcBody', 'gcEnd', 'qcBody', 'qcEnd', 'vAcc', 'vRejE', 'vRejC', 'vUnder',
+NAMES = ['blkStart', 'copyBody', 'gcBody', 'gcEnd', 'qcBody', 'qcEnd', 'vAcc', 'vRejE', 'vRejC', 'blkVer', 'vUnder',
          'sincE', 'sinc0', 'sinc1', 'jincE', 'jinc0', 'jinc1']
 
 
@@ -20,6 +20,8 @@ def fix(t):
 def vg(t):
     """The end configuration has the dummy cell between `H` and `M_g`."""
     t = t.replace('(hdR Q.GC (1 :: (1 :: (j ++ (1 :: (s ++ [1])))))', '(hdR Q.GC (1 :: (2 :: (1 :: (j ++ (1 :: (s ++ [1]))))))')
+    t = t.replace('(ls\' := [.sym 1, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1])', '(ls\' := [.sym 1, .sym 2, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1])')
+    t = t.replace('(k := 39)', '(k := 46)').replace('theorem blkVer ', 'theorem blkVerL ')
     t = t.replace("(ls' := [.sym 1, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1])", "(ls' := [.sym 1, .sym 2, .sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1])")
     t = t.replace('(k := 32)', '(k := 34)').replace('(k := 36)', '(k := 38)')
     return t
@@ -52,6 +54,6 @@ macro "osimp" : tactic =>
 '''
 out = [head]
 for n in NAMES:
-    out.append((vg(fix(block(n))) if n in ('vRejE', 'vRejC') else fix(block(n))) + '\n')
+    out.append((vg(fix(block(n))) if n in ('vRejE', 'vRejC', 'blkVer') else fix(block(n))) + '\n')
 out.append('end ZP.MH\n')
 open('ZP/PairLNLSeg.lean', 'w').write('\n'.join(out))
