@@ -41,6 +41,7 @@ public import ZP.Count
 public import ZP.PairBPP
 public import ZP.PairPP
 public import ZP.MainPP
+public import ZP.MainBPP
 public import ZP.ChecksPS
 public import ZP.CompilePS
 public import ZP.PairPS

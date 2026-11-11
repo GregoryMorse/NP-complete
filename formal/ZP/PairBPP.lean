@@ -1136,4 +1136,326 @@ theorem vStepBPP (j : List Nat) (hj : Bits j) (Sb cl al rl : List Bool) (hcl : c
         rw [hDE, hBl]
         simp [bitsOf, bn]
 
+/-! ## Counting accepted certificates -/
+
+/-- `1` if the certificate `v` (as a counter value) is accepted. -/
+def accV (Sb : List Bool) (v : Nat) : Nat :=
+  if run Sb (ofBv (Sb.length + 1) v).reverse (Sb.length + 1) = true then 1 else 0
+
+theorem length_filter_sum {α : Type} (p : α → Bool) (l : List α) :
+    (l.filter p).length = (l.map fun c => if p c = true then 1 else 0).sum := by
+  induction l with
+  | nil => rfl
+  | cons c l ih =>
+    by_cases h : p c = true
+    · simp [List.filter_cons, h, ih]; omega
+    · simp [List.filter_cons, h, ih]
+
+theorem pow_pos' (k : Nat) : 0 < 2 ^ k := Nat.pow_pos (by decide)
+
+theorem accCount_eq (Sb : List Bool) : accCount Sb = psum (accV Sb) (2 ^ (Sb.length + 1) - 1) := by
+  unfold accCount
+  rw [length_filter_sum]
+  have h1 : ((strings (Sb.length + 1)).map fun c => if run Sb c (Sb.length + 1) = true then 1 else 0).sum =
+      T (Sb.length + 1) (fun c => if run Sb c (Sb.length + 1) = true then 1 else 0) := rfl
+  rw [h1, ← T_rev, T_range, ← sum_range_psum]
+  have h2 : 2 ^ (Sb.length + 1) - 1 + 1 = 2 ^ (Sb.length + 1) := by
+    have := pow_pos' (Sb.length + 1); omega
+  rw [h2]
+  rfl
+
+theorem accV_le (Sb : List Bool) (v : Nat) : accV Sb v ≤ 1 := by
+  unfold accV; split <;> omega
+
+theorem accV_cl (Sb cl : List Bool) (hcl : cl.length = Sb.length + 1) :
+    accV Sb (bv cl) = if run Sb cl.reverse (Sb.length + 1) = true then 1 else 0 := by
+  unfold accV
+  rw [← hcl, ofBv_bv]
+
+theorem psum_le (g : Nat → Nat) (hg : ∀ v, g v ≤ 1) : ∀ N, psum g N ≤ N + 1
+  | 0 => by simp [psum]; exact hg 0
+  | N + 1 => by
+    have := psum_le g hg N
+    have := hg (N + 1)
+    simp only [psum]; omega
+
+theorem bv_rep_true : ∀ k, bv (List.replicate k true) + 1 = 2 ^ k
+  | 0 => rfl
+  | k + 1 => by
+    have ih := bv_rep_true k
+    show 1 + 2 * bv (List.replicate k true) + 1 = 2 ^ (k + 1)
+    rw [Nat.pow_succ]
+    omega
+
+/-- The initial threshold `⌈3N/4⌉ - 1`, `N = 2^(n+1)`. -/
+def thrN (n : Nat) : Nat := if n = 0 then 1 else 3 * 2 ^ (n - 1) - 1
+
+theorem bv_thrL (n : Nat) : bv (thrL n) = thrN n := by
+  cases n with
+  | zero => rfl
+  | succ k =>
+    have h : bv (List.replicate k true) + 1 = 2 ^ k := bv_rep_true k
+    have e : bv (thrL (k + 1)) = bv (List.replicate k true) + 2 ^ k * 0 + 2 ^ k * 2 := by
+      simp only [thrL]
+      clear h
+      induction k with
+      | zero => rfl
+      | succ k ih =>
+        simp only [List.replicate_succ, List.cons_append, bv, bitN] at *
+        omega
+    have := pow_pos' k
+    simp only [thrN, Nat.succ_ne_zero, if_false, Nat.add_sub_cancel]
+    omega
+
+theorem capp_arith (n a : Nat) (h : a ≤ 2 ^ (n + 1)) :
+    (3 * 2 ^ (n + 1) ≤ 4 * a ↔ thrN n < a) ∧
+    (3 * 2 ^ (n + 1) ≤ 4 * (2 ^ (n + 1) - a) ↔ thrN n < 2 ^ (n + 1) - a) := by
+  have hp := pow_pos' n
+  rcases n with _ | k
+  · simp only [thrN, Nat.pow_succ, Nat.pow_zero] at *
+    simp
+    omega
+  · have hk := pow_pos' k
+    have e : 2 ^ (k + 1 + 1) = 4 * 2 ^ k := by rw [Nat.pow_succ, Nat.pow_succ]; omega
+    rw [e] at h ⊢
+    simp only [thrN, Nat.succ_ne_zero, if_false, Nat.add_sub_cancel]
+    omega
+
+theorem capp_eq (Sb : List Bool) :
+    capp Sb = if thrN Sb.length < accCount Sb then some true
+      else if thrN Sb.length < 2 ^ (Sb.length + 1) - accCount Sb then some false else none := by
+  unfold capp
+  have hle : accCount Sb ≤ 2 ^ (Sb.length + 1) := by
+    rw [accCount_eq]
+    have := psum_le (accV Sb) (accV_le Sb) (2 ^ (Sb.length + 1) - 1)
+    have := pow_pos' (Sb.length + 1)
+    omega
+  obtain ⟨h1, h2⟩ := capp_arith Sb.length _ hle
+  by_cases c1 : thrN Sb.length < accCount Sb
+  · rw [if_pos (h1.mpr c1), if_pos c1]
+  · rw [if_neg (fun h => c1 (h1.mp h)), if_neg c1]
+    by_cases c2 : thrN Sb.length < 2 ^ (Sb.length + 1) - accCount Sb
+    · rw [if_pos (h2.mpr c2), if_pos c2]
+    · rw [if_neg (fun h => c2 (h2.mp h)), if_neg c2]
+
+/-- Where a completed verifier loop leaves the machine. -/
+def outB (j : List Nat) (Sb : List Bool) : Option Bool → ZC
+  | some b => TR j Sb b
+  | none => outS j Sb
+
+theorem some_ne_none_iff {b : Bool} {P : Prop} (h : ¬ P) : (none = some b ↔ P) := by
+  exact ⟨fun e => by simp at e, fun hp => absurd hp h⟩
+
+theorem some_true_iff {P : Prop} (h : P) : (some true = some true ↔ P) := ⟨fun _ => h, fun _ => rfl⟩
+
+theorem some_true_false_iff {P : Prop} (h : ¬ P) : (some true = some false ↔ P) :=
+  ⟨fun e => by simp at e, fun hp => absurd hp h⟩
+
+theorem some_false_true_iff {P : Prop} (h : ¬ P) : (some false = some true ↔ P) :=
+  ⟨fun e => by simp at e, fun hp => absurd hp h⟩
+
+theorem some_false_iff {P : Prop} (h : P) : (some false = some false ↔ P) := ⟨fun _ => h, fun _ => rfl⟩
+
+/-- The verifier loop: `cl` counts down, `al` and `rl` count the accepting and rejecting runs
+that are still allowed. -/
+theorem vLoopBPP (j : List Nat) (hj : Bits j) (Sb : List Bool) :
+    ∀ N cl al rl, bv cl = N → cl.length = Sb.length + 1 →
+      ¬ (bv al < psum (accV Sb) N ∧ bv rl < N + 1 - psum (accV Sb) N) →
+      ∃ res : Option Bool, (res = some true ↔ bv al < psum (accV Sb) N) ∧
+        (res = some false ↔ bv rl < N + 1 - psum (accV Sb) N) ∧
+        zbppLogic.Reach (GCvBPP j Sb cl al rl) (outB j Sb res) := by
+  intro N
+  induction N with
+  | zero =>
+    intro cl al rl hN hcl hex
+    have hz : cl = List.replicate (Sb.length + 1) false := by
+      obtain ⟨k, hk⟩ := bv_zero cl hN
+      rw [hk] at hcl ⊢
+      simp at hcl
+      rw [hcl]
+    have hS := vStepBPP j hj Sb cl al rl hcl
+    have hacc := accV_cl Sb cl hcl
+    rw [hN] at hacc
+    have hps : psum (accV Sb) 0 = accV Sb 0 := rfl
+    rw [hps] at hex ⊢
+    cases ho : run Sb cl.reverse (Sb.length + 1) with
+    | true =>
+      rw [ho] at hacc
+      simp at hacc
+      rcases cases_dec al with ⟨k, hk⟩ | ⟨k0, r0, hA⟩
+      · have h0 : bv al = 0 := by rw [hk, bv_falses]
+        exact ⟨some true, some_true_iff (by omega), some_true_false_iff (by omega), hS.1 ho k hk⟩
+      · have hpos : 0 < bv al := by
+          have := bv_dec k0 r0
+          rw [← hA] at this
+          omega
+        exact ⟨none, some_ne_none_iff (by omega), some_ne_none_iff (by omega), hS.2.2.1 ho k0 r0 hA hz⟩
+    | false =>
+      rw [ho] at hacc
+      simp at hacc
+      rcases cases_dec rl with ⟨k, hk⟩ | ⟨k0, r0, hA⟩
+      · have h0 : bv rl = 0 := by rw [hk, bv_falses]
+        exact ⟨some false, some_false_true_iff (by omega), some_false_iff (by omega), hS.2.1 ho k hk⟩
+      · have hpos : 0 < bv rl := by
+          have := bv_dec k0 r0
+          rw [← hA] at this
+          omega
+        exact ⟨none, some_ne_none_iff (by omega), some_ne_none_iff (by omega), hS.2.2.2.1 ho k0 r0 hA hz⟩
+  | succ M ih =>
+    intro cl al rl hN hcl hex
+    obtain ⟨k, r, hc⟩ : ∃ k r, cl = List.replicate k false ++ true :: r := by
+      rcases cases_dec cl with ⟨k, hk⟩ | h
+      · rw [hk, bv_falses] at hN; omega
+      · exact h
+    have hd := bv_dec k r
+    rw [← hc] at hd
+    have hcl' : (List.replicate k true ++ false :: r).length = Sb.length + 1 := by
+      rw [← hcl, hc]; simp
+    have hS := vStepBPP j hj Sb cl al rl hcl
+    have hacc := accV_cl Sb cl hcl
+    rw [hN] at hacc
+    have hps : psum (accV Sb) (M + 1) = psum (accV Sb) M + accV Sb (M + 1) := rfl
+    have hle := psum_le (accV Sb) (accV_le Sb) M
+    rw [hps] at hex ⊢
+    cases ho : run Sb cl.reverse (Sb.length + 1) with
+    | true =>
+      rw [ho] at hacc
+      simp at hacc
+      rcases cases_dec al with ⟨k0, hk0⟩ | ⟨k0, r0, hA⟩
+      · have h0 : bv al = 0 := by rw [hk0, bv_falses]
+        exact ⟨some true, some_true_iff (by omega), some_true_false_iff (by omega), hS.1 ho k0 hk0⟩
+      · have hd0 := bv_dec k0 r0
+        rw [← hA, ← decA_spec k0 r0, ← hA] at hd0
+        obtain ⟨b, hb1, hb2, hR⟩ := ih (List.replicate k true ++ false :: r) (decA al) rl (by omega) hcl'
+          (by omega)
+        exact ⟨b, by rw [hb1]; omega, by rw [hb2]; omega,
+          (hS.2.2.2.2.1 ho k0 r0 hA k r hc).trans hR⟩
+    | false =>
+      rw [ho] at hacc
+      simp at hacc
+      rcases cases_dec rl with ⟨k0, hk0⟩ | ⟨k0, r0, hA⟩
+      · have h0 : bv rl = 0 := by rw [hk0, bv_falses]
+        exact ⟨some false, some_false_true_iff (by omega), some_false_iff (by omega), hS.2.1 ho k0 hk0⟩
+      · have hd0 := bv_dec k0 r0
+        rw [← hA, ← decA_spec k0 r0, ← hA] at hd0
+        obtain ⟨b, hb1, hb2, hR⟩ := ih (List.replicate k true ++ false :: r) al (decA rl) (by omega) hcl'
+          (by omega)
+        exact ⟨b, by rw [hb1]; omega, by rw [hb2]; omega,
+          (hS.2.2.2.2.2 ho k0 r0 hA k r hc).trans hR⟩
+
+theorem thr_excl (n a : Nat) (h : a ≤ 2 ^ (n + 1)) :
+    ¬ (thrN n < a ∧ thrN n < 2 ^ (n + 1) - a) := by
+  have hp := pow_pos' n
+  rcases n with _ | k
+  · simp only [thrN, Nat.pow_succ, Nat.pow_zero] at *
+    simp
+    omega
+  · have hk := pow_pos' k
+    have e : 2 ^ (k + 1 + 1) = 4 * 2 ^ k := by rw [Nat.pow_succ, Nat.pow_succ]; omega
+    rw [e] at h ⊢
+    simp only [thrN, Nat.succ_ne_zero, if_false, Nat.add_sub_cancel]
+    omega
+
+/-- The whole verifier: it leaves the truth `capp s` (or the outside-the-promise exit). -/
+theorem vFullBPP (j : List Nat) (hj : Bits j) (Sb : List Bool) :
+    zbppLogic.Reach (GCvBPP j Sb (List.replicate (Sb.length + 1) true) (thrL Sb.length) (thrL Sb.length))
+      (outB j Sb (capp Sb)) := by
+  have hb := bv_rep_true (Sb.length + 1)
+  have hpow := pow_pos' (Sb.length + 1)
+  have hN : bv (List.replicate (Sb.length + 1) true) = 2 ^ (Sb.length + 1) - 1 := by omega
+  have hle : accCount Sb ≤ 2 ^ (Sb.length + 1) := by
+    rw [accCount_eq]
+    have := psum_le (accV Sb) (accV_le Sb) (2 ^ (Sb.length + 1) - 1)
+    omega
+  have hps : psum (accV Sb) (2 ^ (Sb.length + 1) - 1) = accCount Sb := (accCount_eq Sb).symm
+  obtain ⟨res, h1, h2, hR⟩ := vLoopBPP j hj Sb (2 ^ (Sb.length + 1) - 1)
+    (List.replicate (Sb.length + 1) true) (thrL Sb.length) (thrL Sb.length) hN (by simp)
+    (by rw [bv_thrL, hps]; have := thr_excl Sb.length _ hle; omega)
+  rw [bv_thrL, hps] at h1 h2
+  have e : res = capp Sb := by
+    rw [capp_eq]
+    by_cases c1 : thrN Sb.length < accCount Sb
+    · rw [if_pos c1]; exact h1.mpr c1
+    · rw [if_neg c1]
+      by_cases c2 : thrN Sb.length < 2 ^ (Sb.length + 1) - accCount Sb
+      · rw [if_pos c2]; exact h2.mpr (by omega)
+      · rw [if_neg c2]
+        cases res with
+        | none => rfl
+        | some b =>
+          cases b
+          · exact absurd (h2.mp rfl) (by omega)
+          · exact absurd (h1.mp rfl) c1
+  rw [← e]
+  exact hR
+
+/-! ## One pair -/
+
+theorem pair_mainBPP (J S : Nat) (hJ : 1 ≤ J) (hS : 1 ≤ S) :
+    ∃ n, 0 < n ∧
+      ((¬ ¬ CorrectBPP J S → zbppLogic.zrun n (lay J S) = some (lay (absStepC CorrectBPP (J, S)).1 (absStepC CorrectBPP (J, S)).2)) ∧
+       (¬ CorrectBPP J S → ∃ a c1 c2, a < n ∧ zbppLogic.zrun a (lay J S) = some c1 ∧ c1.q = zbppLogic.beep ∧
+          zbppLogic.zstep c1 = some c2 ∧
+          zbppLogic.zrun (n - a - 1) c2 = some (lay (absStepC CorrectBPP (J, S)).1 (absStepC CorrectBPP (J, S)).2))) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  have hV := vFullBPP (bitsOf (str J)) hj (str S)
+  obtain ⟨rS, hrS⟩ := numR_surj S hS
+  obtain ⟨rJ, hrJ⟩ := numR_surj J hJ
+  have eS : str S = rS.reverse := by rw [← hrS, str_numR]
+  have eS1 : str (S + 1) = (incR rS).reverse := by rw [← hrS, ← numR_inc, str_numR]
+  have eJ : str J = rJ.reverse := by rw [← hrJ, str_numR]
+  have eJ1 : str (J + 1) = (incR rJ).reverse := by rw [← hrJ, ← numR_inc, str_numR]
+  have hinc := sincL (1 :: bitsOf (str J)) (NoB.cons one_nb hj.noB) rS 0
+  rcases hcap : capp (str S) with _ | t
+  · -- outside the promise
+    have hc : CorrectBPP J S := by simp [CorrectBPP, hcap]
+    have e : absStepC CorrectBPP (J, S) = (J, S + 1) := absStepC_pos hc
+    rw [e]
+    rw [hcap] at hV
+    have hA := (vStartBPP J S).trans hV
+    obtain ⟨n, hn⟩ := hA.trans (hinc.of_eq (c4 := lay J (S + 1)) (by rw [eS]; rfl) (by rw [lay_hdR, eS1]; simp))
+    exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
+  · rw [hcap] at hV
+    obtain ⟨Fu, hFu, hD⟩ := dPhase (str J) (str S) t
+    have hA := (vStartBPP J S).trans (hV.trans hD)
+    by_cases hc : CorrectBPP J S
+    · have e : absStepC CorrectBPP (J, S) = (J, S + 1) := absStepC_pos hc
+      rw [e]
+      have ho : run (str J) (str S) (clock (str J) (str S)) = t := by simpa [CorrectBPP, hcap] using hc
+      rw [ho] at hA
+      have hok : zbppLogic.Reach
+          (hdR (dpOf (bn t)) [1]
+            (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (1 :: (tflag t ++ 1 :: Fu)))))
+          (hd Q.SINC (1 :: (bitsOf (str J) ++ 1 :: bitsOf (str S))) []) := by
+        cases t
+        · exact (dOk0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
+        · exact (dOk1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl
+      obtain ⟨n, hn⟩ := hA.trans (hok.trans (hinc.of_eq (c4 := lay J (S + 1)) (by rw [eS]; rfl) (by rw [lay_hdR, eS1]; simp)))
+      exact ⟨n + 1, by omega, fun _ => hn, fun h => absurd hc h⟩
+    · have e : absStepC CorrectBPP (J, S) = (J + 1, 1) := absStepC_neg hc
+      rw [e]
+      have ho : run (str J) (str S) (clock (str J) (str S)) = !t := by
+        have h' : run (str J) (str S) (clock (str J) (str S)) ≠ t := by simpa [CorrectBPP, hcap] using hc
+        revert h'
+        cases run (str J) (str S) (clock (str J) (str S)) <;> cases t <;> decide
+      rw [ho] at hA
+      obtain ⟨Y, h1, h3⟩ : ∃ Y, zbppLogic.Reach
+          (hdR (dpOf (bn (!t))) [1]
+            (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (1 :: (tflag t ++ 1 :: Fu)))))
+          (hd Q.BEEP (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [1]))) Y) ∧
+          zbppLogic.Reach (hdR Q.EAs (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: [2]))) Y)
+            (hd Q.JINC (1 :: bitsOf (str J)) [1]) := by
+        cases t
+        · exact ⟨1 :: Fu, (dBad1 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
+            dBad1E _ _ Fu hj hs hFu⟩
+        · exact ⟨3 :: 1 :: Fu, (dBad0 _ _ Fu hj hs hFu).of_eq (by simp [dpOf, bn, tflag]) rfl,
+            dBad0E _ _ Fu hj hs hFu⟩
+      obtain ⟨n1, hn1⟩ := hA.trans h1
+      obtain ⟨n2, hn2⟩ := h3.trans ((jincL rJ 0).of_eq (c4 := lay (J + 1) 1) (by rw [eJ]; rfl) (by rw [lay_hdR, eJ1, str_one]; rfl))
+      refine ⟨n1 + 1 + 1 + n2, by omega, fun h => absurd hc h,
+        fun _ => ⟨n1 + 1, _, _, by omega, hn1, rfl, beepStep _ _ Y, ?_⟩⟩
+      rw [show n1 + 1 + 1 + n2 - (n1 + 1) - 1 = n2 by omega]
+      exact hn2
+
 end ZP.BPP

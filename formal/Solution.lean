@@ -41,3 +41,6 @@ theorem ZP.zconp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zconpMachine ↔ ZP.
 
 theorem ZP.twin_quasihalts_iff : ZP.Quasihalts ZP.twinMachine ↔ ¬ ZP.TwinPrimes :=
   ZP.twinQuasihalts_iff
+
+theorem ZP.zbpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zbppMachine ↔ ZP.SentenceBPP :=
+  ZP.zbppQuasihalts_iff_sentence

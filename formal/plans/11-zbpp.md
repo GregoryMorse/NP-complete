@@ -116,8 +116,16 @@ dispatch segments; (2) the two-counter invariant, the three outcomes, pair lemma
 
 ## Checklist
 
-- [ ] `DefsBPP` + `ChecksBPP`; generated files, certificate, base
-- [ ] A/R build (`BD7`, `BD8`, `FXA`, `FXR`)
-- [ ] accept/reject/decrement segments, outside-the-promise branch
-- [ ] two-counter `vLoopBPP`, bridge to `capp`
-- [ ] `pairBPP_main`, `zbpp_quasihalts_iff_sentence`, Challenge/Solution
+- [x] `DefsBPP` + `ChecksBPP`; generated files, certificate (`gen_logic.py zbpp`, `gen_table.py zbpp_native`)
+- [x] A/R build (`blkA0/1/2`, `blkR0/1/2`, `blkVerBPP`; three cases because the second cell is fixed)
+- [x] accept/reject/decrement segments, outside-the-promise branch (`accTrue1/2`, `rejTrue`, `accDecE/C`,
+  `rejDecE/C`, `accOut`, `rejOut`; each generated from `scripts/symexec.py`)
+- [x] two-counter `vLoopBPP` (counters hold the remaining allowed accepts/rejects as numbers), bridge to
+  `capp` (`capp_eq`, `thr_excl`, `vFullBPP`)
+- [x] `pair_mainBPP`, `zbpp_quasihalts_iff_sentence`, Challenge/Solution/comparator
+
+Done in one session. Deviations from the plan: no `zbBase` was needed (`zpBase` is contained in
+`zbppLogic`: `zpBase_ext_zbppLogic`); the copy lemmas of `PairPP` were generalized from `O13` to
+`NB` because the copied area now contains 0s; the counters are decremented as numbers (initial
+value `thrN n`), not compared with a leading-bit test, so the invariant is
+`¬(a < acc ∧ r < rej)` and the result is `some true ↔ a < acc`, `some false ↔ r < rej`.

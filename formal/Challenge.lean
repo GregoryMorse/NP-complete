@@ -1014,3 +1014,8 @@ theorem ZP.zconp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zconpMachine ↔ ZP.
 /-- The 19-state twin-prime beeper: it quasihalts iff there are finitely many twin primes. -/
 theorem ZP.twin_quasihalts_iff : ZP.Quasihalts ZP.twinMachine ↔ ¬ ZP.TwinPrimes := by
   sorry
+
+/-- Z_BPP: promise-P = promise-BPP in the self-padded form. `capp s` is YES / NO / outside the promise
+(`4 acc ≥ 3 N`, `4 rej ≥ 3 N`, neither); a candidate is judged only on instances inside the promise. -/
+theorem ZP.zbpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zbppMachine ↔ ZP.SentenceBPP := by
+  sorry

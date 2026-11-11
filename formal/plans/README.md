@@ -76,7 +76,7 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [x] 08 Z_NTT (`ZP.zntt_quasihalts_iff_sentence`, hypothesis `PrimeEx`; comparator-checked)
 - [x] 09 twin primes (`ZP.twin_quasihalts_iff`, proved)
 - [x] 10 Z_coNP (`ZP.zconpQuasihalts_iff_sentence`)
-- [ ] 11 Z_BPP (promise-P = promise-BPP)
+- [x] 11 Z_BPP (promise-P = promise-BPP) — `ZP.zbpp_quasihalts_iff_sentence`, axioms propext/Classical.choice/Quot.sound only
 - [ ] 12 Z_PPOLY (NP ⊆ P/poly)
 - [ ] 13 Z_LP (L = P)
 - [ ] 14 Z_LNL (L = NL)
