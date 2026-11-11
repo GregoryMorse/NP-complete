@@ -144,4 +144,49 @@ theorem dryN (Wr Bd R1 : List Nat) (b x : Nat) (Wt : List Nat) (hWe : Wr ++ [b] 
   simp only [List.append_assoc, List.cons_append, List.nil_append, List.singleton_append] at t0 t1 t2 t3 t4 t5 t6 t7 t8 ⊢
   exact t0.trans (t1.trans (t2.trans (t3.trans (t4.trans (t5.trans (t6.trans (t7.trans t8)))))))
 
+/-- The whole dry first row: after `m` marking cycles the ruler is `0^m`; the Q pass loads the next `out` row and
+the boundary `M` is inserted. -/
+theorem dryFin (Wr Bd Os Rest : List Nat) (b x : Nat) (Wt : List Nat) (e m : Nat) (he : e = 0 ∨ e = 1)
+    (hWe : Wr ++ [b] = x :: Wt) (hWr : Bits Wr) (hbb : b ∈ bits) (hBd : Bits Bd) (hOs : Bits Os)
+    (hRest : Sym4 Rest) :
+    ∃ R1, Sym4 R1 ∧ zmmLogic.Reach (hd QMM.FA (Wr ++ [b]) (0 :: Bd ++ 1 :: List.replicate m 2 ++ 0 :: 1 :: (Os ++ e :: Rest)))
+      (hdR QMM.RS1 (Wr ++ [b] ++ 1 :: Bd ++ [0, 1]) R1) := by
+  have hOe : Sym4 (Os ++ e :: Rest) := by
+    refine Sym4.app hOs.sym4 (Sym4.cons ?_ hRest)
+    rcases he with rfl | rfl <;> simp [ALL]
+  have s0 := dryOK Wr Bd (List.replicate m 2) (Os ++ e :: Rest) b hWr hbb hBd
+    (fun a ha => List.eq_of_mem_replicate ha) hOe
+  have hA : Sym4 ([0] ++ (Wr ++ [b]) ++ [0] ++ Bd ++ [1]) := by
+    have hWb4 : Sym4 (Wr ++ [b]) := by
+      rw [sym4_app_iff]
+      refine ⟨hWr.sym4, Sym4.cons ?_ Sym4.nil⟩
+      rcases mem_bits hbb with rfl | rfl <;> simp [ALL]
+    have h0 : (0 : Nat) ∈ ALL := by simp [ALL]
+    have h1 : (1 : Nat) ∈ ALL := by simp [ALL]
+    have z : Sym4 [0] := Sym4.cons h0 Sym4.nil
+    exact Sym4.app (Sym4.app (Sym4.app (Sym4.app z hWb4) z) hBd.sym4) (Sym4.cons h1 Sym4.nil)
+  have s1 := qPass _ hA m [] Os Rest e he Bits.nil hOs hRest
+  have hR1 : Sym4 (0 :: ((Os.reverse ++ List.replicate m 2).take m).reverse ++ [] ++
+      1 :: (Os.take (Os.length - m) ++ List.replicate (min m Os.length) 0 ++ e :: Rest)) := by
+    have h2 : ∀ a ∈ ((Os.reverse ++ List.replicate m 2).take m).reverse, a ∈ ALL := by
+      intro a ha
+      rw [List.mem_reverse] at ha
+      have := List.mem_of_mem_take ha
+      rw [List.mem_append, List.mem_reverse] at this
+      rcases this with h | h
+      · exact hOs.sym4 a h
+      · rw [List.eq_of_mem_replicate h]; simp [ALL]
+    have h3 : ∀ a ∈ Os.take (Os.length - m), a ∈ ALL := fun a ha => hOs.sym4 a (List.mem_of_mem_take ha)
+    have h4 : ∀ a ∈ List.replicate (min m Os.length) 0, a ∈ ALL := fun a ha => by
+      rw [List.eq_of_mem_replicate ha]; simp [ALL]
+    have h5 : e ∈ ALL := by rcases he with rfl | rfl <;> simp [ALL]
+    have h0 : (0 : Nat) ∈ ALL := by simp [ALL]
+    have h1 : (1 : Nat) ∈ ALL := by simp [ALL]
+    simp [sym4_app_iff, sym4_cons_iff, h0, h1, h5]
+    exact ⟨h2, h3, h4, hRest⟩
+  have s2 := dryN Wr Bd _ b x Wt hWe hWr hbb hBd hR1
+  refine ⟨_, hR1, ?_⟩
+  simp only [List.append_assoc, List.cons_append, List.nil_append, List.singleton_append] at s0 s1 s2 ⊢
+  exact s0.trans (s1.trans s2)
+
 end ZP.Mul.MM
