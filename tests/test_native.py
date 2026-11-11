@@ -356,15 +356,17 @@ def test_multihead_instances():
 def test_multihead_act():
     """The act of the multihead machines (zmh.py) on every storage with |x| <= 3,
     up to 3 heads: move right/left, next/previous head, then the scanned symbol
-    is carried into c."""
+    is carried into c and the head stops in RTW left of c.  The storage holds
+    one unit  M x 0  per head, head 0 rightmost, with a marker after the scanned
+    cell (B: current head)."""
     from itertools import product
     m = zlp.build()
 
     def storage(x, pos, cur):
         out = ''
-        for i, p in enumerate(pos):
-            cells = '0' + x + '0'
-            out += 'MM' + cells[:p + 1] + ('B' if i == cur else 'M') + cells[p + 1:]
+        for i in reversed(range(len(pos))):
+            cells = 'M' + x + '0'
+            out += cells[:pos[i] + 1] + ('B' if i == cur else 'M') + cells[pos[i] + 1:]
         return out
     for n in range(4):
         for x in map(''.join, product('01', repeat=n)):
@@ -386,7 +388,7 @@ def test_multihead_act():
                             a = p2[c2]
                             sym = 'B' if a in (0, n + 1) else x[a - 1]
                             got = ''.join(tape.get(i, 'B') for i in range(len(pre) + len(storage(x, pos, cur))))
-                            assert (h, got) == (0, pre[:1] + sym + pre[2:] + storage(x, p2, c2)), \
+                            assert (h, got) == (0 if sym == 'B' else -1, pre[:1] + sym + pre[2:] + storage(x, p2, c2)), \
                                 (x, pos, cur, w, d, got)
 
 

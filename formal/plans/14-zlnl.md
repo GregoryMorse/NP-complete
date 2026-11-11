@@ -5,7 +5,7 @@ and the zp2 verifier development. This machine is zp2's verifier with a one-way 
 plus plan 13's decider.
 
 Reference: `ref/znl_ref.py`; design: `docs/native.md` § "L = P and L = NL"; machine:
-`native/zlnl.py` on top of `native/zmh.py` (210 logical states).
+`native/zlnl.py` on top of `native/zmh.py` (182 logical states).
 
 ## 1. Trusted definitions (`ZP/DefsLNL.lean`, mirrors `ref/znl_ref.py`)
 
@@ -23,32 +23,35 @@ programs that never move left (they agree), and on one that does (they differ);
 
 ## 2. Generated files and base
 
-zlnl changes 15 zp2 transitions (`DG3,M`, `DW3,M`, `GH**,M`, `GHH*,M`, `QE3,M`,
-`VG1,B`, `VG3,M`, `WB3*,M`, `WC*,B`), removes 9 (`A`, `BB*`, `Y*`, `EL1`, `WB1`), and
-adds 88 states (plan 13's `zmh` states plus `XW*`, `YW*`, `VGD`, `VGE`, `DG3V`).
-Unlike zlp it keeps zp2's certificate loop (`VN*`, `VF2`, `VU2`) and the guest-tape
-copy (`GC`, `GL*`, `GR*`, `GLM`).
+zlnl changes 13 zp2 transitions (`DG3,M`, `DW3,M`, `EAs,B`, `GH**,M`, `VG1,B`,
+`VG3,M`, `WB3*,M`, `WC*,B`), adds 7 to zp2 states (`WC*` on `0 1 M`, `RGQ1,M`), removes
+8 (`A`, `BB*`, `Y*`, `WB1`), and adds 59 states (plan 13's `zmh` states plus `XW*`,
+`YW*`, `VGD`, `VGE`, `DG3V`, `GCD`). Unlike zlp it keeps zp2's certificate loop
+(`VN*`, `VF2`, `VU2`), the guest-tape copy (`GC`, `GL*`, `GR*`, `GLM`), `WB2` (writes
+`H`) and the halt (`GHH* EL* ER*`).
 
 ## 3. The one-way verifier
 
 - **Setup.** `VG1 → VGD → VGE` writes `H` one cell further left and a dummy `0`
-  between `H` and `M_g`; `VG3 → DG3V → GC` is zp2's guest copy of `C`; `QE4` on a bit
-  is zp2's `QE3` exit. Restate zp2's `setup` with the dummy cell; the countdown, fuel
-  and peek lemmas only see `c_h` and `H`, so they carry over.
-- **Act.** `GH wd → XW wd`: one look right of `H` (a bit: verifier). `YW w1` is zp2's
-  right move (`PUTH`). `YW w0 → WC w`: write `w` into `c_h` and **stay**
-  (`WC w, B → w, L, RGQ1`). Prove the one-way step lemma: zp2's `segMv1` for `d = 1`,
-  a two-step segment for `d = 0`.
+  between `H` and `M_g`; `VG3 → DG3V → GC` is zp2's guest copy of `C`, then zp2's code
+  copy. Restate zp2's `setup` with the dummy cell; the countdown, fuel and peek lemmas
+  only see `c_h` and `H`, so they carry over.
+- **Act.** `GH wd → XW wd`: one look right of `H` (a bit: verifier). `XW w1 → YW w` is
+  zp2's right move (`YW w,M → w, L, PUTH`). `XW w0 → WC w`: write `w` into `c_h` and
+  **stay** (zmh's `WC w` skips `H` and writes at the blank `c_h`, then `RGQ1`). Prove
+  the one-way step lemma: zp2's `segMv1` for `d = 1`, a short segment for `d = 0`.
 - **Run lemma** `run1From`: zp2's `runFrom` with the new left move, result `run1`.
-- **Halt** goes through plan 13's `ESP` path: with no storage, `ES1`/`ES2` see two
-  blanks right away. Prove that case separately (three steps).
+- **Halt**: zp2's `GHH`/`EL*`/`ER*` unchanged; the result dispatch's erase passes
+  `EX` once (no storage: `EAs,B → EX`, `EX,B → EBs`).
 - **Certificate loop**: zp2's `vLoop`/`vFull` unchanged (`∃ c`), with `run1` for `run`.
 
 ## 4. The decider
 
-Plan 13's decider (`XW wd`, `M` → `G2 wd`: a decider run), with
-`zmh.units(t, 'UDW')`: after each unit the head goes straight back to the walker
-(there are no verifier units). Reuse `MHAct`, `MHRun` and `MHUnits` through `Ext`.
+Plan 13's decider (`XW wd,M → G2 wd`: a decider run), with `zmh.units(t, 'UDW')`:
+after each unit the head goes straight back to the walker (there are no verifier
+units). Setup: zp2's `WB2` writes `H`, `DG3,M → GCD` skips `s` and blanks `M_2`, then
+zp2's `GLM` and code copy (code `J`). Reuse `MHAct`, `MHRun` and `MHUnits` through
+`Ext`; the storage is erased by `EAs,B → EX` (`zmh.erase`).
 
 ## 5. Pair lemma and top
 

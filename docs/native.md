@@ -421,26 +421,33 @@ Both machines share `native/zmh.py`. During a multihead run the tape is
 
 The countdown cell `c` holds the symbol under the current head (blank at the end
 markers); zp2's ι countdown runs on it. The storage holds one unit per head,
-`M M 0 x_1 … x_n 0` (`x = s`), with a marker cell after the scanned cell: `B` for the
-current head, `M` for the others. The first `0` is position 0, the last one
-position `n+1`. The act walks to the current marker; a move swaps the marker with its
-neighbour unless the neighbour is the unit's `M` (left) or the next unit / the end
-(right); a head switch turns the current marker into `M` and the next (previous)
-unit's marker into `B`. The new scanned symbol is then carried into `c`, and the entry
-is recorded as in zp2. A halt erases the storage before zp2's erase of the left side.
+`M x_1 … x_n 0` (`x = s`), with a marker cell after the scanned cell: `B` for the
+current head, `M` for the others. The unit's `M` is position 0, its last `0` position
+`n+1`. Head 0 is the last (rightmost) unit, head `i+1` the unit left of head `i`. The
+act (entered right of `H`) skips to the end of the fuel and then to the current
+marker, the first blank of the storage. A move swaps the marker with its neighbour
+unless the scanned cell is the unit's `M` (left) or position `n+1` (right); a head
+switch turns the current marker into `M` and the neighbouring unit's marker into `B`
+(staying at the first / last unit). The new scanned symbol is then carried into `c`,
+and the entry is recorded as in zp2. A halt is zp2's; the storage is erased later
+with the rest of the far right (the erase loop after the comparison).
 
-- **Units.** `M M 0 M s 0` is appended at the far right by a copy loop over `s`. The
+- **Units.** `M M s 0` is appended at the far right by a copy loop over `s` (the old
+  current marker becomes `M` on the way, the new unit's marker becomes current). The
   decider gets one unit when the walker reaches `M_1` and one per step of the walk back
-  through `J` (`|J| + 1`). In zlp the verifier (program `s`, `|s| + 1` heads,
-  `T = |s| + 1`) gets one unit per cell of `C = 1^(|s|+1)`, consumed to 0s. After
-  each unit the head reads the field after `M_2`: `M` is the decider's truth flag, a
-  bit is `C`. There is one verifier run; its outcome is the truth.
+  through `J` (`|J| + 1`); after each unit the head returns straight to the walker.
+- **zlp.** The walk back ends at home without writing `H`; then the head looks at the
+  field after `M_2`. A bit is `C = 1^(|s|+1)`, the verifier's flag and head counter:
+  one unit per cell, consumed to 0s, then the verifier run (program `s` on input `s`,
+  `|s| + 1` heads, `T = |s| + 1`). There is one verifier run; its outcome is the
+  truth. `M` is the decider's truth flag: decider run of `J`. The setup writes `H`,
+  then zp2's placeholder for `c` and code copy, with code `J` or `s`.
 - **zlnl.** The verifier runs are zp2's (certificate counter `C`, guest tape copied from
   `C`, the guest tape left of `H`) with one change: `write w, move left` becomes
   `write w, stay`. `VG1` puts a dummy `0` between `H` and `M_g`, so during a verifier
   run the cell right of `H` is a bit and during a decider run it is `M_g`; the act
-  looks there once and dispatches. `QE4` tells the two setups apart by the cell right
-  of the gap separator.
+  looks there once and dispatches. The decider setup skips `s`, marks `M_2` and joins
+  zp2's code copy; the verifier setup joins zp2's guest copy.
 
 The tests compare beeps with the references, run instances whose programs switch
 heads, and check the act on every storage with `|x| ≤ 3` and up to 3 heads.

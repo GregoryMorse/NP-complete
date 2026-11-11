@@ -6,7 +6,7 @@ redone, and changed zp2 transitions need their own base). Plan 14 (L = NL) reuse
 everything in §3–§4, so keep the multihead lemmas in their own files.
 
 Reference: `ref/zmh_ref.py`; design: `docs/native.md` § "L = P and L = NL"; machine:
-`native/zlp.py` on top of `native/zmh.py` (191 logical states).
+`native/zlp.py` on top of `native/zmh.py` (163 logical states).
 
 ## 1. Trusted definitions (`ZP/DefsMH.lean`, mirrors `ref/zmh_ref.py`)
 
@@ -40,14 +40,16 @@ the first 3 beeps.
 python3 formal/gen_table.py zlp_native zlpMachine && python3 formal/gen_logic.py zlp
 ```
 
-zlp changes 13 zp2 transitions (`BD6,M`, `DG3,M`, `DP30,0`, `DW3,M`, `GH**,M`,
-`GHH*,M`, `QE3,M`, `WB3*,M`), removes 64 (zp2's guest-tape act `PUTH WC* A BB* Y*
-RGQ1`, the guest copy `GC GL* GR* GLM`, the certificate loop `VN* VFE VF2 VU2`, `WB1`,
-`EL1`, and cells that cannot occur: `EL2`, `GQ1`, `PK1` on bits, `DP30/31,1`, `VA2,1`,
-`ER2*` on bits), and adds 84 states. Define `zlBase` = `zpBase` minus the changed and
-removed transitions; what survives is the rotation (`Rot.lean`), fuel (`Fuel.lean`),
-NAV/countdown/peek part of `Interp.lean`, the walker, `BLK`, and the `QN2/QC/QE` code
-copy.
+zlp changes 15 zp2 transitions (`BD6,M`, `DG3,M`, `DP30,0`, `DW3,M`, `EAs,B`,
+`GH**,M`, `VA3,B`, `WB2,B`, `WB3*,M`, `WC*,B`), adds 7 to zp2 states (`WC*` on
+`0 1 M`, `RGQ1,M`: zmh's carry into `c`), removes 62 (zp2's guest-tape act
+`PUTH A BB* Y*`, the guest copy `GC GL* GR*`, the certificate loop `VN* VFE VF2 VU2`,
+the verifier setup `VG1 VG2 VG3`, `WB1`, and cells that cannot occur: `EL2`, `GQ1`,
+`PK1` on bits, `DP30/31,1`, `VA2,1`, `ER2*` on bits), and adds 54 states. Define
+`zlBase` = `zpBase` minus the changed and removed transitions; what survives is the
+rotation (`Rot.lean`), fuel (`Fuel.lean`), NAV/countdown/peek part of `Interp.lean`,
+the halt `GHH* EL* ER*` (unchanged), the walker, `BLK`, and the `GLM GRM QN2 QC QE QE3`
+code copy.
 
 ## 3. The multihead run (`ZP/MHStore.lean`, `ZP/MHAct.lean`, `ZP/MHRun.lean`)
 
@@ -55,56 +57,71 @@ Run layout (`docs/native.md`):
 
     Q gap c H M_g J M_1 s M_2 … fuel B storage
 
-- `storeOf x pos cur` = concatenation over heads `i` of
-  `M M (0 :: x ++ [0]).take (pos i + 1) ++ [mark i] ++ (0 :: x ++ [0]).drop (pos i + 1)`,
+- `storeOf x pos cur` = concatenation over heads `i = k-1, …, 0` (head 0 is the last
+  unit) of
+  `(M :: x ++ [0]).take (pos i + 1) ++ [mark i] ++ (M :: x ++ [0]).drop (pos i + 1)`,
   with `mark i = B` if `i = cur`, else `M`.
 - `c` holds `mhRead x (pos cur)` (as a cell: blank for `none`) at the start of a step.
 
 Lemmas, each a `Seg` of `zlpLogic` (write them for an `Ext`-closed family so plan 14
 can reuse them):
 
-1. **Navigation.** From `GH wd` at `H`, the machine reaches the current marker
-   (`G2`, `G3`: two "skip non-blank" loops). Needs: every cell between `H` and the
-   separator is non-blank, and the current marker is the first blank of the storage.
-2. **The four ops** (`MR*`, `ML*`, `NX*`, `NXB`, `PV*`). Each turns
-   `storeOf x pos cur` into `storeOf x pos' cur'` with the ref's update. Prove each by
-   a case split on the shape of the unit around the marker. Clamping: `MR2` sees
-   `M`/blank exactly at position `n + 1`; `ML2` sees `M` exactly at position 0; `NX1`
-   reaches the storage end exactly at the last unit; `PV3` reaches the separator
-   exactly at the first.
-3. **Read and carry** (`RD RR RB1 RR2 RL1 RL2 RL4 K* K2*`): from the new current marker
-   back to `c`, writing `mhRead x (pos' cur')`, then `RTW` at the gap.
+1. **Navigation.** From `GH wd,M` (`M_g` right of `H`), `G2 wd` skips to the blank
+   after the fuel and `G3 wd` to the current marker (two "skip non-blank" loops).
+   Needs: every cell between `H` and the fuel's end is non-blank, and the current
+   marker is the first blank of the storage.
+2. **The four ops.** `G3 11 → MR MR0 MR1` (right), `G3 10 → ML ML0 ML1` (left): swap
+   the marker with the cell right / left of it; `G3 01 → LS1 LS3` (next head: the unit
+   to the left), `G3 00 → RS1 RS3` (previous head: the unit to the right): the old
+   marker becomes `M`, the neighbour's marker `B`. Each turns `storeOf x pos cur` into
+   `storeOf x pos' cur'` with the ref's update. Prove each by a case split on the
+   shape of the unit around the marker. Clamping: `MR` sees `M`/blank exactly at
+   position `n + 1`; `ML` sees `M` exactly at position 0; `LS3` meets the blank left
+   of the storage exactly at the first unit (back via `RS1`); `RS1` meets the blank
+   right of the storage exactly at the last unit (back via `LS3`).
+3. **Read and carry** (`RD RR RB1 RR2 RL KB K0 K1`, then zp2's `WC0 WC1` extended to
+   skip non-blanks, and `RGQ1,M`): from the new current marker back to `c`, writing
+   `mhRead x (pos' cur')`, then `RTW` at the gap.
 4. **Step lemma** `mhStep`: one guest step = zp2's countdown on `c` (reuse: `c` plays
    the head cell), fuel decrement, peek, act (2.–3.), recording rotation and the token
-   rotations (reuse). Halt: `GHH w` writes the outcome into `H`, then
-   `ESP ES1 ES2 ESB ESN` erase the storage and join zp2's `EL2` erase.
+   rotations (reuse). Halt: zp2's `GHH w` writes the outcome into `H` and `EL*`/`ER*`
+   erase the left side unchanged (the storage lies right of the fuel and stays).
 5. **Run lemma** `mhRunFrom`: induction on the fuel, like zp2's `runFrom`, giving
-   `runMH P x T` at the result dispatch with the storage erased.
+   `runMH P x T` at the result dispatch with the storage still at the far right. It is
+   erased by the far-right erase loops (`EAs,B → EX`, `VA3,B → EY`: `zmh.erase`).
 
 The decider runs **any** code `J` on `s` with `|J| + 1` heads. The test
-`test_multihead_act` checks items 2–3 on every storage with `|x| ≤ 3` and up to 3 heads.
-Use it to pin the exact statements before proving them.
+`test_multihead_act` checks items 2–3 (from `G2 wd` right of `H` to `RTW`) on every
+storage with `|x| ≤ 3` and up to 3 heads. Use it to pin the exact statements before
+proving them.
 
 ## 4. Building the storage (`ZP/MHUnits.lean`)
 
-- **Unit append** (`U0 … UE2`): appends `M M 0 M s 0` at the far right (copy loop over
-  `s` with the blank-and-restore pattern of `BLK`), then returns to the far left
-  (`UL1 UL2`). One lemma, parametrized by what lies left of the fuel.
+- **Unit append** (`U0 U1 U2 U5 U6 UB2 UB3 UCP UC* UC2* UK* UK2* UE1 UE2 V UL1 UL2`):
+  from left of the fuel's end, `U1`/`U2` turn the old current marker into `M` and
+  write the new unit's `M` and marker; `U5 U6 UB2 UB3` go back to `s` (between `M_1`
+  and `M_2`); the copy loop over `s` uses the blank-and-restore pattern of `BLK`;
+  `UE1 UE2` write the final `0`, `V` makes the new marker current; `UL1 UL2` return to
+  the far left. One lemma, parametrized by what lies left of the fuel.
 - **Decider:** the walker. `DW3,M → U0` (walker at `M_1`), `WB3 j,M → U0` (each step
-  back), and `UDW` returns to the walker. Result: `|J| + 1` units. Restate zp2's
-  `walkBack` with the unit appended per step.
-- **Verifier:** `BD6,M → UCL → UD`: one unit per cell of `C = 1^(|s|+1)`, consumed to
-  0s (`UD`, `UD2`), and `UF1–UF3` read the field after `M_2` to dispatch (bit: `C`,
-  `M`: decider). `UD2,M → VG1`.
-- **Setup** (`GCD S1 S2 S5 S6 S7 GLMD GLM2`, `QE3`, `QE4`): first marker current, `c`
-  placeholder and gap separator left of `H`, then zp2's code copy (`GRM QN2 QC QE`)
-  with code `J` (decider) or `s` (verifier).
+  back), and `UDW` returns to the walker. Result: `|J| + 1` units, the last current.
+  Restate zp2's `walkBack` with the unit appended per step; `WB2,B → DG2` ends at home
+  without writing `H`.
+- **Dispatch and verifier units** (`DG3,M → GCD → GC2`): `GCD` skips `s`, `GC2` reads
+  the field after `M_2`. `M` (the decider's truth flag): decider. A bit: `C =
+  1^(|s|+1)` (zp2's `BLK`; `BD6,M → UL2` then returns home): `GC2`/`GC4` turn the
+  first `1` into `0` and append a unit (`→ U0`, back through `UDW` and the dispatch)
+  until `C` is all 0s: verifier.
+- **Setup:** `GC2,M → GC4` blanks `M_2` (decider, code `J`), `GC4,M` blanks the `M`
+  after `C` (verifier, code `s`); `GLMD` writes `H` left of `M_g`; then zp2's `GLM`
+  (placeholder `c`) and code copy `GRM QN2 QC QE QE3`.
 
 ## 5. Pair lemma and top (`ZP/PairLP.lean`, `ZP/MainLP.lean`)
 
 Verifier: `C` and verifier fuel (zp2's `BLK`), units from `C`, one run of `s` on `s`,
-`DP31` / `DP30,0` write the truth flag `M 1` / `M` (`VA2 VA3 VA4 FB`). Decider: walker
-fuel with units, run of `J` on `s`, compare (`DP4*`), successor (zp2). Then
+`DP31` / `DP30,0` write the truth flag `M 1` / `M` (`VA2 VA3 VA4 FB`, storage erased
+by `EY`). Decider: walker fuel with units, run of `J` on `s`, compare (`DP4*`), erase
+(`EAs EX EBs`), successor (zp2). Then
 `lmacroSim_of_pairs` and
 
 ```lean

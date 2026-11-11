@@ -7,11 +7,11 @@ The decider run uses the multihead read-only input of zmh.py.  Changes:
 * VG1 writes H one cell further left with a dummy 0 between H and M_g, so
   during a verifier run the cell right of H is always a bit; during a decider
   run it is M_g.  The act (GHwd at H) looks right once (XWwd) and dispatches.
-* Decider setup: DG3 -> GCD (zmh.setup); verifier setup: VG3 -> DG3V -> GC
-  (zp2's guest copy).  QE4 tells the two apart by the cell right of the gap
-  separator (M placeholder for c, or the guest's first cell).
+  The verifier's 'write w, stay' is zmh's WCw (write w into c_h, RGQ1).
+* Decider setup: DG3 -> GCD (skip s, mark M_2, zp2's GLM writes c); verifier
+  setup: VG3 -> DG3V -> GC (zp2's guest copy).
 * Units are appended only for the decider (walker), returning straight to the
-  walker (UDW).
+  walker (UDW).  The storage is erased after the comparison (EX after EAs).
 """
 import zp2
 import zmh
@@ -20,15 +20,14 @@ B, M = 'B', 'M'
 BITS = '01'
 NB = '01M'
 
-DROP = {'A', 'BB', 'BB2', 'Y0', 'Y1', 'EL1', 'WB1'}
+DROP = {'A', 'BB', 'BB2', 'Y0', 'Y1', 'WB1'}
 
 
 def build():
     m = zp2.build()
-    redo = {('QE3', M), ('DW3', M), ('WB30', M), ('WB31', M), ('DG3', M), ('VG1', B),
-            ('VG3', M), ('WC0', B), ('WC1', B)}
+    redo = {('DW3', M), ('WB30', M), ('WB31', M), ('DG3', M), ('VG1', B),
+            ('VG3', M), ('WC0', B), ('WC1', B), ('EAs', B)}
     for w in BITS:
-        redo.add(('GHH' + w, M))
         for d in BITS:
             redo.add(('GH' + w + d, M))
     for k in [k for k in m.d if k[0] in DROP or k in redo]:
@@ -39,16 +38,22 @@ def build():
             o = w + d
             t('GH' + o, M, '.', 'R', 'XW' + o)
             t('XW' + o, M, '.', 'R', 'G2' + o)      # M_g: decider
-            t('XW' + o, BITS, '.', 'L', 'YW' + o)   # guest cell or dummy: verifier
-        t('YW' + w + '1', M, w, 'L', 'PUTH')
-        t('YW' + w + '0', M, '.', 'L', 'WC' + w)
-        t('WC' + w, B, w, 'L', 'RGQ1')              # one-way: write w and stay
+        # guest cell or dummy: verifier.  d = 1 as in zp2; d = 0 (one-way):
+        # write w into c_h and stay (zmh's WCw skips H)
+        t('XW' + w + '1', BITS, '.', 'L', 'YW' + w)
+        t('YW' + w, M, w, 'L', 'PUTH')
+        t('XW' + w + '0', BITS, '.', 'L', 'WC' + w)
     zmh.act(t)
-    zmh.halt(t)
     zmh.units(t, 'UDW')
-    zmh.setup(t)
-    t('QE4', BITS, '.', 'L', 'TW')                  # verifier: guest cell
+    zmh.erase(t, 'EAs', 'EBs', 'EX')
+    t('DW3', M, '.', 'R', 'U0')
+    for j in BITS:
+        t('WB3' + j, M, j, 'R', 'U0')
+    t('UDW', BITS, '.', 'R', 'UDW')
+    t('UDW', M, '.', 'L', 'WB2')
     t('DG3', M, '.', 'R', 'GCD')
+    t('GCD', BITS, '.', 'R', 'GCD')
+    t('GCD', M, B, 'L', 'GLM')                      # mark M_2: code J
     t('VG3', M, '.', 'R', 'DG3V')
     t('DG3V', BITS, '.', 'R', 'DG3V')
     t('DG3V', M, '.', 'R', 'GC')
