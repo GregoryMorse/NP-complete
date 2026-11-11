@@ -23,7 +23,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SYM = {'B': 0, 'M': 1, '0': 2, '1': 3}
-SETS = {'bits': [2, 3], 'ALL': [0, 1, 2, 3], 'NB': [1, 2, 3]}
+SETS = {'bits': [2, 3], 'ALL': [0, 1, 2, 3], 'NB': [1, 2, 3], 'T3': [3], 'O13': [1, 3], 'Z2': [2]}
 HYP = {'bits': 'Bits', 'ALL': 'Sym4', 'NB': 'NoB'}
 
 
@@ -156,7 +156,7 @@ class Gen:
         hvs = ' '.join('(Valid.cons %s' % (('(' + v.hyp + ')') if ' ' in v.hyp else v.hyp) for v in vars_)
         hv = hvs + ' (Valid.nil _)' + ')' * len(vars_)
         lines.append('  have hv : Valid [%s] %s := %s' % (', '.join(
-            {'bits': 'bits', 'ALL': 'ALL', 'NB': 'NB'}[v.sset] for v in vars_), env, hv))
+            {'bits': 'bits', 'ALL': 'ALL', 'NB': 'NB', 'T3': 'T3', 'O13': 'O13', 'Z2': 'Z2'}[v.sset] for v in vars_), env, hv))
         # note: the sets of empty variables are bits
         if pre:
             lines.append(pre)
