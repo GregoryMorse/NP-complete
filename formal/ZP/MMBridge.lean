@@ -251,4 +251,55 @@ theorem rowEq (m : Nat) (B : Nat → Nat → Bool) (a out : List Bool) (i : Nat)
   rw [hC1, hcongr, ← hext]
   cases out.getD (i * m + j) false <;> cases gx m (fun k => a.getD (i * m + k) false && B k j) <;> simp
 
+theorem rowsOK_iff (m : Nat) (B : Nat → Nat → Bool) (a out : List Bool) (hm : m ≠ 0) :
+    ∀ (n i : Nat), a.length - i * m ≤ n * m →
+      (rowsOK m ((List.range m).map (fun k => (List.range m).map (fun j => sy (B k j)))) n
+        ((a.map sy).drop (i * m)) ((((out.map sy).drop (i * m)) ++ List.replicate m 2).take m)
+        ((out.map sy).drop ((i + 1) * m)) ↔
+      ∀ i', i ≤ i' → i' * m < a.length →
+        ∀ j, j < m → out.getD (i' * m + j) false = gx m (fun k => a.getD (i' * m + k) false && B k j)) := by
+  intro n
+  induction n with
+  | zero =>
+    intro i h
+    simp only [rowsOK, true_iff]
+    intro i' hi hlt
+    have : i * m ≤ i' * m := Nat.mul_le_mul_right m hi
+    omega
+  | succ n ih =>
+    intro i h
+    by_cases hz : a.length ≤ i * m
+    · have : (a.map sy).drop (i * m) = [] := by simp; omega
+      rw [rowsOK, this]
+      simp only [true_or, true_iff]
+      intro i' hi hlt
+      have : i * m ≤ i' * m := Nat.mul_le_mul_right m hi
+      omega
+    · have hne : (a.map sy).drop (i * m) ≠ [] := by
+        intro e; have := congrArg List.length e; simp at this; omega
+      rw [rowsOK]
+      simp only [hne, false_or]
+      have e1 : (a.map sy).drop (i * m) = (a.map sy).drop (i * m) := rfl
+      have hrow := rowEq m B a out i hm
+      simp only at hrow
+      rw [hrow]
+      have hmm : (i + 1) * m = i * m + m := by rw [Nat.add_mul, Nat.one_mul]
+      have hmm2 : (i + 1 + 1) * m = (i + 1) * m + m := by rw [Nat.add_mul (i + 1) 1 m, Nat.one_mul]
+      have eA : ((a.map sy).drop (i * m)).drop m = (a.map sy).drop ((i + 1) * m) := by
+        rw [List.drop_drop, hmm]
+      have eO : ((out.map sy).drop ((i + 1) * m)).drop m = (out.map sy).drop ((i + 1 + 1) * m) := by
+        rw [List.drop_drop, hmm2]
+      rw [eA, eO]
+      have h2 : a.length - (i + 1) * m ≤ n * m := by
+        have : (n + 1) * m = n * m + m := Nat.succ_mul n m
+        omega
+      rw [ih (i + 1) h2]
+      constructor
+      · rintro ⟨h1, h3⟩ i' hi hlt
+        rcases Nat.eq_or_lt_of_le hi with rfl | hlt2
+        · exact h1
+        · exact h3 i' hlt2 hlt
+      · intro hall
+        exact ⟨hall i (Nat.le_refl _) (by omega), fun i' hi hlt => hall i' (by omega) hlt⟩
+
 end ZP.Mul.MM
