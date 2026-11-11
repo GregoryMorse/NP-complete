@@ -110,6 +110,7 @@ MACH = {
     'zntt': ('zntt', 'zntt_native', 'zntt', 'NTT', None),   # standalone: its own state names
     'zconp': ('zconp', 'zconp_native', 'zconp', 'Conp', None),
     'zmul': ('zmul', 'zmul_native', 'zmul', 'Mul', None),
+    'zbpp': ('zbpp', 'zbpp_native', 'zbpp', 'BPP', None),
 }
 DERIVED = ('zpp', 'zps', 'zfac', 'zdl', 'zgi')   # machines whose changes define zpBase
 
