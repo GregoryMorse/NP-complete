@@ -208,4 +208,51 @@ theorem decCharge (Kr : List Nat) (Pb Sb : List Bool) (b : Bool) (hKr : Bits Kr)
     refine (h1'.trans h2).of_eq rfl ?_
     simp
 
+/-- The charged run of the advice program, up to the dispatch state. -/
+theorem decRun (Kr : List Nat) (Pb Sb : List Bool) (b : Bool) (hKr : Bits Kr) :
+    (Pb.length ≤ (Sb.length + 2) ^ (Kr.length + 1) - 1 → ∃ Fu, NoB Fu ∧
+      zppolyLogic.Reach (TR Kr (bitsOf Pb) Sb b)
+        (hdR (dpOf (bn (run Pb Sb ((Sb.length + 2) ^ (Kr.length + 1) - 1 - Pb.length)))) [1]
+          (Kr ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Sb ++ 1 :: 1 :: (tflag b ++ 1 :: Fu)))))) ∧
+    ((Sb.length + 2) ^ (Kr.length + 1) - 1 < Pb.length → ∃ ds1,
+      zppolyLogic.Reach (TR Kr (bitsOf Pb) Sb b)
+        (hdR QPoly.BEEPX (List.replicate (Pb.length + 1) 0 ++ [1])
+          (Kr ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Sb ++ 1 :: 1 :: (tflag b ++
+            1 :: FWr Sb.length ds1)))))) := by
+  have ha := Bits.ofB Pb
+  have hs := Bits.ofB Sb
+  have ht := tflag_t3 b
+  obtain ⟨ds1, hd1, hA, hB⟩ := decCharge Kr Pb Sb b hKr
+  have hfull := valrFull Sb.length (Kr.length + 1)
+  have hv0 : valr Sb.length (dFuel Sb.length (Kr.length + 1)) =
+      (Sb.length + 2) ^ (Kr.length + 1) - 1 := by
+    unfold dFuel; omega
+  refine ⟨fun hle => ?_, fun hlt => ⟨ds1, hB (by omega)⟩⟩
+  obtain ⟨hl1, hv1, h1⟩ := hA (by omega)
+  have hne : ds1 ≠ [] := by
+    intro h; rw [h] at hl1; simp at hl1
+  have hFn : NoB (1 :: (tflag b ++ 1 :: FWr Sb.length ds1)) :=
+    NoB.cons one_nb ((t3_noB ht).app (NoB.cons one_nb (FWr_noB _ _)))
+  have hW : NoB (Kr ++ [1] ++ (bitsOf Pb ++ 1 :: (bitsOf Sb ++ 1 :: 1 :: tflag b))) :=
+    (hKr.noB.app (NoB.cons one_nb NoB.nil)).app (ha.noB.app (NoB.cons one_nb
+      (hs.noB.app (NoB.cons one_nb (NoB.cons one_nb (t3_noB ht))))))
+  have h2 := dgGuest (List.replicate Pb.length 0 ++ [1]) Kr (bitsOf Pb)
+    (bitsOf Sb ++ 1 :: 1 :: (tflag b ++ 1 :: FWr Sb.length ds1))
+    (Sym4.app (Sym4.rep _ _ (by simp [ALL])) (Sym4.cons (by simp [ALL]) Sym4.nil)) hKr ha
+    (NoB.sym4 (hs.noB.app (NoB.cons one_nb (NoB.cons one_nb ((t3_noB ht).app
+      (NoB.cons one_nb (FWr_noB _ _)))))))
+  obtain ⟨ds2, hd2, hl2, h3⟩ := runFrom Sb.length (Kr ++ [1]) (1 :: Kr) Pb Sb
+    (1 :: (tflag b ++ 1 :: FWr Sb.length ds1))
+    (Kr ++ [1] ++ (bitsOf Pb ++ 1 :: (bitsOf Sb ++ 1 :: 1 :: tflag b))) ds1
+    (by simp) (NoB.cons one_nb hKr.noB) hFn.sym4 hW hd1 hne (by simp)
+  refine ⟨FWr Sb.length ds2, FWr_noB _ _, ?_⟩
+  have e : hdR Q.GC ((List.replicate Pb.length 0 ++ [1]) ++ 1 :: (Kr ++ 1 :: (bitsOf Pb ++ [1])))
+      (bitsOf Sb ++ 1 :: 1 :: (tflag b ++ 1 :: FWr Sb.length ds1)) =
+      hdR Q.GC (1 :: (1 :: (Kr ++ [1]) ++ (bitsOf Pb ++ [1])))
+        (bitsOf Sb ++ 1 :: (1 :: (tflag b ++ 1 :: FWr Sb.length ds1))) := by
+    rw [List.append_assoc, hdR_zeros_left]; simp
+  have hvv : valr Sb.length ds1 = (Sb.length + 2) ^ (Kr.length + 1) - 1 - Pb.length := by omega
+  rw [hvv] at h3
+  exact ((h1.trans (h2.of_eq rfl e)).trans (h3.of_eq rfl (by simp [RE])))
+
 end ZP.Poly
