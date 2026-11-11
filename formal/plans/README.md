@@ -19,9 +19,9 @@ machines (11–15).
 | 09 | [twin primes](09-twin.md) | 19 states | — | 800–1200 | easy: a 2-symbol machine, no interpreter |
 | 10 | [Z_coNP](10-zconp.md) | 317 states | 01 (06, 07's base lesson) | 4000–6000 | medium-hard: choices at fresh cells, DFS = ∃ |
 | 11 | [Z_BPP](11-zbpp.md) | 333 states | 01, 02 | 2000–3000 | easy-medium: Z_PP with two counters and an outside-the-promise branch |
-| 12 | [Z_PPOLY](12-zppoly.md) | 371 states | 01 | 4000–5500 | medium: new four-level abstract program; charge lemma |
+| 12 | [Z_PPOLY](12-zppoly.md) | 362 states | 01 | 4000–5500 | medium: new four-level abstract program; charge lemma |
 | 13 | [Z_LP](13-zlp.md) | 426 states | 01 (07's base lesson) | 5000–7000 | hard: new guest model (multihead read-only input) |
-| 14 | [Z_LNL](14-zlnl.md) | 471 states | 13 | 2500–3500 | medium: zp2 verifier with a one-way head + 13's decider |
+| 14 | [Z_LNL](14-zlnl.md) | 468 states | 13 | 2500–3500 | medium: zp2 verifier with a one-way head + 13's decider |
 | 15 | [Z_MATMUL](15-zmm.md) | 577 states | 07 | 3000–4500 | medium: Z_MUL's proof shared through a common base, new check |
 
 **Order:** 01 → 02 → 06 → 03 → 04 → 05 → 07 → 08; 07, 09 and 10 are independent of each other. Of the newer plans, 11 needs 02;

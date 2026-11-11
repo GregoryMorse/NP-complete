@@ -1,4 +1,4 @@
-# 14 — Z_LNL (`native/zlnl.py`, 471 states): `Quasihalts zlnlMachine ↔ SentenceLNL`
+# 14 — Z_LNL (`native/zlnl.py`, 468 states): `Quasihalts zlnlMachine ↔ SentenceLNL`
 
 Prerequisites: plan 13 (the multihead decider: `DefsMH`, `MHAct`, `MHRun`, `MHUnits`)
 and the zp2 verifier development. This machine is zp2's verifier with a one-way head,

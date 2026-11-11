@@ -348,7 +348,7 @@ rejecting one `R`, then `C` is decremented as in zp2. A borrow out of `A`'s lead
 first, `s` is outside the promise: everything right of `M_2` is erased and the machine
 moves to `s + 1` without running `J`.
 
-### NP ⊆ P/poly (`native/zppoly.py`, 371 states)
+### NP ⊆ P/poly (`native/zppoly.py`, 362 states)
 
 Same guest model and the same NP-complete language `L` as Z_P v2. A *degree* `K` (any
 bit string; only `|K|` matters) fixes the budget `T(K, n) = (n+2)^(|K|+1) − 1`. For
@@ -382,7 +382,7 @@ Only the first refutation (`K = ''`, `n = 1`) is in reach of the tests; the seco
 needs every advice program up to length `T('0', 4) = 35`. The tests also follow the
 first six events (`n` passed with advice `a`, or a beep) through `zppoly_ref.events`.
 
-### L = P and L = NL (`native/zlp.py`, 426 states; `native/zlnl.py`, 471 states)
+### L = P and L = NL (`native/zlp.py`, 426 states; `native/zlnl.py`, 468 states)
 
 The decider of both machines is a **multihead read-only** guest (`ref/zmh_ref.py`):
 code, cyclic `R`, entries and the step loop as in Z_P v2, but the input `x` is read only

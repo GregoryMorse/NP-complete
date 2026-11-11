@@ -6,7 +6,7 @@ public import ZP.AllDefs
 
 @[expose] public section
 
-/-! The certificate of the L = NL machine: the table simulates `zlnlLogic` gadget by gadget. -/
+/-! The certificate of the Z_LNL machine: the table simulates `zlnlLogic` gadget by gadget. -/
 
 namespace ZP
 

@@ -1,4 +1,4 @@
-# 12 — Z_PPOLY (`native/zppoly.py`, 371 states): `Quasihalts zppolyMachine ↔ SentencePoly`
+# 12 — Z_PPOLY (`native/zppoly.py`, 362 states): `Quasihalts zppolyMachine ↔ SentencePoly`
 
 Prerequisites: plan 01 (generic pipeline) and the zp2 development. The verifier phase
 is zp2's unchanged; the new parts are the **outer loop** (a four-level enumeration) and

@@ -6,7 +6,7 @@ public import ZP.AllDefs
 
 @[expose] public section
 
-/-! The certificate of the NP ⊆ P/poly machine: the table simulates `zppolyLogic` gadget by gadget. -/
+/-! The certificate of the Z_PPOLY machine: the table simulates `zppolyLogic` gadget by gadget. -/
 
 namespace ZP
 
