@@ -255,3 +255,10 @@ in the dry row the ruler uses 3 = unmarked, 2 = marked.
    (`padTo`, `flatMap` of length `mmRows * m`).
 6. Dry first row: `dryBad` m times (ruler 3 -> 2), then `dryFin`; needs |w| >= m^2. Short w: `vEndShort*` start at `hdR FA [] (0 :: ...)` = `hd FA [0] ...`
    and `hdR J1 []`, so no extra glue beyond `hd_snoc`.
+
+Status (rows induction done, commit 49020be): MMRound (roundA), MMRoundE, MMRows (rowsRound, stor, accFold, aOf), MMRowFin (rowFinOK/Bad), MMRowNext (rowDoneUsed/More), MMOneRow
+(rowBad/Used/More, rowLastUsed/Bad), MMRowsAll (rowsOK, accRow, lastRow, rowStep, rowsAll).
+`rowsAll` : from `hdR RS1 (Atot.reverse ++ rep q 1 ++ 1 :: stor Rws ++ 0 :: [] ++ [1]) (0 :: C.reverse ++ 1 :: (Orest.reverse ++ Cb0 ++ 1 :: J ++ 1 :: sv ++ 0 :: 1 :: Y2))`
+reaches DP31 if `rowsOK m Rws n Atot C Orest` and DP30 otherwise (Atot = A symbols 2/3 in stream order, C = first out row as symbols, Orest = rest of out).
+Remaining for the bridge: (i) column formula for `accFold` (bit of column j = C[j] xor fold of A[k] && B[k][j]), (ii) rowsOK <-> checkMM via padTo/mmC,
+(iii) setup glue producing the RSt state with Atot = A part of w, Rws = B rows (B_0 nearest P), C = padded out row 0, Orest = rest (via dryFin and qPass), (iv) mmPhase etc.
