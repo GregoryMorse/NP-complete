@@ -37,6 +37,6 @@ add('dBad0', 'dbad0', dict(KAS, Fu='NB'),
     ('DP10', [1], ['Kr', 1, 'a', 1, 's', 1, 1, 3, 1, 'Fu'], False), 'BEEP')
 add('dBad1E', 'dbad1E', dict(KAS, Fu='NB'),
     ('EAs', [1, 'Kr', 1, 'a', 1, 's', 1, 2], [1, 'Fu'], False), 'ZS')
-open('/tmp/claude-0/sp/segs3.lean', 'w').write('\n'.join(out))
+open(__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), 'out', 'segs3.lean'), 'w').write('\n'.join(out))
 for f in fails:
     print('FAIL', f)

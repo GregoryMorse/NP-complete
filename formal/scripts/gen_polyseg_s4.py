@@ -37,6 +37,6 @@ add('sinc0', 'Increment: a `0` becomes `1`.', {'A': 'NB', 'r': 'bits', 'Z': 'NB'
     ('SINC', ['A', 1, 'r', 2], ['Z'], True), 'GRB')
 add('sinc1', 'Increment: a `1` becomes `0`, carry.', {'A': 'NB', 'r': 'bits', 'Z': 'NB'},
     ('SINC', ['A', 1, 'r', 3], ['Z'], True), 'SINC')
-open('/tmp/claude-0/sp/segs4.lean', 'w').write('\n'.join(out))
+open(__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), 'out', 'segs4.lean'), 'w').write('\n'.join(out))
 for f in fails:
     print('FAIL', f)

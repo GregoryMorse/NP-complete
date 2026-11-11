@@ -25,6 +25,6 @@ add('gcBodyC', 'Charge copy of `a` as tokens: one bit to the far left.',
 add('gcEndC', 'Charge copy done: `M_a` back, to the first token.',
     {'Ur': 'bits', 'V': 'NB', 'P': 'bits', 'u': 'bits', 'Rest': 'ALL'},
     ('GC', ['Ur', 1, 'V', 'P', 1, 'u'], [0, 'Rest'], False), 'U')
-open('/tmp/claude-0/sp/segs5_re.lean', 'w').write('\n'.join(out))
+open(__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), 'out', 'segs5.lean'), 'w').write('\n'.join(out))
 for f in fails:
     print('FAIL', f)

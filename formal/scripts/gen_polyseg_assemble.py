@@ -1,5 +1,5 @@
 import re
-p = '/home/user/np-complete/.claude/worktrees/agent-a63be367c1b1600e3/formal/ZP/PairPoly.lean'
+p = __import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), '..', 'ZP', 'PairPoly.lean')
 t = open(p).read()
 lines = t.split('\n')
 drop = {'sinc0', 'sinc1', 'blkDecStep', 'blkDecLast', 'blkCopy', 'decFuel'}
@@ -29,7 +29,7 @@ for s, e in chunks:
 t = '\n'.join(res)
 g = ''
 for f in ['segs1', 'segs2', 'segs3', 'segs4']:
-    g += open('/tmp/claude-0/sp/%s.lean' % f).read() + '\n'
+    g += open(__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), 'out', f + '.lean')).read() + '\n'
 i = t.index('/-! ## Small facts -/')
 t = t[:i] + '/-! ## Generated segments (poly layout `M_g rev(K) M_1 a M_a s`) -/\n\n' + g + '\n' + t[i:]
 open(p, 'w').write(t)
