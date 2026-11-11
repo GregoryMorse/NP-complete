@@ -136,11 +136,11 @@ def back(it, names):
     return ('c', names[it[1]], it[2])
 
 
-def autoend(vars_, st, target, tt_end='F'):
+def autoend(vars_, st, target, sdl=False):
     """Run the executor from st (internal items) until state `target`; return end (state, left, right) in spec items."""
     names = [v for v, _ in vars_]
     sets = [KIND[k] for k, _ in [(k, 0) for _, k in vars_]]
-    c = S.sc(st[0], conc(st[1], {}), conc(st[2], {}), False)
+    c = S.sc(st[0], conc(st[1], {}), conc(st[2], {}), sdl)
     c = S.norm(c, [])
     for _ in range(100000):
         if c[0] == S.Q[target]:
@@ -163,7 +163,7 @@ def spec(name, doc, vars_, start, end, params=(), tt='FF'):
     pn = [q for q, _ in params]
     st = (start[0], conv(start[1], names, pn), conv(start[2], names, pn))
     if isinstance(end, str):
-        end = autoend(vars_, st, end)
+        end = autoend(vars_, st, end, tt[0] == 'T')
     en = (end[0], conv(end[1], names, pn), conv(end[2], names, pn))
     txt = theorem(name, doc, vars_, list(params), st, en, tt)
     OUT.append(txt)
