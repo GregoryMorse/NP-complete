@@ -80,6 +80,9 @@ class Gen:
                 out.append(('s', SYM[t]))
             elif t.startswith('$'):
                 out.append(('s', sub[t[1:]]))
+            elif '@' in t:
+                nm, c = t.split('@')
+                out.append(('b', idx[nm], int(c)))
             elif t in idx:
                 v = vars_[idx[t]]
                 if v.kind == 'empty':
@@ -111,6 +114,10 @@ class Gen:
                 run.append(str(SYM[t]))
             elif t.startswith('$'):
                 run.append(str(params[t[1:]]))
+            elif '@' in t:
+                nm, c = t.split('@')
+                flush()
+                parts.append('List.replicate %s.length %s' % (idx[nm].expr, c))
             else:
                 v = idx[t]
                 if v.kind == 'empty':
