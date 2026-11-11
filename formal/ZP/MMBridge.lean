@@ -302,4 +302,83 @@ theorem rowsOK_iff (m : Nat) (B : Nat → Nat → Bool) (a out : List Bool) (hm 
       · intro hall
         exact ⟨hall i (Nat.le_refl _) (by omega), fun i' hi hlt => hall i' (by omega) hlt⟩
 
+theorem fm_length (m : Nat) (f : Nat → Nat → Bool) (r : Nat) :
+    ((List.range r).flatMap fun i => (List.range m).map (f i)).length = r * m := by
+  induction r with
+  | zero => simp
+  | succ r ih => rw [List.range_succ, List.flatMap_append, List.length_append, ih]; simp [Nat.succ_mul]
+
+theorem fm_get (m : Nat) (f : Nat → Nat → Bool) (r : Nat) :
+    ∀ i j, i < r → j < m → ((List.range r).flatMap fun i => (List.range m).map (f i))[i * m + j]? = some (f i j) := by
+  induction r with
+  | zero => intro i j h; omega
+  | succ r ih =>
+    intro i j hi hj
+    rw [List.range_succ, List.flatMap_append]
+    by_cases h : i < r
+    · rw [List.getElem?_append_left (by rw [fm_length]; calc i * m + j < i * m + m := by omega
+        _ = (i + 1) * m := by rw [Nat.add_mul, Nat.one_mul]
+        _ ≤ r * m := Nat.mul_le_mul_right m h)]
+      exact ih i j h hj
+    · have hir : i = r := by omega
+      subst hir
+      rw [List.getElem?_append_right (by rw [fm_length]; omega), fm_length]
+      simp [hj]
+
+theorem rows_lt (m L i : Nat) (hm : m ≠ 0) : i < (L + m - 1) / m ↔ i * m < L := by
+  have hpos : 0 < m := Nat.pos_of_ne_zero hm
+  rw [Nat.lt_iff_add_one_le, Nat.le_div_iff_mul_le hpos]
+  have : (i + 1) * m = i * m + m := by rw [Nat.add_mul, Nat.one_mul]
+  omega
+
+theorem padTo_get (n : Nat) (out : List Bool) (idx : Nat) :
+    (padTo n out)[idx]? = if idx < n then some (out.getD idx false) else none := by
+  unfold padTo
+  rw [List.getElem?_take]
+  by_cases h : idx < n
+  · simp only [h, if_true]
+    rw [List.getElem?_append]
+    by_cases h2 : idx < out.length
+    · simp [h2, List.getD_eq_getElem?_getD]
+    · simp [h2, List.getD_eq_getElem?_getD, List.getElem?_replicate]
+      omega
+  · simp [h]
+
+theorem checkMM_iff (out s : List Bool) (hm : mmM s ≠ 0) :
+    checkMM out s = true ↔ ∀ i, i < mmRows s → ∀ j, j < mmM s →
+      out.getD (i * mmM s + j) false = gx (mmM s) (fun k => mmA s i k && mmB s k j) := by
+  have hC : mmC s = (List.range (mmRows s)).flatMap fun i => (List.range (mmM s)).map
+      (fun j => gx (mmM s) (fun k => mmA s i k && mmB s k j)) := rfl
+  have hn : (mmC s).length = mmRows s * mmM s := by rw [hC, fm_length]
+  unfold checkMM
+  rw [beq_iff_eq]
+  constructor
+  · intro h i hi j hj
+    have hidx : i * mmM s + j < (mmC s).length := by
+      rw [hn]
+      calc i * mmM s + j < i * mmM s + mmM s := by omega
+        _ = (i + 1) * mmM s := by rw [Nat.add_mul, Nat.one_mul]
+        _ ≤ mmRows s * mmM s := Nat.mul_le_mul_right _ hi
+    have := congrArg (fun l => l[i * mmM s + j]?) h
+    rw [padTo_get, if_pos hidx, hC, fm_get _ (fun i j => gx (mmM s) (fun k => mmA s i k && mmB s k j)) _ i j hi hj] at this
+    exact Option.some.inj this
+  · intro h
+    apply List.ext_getElem?
+    intro idx
+    rw [padTo_get]
+    by_cases hlt : idx < (mmC s).length
+    · rw [if_pos hlt]
+      have hpos : 0 < mmM s := Nat.pos_of_ne_zero hm
+      have hd : idx = (idx / mmM s) * mmM s + idx % mmM s := by
+        rw [Nat.mul_comm]; exact (Nat.div_add_mod idx (mmM s)).symm
+      have hmod : idx % mmM s < mmM s := Nat.mod_lt _ hpos
+      obtain ⟨i, j, hj, rfl⟩ : ∃ i j, j < mmM s ∧ idx = i * mmM s + j := ⟨idx / mmM s, idx % mmM s, hmod, hd⟩
+      have hi : i < mmRows s := by
+        rw [hn] at hlt
+        have : i * mmM s < mmRows s * mmM s := by omega
+        exact Nat.lt_of_mul_lt_mul_right this
+      have := h _ hi _ hj
+      rw [hC, fm_get _ (fun i j => gx (mmM s) (fun k => mmA s i k && mmB s k j)) _ _ _ hi hj, this]
+    · rw [if_neg hlt, List.getElem?_eq_none (by omega)]
+
 end ZP.Mul.MM
