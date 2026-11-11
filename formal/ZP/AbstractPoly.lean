@@ -1,6 +1,6 @@
 module
 
-public import ZP.DevPolyDefs
+public import ZP.AllDefs
 public import ZP.StrPoly
 
 @[expose] public section

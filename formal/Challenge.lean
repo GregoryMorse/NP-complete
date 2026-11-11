@@ -1124,6 +1124,35 @@ def zconpMachine : TM := ⟨zconpMachineTable, 7⟩
 
 end ZP
 
+/- ## ZP.DefsPoly -/
+/-!
+# Definitions for the NP ⊆ P/poly machine (`native/zppoly.py`, `ref/zppoly_ref.py`)
+
+A degree `K` (only `|K|` matters) fixes the budget `T(K, n) = (n+2)^(|K|+1) - 1`. An advice
+program `a` is charged `|a|` steps up front. `K` is good on length `n` if some `a` of length
+at most `T(K, n)` decides `L` (`inL`, `run` of `ZP/Defs.lean`) on all of `{0,1}^n` within the
+budget. `SentencePoly` says that some degree is good on every length.
+-/
+
+namespace ZP
+def budget (K : List Bool) (n : Nat) : Nat := (n + 2) ^ (K.length + 1) - 1
+
+/-- Charged run: `|a|` steps up front, then `run a s` with the rest of the budget. -/
+def prun (a s : List Bool) (t : Nat) : Bool := if a.length ≤ t then run a s (t - a.length) else false
+
+/-- `a` decides `L` on all of `{0,1}^n` within the budget of degree `K`. -/
+def advOK (K a : List Bool) (n : Nat) : Prop :=
+  ∀ s ∈ strings n, prun a s (budget K n) = inL s
+
+instance (K a : List Bool) (n : Nat) : Decidable (advOK K a n) := by
+  unfold advOK; infer_instance
+
+def goodLen (K : List Bool) (n : Nat) : Prop := ∃ a, a.length ≤ budget K n ∧ advOK K a n
+
+def SentencePoly : Prop := ∃ K : List Bool, ∀ n, goodLen K n
+
+end ZP
+
 /-!
 # Advertised statement
 
@@ -1178,4 +1207,9 @@ theorem ZP.twin_quasihalts_iff : ZP.Quasihalts ZP.twinMachine ↔ ¬ ZP.TwinPrim
 /-- Z_BPP: promise-P = promise-BPP in the self-padded form. `capp s` is YES / NO / outside the promise
 (`4 acc ≥ 3 N`, `4 rej ≥ 3 N`, neither); a candidate is judged only on instances inside the promise. -/
 theorem ZP.zbpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zbppMachine ↔ ZP.SentenceBPP := by
+  sorry
+
+/-- Z_PPOLY: NP in P/poly form. A degree `K` fixes the budget `(n+2)^(|K|+1) - 1`; an advice program `a` is
+charged `|a|` steps, and `K` is good on length `n` if some `a` decides `L` on all strings of length `n` within it. -/
+theorem ZP.zppoly_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppolyMachine ↔ ZP.SentencePoly := by
   sorry
