@@ -881,4 +881,58 @@ theorem vFull (Kr a : List Nat) (hKr : Bits Kr) (ha : Bits a) (Sb : List Bool) :
   rw [← e]
   exact hR
 
+/-! ## From the pair start to the verifier -/
+
+theorem copyLoop1 (P : List Nat) (hP : NoB P) : ∀ v u, Bits u → Bits v →
+    zppolyLogic.Reach (hdR Q.COPY (P ++ u) (v ++ 1 :: List.replicate u.length 3))
+      (hdR Q.COPY (P ++ (u ++ v)) (1 :: List.replicate (u ++ v).length 3))
+  | [], u, _, _ => by
+    rw [List.append_nil, List.nil_append]
+    exact LTM.Reach.refl _ _
+  | b :: v, u, hu, hv => by
+    have h1 := copyBody1 P u v b hP hu hv.tail hv.head
+    have h2 := copyLoop1 P hP v (u ++ [b]) (hu.snoc hv.head) hv.tail
+    exact h1.trans (h2.of_eq (by simp [List.replicate_succ']) (by simp only [List.append_assoc, List.singleton_append]))
+
+/-- The configuration at the start of a pair: `M_g rev(K) M_1 a M_a s`, state `GRB`. -/
+def layP (Kr a s : List Nat) : ZC := hdR Q.GRB (1 :: (Kr ++ 1 :: (a ++ 1 :: s))) []
+
+/-- First `BLK`: `C = 1^(|s|+1)` and `M_3`. -/
+theorem blk1Full (Kr a : List Nat) (hKr : Bits Kr) (ha : Bits a) (Sb : List Bool) :
+    zppolyLogic.Reach (layP Kr a (bitsOf Sb))
+      (hdR Q.GRB (1 :: (Kr ++ 1 :: (a ++ 1 :: (bitsOf Sb ++ 1 :: (List.replicate Sb.length 3 ++ [3, 1]))))) []) := by
+  have hs := Bits.ofB Sb
+  have hP : NoB (1 :: (Kr ++ 1 :: (a ++ [1]))) :=
+    NoB.cons one_nb (hKr.noB.app (NoB.cons one_nb (ha.noB.app (NoB.cons one_nb NoB.nil))))
+  have h1 := (blk1Start Kr a (bitsOf Sb) hKr ha hs).trans
+    ((copyLoop1 _ hP (bitsOf Sb) [] Bits.nil hs).of_eq (by simp) rfl)
+  cases Sb with
+  | nil =>
+    have h2 := blk1End0 Kr a [] hKr ha Bits.nil
+    exact (h1.trans (h2.of_eq (by simp [bitsOf]) rfl)).of_eq rfl (by simp [bitsOf])
+  | cons x Sb' =>
+    have h2 := blk1End1 Kr a (bitsOf (x :: Sb')) (List.replicate Sb'.length 3) hKr ha hs (rep_t3 _)
+    refine (h1.trans (h2.of_eq (by simp [bitsOf, List.replicate_succ]) rfl)).of_eq rfl ?_
+    simp [bitsOf, List.replicate_succ, rep_cons_comm]
+
+theorem vStart (Kr a : List Nat) (hKr : Bits Kr) (ha : Bits a) (Sb : List Bool) :
+    zppolyLogic.Reach (layP Kr a (bitsOf Sb)) (GCv Kr a Sb (List.replicate (Sb.length + 1) true)) := by
+  have hs := Bits.ofB Sb
+  have hT : ∀ x ∈ List.replicate Sb.length 3 ++ [3, 1], x ∈ O13 := by
+    intro x hx
+    rcases List.mem_append.mp hx with h | h
+    · rw [List.eq_of_mem_replicate h]; simp [O13]
+    · simp at h
+      rcases h with rfl | rfl <;> simp [O13]
+  have hA := blk1Full Kr a hKr ha Sb
+  have h2 := blkStart [] Kr a (bitsOf Sb) _ Bits.nil hKr ha hs hT
+  have hP : NoB ([] ++ 1 :: (Kr ++ 1 :: (a ++ [1]))) :=
+    NoB.cons one_nb (hKr.noB.app (NoB.cons one_nb (ha.noB.app (NoB.cons one_nb NoB.nil))))
+  have h3 := copyLoop _ (List.replicate Sb.length 3 ++ [3, 1]) hP hT (bitsOf Sb) [] Bits.nil hs
+  have h4 := blkVer Kr a (bitsOf Sb) (List.replicate (bitsOf Sb).length 3) hKr ha hs (rep_t3 _)
+  refine hA.trans ((h2.of_eq (by simp) rfl).trans ((h3.of_eq (by simp) rfl).trans (h4.of_eq ?_ ?_)))
+  · simp [rep_cons_comm, bitsOf_len]
+  · unfold GCv
+    simp [bitsOf, blkW, List.replicate_succ, rep_cons_comm, bitsOf_len]
+
 end ZP.Poly
