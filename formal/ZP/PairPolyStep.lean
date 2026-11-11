@@ -95,4 +95,22 @@ theorem nums (st : PSt) (hK : 1 ≤ st.K) (hA : 1 ≤ st.A) :
   · rw [← hrK, ← numR_inc, str_numR]
   · rw [← hrA, ← numR_inc, str_numR]
 
+/-! ## The three outcomes -/
+
+theorem front (Kr a : List Nat) (hKr : Bits Kr) (ha : Bits a) (Sb : List Bool) :
+    ∃ m : ZC, m.q ≠ Q.GRB ∧ zppolyLogic.Reach (layP Kr a (bitsOf Sb)) m ∧
+      zppolyLogic.Reach m (TR Kr a Sb (inL Sb)) :=
+  ⟨_, by unfold GCv; rw [hdR_eqP]; show Q.GC ≠ Q.GRB; decide, vStart Kr a hKr ha Sb,
+    vFull Kr a hKr ha Sb⟩
+
+theorem layPoly_eq (st : PSt) (rK rA : List Bool) (eK : str st.K = rK.reverse)
+    (eA : str st.A = rA.reverse) :
+    layPoly st = layP (bitsOf rK) (bitsOf rA.reverse) (bitsOf (svec st.n st.v)) := by
+  unfold layPoly
+  rw [eK, eA, List.reverse_reverse]
+
+theorem budget_eq (st : PSt) (rK : List Bool) (eK : str st.K = rK.reverse) :
+    (( svec st.n st.v).length + 2) ^ ((bitsOf rK).length + 1) - 1 = bud st.K st.n := by
+  simp [bud, budget, svec_length, bitsOf_len, eK]
+
 end ZP.Poly
