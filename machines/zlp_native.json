@@ -1,0 +1,16 @@
+{
+ "name": "zlp_native",
+ "logical_states": 191,
+ "states": 426,
+ "beep_state": 7,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zmh_ref.py",
+ "sha256": "6aa8fdba38f4ea279c9867cab62fa8c40340f8ae8e95ff894f856e1fc5c72938",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

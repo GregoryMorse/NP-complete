@@ -1,0 +1,16 @@
+{
+ "name": "zbpp_native",
+ "logical_states": 152,
+ "states": 333,
+ "beep_state": 15,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zbpp_ref.py",
+ "sha256": "e7b23f6a37a6970401e1d8d8b8ba894e548e49d9253f3e223a5a7d70079571fd",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

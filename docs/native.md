@@ -320,10 +320,196 @@ mod 7 and outputs out of order) and perturbations of them against the reference.
 The previous design (564 states before tuning) also had a bug: after a success the
 pass marks on `Nn` were not cleared, so `p` came out wrong for `n ≥ 2`.
 
+### Promise-P = promise-BPP (`native/zbpp.py`, 333 states)
+
+Same guest model, clock and enumeration as Z_P v2. For `s` with `n = |s|` and
+`N = 2^(n+1)` certificates, let `acc` count the `c` with `run(s, c, n+1) = ACC` and
+`rej = N − acc`. The promise problem `CAPP` has
+
+- YES instances: `4·acc ≥ 3N`;
+- NO instances: `4·rej ≥ 3N`;
+- every other `s` is outside the promise.
+
+This is circuit acceptance probability with gap 3/4 vs 1/4, in the self-padded form of
+`L_PP`; it is complete for promise-BPP under the padding reduction (amplify to error
+1/4 first; unread certificate bits do not change the ratio). `J` is correct on `s` iff
+`s` is outside the promise or `run(J, s, T)` agrees with it. So the machine quasihalts
+iff some `J` decides `CAPP` on its promise within the clock, iff **promise-P =
+promise-BPP**. This is the promise version on purpose: promise-P = promise-BPP implies
+P = BPP, but P = BPP (for languages) is not known to imply it, and BPP has no known
+complete language. Reference:
+`ref/zbpp_ref.py`.
+
+The machine adds an accept counter `A` and a reject counter `R` after `C`:
+`… C M_3 A M_4 R M_5 fuel`. Both start at `⌈3N/4⌉ − 1`, i.e. `1^(n+1)` with the
+second cell turned 0 (`1` for `n = 0`). An accepting certificate decrements `A`, a
+rejecting one `R`, then `C` is decremented as in zp2. A borrow out of `A`'s leading bit
+(the `⌈3N/4⌉`-th accept) gives truth 1, one out of `R` truth 0. If `C` underflows
+first, `s` is outside the promise: everything right of `M_2` is erased and the machine
+moves to `s + 1` without running `J`.
+
+### NP ⊆ P/poly (`native/zppoly.py`, 371 states)
+
+Same guest model and the same NP-complete language `L` as Z_P v2. A *degree* `K` (any
+bit string; only `|K|` matters) fixes the budget `T(K, n) = (n+2)^(|K|+1) − 1`. For
+each input length `n` the machine searches for an *advice program* `a`: a guest code
+that decides `L` on every `s ∈ {0,1}^n`. A run of `a` is charged `|a|` steps up front,
+`prun(a, s, T) = run(a, s, T − |a|)` if `|a| ≤ T`, else a time-out. `K` is good on `n`
+iff some `a` with `|a| ≤ T(K, n)` is right on all of `{0,1}^n`.
+
+The machine enumerates `K` in shortlex order. For each `K` it runs through
+`n = 0, 1, 2, …`, for each `n` through `a = '', '0', '1', '00', …` and for each `a`
+through `s ∈ {0,1}^n` in binary order. A wrong `s` moves to the next `a`; a correct last
+`s` moves to `n + 1` with `a = ''`. It beeps when `|a|` reaches `T(K, n) + 1`, and
+moves to the next `K` with `n = 0`. So it quasihalts iff some `K` is good on every `n`,
+iff `L` has polynomial-size programs that run in polynomial time, iff `L ∈ P/poly`,
+iff **NP ⊆ P/poly** (`L` is NP-complete under polynomial-time reductions, which
+preserve P/poly). Reference: `ref/zppoly_ref.py`.
+
+Layout: `M_g K M_1 a M_a s M_2 C M_3 …`. `K` plays `J`'s part (the walker builds
+`|K|+1` fuel blocks); the decider's code is `a`, the field before its source `s`, and
+`s` is a binary counter of fixed length `n`.
+
+- **Charge.** Before a decider run, each cell of `a` is blanked in turn (its bit kept in
+  the state) and the fuel is decremented once. Exhausting the fuel there means
+  `|a| > T(K, n)`: the machine beeps (`BEEPX`), erases everything right of `M_1` and
+  moves to `K + 1`, `n = 0`, `a = ''`.
+- **Next instance.** Correct: `s + 1` in binary; an overflow appends a cell to `s`
+  (`n + 1`) and deletes `a` cell by cell. Wrong: `s := 0^n`, `a := a + 1` (shortlex; a
+  carry out of `a` lengthens it, shifting `M_a` and `s` by one cell).
+
+Only the first refutation (`K = ''`, `n = 1`) is in reach of the tests; the second
+needs every advice program up to length `T('0', 4) = 35`. The tests also follow the
+first six events (`n` passed with advice `a`, or a beep) through `zppoly_ref.events`.
+
+### L = P and L = NL (`native/zlp.py`, 426 states; `native/zlnl.py`, 471 states)
+
+The decider of both machines is a **multihead read-only** guest (`ref/zmh_ref.py`):
+code, cyclic `R`, entries and the step loop as in Z_P v2, but the input `x` is read only
+and there are `|P| + 1` heads, all at position 0 at the start. Positions are
+`0 … n+1`; `0` and `n+1` are end markers and read as blank. The current head starts
+as head 0. With `t = 1`:
+
+- `w = 1` moves the current head right (`d = 1`) or left (`d = 0`), staying at the ends;
+- `w = 0` makes the next (`d = 1`) or previous (`d = 0`) head current, staying at the
+  last and the first.
+
+A log-space machine is a multihead two-way DFA (Hartmanis 1972) that runs in
+polynomial time; one step of a `k`-head automaton costs `O(k)` steps here, and the
+clock `(|s|+2)^(|J|+1) − 1` covers it once `J` is padded. Conversely `run_mh(J, x, T)`
+takes space `O(|J| log |x|)`. So the deciders are exactly the log-space machines.
+
+- **L = P.** The truth is `L_P = { s : run_mh(s, s, |s|+1) = ACC }`: program `s`, run
+  on its own text with `|s|+1` heads. `L_P` is in P and P-complete under log-space
+  reductions: the heads serve as the cells of a polynomial-time machine's tape (a head
+  at position 0 is a 0, at position 1 a 1; the current head is the tape head), the
+  first `|x|` steps of the program write the input `x`, and padding makes `|s| + 1` at
+  least the running time. So the machine quasihalts iff `L_P ∈ L` iff **L = P**.
+- **L = NL.** The truth is `L_NL = { s : some c ∈ {0,1}^(|s|+1) has run1(s, c, |s|+1)
+  = ACC }`, where `run1` is Z_P v2's run with a **one-way** head (`d = 0` leaves the
+  head in place). `L_NL ∈ NL`: guess `c` cell by cell as the head reaches it, keeping
+  the rotation state, the head position, the current cell and a step counter. It is
+  NL-hard: the configuration graph of a log-space NTM on `x` has polynomially many
+  nodes, and a program of polynomial size hard-wires it (one block of entries per
+  configuration, the certificate bit under the head choosing the successor, then a
+  move right); padding covers the steps and certificate cells used. So the machine
+  quasihalts iff `L_NL ∈ L` iff **L = NL**. Reference: `ref/znl_ref.py`.
+
+Both machines share `native/zmh.py`. During a multihead run the tape is
+
+    Q gap c H M_g J M_1 s M_2 … fuel B storage
+
+The countdown cell `c` holds the symbol under the current head (blank at the end
+markers); zp2's ι countdown runs on it. The storage holds one unit per head,
+`M M 0 x_1 … x_n 0` (`x = s`), with a marker cell after the scanned cell: `B` for the
+current head, `M` for the others. The first `0` is position 0, the last one
+position `n+1`. The act walks to the current marker; a move swaps the marker with its
+neighbour unless the neighbour is the unit's `M` (left) or the next unit / the end
+(right); a head switch turns the current marker into `M` and the next (previous)
+unit's marker into `B`. The new scanned symbol is then carried into `c`, and the entry
+is recorded as in zp2. A halt erases the storage before zp2's erase of the left side.
+
+- **Units.** `M M 0 M s 0` is appended at the far right by a copy loop over `s`. The
+  decider gets one unit when the walker reaches `M_1` and one per step of the walk back
+  through `J` (`|J| + 1`). In zlp the verifier (program `s`, `|s| + 1` heads,
+  `T = |s| + 1`) gets one unit per cell of `C = 1^(|s|+1)`, consumed to 0s. After
+  each unit the head reads the field after `M_2`: `M` is the decider's truth flag, a
+  bit is `C`. There is one verifier run; its outcome is the truth.
+- **zlnl.** The verifier runs are zp2's (certificate counter `C`, guest tape copied from
+  `C`, the guest tape left of `H`) with one change: `write w, move left` becomes
+  `write w, stay`. `VG1` puts a dummy `0` between `H` and `M_g`, so during a verifier
+  run the cell right of `H` is a bit and during a decider run it is `M_g`; the act
+  looks there once and dispatches. `QE4` tells the two setups apart by the cell right
+  of the gap separator.
+
+The tests compare beeps with the references, run instances whose programs switch
+heads, and check the act on every storage with `|x| ≤ 3` and up to 3 heads.
+
+### Linear-time GF(2) matrix product (`native/zmm.py`, 577 states)
+
+Z_MUL with a different output check (`ref/zmm_ref.py`): the guest model, the clock
+`T = (|s|+2)·2^|J| − 1`, the outer loop and the beep on the first wrong `s` are
+Z_MUL's. The instance is `s = 1^m 0 w`: `B` is the `m × m` matrix `w[0 : m²]`
+(row-major, padded with 0s) and `A` is the rest of `w` cut into rows of length `m`
+(the last row padded), so `A` has `r = ⌈(|w| − m²)/m⌉` rows. `J` is correct on `s` iff
+the run halts properly within `T` and `out`, padded with 0s, starts with the `r × m`
+product `C = A·B` over GF(2).
+
+The machine quasihalts iff some multitape Turing machine computes the GF(2) product of
+two `m × m` matrices in time `O(m²)`, linear in the input. This is a **proxy**, not
+ω = 2 (see below). The guest model and multitape machines simulate each other in
+linear time (Z_MUL). The encoding converts to and from the plain one (`1^m 0 A B`) in
+linear time. An `r × m` by `m × m` product is `⌈r/m⌉` square products when `r ≥ m`, and
+one square product with `A` padded when `r < m`; either way the input has at least
+`max(m², r·m)` cells. If `|w| ≤ m²`, `C` is empty.
+
+The check works on the copy of `s` that Z_MUL makes next to `out` (`H` stays `M` and
+is the separator `Ms`; the `0` after `1^m` becomes `Mr`). It is a row-by-row XOR with an
+accumulator at the far end:
+
+    M_g out Ms 1^m Mr [B, P] [A] s-end a [acc_old] sep [acc_new] end
+
+- `P` is the only blank of `w`. It starts in front of `B` (`w` is shifted by one) and
+  slides through `B`, one cell per step: the cell after `P` moves into `P`. A
+  reverse shift puts it back after each row.
+- A step reads `v` after `P`, consumes the front `o` of `acc_old` (it becomes `M`) and
+  appends `o xor (a·v)` to `acc_new`. When `acc_old` is used up, a row of `B` is done.
+  Then the ruler `1^m` is marked, the next `a` is fetched (the front of `A`, which
+  becomes `M`; 0 past the end of `A`), and `acc_new` becomes `acc_old`.
+- The first row is a dry run with `a = 0`. It only finds the end of `B`: its last step
+  reads the first cell of `A`, which becomes the first `a`. If `P` reaches the end of
+  `w` in the dry run, `A` is empty and the check passes.
+- After every other row, `acc_new` is compared cell by cell with the next `m` cells of
+  `out` (consumed from the `M_g` side; missing cells read as 0), the next row's first
+  `a` is fetched (none left: the check passes), the accumulator is zeroed and `B` is
+  shifted back.
+- Outcome `o`: the blanks between `M_g` and `Ms` become 0, `Ms` becomes `o`, the four
+  blank-terminated stretches further left are erased, and zp2's `ER1` takes over.
+
+The tests run guest programs that write a fixed string (`C`, `C` with one bit
+flipped, or random) on random instances with `m ≤ 3`, and compare beeps.
+
+### Not attempted
+
+- **promise-BQP = promise-P** (or BPP = BQP): the truth would need exact or
+  approximate amplitudes of a quantum circuit. The natural complete problem
+  (estimate one amplitude of a circuit to 1/poly) needs arithmetic on numbers whose
+  size grows with the circuit, and approximations with error control. Too big for a
+  native routine.
+- **Deterministic polynomial identity testing** (the derandomization of PIT): the
+  truth is "this arithmetic circuit computes the zero polynomial", which needs
+  polynomial arithmetic (or Schwartz–Zippel with exact big-integer evaluation over
+  all points of a grid). Possible in principle, but much larger than the machines here.
+- **ω = 2**: the statement "for every ε > 0 there is an `O(n^(2+ε))` algorithm" is Π₃
+  (∀ε ∃ algorithm ∀ inputs), not Σ₂, so it is not a quasihalting statement of this
+  kind. Z_MATMUL above is the Σ₂ statement "exactly linear time on multitape
+  machines, over GF(2)". Neither statement is known to imply the other.
+
 ### Compiler
 
 `native/compile2.py` stores each logical cell as a pair of cells. Each logical state
-enters its pair from a fixed side, chosen per state. Three things keep the 2-symbol
+enters its pair from a fixed side, chosen per state (the start state from the left,
+as `formal/ZP/Compile.lean` assumes). Three things keep the 2-symbol
 machine small:
 
 - **Pair skip.** A state acts on the first cell read alone when the second cell cannot

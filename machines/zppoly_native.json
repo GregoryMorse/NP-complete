@@ -1,0 +1,16 @@
+{
+ "name": "zppoly_native",
+ "logical_states": 166,
+ "states": 371,
+ "beep_state": 14,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zppoly_ref.py",
+ "sha256": "ffff011c29d3ecc174bd99983810b960bad24f2cf97879c0dd6199d4f000141c",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

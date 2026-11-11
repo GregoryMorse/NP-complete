@@ -1,0 +1,16 @@
+{
+ "name": "zlnl_native",
+ "logical_states": 210,
+ "states": 471,
+ "beep_state": 7,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/znl_ref.py",
+ "sha256": "ce36e2114afd050d483ae3a480e997d9a9779578ea53276143e1634cae1f58d2",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}

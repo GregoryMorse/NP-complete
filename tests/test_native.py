@@ -10,6 +10,11 @@ machines must beep exactly at the refutations predicted by the references.
   zgi_native  graph isomorphism in P  ref/zgi_ref.py
   zmul_native  linear-time multiplication  ref/zmul_ref.py
   zntt_native  linear-size NTT circuits  ref/zntt_ref.py
+  zbpp_native  promise-P = promise-BPP  ref/zbpp_ref.py
+  zppoly_native  NP in P/poly  ref/zppoly_ref.py
+  zlp_native   L = P   ref/zmh_ref.py
+  zlnl_native  L = NL  ref/znl_ref.py
+  zmm_native   linear-time GF(2) matrix product  ref/zmm_ref.py
 """
 import os
 import subprocess
@@ -26,6 +31,11 @@ import zdl_ref      # noqa: E402
 import zgi_ref      # noqa: E402
 import zmul_ref     # noqa: E402
 import zntt_ref     # noqa: E402
+import zbpp_ref     # noqa: E402
+import zppoly_ref   # noqa: E402
+import zmh_ref      # noqa: E402
+import znl_ref      # noqa: E402
+import zmm_ref      # noqa: E402
 import logic        # noqa: E402
 import test_logic   # noqa: E402
 import check2       # noqa: E402
@@ -41,6 +51,13 @@ import zgi          # noqa: E402
 import zmul         # noqa: E402
 import zntt         # noqa: E402
 import cinst        # noqa: E402
+import zbpp         # noqa: E402
+import zppoly       # noqa: E402
+import zlp          # noqa: E402
+import zlnl         # noqa: E402
+import zmm          # noqa: E402
+import clsim        # noqa: E402
+import esim         # noqa: E402
 
 MACHINES = {
     'zp_native': (zp2, zp2_ref.zp_beeps, None),
@@ -53,18 +70,28 @@ MACHINES = {
     'zmul_native': (zmul, zmul_ref.zp_beeps, None),
     'zntt_native': (zntt, lambda max_beeps: ((b, '1' * c, '1' * n) for b, c, n in
                                             zntt_ref.zp_beeps(max_beeps)), None),
+    'zbpp_native': (zbpp, zbpp_ref.zp_beeps, None),
+    'zppoly_native': (zppoly, lambda max_beeps: ((b, K, '0' * n) for b, K, n in
+                                                zppoly_ref.zp_beeps(max_beeps=max_beeps)), None),
+    'zlp_native': (zlp, zmh_ref.zp_beeps, None),
+    'zlnl_native': (zlnl, znl_ref.zp_beeps, None),
+    'zmm_native': (zmm, zmm_ref.zp_beeps, None),
 }
-# the NTT machine beeps with (C, Nn) in tape fields 3 and 4
-FIELDS = {'zntt_native': (3, 4)}
-# the second NTT refutation (c = 2) is far out of reach
-MAXB_NTT = {'zntt_native': 2}
+# the NTT machine beeps with (C, Nn) in tape fields 3 and 4, the P/poly machine
+# with (K, s) in fields 1 and 3 (field 2 is the advice a, with one cell blanked)
+FIELDS = {'zntt_native': (3, 4), 'zppoly_native': (1, 3)}
+# the second NTT refutation (c = 2) is far out of reach, and so is the second
+# P/poly refutation (the reference needs every advice program up to length
+# T(K, n) for n = 4); test_ppoly_events covers more of the P/poly machine
+MAXB_NTT = {'zntt_native': 2, 'zppoly_native': 1}
 # beyond 13 beeps the NP = coNP reference needs exponentially many runs
 MAXB = {'zconp_native': 13}
 # the truth-routine machines examine ~60 instances per candidate: keep CI short
-MAXB.update({'zfactor_native': 8, 'zdlog_native': 8, 'zgi_native': 12, 'zmul_native': 12})
+MAXB.update({'zfactor_native': 8, 'zdlog_native': 8, 'zgi_native': 12, 'zmul_native': 12,
+             'zmm_native': 12})
 # the logical machines of the native truth routines are slow to simulate in Python
 MAXB.update(MAXB_NTT)
-LOGICAL_MAXB = {'zfactor_native': 4, 'zdlog_native': 4, 'zmul_native': 6}
+LOGICAL_MAXB = {'zfactor_native': 4, 'zdlog_native': 4, 'zmul_native': 6, 'zmm_native': 6}
 
 
 def want(beeps, n):
@@ -75,7 +102,10 @@ def logical_beeps(mod, n, steps=10**8, fields=(1, 2)):
     out = []
 
     def cb(tape, h):
-        out.append(test_logic.decode(tape, fields))
+        # like test_logic.decode, but across blank cells (the P/poly beep has one in a)
+        nb = [i for i, c in tape.items() if c != 'B']
+        f = ''.join(tape.get(i, 'B') for i in range(min(nb), max(nb) + 1)).split('M')
+        out.append(tuple(f[i] for i in fields))
         return len(out) < n
     logic.run(mod.build(), steps, cb)
     return out
@@ -190,6 +220,38 @@ def test_mul_instances():
         assert inst.instance_ni(m, J, s) == w, (J, s)
 
 
+
+def test_matmul_instances():
+    """GF(2) product check: guest programs that write a fixed string, on instances
+    with m <= 3; the written string is C, a corruption of C, or unrelated."""
+    import random
+    m = zmm.build()
+    rnd = random.Random(1)
+
+    def writer(out):
+        return tm_code([[('W', b, '1', q + 1)] * 3 for q, b in enumerate(out)] + [[('H',)] * 3])
+    cases = [(writer('0110'), '1101101101101'), (writer(''), '111'), (writer('1'), '10'),
+             (writer('0001'), '100101')]
+    for _ in range(40):
+        k = rnd.randint(0, 3)
+        lo = k * k + 1 if rnd.random() < 0.8 else 0
+        s = '1' * k + '0' + ''.join(rnd.choice('01') for _ in range(rnd.randint(lo, 2 * k * k + 4)))
+        C = zmm_ref.product(s)
+        r = rnd.random()
+        if r < 0.4 or not C:
+            out = C
+        elif r < 0.7:
+            i = rnd.randrange(len(C))
+            out = C[:i] + str(1 - int(C[i])) + C[i + 1:]
+        else:
+            out = ''.join(rnd.choice('01') for _ in range(rnd.randint(0, len(C) + 2)))
+        cases.append((writer(out), s))
+    want = [zmm_ref.correct(J, s) for J, s in cases]
+    assert want.count(True) > 10 and want.count(False) > 10
+    for (J, s), w in zip(cases, want):
+        assert inst.instance_ni(m, J, s) == w, (J, s)
+
+
 def ntt_tape(c, n, recs):
     """zntt tape before the evaluation of recs = [(u, b)] (u None: none)."""
     p = zntt_ref.prime(n)
@@ -258,6 +320,89 @@ def test_decider_clock():
         assert last == zp2_ref.clock(J, s), (J, s, last, zp2_ref.clock(J, s))
 
 
+def test_bpp_instances():
+    # inside the promise (yes and no) and outside it: outside, every J is correct
+    m = zbpp.build()
+    for J in ('', '1', '0', '10'):
+        for s in ('', '0', '1', '01', '11', '0001', '0010', '0100', '1001', '00001'):
+            assert inst.instance(m, J, s, 10**8) == zbpp_ref.correct(J, s), (J, s)
+
+
+def lsim_instances(m, ref, cases):
+    subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'lsim'),
+                           os.path.join(ROOT, 'native', 'lsim.c')])
+    path = os.path.join(ROOT, 'native', '_lsim.ltab')
+    ix = clsim.write_table(m, path)
+    cwd = os.getcwd()
+    os.chdir(os.path.join(ROOT, 'native'))
+    try:
+        for J, s in cases:
+            got = clsim.instance(path, ix, m.beep, J, s, 10**8, start='GRB')
+            assert got == ref.correct(J, s), (J, s, got)
+    finally:
+        os.chdir(cwd)
+
+
+def test_multihead_instances():
+    # programs that move heads both ways and switch heads (L = P and L = NL)
+    cases = [('10100001', '010'), ('0011010', ''), ('100000', '0'), ('110000', '101'),
+             ('0010110101', '11'), ('111010000011', '1110'), ('010100', '111'),
+             ('000011111001', '10001'), ('00111110010', '01011'), ('001011101100', ''),
+             ('110001110000', '00'), ('01110001', '11')]
+    lsim_instances(zlp.build(), zmh_ref, cases)
+    lsim_instances(zlnl.build(), znl_ref, cases)
+
+
+def test_multihead_act():
+    """The act of the multihead machines (zmh.py) on every storage with |x| <= 3,
+    up to 3 heads: move right/left, next/previous head, then the scanned symbol
+    is carried into c."""
+    from itertools import product
+    m = zlp.build()
+
+    def storage(x, pos, cur):
+        out = ''
+        for i, p in enumerate(pos):
+            cells = '0' + x + '0'
+            out += 'MM' + cells[:p + 1] + ('B' if i == cur else 'M') + cells[p + 1:]
+        return out
+    for n in range(4):
+        for x in map(''.join, product('01', repeat=n)):
+            for k in (1, 2, 3):
+                for pos in product(range(n + 2), repeat=k):
+                    for cur in range(k):
+                        for w, d in product('01', repeat=2):
+                            pre = 'BBMM1B'
+                            tape = dict(enumerate(pre + storage(x, pos, cur)))
+                            h, q = 4, 'G2' + w + d
+                            while q != 'RTW':
+                                tape[h], mv, q = m.d[(q, tape.get(h, 'B'))]
+                                h += 1 if mv == 'R' else -1
+                            p2, c2 = list(pos), cur
+                            if w == '1':
+                                p2[cur] = min(pos[cur] + 1, n + 1) if d == '1' else max(pos[cur] - 1, 0)
+                            else:
+                                c2 = min(cur + 1, k - 1) if d == '1' else max(cur - 1, 0)
+                            a = p2[c2]
+                            sym = 'B' if a in (0, n + 1) else x[a - 1]
+                            got = ''.join(tape.get(i, 'B') for i in range(len(pre) + len(storage(x, pos, cur))))
+                            assert (h, got) == (0, pre[:1] + sym + pre[2:] + storage(x, p2, c2)), \
+                                (x, pos, cur, w, d, got)
+
+
+def test_ppoly_events(n=6):
+    """The P/poly machine passes lengths (SOV: K, a, s) and beeps (BEEPX: K, s)
+    in the order of zppoly_ref.events."""
+    subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'esim'),
+                           os.path.join(ROOT, 'native', 'esim.c')])
+    got = []
+    for e in esim.events(zppoly.build(), ['SOV', 'BEEPX'], n, maxsteps=10**9)[:n]:
+        f = e[2].strip('B').split('M') if len(e) == 3 else None
+        got.append(('ok', f[1], len(f[3]), f[2]) if e[0] == 'SOV' else
+                   ('beep', f[1], len(f[3])) if e[0] == 'BEEPX' else e)
+    assert got == list(zppoly_ref.events(max_events=n)), got
+
+
 def test_compiled(n=None):
     n = n or int(os.environ.get('NATIVE_BEEPS', '40'))
     subprocess.check_call(['gcc', '-O2', '-o', os.path.join(ROOT, 'native', 'psim'),
@@ -283,7 +428,13 @@ if __name__ == '__main__':
     test_factor_instances()
     test_dlog_instances()
     test_mul_instances()
+    test_matmul_instances()
     test_ntt_instances()
     print('factor/dlog instances ok')
+    test_bpp_instances()
+    test_multihead_instances()
+    test_multihead_act()
+    test_ppoly_events()
+    print('bpp/multihead instances, ppoly events ok')
     test_compiled()
     print('compiled ok')
