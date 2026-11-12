@@ -113,6 +113,11 @@ NATIVE = {
     'zgi_native': ('zgi', 9, 'ref/zgi_ref.py'),
     'zmul_native': ('zmul', 6, 'ref/zmul_ref.py'),
     'zntt_native': ('zntt', 7, 'ref/zntt_ref.py'),
+    'zbpp_native': ('zbpp', 2, 'ref/zbpp_ref.py'),
+    'zppoly_native': ('zppoly', 0, 'ref/zppoly_ref.py'),
+    'zlp_native': ('zlp', 0, 'ref/zmh_ref.py'),
+    'zlnl_native': ('zlnl', 0, 'ref/znl_ref.py'),
+    'zmm_native': ('zmm', 0, 'ref/zmm_ref.py'),
 }
 
 

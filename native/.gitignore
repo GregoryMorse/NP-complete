@@ -2,3 +2,6 @@ psim
 _tmp.tbl
 __pycache__/
 *.log
+esim
+_esim.ltab
+_lsim.ltab

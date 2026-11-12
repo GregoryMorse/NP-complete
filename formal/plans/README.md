@@ -2,7 +2,8 @@
 
 Status: `Quasihalts zpMachine ↔ Sentence` and `Sentence ↔ P = NP` are proved
 (`ZP.zp_quasihalts_iff_sentence`, `ZP.Cx.sentence_iff_PeqNP`). These plans cover the
-other native machines, the native twin-prime beeper (09) and Z_coNP (10).
+other native machines, the native twin-prime beeper (09), Z_coNP (10) and the newer
+machines (11–15).
 
 | # | plan | machine | depends on | size (lines) | difficulty |
 |---|---|---|---|---|---|
@@ -17,17 +18,24 @@ other native machines, the native twin-prime beeper (09) and Z_coNP (10).
 | 08 | [Z_NTT](08-zntt.md) | 469 states | 01 | 7000–10000+ | hardest: new everything + primes ≡ 1 (mod n) |
 | 09 | [twin primes](09-twin.md) | 19 states | — | 800–1200 | easy: a 2-symbol machine, no interpreter |
 | 10 | [Z_coNP](10-zconp.md) | 317 states | 01 (06, 07's base lesson) | 4000–6000 | medium-hard: choices at fresh cells, DFS = ∃ |
+| 11 | [Z_BPP](11-zbpp.md) | 333 states | 01, 02 | 2000–3000 | easy-medium: Z_PP with two counters and an outside-the-promise branch |
+| 12 | [Z_PPOLY](12-zppoly.md) | 325 states | 01 | 4000–5500 | medium: new four-level abstract program; charge lemma |
+| 13 | [Z_LP](13-zlp.md) | 373 states | 01 (07's base lesson) | 5000–7000 | hard: new guest model (multihead read-only input) |
+| 14 | [Z_LNL](14-zlnl.md) | 415 states | 13 | 2500–3500 | medium: zp2 verifier with a one-way head + 13's decider |
+| 15 | [Z_MATMUL](15-zmm.md) | 494 states | 07 | 3000–4500 | medium: Z_MUL's proof shared through a common base, new check |
 
-**Order:** 01 → 02 → 06 → 03 → 04 → 05 → 07 → 08; 07, 09 and 10 are independent of each other. Plans 02 and 06 are the cheapest
+**Order:** 01 → 02 → 06 → 03 → 04 → 05 → 07 → 08; 07, 09 and 10 are independent of each other. Of the newer plans, 11 needs 02;
+13 comes before 14; 12 is independent; 15 needs 07 (done). Plans 02 and 06 are the cheapest
 wins and exercise the refactor. 06 can move earlier or later freely.
 
 **Targets.** Each machine X gets `Quasihalts xMachine ↔ Sentence_X`, the advertised,
 comparator-checked theorem. For the machines on the zp2 guest (PP, PSPACE, FACTOR,
 DLOG, GI), plan 01 step H also gives `Quasihalts xMachine ↔ InP L_X` almost for free.
 The following stay on paper unless the user asks for them:
-- the class-level equivalences (`P = PP`, `P = PSPACE`);
+- the class-level equivalences (`P = PP`, `P = PSPACE`, promise-P = promise-BPP,
+  NP ⊆ P/poly, L = P, L = NL);
 - the function-problem statements ("factoring in P", "discrete log mod primes in P",
-  "GI in P", "linear-time multiplication").
+  "GI in P", "linear-time multiplication", "linear-time GF(2) matrix product").
 
 For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 
@@ -67,4 +75,9 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [x] 07 Z_MUL (`ZP.zmulQuasihalts_iff_sentence`, proved)
 - [x] 08 Z_NTT (`ZP.zntt_quasihalts_iff_sentence`, hypothesis `PrimeEx`; comparator-checked)
 - [x] 09 twin primes (`ZP.twin_quasihalts_iff`, proved)
-- [ ] 10 Z_coNP (`ZP.zconp_quasihalts_iff_sentence`; table, logic, certificate and `zcBase` done)
+- [x] 10 Z_coNP (`ZP.zconpQuasihalts_iff_sentence`)
+- [x] 11 Z_BPP (promise-P = promise-BPP) — `ZP.zbpp_quasihalts_iff_sentence`, axioms propext/Classical.choice/Quot.sound only
+- [ ] 12 Z_PPOLY (NP ⊆ P/poly)
+- [x] 13 Z_LP (L = P)
+- [x] 14 Z_LNL (L = NL)
+- [x] 15 Z_MATMUL (linear-time GF(2) matrix product)

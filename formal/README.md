@@ -65,6 +65,7 @@ Plans for the rest are in `plans/`.
 |---|---|---|---|
 | Z_P (278) | `ZP.zp_quasihalts_iff_sentence` | `ZP.Cx.sentence_iff_PeqNP` | `Defs Table Abstract Bridge Logic … Hard` (see above) |
 | Z_PP (295) | `ZP.zpp_quasihalts_iff_sentence` | `ZP.zppQuasihalts_iff_sentence`, `ZP.zpp_quasihalts_iff_InP` | `DefsPP ChecksPP TablePP LogicPP CompilePP PairPP MainPP`, `Count` |
+| Z_BPP (333) | `ZP.zbpp_quasihalts_iff_sentence` | `ZP.zbppQuasihalts_iff_sentence` | `DefsBPP ChecksBPP TableBPP LogicBPP CompileBPP PairBPP MainBPP` (reuses `Count`, `PairPP`'s shape) |
 | Z_PSPACE (291) | `ZP.zps_quasihalts_iff_sentence` | `ZP.zpsQuasihalts_iff_sentence`, `ZP.zps_quasihalts_iff_InP` | `DefsPS ChecksPS TablePS LogicPS CompilePS PairPS MainPS` |
 | Z_FACTOR (324) | `ZP.zfac_quasihalts_iff_sentence` | `ZP.zfacQuasihalts_iff_sentence`, `ZP.zfac_quasihalts_iff_InP` | `DefsF ChecksF TableF LogicF CompileF PairF MainF` |
 | Z_DLOG (400) | `ZP.zdl_quasihalts_iff_sentence` | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |

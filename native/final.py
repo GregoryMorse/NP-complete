@@ -18,6 +18,7 @@ def sides(m, name=None):
         if os.path.exists(p):
             saved = json.load(open(p))
             sd.update({q: v for q, v in saved.items() if q in sd})
+    sd[m.start] = 0     # the Lean compile layer (formal/ZP/Compile.lean, s0) starts on the left cell
     return sd
 
 

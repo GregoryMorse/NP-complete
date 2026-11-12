@@ -1,0 +1,264 @@
+# 15 — Z_MATMUL (`native/zmm.py`, 494 states): `Quasihalts zmmMachine ↔ SentenceMM`
+
+Prerequisites: plan 07 (Z_MUL, done). This machine **is** Z_MUL with a new output
+check: the guest model, fuel, switch, run theorem, setup and dispatch are Z_MUL's.
+Only the check after a proper halt changes. So the work is (a) making the Z_MUL
+lemmas usable from a second machine and (b) one new check routine.
+
+Reference: `ref/zmm_ref.py`; design: `docs/native.md` § "Linear-time GF(2) matrix
+product"; machine: `native/zmm.py` (212 logical states: zmul minus its check, plus 70
+check states).
+
+## 1. Trusted definitions (`ZP/DefsMM.lean`, mirrors `ref/zmm_ref.py`)
+
+```lean
+/-- s = 1^m 0 w: m, then B = w[0:m²] padded, A = w[m²:] in rows of length m. -/
+def mmM (s : List Bool) : Nat := (s.takeWhile id).length
+def mmW (s : List Bool) : List Bool := s.drop (mmM s + 1)
+def padTo (n : Nat) (l : List Bool) : List Bool := (l ++ List.replicate n false).take n
+def mmB (s : List Bool) (k j : Nat) : Bool := (padTo (mmM s ^ 2) (mmW s)).getD (k * mmM s + j) false
+def mmRows (s : List Bool) : Nat := if mmM s = 0 then 0 else ((mmW s).length - mmM s ^ 2 + mmM s - 1) / mmM s
+def mmA (s : List Bool) (i k : Nat) : Bool := ((mmW s).drop (mmM s ^ 2)).getD (i * mmM s + k) false
+/-- C = A·B over GF(2), row-major. -/
+def mmC (s : List Bool) : List Bool :=
+  (List.range (mmRows s)).flatMap fun i => (List.range (mmM s)).map fun j =>
+    (List.range (mmM s)).foldl (fun acc k => xor acc (mmA s i k && mmB s k j)) false
+def checkMM (out s : List Bool) : Bool := padTo (mmC s).length out == mmC s
+def correctMMB (J S : Nat) : Bool :=
+  match runMul (str J) (str S) (clockMul (str J) (str S)) (str J).length with
+  | some out => checkMM out (str S)
+  | none => false
+def CorrectMM (J S : Nat) : Prop := correctMMB J S = true
+def SentenceMM : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectMM J S
+```
+
+`runMul` and `clockMul` come from `ZP/DefsMul.lean`. Checks (`decide`): `mmC` and
+`checkMM` on the examples of `zmm_ref.product` (for example `parse('110' + '1011' +
+'0110' + '1')` gives `m = 2`, three rows of `A`), on `m = 0`, on `|w| ≤ m²` (empty
+`C`), and the first beeps `('', '')`, `('0', '')`, `('1', '1011')`, `('00', '')`.
+
+## 2. Generated files and base
+
+```bash
+python3 formal/gen_table.py zmm_native zmmMachine && python3 formal/gen_logic.py zmm
+```
+
+Add `'zmm': ('zmm', 'zmm_native', 'zmm', 'MM', None)` to `gen_logic.py`. zmm changes 2
+zmul transitions (`GC,B` now goes to `X0`; `ER1,M` keeps `M`), removes zmul's
+check (`TS TS2 RW HPF HPD SW CA* DR DE DU mP* mY* mX* mZ* FR0 FR1 FE`) and adds 70
+states (none reuses a zmul name; `build()` asserts this).
+
+**Sharing Z_MUL's proof.** `MulRun`, `MulSwitch`, `PairMul` (up to the check) are
+stated for `zmulLogic.Reach`. Define `zmCore` = `zmulLogic` minus the transitions
+listed above and generate it with `gen_logic.py` (the `gen_base` pattern of
+`LogicBaseMul.lean`). Then either
+
+- restate the Z_MUL lemmas that do not touch the check over `zmCore` (a search and
+  replace of `zmulLogic.Reach` by `zmCore.Reach` in copies, plus `Ext` lifts at the two
+  use sites), or
+- better, state them once for any `L` with `Ext zmCore L`.
+
+Prove `zmCore_ext_zmulLogic` and `zmCore_ext_zmmLogic` by `decide +kernel` in
+`ZP/ExtChecks.lean`. The halt exit of `PairMul` (`hd FBACK … ⟶ hdR mK1 [2] …`, see plan
+07's status notes) changes only in that `H` stays `M`: redo that one segment and
+`mkChain`/`gcBodyC` (they are generated; rerun the generator on `zmmLogic`).
+
+## 3. The check (`ZP/MMCheck.lean`, `ZP/MMRow.lean`)
+
+Logical direction F = physical left. Print tapes on the Python machine at `X3`, `J1`,
+`Z0`, `RS2`, `FA`, `D3`, `Q2`, `N2`, `RB2`, `E1` for the instances of
+`tests/test_native.py::test_matmul_instances` before writing statements
+(`formal/scripts/symexec.py` with `LOGIC=LogicMM LOGICID=zmm`; the docstring of
+`native/zmm.py` explains each phase).
+
+Layout during the check, read from `M_g` (see `docs/native.md`):
+
+    M_g  B^c out'  Ms  acc[0..j) H acc[j+1..m)  Mr  B'  M  [A: M^q A']  s-end
+
+where `out'` is the unconsumed part of `out` (the consumed `c` cells are blank), the
+accumulator occupies the `m` ruler cells with one hole `H` (the cell after `H` is
+column `j`; `H` sits just before `Mr` between B rows), `Mr` is `M` (`a = 0`) or blank
+(`a = 1`), `B'` is `B` with one blank `P` (cells before `P` are shifted one cell
+towards `M_g`), and `q` cells of `A` are consumed. In the dry row there is no `M`
+between `B'` and `A`, and the accumulator holds the ruler (`1`s not yet marked, `0`s
+marked).
+
+1. **Setup** (`X0`–`X3`, `X3a`, `SM*`, then `RB*` from the end): from `GC`'s exit to
+   `RS1` (which rewinds `H` from the ruler's end to its front) with `H` in place of the `0`,
+   `Mr = M`, `P` in front of `B`. Loops: the skip loops `X0`–`X3`, the one-cell shift
+   `SM0/SM1` over `w` (one lemma), the reverse shift `RB*` (one lemma over a bit
+   string, reused in 6.).
+2. **j-step** (`J1 S* T* W* U* Y*c Y2 Z0 Z1 G2`): one lemma. Pre: `P` before `v`,
+   `H` before `acc[j]`. Post: `P` after `v`, `acc[j] := acc[j] xor (a && v)`, `H` after
+   it. `Z0` then sees either another accumulator cell (`Z1 → G2 → J1`) or `Mr` (B row
+   done, `Mr := M`, `RS1`). All loops are skip loops of the `MulCheck` shape.
+3. **B row** (`m` j-steps): induction on `j`. Result: `acc := acc xor a · B_k`.
+4. **Rewind and next a** (`RS1 RS2 RS3* G1 GA FA FB FC FD* FE*`): `RS*` moves `H` back to
+   the front (`m` swaps, one lemma); then `FA` looks after `P`: a bit and then a `M`
+   later (`FC`) fetches the front of `A` (or 0 past its end, `FC` on blank) into `Mr` and
+   returns to `G2 → J1`; `FB` on blank (no boundary: dry row) goes to `D0`; `FA` on `M`
+   (`P` at the boundary: row done) goes to `D0` too.
+5. **Row** (induction on `k`): from the start of a row with `acc = out_i`, after `m` B
+   rows `acc = out_i xor (row i of C)`.
+6. **Row end** (`D0 D1 D3`, `Q2 Q4 Q5 Q6 Q7* Q8*`, `N1`–`N5`, `RB*`):
+   - `D3` scans the accumulator: `0`s are skipped; a `1` is marked `0` and sent to `Z1`.
+     In the dry row this is the B-row counter (next B row with `a = 0`, `Mr` still `M`).
+     After a real row the next `J1` reads the boundary `M`: `VFa`, outcome 0.
+   - all `0`: `Q2` loads the next `m` cells of `out` into the accumulator, one cell per
+     round trip (`Q6` reads a bit and blanks it; `Ms` reached: 0).
+   - `N1`–`N5`: `A` used up (blank after `P` or after the `M`s): `VC1`, outcome 1; else
+     `RB*` shifts `B` back into `P` (dry row: `N4` shifts all of `w` from its end,
+     `RBM` inserting the boundary `M` at `P`).
+7. **Short `w`**: `J1` or `FA` reading `s-end` (blank) means `|w| ≤ m²`; outcome 1.
+8. **Verdict** (`VC1 VC2 VC3`, `VFa VFb VF0`, `E1–E4`, `VW1–VW3`): to `Ms`, `Ms := o`,
+   erase the four stretches (`acc`, up to `Mr`, `B'`, the rest of `w`), then blanks of
+   the consumed `out` to 0 (`VW*`), then `ER1`. One lemma per entry point (`VC1`,
+   `VC3` from setup with `m = 0` or `w = []`, `VFa`).
+9. **Check theorem**:
+
+```lean
+theorem mmPhase (out s : List Bool) … :
+    zmmLogic.Reach (hdR QMM.X0 …) (… ER1 with outcome (checkMM out s) …)
+```
+
+The bridge to `checkMM`: the rows are checked in order, so the run reaches `VFa` iff
+some row `i < r` differs from `padTo` of `out`'s slice `[i m, (i+1) m)`, and `VC*`
+otherwise. Prove `checkMM out s = true ↔ ∀ i < mmRows s, row i matches` in the
+`DefsMM`-adjacent (untrusted) file `ZP/MMSpec.lean`.
+
+## 4. Pair lemma and top
+
+`pair_mainMM`: Z_MUL's `pair_mainMul` with `mmPhase` in place of `mulPhase` and
+`frPath*`. Then `PairData zmmLogic CorrectMM` and
+
+```lean
+theorem zmmQuasihalts_iff_sentence : Quasihalts zmmMachine ↔ SentenceMM
+```
+
+Add to `Challenge.lean`, `Solution.lean`, `comparator.json` (`ZP.DefsMM`,
+`ZP.TableMM`).
+
+"`SentenceMM` ↔ multitape TMs compute the GF(2) matrix product in linear time" stays
+on paper (`docs/native.md`), like plan 07's.
+
+## Estimate
+
+~3000–4500 lines, 3 sessions: (1) defs, checks, generated files, `zmCore` and the
+retargeting of the Z_MUL lemmas; (2) setup, j-step, B row, next B row; (3) row end,
+verdict, `mmPhase`, pair lemma, top.
+
+## Checklist
+
+- [x] `DefsMM` + checks; generated files, certificate (ZP/DefsMM.lean, ZP/ExtChecksMM.lean)
+- [x] Ext facts (`zmBase_ext_zmmLogic`; no zmCore needed), Z_MUL lemmas retargeted (MMHalt, MMSwitch, MMRun, MMPair)
+- [x] setup, j-step, B row, next B row
+- [x] row end (dry, compare, fetch), reverse shift, verdict
+- [x] `mmPhase`, `pair_mainMM`, `zmmQuasihalts_iff_sentence`, Challenge/Solution (MMPhase, MMMain, MainMM; axioms: propext, Classical.choice, Quot.sound)
+
+### Status (end of session 2)
+
+Remaining: segment families via symbolic executor (setup SM/RB loops, j-step with
+jc a v x := if a = 0 and v = 3 then 5 - x else x, B row induction, RS rewind, toFA,
+fetch, dry row/D3, Q pass, N1-N5 shift, verdict stages 1 and 2), row loop, bridge
+checkMM <-> row-wise in ZP/MMSpec.lean, mmPhase, haltPhaseMM, pair_mainMM, Main,
+Challenge/Solution/comparator.
+
+### Status (end of session 3)
+
+Done and compiling (generated by `formal/scripts/mm/emit.py`, see the generator scripts there):
+MMVerdict (stage-1 exits), MMVerdict2 (verdictTail0/1), MMJ (jMore, jLast, rsStep),
+MMSetup + MMSetupLoop (SM loop, `smLoop`), MMRB + MMRBLoop (RB loop, `rbLoop`, `hd_snoc`).
+Note: F moves toward lower indices; in Lean order the machine runs on `hd` forms (tt='TT'/'TF').
+
+Remaining: X-phase setup glue (X0..X3, SM entry, entry from GC), rsFin/rsLoop, B-row induction
+over jMore/jLast, toFA/fetch, dry row/D3, Q pass loop, N1-N5, row loop, MMSpec bridge, mmPhase,
+haltPhaseMM, pair_mainMM, Main, Challenge/Solution/comparator, `#print axioms`.
+
+Update: also done and compiling: `rsEnd`/`rsLoop` (MMJ, MMRSLoop), `bRow` (MMBRow: n j-steps with the accumulator
+update `jc`, from `hdR J1` to `hdR RS1`; `jc_bits`).
+Remaining: X-phase setup glue, toFA/fetch (G1, GA, FA..FE, G2), dry row/D3, Q pass loop, N1-N5, verdict wiring,
+row loop, MMSpec bridge, mmPhase, haltPhaseMM, pair_mainMM, Main, shared files, `#print axioms`.
+
+### Check-phase layouts (Lean order: index ascending = toward M_g; F = toward LOWER indices, K = toward higher)
+
+Doc layout (physical): `M_g out Ms [acc, hole H] Mr [B rows, hole P] M [A] s-end`. In Lean ascending order this is read
+right to left: `s-end, A.reverse (consumed entries are 1 = M at the top), boundary 1, B cells (done part above P), P = 0,
+..., Mr, acc, H, Ms = 1, out.reverse, M_g`.  `hd q A R`: head on the last cell of `A`; `hdR q A R`: head on `R[0]`.
+
+Stable states (all proved for the row part; lemma names in ZP/MM*.lean):
+- `J1` (start of a j-step): `hdR J1 (F0 ++ Vt.reverse) (v :: 0 :: (Bp ++ a :: (Xs.reverse ++ 0 :: (ALr ++ 1 :: Tl))))`;
+  `v` = next B cell (head), `0` = P, `Bp` = done part of B, `a` = Mr (1 = M for a = 0, 0 = blank for a = 1),
+  `Xs` = unprocessed acc cells (x adjacent to the hole H), `ALr` = processed acc cells, `1` = Ms, `Tl` = out ...
+  `bRow` (MMBRow): a whole B row J1 -> `hdR RS1 (F0 ++ 0 :: (Vt.reverse ++ v :: Bp ++ [1])) (0 :: (zipWith (jc a) .. ).reverse ++ ALr ++ 1 :: Tl)`.
+- `RS1` -> `G1` (`rsLoop`): hole H slides to Ms; `hd G1 (Lq ++ X ++ [0]) (1 :: R)`.
+- `G1` -> `FA` (`toFA`): `hd FA F0 (0 :: Bd ++ 1 :: X ++ 0 :: 1 :: R0)`, `F0 = Au ++ replicate (q+1) 1 ++ Brem`.
+- `FA` -> `J1` next row (`fetchA0/1`: next A entry is a bit, Brem nonempty; `fetchE0`: A used up, a = 0).
+- Not yet: `FA` meets `1` (Brem empty, row complete) -> `D0` -> D1 (over Bd) -> D3 (acc = 0 check; a 1 -> Z1 -> J1 fails
+  at the boundary: wrong, outcome 0) -> `Q2` (Q pass: each iteration blanks one acc `0`, takes the last unconsumed out cell
+  y: blanks it, writes y into the blanked acc cell; out used up reads as 0) -> `N1..N5` (more rows? A used up: VC1) -> `RB` shift (P back in front of B).
+  `FA` meets blank (w ended inside B) -> `VC1` verdict 1; `FB` meets blank (no boundary yet) -> `D0` dry row.
+- Verdict: `VC1..VC3, VF*, E1..E4, VW1` stage 1 (MMVerdict), stage 2 `verdictTail0/1` (MMVerdict2).
+
+### Status (end of session 4)
+New and compiling: MMFetch (single-cell moves), MMLoops (generic fLoop/kLoop), MMFetch2 (g1/ga/g2 loops, toFA),
+MMFetch3 (fetchA0/1, fetchE0), plus everything listed earlier.
+Remaining: D0/D1/D3 and the dry-row marking; Q pass loop; N1-N5 and the RB shift; setup glue X0..X3 and GC entry;
+row/rows loop and wiring; MMSpec bridge; mmPhase; haltPhaseMM; pair_mainMM; Main; shared files; `#print axioms`.
+
+### Status (end of session 5)
+Also done and compiling: MMRowEnd/MMRowEnd2 (`rowEndOK`: acc all 0 -> Q2; `rowEndBad`: first 1 marked, back to J1 at the boundary),
+MMQ/MMQ2/MMQ3 (Q pass: `qPass` with loaded bits `((Os.reverse ++ replicate k 2).take k).reverse ++ Wl` and the taken out cells blanked),
+MMN/MMN2 (`nMore`: Q2 at Mr -> N1..N5 -> RB2 shift -> `hdR RS1`, next A entry exists).
+Chain for one C row (all proved): fetchA/E (FA -> J1) ; bRow x m ; rsLoop ; toFA ; ... ; rowEndOK ; qPass ; nMore ; rsLoop ...
+Remaining: the A-used-up exits (N2 B / N3 B -> VC1 -> verdict 1), dry row (first row: D0/D1/D3 with Mr = M, N4, RBM)
+and setup glue (X0..X3, GC entry), fetch edge cases (FA/FB meeting blank), verdict wiring, row/rows loop,
+MMSpec bridge, mmPhase, haltPhaseMM, pair_mainMM, Main, shared files, `#print axioms`.
+
+### Design notes for the remaining parts (end of session 6)
+
+Setup chain (zmm.py): `hdR mK1 [1] (Rw ++ 1 :: (j ++ 1 :: (s ++ 1 :: Y)))` -> (mkChain with [1] instead of [2], zmmLogic copy needed)
+`hdR GC (1 :: Rw ++ 1 :: j ++ [1]) (s ++ 0 :: Y)` -> gcLoop (MMPair) -> `hdR GC (s.reverse ++ V ++ s) (0 :: Y)`, V = 1 :: Rw ++ 1 :: j ++ [1]
+-> `GC B -> X0 F`: X0..X3a sweep back over s, j, Rw, Ms to the copy s' = w.reverse ++ [0] ++ replicate m 3; X3 over the ruler, X3 on `0` writes the
+hole H and enters SM; exits to VC3 (m = 0, s empty, s = 1^m, w empty) are `vSetup*` (MMVerdict).
+smStart(w0) + smLoop (MMSetupLoop) shift w by one and write Mr = M; the blank below w is the hole of rbLoop2 (MMN2): result
+`hdR RS1 (w.reverse ++ [0, 1]) (0 :: replicate m 3 ++ 1 :: out...)` i.e. P on top of B, acc = ruler 1^m (symbol 3), hole at the bottom.
+Then rsLoop, toFA (F0 = w.reverse, Bd = []), FA.
+
+Dry cycle (first row, no boundary): FA bit -> FB over the rest of w -> `FB B -> K D0`, D0 sweeps up over w to P, D1 over Bd, D3 marks the first
+ruler 1 as 0 (3 -> 2), Z1, G2 back to J1 at the cell below P (as in `rowEndBad`, which already covers the segment after D1 with Brem replaced by the boundary).
+After m cycles the ruler is 0^m: `rowEndOK`-like exit to Q2 (qPass), then N2 reads a bit (not the boundary) -> N4 (passes the remaining w), `N4 B -> K RB2`
+(RB loop through A, `RBM` writes the boundary M at the hole, the hole continues as P through B: `rbLoop` + `rbLoop2`), RS1.
+A used up: N2 B / N3 B exits -> `vEndUsed` (MMVerdict).  w too short: FA/J1/FB meeting a blank -> `vEndShort*`.
+Dispatch after the verdict: `verdictTail0/1` end in `hdR DP3o (Lq ++ replicate .. ++ ... ++ 1 :: J ++ 1 :: sv ++ [1]) (1 :: Y2)` which matches the
+`okTailM`/`badTailM` entry shapes after `hdR_rep0` (blank prefixes drop).
+DONE (MMDry, MMDry2, incl. dryFin = dryOK+qPass+dryN, item 1 dry-end glue complete): d0Loop, dryBad (dry cycle, a ruler 1 marked, back to J1), dryOK (ruler all 2: FA..D3 End -> Q2), n4Loop, rbLoopA, dryN (Q2 at Mr -> N1, N2 bit, N4, RB2, RBM, rbLoop2 -> hdR RS1 (W ++ 1 :: Bd ++ [0,1]) R1; between dryOK and dryN comes qPass with A = [0]++W++[0]++Bd++[1], k = m). Remaining: exits + verdict glue, setup glue, row loop, bridge, mmPhase, pair, Main, shared files.
+(induction on rows: [m x (bRow, rsLoop, toFA, fetch)] ; rowEnd ; qPass ; nMore), `checkMM` bridge (MMSpec), mmPhase, pair, Main, shared files.
+
+Round note: MMExit (nUsed: Q2 at Mr, A used up -> N1,N2,N3 -> vEndUsed -> VW1) and MMVerdict3 (vw1Ok/vw1Bad: VW1 [0] (Z ++ o :: outr ++ Cb ++ 1::J ++ 1::sv ++ 0::1::Y2), Z all 0 with |Z| >= 2 -> hdR DP31/DP30 (1::J++1::sv++[1]) (1::Y2), ready for okTailM / beepStepM+badTailM with Y2 = F ++ 0 :: ST) are done. Still open: vEndShort glue from FA/FB/J1 blank exits, setup glue, row/rows loops, bridge, mmPhase..Main, shared files (merge landmark-machines first).
+
+## Row / rows loop: explicit invariants (to be proved; only the cited lemmas exist in Lean)
+
+Notation: `hd q A R` head on the last cell of A, `hdR q A R` head on R[0]. `acc` holds symbols 2 (bit 0) / 3 (bit 1), length m;
+in the dry row the ruler uses 3 = unmarked, 2 = marked.
+
+1. B row (`bRow`, MMBRow, proved): P before `B[k][j..]`, acc updated by `jc a v x` on columns < j, hole H after column j-1.
+   After m steps: `hdR RS1 (B' ++ [0,1]) ...`, acc = acc0 xor (a . B_k), Mr := M.
+2. Row-start state `RowSt(accIn)`: `hdR RS1 (Wp ++ 1 :: Bd ++ [0,1]) (0 :: accIn ++ 1 :: outRest ++ Cb ++ 1 :: J ++ 1 :: sv ++ 0 :: 1 :: Y2)`,
+   `Wp` the passed part of w, `Bd` the remaining B bits, `outRest` the out cells after the current row, `Cb` the blanks of consumed out cells.
+3. One row = m rounds. Round: `rsLoop` (rewind H), `toFA`, fetch `a = A[i][k]` (`fetchA0/1`; 0 past the end: `fetchE0`), `bRow`.
+   Invariant after round k: acc = out_i xor (fold over k' < k of A[i][k'] . B_k') in the order of `mmC`'s foldl; P is before B row k+1; q = k+1 M's consumed.
+   Induction on k; base: state after setup or after `nMore`.
+4. Row end: `FA` meets M -> `D0..D3`: `rowEndOK` iff acc is all 2s (i.e. out_i = C_i), else `rowEndBad` -> `vEndBad` (outcome 0, `vw1Bad`).
+   After OK: `qPass` (k = m) loads out_{i+1}, then `nMore` (A not used up) or `nUsed` (A used up: outcome 1, `vw1Ok`).
+5. Rows induction `Rows(r)`: from `RowSt(out_i)`, if rows i..i+r-1 match, reach `RowSt(out_{i+r})`; otherwise the verdict-0 exit.
+   End: A used up after `mmRows s` rows -> `nUsed`. Bridge: `padTo (mmC s).length out == mmC s` iff all rows match
+   (`padTo`, `flatMap` of length `mmRows * m`).
+6. Dry first row: `dryBad` m times (ruler 3 -> 2), then `dryFin`; needs |w| >= m^2. Short w: `vEndShort*` start at `hdR FA [] (0 :: ...)` = `hd FA [0] ...`
+   and `hdR J1 []`, so no extra glue beyond `hd_snoc`.
+
+Status (rows induction done, commit 49020be): MMRound (roundA), MMRoundE, MMRows (rowsRound, stor, accFold, aOf), MMRowFin (rowFinOK/Bad), MMRowNext (rowDoneUsed/More), MMOneRow
+(rowBad/Used/More, rowLastUsed/Bad), MMRowsAll (rowsOK, accRow, lastRow, rowStep, rowsAll).
+`rowsAll` : from `hdR RS1 (Atot.reverse ++ rep q 1 ++ 1 :: stor Rws ++ 0 :: [] ++ [1]) (0 :: C.reverse ++ 1 :: (Orest.reverse ++ Cb0 ++ 1 :: J ++ 1 :: sv ++ 0 :: 1 :: Y2))`
+reaches DP31 if `rowsOK m Rws n Atot C Orest` and DP30 otherwise (Atot = A symbols 2/3 in stream order, C = first out row as symbols, Orest = rest of out).
+Remaining for the bridge: (i) column formula for `accFold` (bit of column j = C[j] xor fold of A[k] && B[k][j]), (ii) rowsOK <-> checkMM via padTo/mmC,
+(iii) setup glue producing the RSt state with Atot = A part of w, Rws = B rows (B_0 nearest P), C = padded out row 0, Orest = rest (via dryFin and qPass), (iv) mmPhase etc.

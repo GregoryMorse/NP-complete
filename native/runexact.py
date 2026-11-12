@@ -6,7 +6,7 @@ modname = sys.argv[3] if len(sys.argv) > 3 else 'zp2'
 m = importlib.import_module(modname).build(); sd = final.sides(m, modname)
 t, b, _ = compile2.compile_sides(m, final.ENC, sd); mt, mb = tm.minimize(t, b)
 r = random.Random(seed)
-g, gb, mp = dcmin.merge_all(mt, mb, order=lambda xs: r.sample(xs, len(xs)), ret_map=True)
+g, gb, mp = dcmin.merge_all(mt, mb, order=None if seed < 0 else (lambda xs: r.sample(xs, len(xs))), ret_map=True)  # seed -1: default order
 print('moore', len(mt), 'greedy', len(g), flush=True)
 t0 = time.time()
 try:

@@ -1,0 +1,16 @@
+{
+ "name": "zmm_native",
+ "logical_states": 212,
+ "states": 494,
+ "beep_state": 30,
+ "merge": "exact",
+ "pair_encoding": {
+  "B": "00",
+  "M": "01",
+  "0": "10",
+  "1": "11"
+ },
+ "reference": "ref/zmm_ref.py",
+ "sha256": "20f3e666338eb602fb98cb3b3f910e444743c6d8842da295a666fc9166400941",
+ "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
+}
