@@ -195,4 +195,53 @@ theorem verPhase (x : List Bool) (hx : x ≠ []) (j : List Nat) (hj : Bits j) :
   have c4 := c3.trans_eq (by simp [RE]) h5
   exact c4
 
+/-! ## From `lay` to the verifier -/
+
+theorem vStartLP (J S : Nat) :
+    zlpLogic.Reach1 (lay J S)
+      (GCk (bitsOf (str J)) (str S) (FWr [((str S).length, (str S).length + 1)]) 0 ((str S).length + 1)) := by
+  have hj := Bits.ofB (str J)
+  have hs := Bits.ofB (str S)
+  have h1 := phase1LP _ _ hj hs
+  rw [← lay_den, P1_hdR] at h1
+  have hT : ∀ a ∈ List.replicate (bitsOf (str S)).length 3 ++ [3, 1], a ∈ O13 := by
+    intro a ha
+    rcases List.mem_append.mp ha with h | h
+    · rw [List.eq_of_mem_replicate h]; simp [O13]
+    · simp at h
+      rcases h with rfl | rfl <;> simp [O13]
+  have h2 := extLP.reach (blkCopy [] (bitsOf (str J)) (bitsOf (str S)) _ Bits.nil hj hs hT)
+  have h3 := blkVerLP (bitsOf (str J)) (bitsOf (str S)) (List.replicate (bitsOf (str S)).length 3) hj hs
+    (rep_t3 _)
+  have b : ∀ k, List.replicate k 3 ++ [3] = 3 :: List.replicate k 3 := fun k => rep_snoc_eq k 3
+  have e1 : (1 :: (List.replicate (bitsOf (str S)).length 3 ++ [3, 1] ++ 1 :: List.replicate (bitsOf (str S)).length 3)) =
+      [1, 3] ++ List.replicate (bitsOf (str S)).length 3 ++ [1, 1] ++ List.replicate (bitsOf (str S)).length 3 := by
+    have := b (bitsOf (str S)).length
+    simp only [List.append_assoc, List.cons_append, List.singleton_append, List.nil_append]
+    exact congrArg (1 :: ·) (rep_cons_comm 3 _ _)
+  have e2 : [3] ++ List.replicate (bitsOf (str S)).length 3 ++ [1, 1] ++ List.replicate (bitsOf (str S)).length 3 ++ [3] =
+      List.replicate ((str S).length + 1) 3 ++ 1 :: (1 :: List.replicate ((str S).length + 1) 3) := by
+    have := b (bitsOf (str S)).length
+    rw [bitsOf_len] at this ⊢
+    simp only [List.replicate_succ, List.append_assoc, List.cons_append, List.singleton_append, this]
+    simp
+  have eF : FWr [((str S).length, (str S).length + 1)] = 1 :: List.replicate ((str S).length + 1) 3 := by
+    simp [FWr, blkW_full]
+  have hX : zlpLogic.Reach
+      (hdR Q.GRB (1 :: (bitsOf (str J) ++ 1 :: (bitsOf (str S) ++ 1 :: (List.replicate (bitsOf (str S)).length 3 ++ [3, 1])))) [])
+      (GCk (bitsOf (str J)) (str S) (FWr [((str S).length, (str S).length + 1)]) 0 ((str S).length + 1)) := by
+    have eG : GCk (bitsOf (str J)) (str S) (FWr [((str S).length, (str S).length + 1)]) 0 ((str S).length + 1) =
+        hdR QLP.GC2 ([0, 1] ++ bitsOf (str J) ++ [1] ++ bitsOf (str S) ++ [1])
+          (List.replicate ((str S).length + 1) 3 ++ 1 :: (1 :: List.replicate ((str S).length + 1) 3)) := by
+      unfold GCk
+      rw [eF, ustoreN_zero]
+      have : List.replicate 0 2 ++ List.replicate ((str S).length + 1) 3 ++
+          1 :: (1 :: List.replicate ((str S).length + 1) 3 ++ 0 :: []) =
+          (List.replicate ((str S).length + 1) 3 ++ 1 :: (1 :: List.replicate ((str S).length + 1) 3)) ++ [0] := by
+        simp
+      rw [this, hdR_trail0]
+    rw [eG]
+    exact (h2.trans_eq (hdR_eq (by simp) e1) h3).ofEq (hdR_eq (by simp) rfl) (hdR_eq rfl e2)
+  exact h1.trans hX
+
 end ZP.MH
