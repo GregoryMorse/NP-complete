@@ -115,4 +115,27 @@ theorem beepStep (j s Y : List Nat) :
   exact cstep_zstep (by decide +kernel)
 
 
+/-! ## The multihead machine interface -/
+
+theorem extLP : mhBase.Ext zlpLogic := mhBase_ext_zlpLogic
+
+theorem ghLP : GHStep zlpLogic := by
+  intro w d A V hA hV
+  cases w <;> cases d
+  · exact ghs00 A V hA hV
+  · exact ghs01 A V hA hV
+  · exact ghs10 A V hA hV
+  · exact ghs11 A V hA hV
+
+theorem inv0 (Pb : List Bool) : InvR (rot (Pb.reverse ++ [false])) := by
+  apply inv_rot
+  refine ⟨by simp, fun hl => ?_, fun hl => ?_⟩
+  · rcases Pb with _ | ⟨a, Pb⟩
+    · rfl
+    · simp at hl
+  · rcases Pb with _ | ⟨a, _ | ⟨b, Pb⟩⟩
+    · simp at hl
+    · simp
+    · simp at hl
+
 end ZP.MH

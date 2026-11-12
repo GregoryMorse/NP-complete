@@ -304,7 +304,7 @@ def RE (o : Bool) (V : List Nat) : ZC := hdR (dpOf (bn o)) [1] V
 
 /-- The one machine-specific step of the act: from `GH w d` on `H` to `G2 w d` right of it. -/
 def GHStep (L : LTM) : Prop :=
-  ∀ (w d : Bool) (A V : List Nat), L.Reach (hdR (ghOf (bn w) (bn d)) A (1 :: V)) (hdR (g2Of w d) (A ++ [1]) V)
+  ∀ (w d : Bool) (A V : List Nat), Sym4 A → Sym4 V → L.Reach (hdR (ghOf (bn w) (bn d)) A (1 :: V)) (hdR (g2Of w d) (A ++ [1]) V)
 
 /-! ## The peek: halt, or the act and the record rotation -/
 
@@ -371,8 +371,27 @@ theorem peek (L : LTM) (hext : mhBase.Ext L) (hGH : GHStep L) (R1 : List Bool) (
         -- the peek reads (w, d) and enters `G2 w d`
         have hPk := segPk (bitsOf rest).reverse (1 :: (List.replicate p' 1 ++ b :: X ++ 0 :: storeOf x pos cur)) g
           (bn r0) (bn r1) (bn_bits r0) (bn_bits r1) hrest (Sym4.cons (by simp [ALL]) hV)
+        have hS0 := sym4_storeOf x pos cur
         have hG := hGH r0 r1 ((bitsOf rest).reverse ++ [3, bn r1, bn r0] ++ List.replicate g 0 ++ [0, 0])
           (1 :: (List.replicate p' 1 ++ b :: X ++ 0 :: storeOf x pos cur))
+          (by have h1u : (1 : Nat) ∈ ALL := by simp [ALL]
+              have h0u : (0 : Nat) ∈ ALL := by simp [ALL]
+              have h3u : (3 : Nat) ∈ ALL := by simp [ALL]
+              have hb' : ∀ c, c ∈ bits → c ∈ ALL := fun c hc => by
+                rcases mem_bits hc with rfl | rfl <;> simp [ALL]
+              have hrep : ∀ (k c : Nat), c ∈ ALL → Sym4 (List.replicate k c) := fun k c hc a ha => by
+                rw [List.eq_of_mem_replicate ha]; exact hc
+              simp only [List.append_assoc, List.cons_append, List.nil_append]
+              exact hrest.sym4.app (Sym4.cons h3u (Sym4.cons (hb' _ (bn_bits r1)) (Sym4.cons (hb' _ (bn_bits r0))
+                ((hrep _ _ h0u).app (Sym4.cons h0u (Sym4.cons h0u Sym4.nil)))))))
+          (by have h1u : (1 : Nat) ∈ ALL := by simp [ALL]
+              have h0u : (0 : Nat) ∈ ALL := by simp [ALL]
+              have hb' : ∀ c, c ∈ bits → c ∈ ALL := fun c hc => by
+                rcases mem_bits hc with rfl | rfl <;> simp [ALL]
+              have hrep : ∀ (k c : Nat), c ∈ ALL → Sym4 (List.replicate k c) := fun k c hc a ha => by
+                rw [List.eq_of_mem_replicate ha]; exact hc
+              simp only [List.append_assoc, List.cons_append, List.nil_append]
+              exact Sym4.cons h1u ((hrep _ _ h1u).app (Sym4.cons (hb' _ hb) (hX.app (Sym4.cons h0u hS0)))))
         have hAct := act r0 r1 x pos cur hcur hpos ((bitsOf rest).reverse ++ [3, bn r1, bn r0]) (1 :: (List.replicate p' 1 ++ b :: X))
           g hQc hY
         generalize actPos x.length r0 r1 pos cur = pos' at hAct ⊢
