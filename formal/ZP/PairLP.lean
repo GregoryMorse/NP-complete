@@ -115,6 +115,30 @@ theorem beepStep (j s Y : List Nat) :
   exact cstep_zstep (by decide +kernel)
 
 
+/-! ## Pair start -/
+
+theorem phase1LP (j s : List Nat) (hj : ∀ a ∈ j, a ∈ bits) (hs : ∀ a ∈ s, a ∈ bits) :
+    zlpLogic.Reach1 (L0.den [j, s]) (P1.den [j, s]) := by
+  have hA : zlpLogic.Reach1 (L0.den [j, s]) (F1.den [j, [], s]) :=
+    check1 (sets := [bits, bits]) (E := []) (ρ := [[0], [], [1]]) (k := 9)
+      (Valid.cons hj (Valid.cons hs (Valid.nil _))) trivial (by decide +kernel)
+  have hL : zlpLogic.Reach (F1.den [j, [], s]) (F1.den [j, [] ++ s, []]) := by
+    refine LTM.Reach.fold (S := bits) (fun u v => F1.den [j, u, v]) ?_ s [] (nil_valid _) hs
+    intro u b v hb hu hv
+    have hval : Valid [bits, bits, bits] [j, u, v] :=
+      Valid.cons hj (Valid.cons hu (Valid.cons hv (Valid.nil _)))
+    rcases mem_bits hb with rfl | rfl
+    · exact body (E := []) (i := 2) (i' := 1) (k := 9) hval trivial
+        (by show 2 < 3; decide) (by show 1 < 3; decide) (by decide +kernel)
+    · exact body (E := []) (i := 2) (i' := 1) (k := 9) hval trivial
+        (by show 2 < 3; decide) (by show 1 < 3; decide) (by decide +kernel)
+  have hB : zlpLogic.Reach (F1.den [j, s, []]) (P1.den [j, s]) :=
+    check (sets := [bits, bits, bits]) (E := [2]) (ρ := [[0], [1]]) (k := 19)
+      (Valid.cons hj (Valid.cons hs (Valid.cons (nil_valid _) (Valid.nil _)))) ⟨rfl, trivial⟩
+      (by decide +kernel)
+  exact (hA.trans hL).trans hB
+
+
 /-! ## The multihead machine interface -/
 
 theorem extLP : mhBase.Ext zlpLogic := mhBase_ext_zlpLogic
