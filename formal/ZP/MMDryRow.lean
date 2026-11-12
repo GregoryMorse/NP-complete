@@ -92,15 +92,13 @@ theorem dryCycle (m : Nat) (row : List Nat) (hrow : Bits row) (hlen : row.length
   exact this.of_eq (by simp) (by simp)
 
 
-/-- All `m` dry cycles: the `B` rows `Rrem` move past `P`, one ruler cell is marked per row. -/
-theorem dryRows (m : Nat) : ∀ (Rrem Done : List (List Nat)) (F0 : List Nat) (t : Nat),
-    (∀ r ∈ Rrem, Bits r ∧ r.length = m) → Bits F0 → (∀ r ∈ Done, Bits r) → Rrem.length + t = m →
+/-- Dry cycles: the `B` rows `Rrem` move past `P`, one ruler cell is marked per row (`u` ruler cells stay unmarked). -/
+theorem dryRows (m u : Nat) : ∀ (Rrem Done : List (List Nat)) (F0 : List Nat) (t : Nat),
+    (∀ r ∈ Rrem, Bits r ∧ r.length = m) → Bits F0 → (∀ r ∈ Done, Bits r) → Rrem.length + t + u = m →
     ∀ R0, Sym4 R0 →
-    zmmLogic.Reach (hd QMM.FA (F0 ++ stor Rrem) (0 :: stor Done ++ 1 :: (List.replicate t 2 ++ List.replicate Rrem.length 3) ++ 0 :: 1 :: R0))
-      (hd QMM.FA F0 (0 :: stor (Done ++ Rrem) ++ 1 :: List.replicate m 2 ++ 0 :: 1 :: R0))
+    zmmLogic.Reach (hd QMM.FA (F0 ++ stor Rrem) (0 :: stor Done ++ 1 :: (List.replicate t 2 ++ List.replicate (Rrem.length + u) 3) ++ 0 :: 1 :: R0))
+      (hd QMM.FA F0 (0 :: stor (Done ++ Rrem) ++ 1 :: (List.replicate (t + Rrem.length) 2 ++ List.replicate u 3) ++ 0 :: 1 :: R0))
   | [], Done, F0, t, _, _, _, ht, R0, _ => by
-    have : t = m := by simpa using ht
-    subst this
     simp [stor]
     exact LTM.Reach.refl _ _
   | row :: Rest, Done, F0, t, hR, hF0, hD, ht, R0, hR0 => by
@@ -108,26 +106,26 @@ theorem dryRows (m : Nat) : ∀ (Rrem Done : List (List Nat)) (F0 : List Nat) (t
     have hRest : ∀ r ∈ Rest, Bits r ∧ r.length = m := fun r hr => hR r (by simp [hr])
     have hBd := bits_stor Done hD
     have hRB : Bits (stor Rest) := bits_stor Rest (fun r hr => (hRest r hr).1)
-    have hlt : Rest.length + 1 + t = m := by simpa using ht
+    have hlt : Rest.length + 1 + t + u = m := by simpa using ht
     have h1 := dryCycle m row hrow.1 hrow.2 (F0 ++ stor Rest) (hF0.app hRB) (stor Done) hBd t
-      (List.replicate Rest.length 3) (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits])
+      (List.replicate (Rest.length + u) 3) (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits])
       (by simp; omega) R0 hR0
-    have h2 := dryRows m Rest (Done ++ [row]) F0 (t + 1) hRest hF0
+    have h2 := dryRows m u Rest (Done ++ [row]) F0 (t + 1) hRest hF0
       (fun r hr => by
         rcases List.mem_append.mp hr with h | h
         · exact hD r h
         · simp at h; subst h; exact hrow.1)
       (by simp at ht ⊢; omega) R0 hR0
-    have e1 : stor Done ++ [] = stor Done := by simp
     have e2 : stor (Done ++ [row]) = row.reverse ++ stor Done := by
       rw [stor_append]; simp [stor]
     have e3 : Done ++ row :: Rest = Done ++ [row] ++ Rest := by simp
     rw [e3]
     have h1' : zmmLogic.Reach (hd QMM.FA (F0 ++ stor (row :: Rest))
-        (0 :: stor Done ++ 1 :: (List.replicate t 2 ++ List.replicate (row :: Rest).length 3) ++ 0 :: 1 :: R0))
+        (0 :: stor Done ++ 1 :: (List.replicate t 2 ++ List.replicate ((row :: Rest).length + u) 3) ++ 0 :: 1 :: R0))
         (hd QMM.FA (F0 ++ stor Rest)
-        (0 :: stor (Done ++ [row]) ++ 1 :: (List.replicate (t + 1) 2 ++ List.replicate Rest.length 3) ++ 0 :: 1 :: R0)) :=
-      h1.of_eq (by simp [stor, List.replicate_succ]) (by rw [e2])
+        (0 :: stor (Done ++ [row]) ++ 1 :: (List.replicate (t + 1) 2 ++ List.replicate (Rest.length + u) 3) ++ 0 :: 1 :: R0)) :=
+      h1.of_eq (by rw [show (row :: Rest).length + u = (Rest.length + u) + 1 by simp; omega, List.replicate_succ]; simp [stor]) (by rw [e2])
+    rw [show t + (row :: Rest).length = t + 1 + Rest.length by simp; omega]
     exact h1'.trans h2
 
 theorem dryFinE (Wr Bd Os Rest : List Nat) (b x : Nat) (Wt : List Nat) (e m : Nat) (he : e = 0 ∨ e = 1)
@@ -173,5 +171,48 @@ theorem dryFinE (Wr Bd Os Rest : List Nat) (b x : Nat) (Wt : List Nat) (e m : Na
   simp only [List.append_assoc, List.cons_append, List.nil_append, List.singleton_append] at s0 s1 s2 ⊢
   exact s0.trans (s1.trans s2)
 
+
+
+/-- A `B` row that ends early (`w` runs out): the head ends on the next cell of `F`. -/
+theorem pbRow (a : Nat) (ha : a = 1 ∨ a = 0) (Tl : List Nat) (hTl : Sym4 Tl) :
+    ∀ (Vt Xt : List Nat), Vt.length < Xt.length → Bits Vt → Bits Xt →
+    ∀ (v x : Nat), v ∈ bits → x ∈ bits → ∀ (F0 Bp ALr : List Nat), Sym4 F0 → Bits Bp → Bits ALr →
+      zmmLogic.Reach
+        (hdR QMM.J1 (F0 ++ Vt.reverse)
+          (v :: 0 :: (Bp ++ a :: (Xt.reverse ++ [x] ++ 0 :: (ALr ++ 1 :: Tl)))))
+        (hd QMM.J1 F0 (0 :: (Vt.reverse ++ v :: (Bp ++ a :: (((x :: Xt).drop (Vt.length + 1)).reverse ++
+          0 :: ((List.zipWith (jc a) (v :: Vt) (x :: Xt)).reverse ++ ALr ++ 1 :: Tl)))))) := by
+  intro Vt
+  induction Vt with
+  | nil =>
+    intro Xt hl hVt hXt v x hv hx F0 Bp ALr hF hBp hAL
+    rcases Xt with _ | ⟨y, Xt⟩
+    · simp at hl
+    have hy : y ∈ bits := hXt y (by simp)
+    have hXt' : Bits Xt := fun b hb => hXt b (by simp [hb])
+    have hs := jMore Tl ALr (Xt.reverse) Bp F0 a v x y hTl hAL (fun b hb => hXt' b (by simpa using hb)) hBp hF ha hv hx hy
+    simpa [List.zipWith] using hs
+  | cons v2 Vt ih =>
+    intro Xt hl hVt hXt v x hv hx F0 Bp ALr hF hBp hAL
+    rcases Xt with _ | ⟨y, Xt⟩
+    · simp at hl
+    have hl' : Vt.length < Xt.length := by simpa using hl
+    have hv2 : v2 ∈ bits := hVt v2 (by simp)
+    have hy : y ∈ bits := hXt y (by simp)
+    have hVt' : Bits Vt := fun b hb => hVt b (by simp [hb])
+    have hXt' : Bits Xt := fun b hb => hXt b (by simp [hb])
+    have hXr : Bits Xt.reverse := fun b hb => hXt' b (by simpa using hb)
+    have hFr : Sym4 (F0 ++ (Vt.reverse ++ [v2])) :=
+      Sym4.app hF (Sym4.app (fun b hb => hVt'.sym4 b (by simpa using hb)) (Sym4.cons (by rcases mem_bits hv2 with rfl | rfl <;> simp [ALL]) Sym4.nil))
+    have hs := jMore Tl ALr (Xt.reverse) Bp (F0 ++ (Vt.reverse ++ [v2])) a v x y hTl hAL hXr hBp hFr ha hv hx hy
+    have e2 : F0 ++ (Vt.reverse ++ [v2]) = (F0 ++ Vt.reverse) ++ [v2] := by simp
+    rw [e2, hd_snoc] at hs
+    have hBp' : Bits (v :: Bp) := Bits.cons hv hBp
+    have hAL' : Bits (jc a v x :: ALr) := Bits.cons (jc_bits a v x hx) hAL
+    have hr := ih Xt hl' hVt' hXt' v2 y hv2 hy F0 (v :: Bp) (jc a v x :: ALr) hF hBp' hAL'
+    simp only [List.cons_append, List.append_assoc, List.nil_append, List.singleton_append] at hs hr
+    simp only [List.zipWith, List.reverse_cons, List.cons_append, List.append_assoc, List.nil_append, List.singleton_append,
+      List.length_cons, List.drop_succ_cons] at hr ⊢
+    exact hs.trans hr
 
 end ZP.Mul.MM
