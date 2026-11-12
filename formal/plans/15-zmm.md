@@ -151,9 +151,9 @@ verdict, `mmPhase`, pair lemma, top.
 
 - [x] `DefsMM` + checks; generated files, certificate (ZP/DefsMM.lean, ZP/ExtChecksMM.lean)
 - [x] Ext facts (`zmBase_ext_zmmLogic`; no zmCore needed), Z_MUL lemmas retargeted (MMHalt, MMSwitch, MMRun, MMPair)
-- [ ] setup, j-step, B row, next B row
-- [ ] row end (dry, compare, fetch), reverse shift, verdict
-- [ ] `mmPhase`, `pair_mainMM`, `zmmQuasihalts_iff_sentence`, Challenge/Solution
+- [x] setup, j-step, B row, next B row
+- [x] row end (dry, compare, fetch), reverse shift, verdict
+- [x] `mmPhase`, `pair_mainMM`, `zmmQuasihalts_iff_sentence`, Challenge/Solution (MMPhase, MMMain, MainMM; axioms: propext, Classical.choice, Quot.sound)
 
 ### Status (end of session 2)
 

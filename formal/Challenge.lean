@@ -1298,3 +1298,9 @@ theorem ZP.zbpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zbppMachine ↔ ZP.Se
 charged `|a|` steps, and `K` is good on length `n` if some `a` decides `L` on all strings of length `n` within it. -/
 theorem ZP.zppoly_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppolyMachine ↔ ZP.SentencePoly := by
   sorry
+
+/-- Z_MATMUL: the matrix-product machine. An instance `s = 1^m 0 w` holds an `m x m` matrix `B` and `A`, row-major,
+in `w`; a candidate program `J` is judged on whether, within the clock `(|s|+2) 2^|J| - 1`, it outputs the
+GF(2) product `A B` (zero-padded to its length). -/
+theorem ZP.zmm_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmmMachine ↔ ZP.SentenceMM := by
+  sorry
