@@ -38,7 +38,7 @@ theorem eraseV (A1 : List Nat) (c : Nat) (hA : Sym4 A1) (hc : c ∈ O13) (Y : Li
   exact h4.ofEq rfl (by simp)
 
 /-- After the verifier's run: the truth flag, the storage erased. -/
-theorem vPost (o : Bool) (j s Z : List Nat) (hj : Bits j) (hs : Bits s) (hZ : ∀ a ∈ Z, a ∈ Z2) (hZne : Z ≠ [])
+theorem vPost (o : Bool) (j s Z : List Nat) (hj : Bits j) (hs : Bits s) (hZ : ∀ a ∈ Z, a ∈ Z2) (hZne : o = true → Z ≠ [])
     (F' : List Nat) (hF' : NoB F') (x : List Bool) (pos : List Nat) (cur : Nat) :
     zlpLogic.Reach (hdR (dpOf (bn o)) [1] (j ++ 1 :: (s ++ 1 :: (2 :: Z ++ 1 :: (F' ++ 0 :: storeOf x pos cur)))))
       (hdR Q.GRB (1 :: (j ++ 1 :: (s ++ 1 :: 1 :: (tflag o ++ [1])))) []) := by
@@ -54,7 +54,7 @@ theorem vPost (o : Bool) (j s Z : List Nat) (hj : Bits j) (hs : Bits s) (hZ : �
   | true =>
     obtain ⟨Z', rfl⟩ : ∃ Z', Z = 2 :: Z' := by
       cases Z with
-      | nil => exact absurd rfl hZne
+      | nil => exact absurd rfl (hZne rfl)
       | cons a t => exact ⟨t, by have := hZ a (List.mem_cons_self ..); simp [Z2] at this; rw [this]⟩
     have hY' : NoB (Z' ++ 1 :: F') := fun a ha => hY a (List.mem_cons_of_mem _ ha)
     have hE' := Eras_gap_store hY' x pos cur
@@ -139,13 +139,9 @@ theorem vLoop (j : List Nat) (x : List Bool) (F : List Nat) (hj : Bits j) (hF : 
     exact h1.trans (h2.ofEq rfl (by rw [Nat.add_right_comm]; rfl))
 
 /-- The whole verifier: from the dispatch with `C = 1^(n+1)` to the truth flag. -/
-theorem verPhase (x : List Bool) (hx : x ≠ []) (j : List Nat) (hj : Bits j) :
+theorem verPhase (x : List Bool) (j : List Nat) (hj : Bits j) :
     zlpLogic.Reach (GCk j x (FWr [(x.length, x.length + 1)]) 0 (x.length + 1))
       (hdR Q.GRB (1 :: (j ++ 1 :: (bitsOf x ++ 1 :: 1 :: (tflag (inLP x) ++ [1])))) []) := by
-  have hn : 1 ≤ x.length := by
-    cases x with
-    | nil => exact absurd rfl hx
-    | cons a t => simp
   have hs : Bits (bitsOf x) := Bits.ofB x
   have h0u : (0 : Nat) ∈ ALL := by simp [ALL]
   have eF : FWr [(x.length, x.length + 1)] = 1 :: List.replicate (x.length + 1) 3 := by
@@ -180,7 +176,10 @@ theorem verPhase (x : List Bool) (hx : x ≠ []) (j : List Nat) (hj : Bits j) :
     (inv0 x) hg (by simp) (by simp) (by intro p hp; simp at hp; omega) hdig (by simp) hval
   have h5 := vPost (runMHAux x.length x (x.length + 1) (rot (x.reverse ++ [false])) (List.replicate (x.length + 1) 0) 0)
     j (bitsOf x) (List.replicate x.length 2) hj hs (rep_z2 _)
-    (by simp; omega) (FWr ds') (FWr_noB ds') x pos' cur'
+    (fun h => by
+      cases x with
+      | nil => exact absurd h (by decide)
+      | cons a t => simp) (FWr ds') (FWr_noB ds') x pos' cur'
   have c1 := h1.trans_eq (by simp [GCk, List.replicate_succ]) h2
   have c2 := c1.trans_eq (by simp) h3
   have eB : Bd (rot (x.reverse ++ [false])) g none
@@ -321,7 +320,7 @@ theorem eraseBad (Jx s Y : List Nat) (hJx : Bits Jx) (hs : Bits s) (hY : Eras Y)
 
 
 /-- The decider: from the flag (`GRB` after it) to the dispatch with the output of `J` on `x`. -/
-theorem dPhaseLP (Jb x : List Bool) (hx : x ≠ []) (t : List Nat) (ht : ∀ a ∈ t, a ∈ T3) :
+theorem dPhaseLP (Jb x : List Bool) (t : List Nat) (ht : ∀ a ∈ t, a ∈ T3) :
     ∃ Fu, Eras Fu ∧ Sym4 Fu ∧
       zlpLogic.Reach (hdR Q.GRB (1 :: (bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: (t ++ [1])))) [])
         (hdR (dpOf (bn (runMH Jb x (clock Jb x)))) [1]
@@ -330,10 +329,6 @@ theorem dPhaseLP (Jb x : List Bool) (hx : x ≠ []) (t : List Nat) (ht : ∀ a �
   have hs := Bits.ofB x
   have h0u : (0 : Nat) ∈ ALL := by simp [ALL]
   have h1u : (1 : Nat) ∈ ALL := by simp [ALL]
-  have hn : 1 ≤ x.length := by
-    cases x with
-    | nil => exact absurd rfl hx
-    | cons a t => simp
   have h1 := decFuelU x t ht (bitsOf Jb) [] 0 Bits.nil hj
   have e0 : FWr (List.replicate 0 (x.length, x.length + 1)) = [] := rfl
   have e : 0 + (bitsOf Jb).length + 1 = Jb.length + 1 := by rw [bitsOf_len]; omega

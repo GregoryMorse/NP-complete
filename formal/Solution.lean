@@ -50,3 +50,6 @@ theorem ZP.zppoly_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppolyMachine ↔ Z
 
 theorem ZP.zmm_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmmMachine ↔ ZP.SentenceMM :=
   ZP.zmmQuasihalts_iff_sentence
+
+theorem ZP.zlp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zlpMachine ↔ ZP.SentenceLP :=
+  ZP.zlpQuasihalts_iff_sentence

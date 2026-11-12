@@ -64,3 +64,9 @@ in `w`; a candidate program `J` is judged on whether, within the clock `(|s|+2) 
 GF(2) product `A B` (zero-padded to its length). -/
 theorem ZP.zmm_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmmMachine ↔ ZP.SentenceMM := by
   sorry
+
+/-- Z_LP: the multihead machine. A candidate `J` is a multihead automaton (heads moved by the code, `|J| + 1` of
+them) judged on whether, within the clock `(|s|+2)^(|J|+1) - 1`, its run on `s` agrees with `L_P`, the
+program `s` run on its own text. -/
+theorem ZP.zlp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zlpMachine ↔ ZP.SentenceLP := by
+  sorry
