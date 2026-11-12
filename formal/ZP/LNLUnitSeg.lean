@@ -127,19 +127,130 @@ theorem walkEnd (Jr : List Nat) (hJr : Bits Jr) (s : List Nat) (hs : Bits s) (Y 
         (ls' := [.sym 1, .sym 1, .sym 1, .blk 0 .id]) (rs' := [.sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 0, .blk 3 .id])
         (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-/-- Decider fuel block done, the walker steps right. -/
-theorem blkDecStep (Jl : List Nat) (Jr : List Nat) (s : List Nat) (t : List Nat) (Bl : List Nat) (b : Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (ht : ∀ a ∈ t, a ∈ T3) (hBl : ∀ a ∈ Bl, a ∈ O13) (hb : b ∈ bits) :
-    zlnlLogic.Reach (hdR Q.COPY (Jl ++ (1 :: (b :: (Jr ++ (1 :: s))))) (1 :: (1 :: (t ++ (1 :: (Bl ++ (1 :: (List.replicate s.length 3))))))))
-      (hdR Q.GRB (Jl ++ (b :: (1 :: (Jr ++ (1 :: (s ++ (1 :: (1 :: (t ++ (1 :: (Bl ++ (1 :: (List.replicate s.length 3 ++ [3]))))))))))))) []) := by
-  have hV : Valid [bits, bits, bits, T3, O13] [Jl, Jr, s, t, Bl] := Valid.cons hJl (Valid.cons hJr (Valid.cons hs (Valid.cons ht (Valid.cons hBl (Valid.nil _)))))
-  rcases mem_bits hb with rfl | rfl
-  · exact checkFF (env := [Jl, Jr, s, t, Bl]) (E := []) (k := 54) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .sym 2, .blk 1 .id, .sym 1, .blk 2 .id]) (rs := [.sym 1, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 2 (.const 3)])
-      (ls' := [.blk 0 .id, .sym 2, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 2 (.const 3), .sym 3]) (rs' := [])
-      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
-  · exact checkFF (env := [Jl, Jr, s, t, Bl]) (E := []) (k := 54) hV trivial
-      (ls := [.blk 0 .id, .sym 1, .sym 3, .blk 1 .id, .sym 1, .blk 2 .id]) (rs := [.sym 1, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 2 (.const 3)])
-      (ls' := [.blk 0 .id, .sym 3, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .sym 1, .blk 3 .id, .sym 1, .blk 4 .id, .sym 1, .blk 2 (.const 3), .sym 3]) (rs' := [])
-      (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+/-- Accepted, flag 1: erase. -/
+theorem dOk1L (j : List Nat) (hj : Bits j) (s : List Nat) (hs : Bits s) (Fu : List Nat) (hFu : Sym4 Fu) :
+    zlnlLogic.Reach (hdR Q.DP11 ([1])
+        (j ++ [1] ++ s ++ [1, 1, 3, 1] ++ Fu))
+      (hd Q.EAs ([1] ++ j ++ [1] ++ s ++ [1, 1])
+        ([3, 1] ++ Fu)) := by
+  have hv : Valid [bits, bits, ALL] [j, s, Fu] := (Valid.cons hj (Valid.cons hs (Valid.cons hFu (Valid.nil _))))
+  exact checkFT (env := [j, s, Fu]) (E := []) (k := 6) hv trivial
+        (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .sym 3, .sym 1, .blk 2 .id])
+        (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1]) (rs' := [.sym 3, .sym 1, .blk 2 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-end ZP.MH
+/-- Rejected, flag 0: erase. -/
+theorem dOk0L (j : List Nat) (hj : Bits j) (s : List Nat) (hs : Bits s) (Fu : List Nat) (hFu : Sym4 Fu) :
+    zlnlLogic.Reach (hdR Q.DP10 ([1])
+        (j ++ [1] ++ s ++ [1, 1, 1] ++ Fu))
+      (hd Q.EAs ([1] ++ j ++ [1] ++ s ++ [1, 1])
+        ([1] ++ Fu)) := by
+  have hv : Valid [bits, bits, ALL] [j, s, Fu] := (Valid.cons hj (Valid.cons hs (Valid.cons hFu (Valid.nil _))))
+  exact checkFT (env := [j, s, Fu]) (E := []) (k := 6) hv trivial
+        (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .sym 1, .blk 2 .id])
+        (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1]) (rs' := [.sym 1, .blk 2 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Accepted, flag 0: beep. -/
+theorem dBad1L (j : List Nat) (hj : Bits j) (s : List Nat) (hs : Bits s) (Fu : List Nat) (hFu : Sym4 Fu) :
+    zlnlLogic.Reach (hdR Q.DP11 ([1])
+        (j ++ [1] ++ s ++ [1, 1, 1] ++ Fu))
+      (hd Q.BEEP ([1] ++ j ++ [1] ++ s ++ [1, 1])
+        ([1] ++ Fu)) := by
+  have hv : Valid [bits, bits, ALL] [j, s, Fu] := (Valid.cons hj (Valid.cons hs (Valid.cons hFu (Valid.nil _))))
+  exact checkFT (env := [j, s, Fu]) (E := []) (k := 6) hv trivial
+        (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .sym 1, .blk 2 .id])
+        (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1]) (rs' := [.sym 1, .blk 2 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Rejected, flag 1: beep. -/
+theorem dBad0L (j : List Nat) (hj : Bits j) (s : List Nat) (hs : Bits s) (Fu : List Nat) (hFu : Sym4 Fu) :
+    zlnlLogic.Reach (hdR Q.DP10 ([1])
+        (j ++ [1] ++ s ++ [1, 1, 3, 1] ++ Fu))
+      (hd Q.BEEP ([1] ++ j ++ [1] ++ s ++ [1, 1])
+        ([3, 1] ++ Fu)) := by
+  have hv : Valid [bits, bits, ALL] [j, s, Fu] := (Valid.cons hj (Valid.cons hs (Valid.cons hFu (Valid.nil _))))
+  exact checkFT (env := [j, s, Fu]) (E := []) (k := 6) hv trivial
+        (ls := [.sym 1]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .sym 3, .sym 1, .blk 2 .id])
+        (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1]) (rs' := [.sym 3, .sym 1, .blk 2 .id])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase (storage ends at its marker), the head on the cell before `A`. -/
+theorem erOk0 (L : List Nat) (hL : Sym4 L) (A : List Nat) (hA : NoB A) (X : List Nat) (hX : NoB X) :
+    zlnlLogic.Reach (hd Q.EAs (L ++ [1])
+        (A ++ [0, 1] ++ X ++ [0]))
+      (hd Q.EBs (L ++ [0] ++ List.replicate A.length 0 ++ [0, 0] ++ List.replicate X.length 0 ++ [0])
+        ([])) := by
+  have hv : Valid [ALL, NB, NB] [L, A, X] := (Valid.cons hL (Valid.cons hA (Valid.cons hX (Valid.nil _))))
+  exact checkTT (env := [L, A, X]) (E := []) (k := 7) hv trivial
+        (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0])
+        (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0]) (rs' := [])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase after the beep mark. -/
+theorem erBad0 (L : List Nat) (hL : Sym4 L) (A : List Nat) (hA : NoB A) (X : List Nat) (hX : NoB X) :
+    zlnlLogic.Reach (hdR Q.EAs (L ++ [2])
+        (A ++ [0, 1] ++ X ++ [0]))
+      (hd Q.EBs (L ++ [2] ++ List.replicate A.length 0 ++ [0, 0] ++ List.replicate X.length 0 ++ [0])
+        ([])) := by
+  have hv : Valid [ALL, NB, NB] [L, A, X] := (Valid.cons hL (Valid.cons hA (Valid.cons hX (Valid.nil _))))
+  exact checkFT (env := [L, A, X]) (E := []) (k := 6) hv trivial
+        (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0])
+        (ls' := [.blk 0 .id, .sym 2, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0]) (rs' := [])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase (the storage goes on after its marker). -/
+theorem erOk1 (y : Nat) (hy : y ∈ NB) (L : List Nat) (hL : Sym4 L) (A : List Nat) (hA : NoB A) (X : List Nat) (hX : NoB X) (Y1 : List Nat) (hY1 : NoB Y1) :
+    zlnlLogic.Reach (hd Q.EAs (L ++ [1])
+        (A ++ [0, 1] ++ X ++ [0, y] ++ Y1))
+      (hd Q.EBs (L ++ [0] ++ List.replicate A.length 0 ++ [0, 0] ++ List.replicate X.length 0 ++ [0, 0] ++ List.replicate Y1.length 0 ++ [0])
+        ([])) := by
+  have hv : Valid [ALL, NB, NB, NB] [L, A, X, Y1] := (Valid.cons hL (Valid.cons hA (Valid.cons hX (Valid.cons hY1 (Valid.nil _)))))
+  rcases (show y = 1 ∨ y = 2 ∨ y = 3 by simpa [NB] using hy) with rfl | rfl | rfl
+  · exact checkTT (env := [L, A, X, Y1]) (E := []) (k := 10) hv trivial
+            (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0, .sym 1, .blk 3 .id])
+            (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0, .sym 0, .blk 3 (.const 0), .sym 0]) (rs' := [])
+            (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTT (env := [L, A, X, Y1]) (E := []) (k := 10) hv trivial
+            (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0, .sym 2, .blk 3 .id])
+            (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0, .sym 0, .blk 3 (.const 0), .sym 0]) (rs' := [])
+            (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkTT (env := [L, A, X, Y1]) (E := []) (k := 10) hv trivial
+            (ls := [.blk 0 .id, .sym 1]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0, .sym 3, .blk 3 .id])
+            (ls' := [.blk 0 .id, .sym 0, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0, .sym 0, .blk 3 (.const 0), .sym 0]) (rs' := [])
+            (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Erase after the beep mark (the storage goes on after its marker). -/
+theorem erBad1 (y : Nat) (hy : y ∈ NB) (L : List Nat) (hL : Sym4 L) (A : List Nat) (hA : NoB A) (X : List Nat) (hX : NoB X) (Y1 : List Nat) (hY1 : NoB Y1) :
+    zlnlLogic.Reach (hdR Q.EAs (L ++ [2])
+        (A ++ [0, 1] ++ X ++ [0, y] ++ Y1))
+      (hd Q.EBs (L ++ [2] ++ List.replicate A.length 0 ++ [0, 0] ++ List.replicate X.length 0 ++ [0, 0] ++ List.replicate Y1.length 0 ++ [0])
+        ([])) := by
+  have hv : Valid [ALL, NB, NB, NB] [L, A, X, Y1] := (Valid.cons hL (Valid.cons hA (Valid.cons hX (Valid.cons hY1 (Valid.nil _)))))
+  rcases (show y = 1 ∨ y = 2 ∨ y = 3 by simpa [NB] using hy) with rfl | rfl | rfl
+  · exact checkFT (env := [L, A, X, Y1]) (E := []) (k := 9) hv trivial
+            (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0, .sym 1, .blk 3 .id])
+            (ls' := [.blk 0 .id, .sym 2, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0, .sym 0, .blk 3 (.const 0), .sym 0]) (rs' := [])
+            (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFT (env := [L, A, X, Y1]) (E := []) (k := 9) hv trivial
+            (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0, .sym 2, .blk 3 .id])
+            (ls' := [.blk 0 .id, .sym 2, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0, .sym 0, .blk 3 (.const 0), .sym 0]) (rs' := [])
+            (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+  · exact checkFT (env := [L, A, X, Y1]) (E := []) (k := 9) hv trivial
+            (ls := [.blk 0 .id, .sym 2]) (rs := [.blk 1 .id, .sym 0, .sym 1, .blk 2 .id, .sym 0, .sym 3, .blk 3 .id])
+            (ls' := [.blk 0 .id, .sym 2, .blk 1 (.const 0), .sym 0, .sym 0, .blk 2 (.const 0), .sym 0, .sym 0, .blk 3 (.const 0), .sym 0]) (rs' := [])
+            (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+
+/-- Back over the erased cells to `M_2`: `s` is next. -/
+/-- Back over the erased cells to `M_2`. -/
+theorem ebsOk (j s : List Nat) (hj : Bits j) (hs : Bits s) (N : Nat) :
+    zlnlLogic.Reach (hd Q.EBs ([1] ++ j ++ [1] ++ s ++ [1, 0] ++ List.replicate N 0)
+        ([]))
+      (hd Q.SINC ([1] ++ j ++ [1] ++ s)
+        ([])) := by
+  have hv : Valid [bits, bits, ALL] [j, s, List.replicate N 0] := (Valid.cons hj (Valid.cons hs (Valid.cons (zeros4 N) (Valid.nil _))))
+  exact checkTT (env := [j, s, List.replicate N 0]) (E := []) (k := 3) hv trivial
+        (ls := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 0, .blk 2 (.const 0)]) (rs := [])
+        (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [])
+        (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
+

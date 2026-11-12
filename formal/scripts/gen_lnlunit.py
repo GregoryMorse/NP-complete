@@ -93,6 +93,36 @@ def main():
                   binders(vs), vs,
                   ('UDW', False, '', 'M Jr M s M Y B Z'),
                   ('QC', True, 'M M M Jr', 'M s M Y B Z')))
+    # ---- dispatch of the decider's result (the fuel and the storage are not read)
+    vs = [V('j'), V('s'), V('Fu', 'ALL')]
+    for nm, st, tf, end, doc in [
+            ('dOk1L', 'DP11', '1 ', ('EAs', True, 'M j M s M M', '1 M Fu'), 'Accepted, flag 1: erase.'),
+            ('dOk0L', 'DP10', '', ('EAs', True, 'M j M s M M', 'M Fu'), 'Rejected, flag 0: erase.'),
+            ('dBad1L', 'DP11', '', ('BEEP', True, 'M j M s M M', 'M Fu'), 'Accepted, flag 0: beep.'),
+            ('dBad0L', 'DP10', '1 ', ('BEEP', True, 'M j M s M M', '1 M Fu'), 'Rejected, flag 1: beep.')]:
+        out(G.theorem(nm, doc, binders(vs), vs, (st, False, 'M', 'j M s M M %sM Fu' % tf), end))
+    # ---- erase the fuel and the storage: `A B M X B Y`
+    vs = [Var('L', 'list', 'ALL', hyp='hL'), V('A', 'NB'), V('X', 'NB')]
+    out(G.theorem('erOk0', 'Erase (storage ends at its marker), the head on the cell before `A`.', binders(vs), vs,
+                  ('EAs', True, 'L M', 'A B M X B'), ('EBs', True, 'L B A@0 B B X@0 B', '')))
+    out(G.theorem('erBad0', 'Erase after the beep mark.', binders(vs), vs,
+                  ('EAs', False, 'L 0', 'A B M X B'), ('EBs', True, 'L 0 A@0 B B X@0 B', '')))
+    vs = [Var('L', 'list', 'ALL', hyp='hL'), V('A', 'NB'), V('X', 'NB'), V('Y1', 'NB')]
+    out(G.theorem('erOk1', 'Erase (the storage goes on after its marker).', '(y : Nat) (hy : y ∈ NB) ' + binders(vs), vs,
+                  ('EAs', True, 'L M', 'A B M X B $y Y1'), ('EBs', True, 'L B A@0 B B X@0 B B Y1@0 B', ''),
+                  cases=[('y', [1, 2, 3], 'hy')]))
+    out(G.theorem('erBad1', 'Erase after the beep mark (the storage goes on after its marker).',
+                  '(y : Nat) (hy : y ∈ NB) ' + binders(vs), vs,
+                  ('EAs', False, 'L 0', 'A B M X B $y Y1'), ('EBs', True, 'L 0 A@0 B B X@0 B B Y1@0 B', ''),
+                  cases=[('y', [1, 2, 3], 'hy')]))
+    # ---- back over the erased cells
+    vs = [V('j'), V('s'), Var('N', 'zeros')]
+    out('/-- Back over the erased cells to `M_2`: `s` is next. -/')
+    out(G.theorem('ebsOk', 'Back over the erased cells to `M_2`.', '(j s : List Nat) (hj : Bits j) (hs : Bits s) (N : Nat)',
+                  vs, ('EBs', True, 'M j M s M B N', ''), ('SINC', True, 'M j M s', '')))
+    out(G.theorem('ebsBad', 'Back over the erased cells; `M_2`, `s` are erased, `J` is next.',
+                  '(j s : List Nat) (hj : Bits j) (hs : Bits s) (N : Nat)',
+                  vs, ('EBs', True, 'M j M s 0 B N', ''), ('JINC', True, 'M j', 'M')))
     import re
     pair = open('ZP/Pair.lean').read()
     m = re.search(r'((?:/--[^\n]*-/\n)?theorem blkDecStep .*?)\n\n', pair, re.S)
