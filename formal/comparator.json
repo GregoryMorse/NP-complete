@@ -1,7 +1,7 @@
 {
   "challenge_module": "Challenge",
   "solution_module": "Solution",
-  "theorem_names": ["ZP.zp_quasihalts_iff_sentence", "ZP.zpp_quasihalts_iff_sentence", "ZP.zps_quasihalts_iff_sentence", "ZP.zfac_quasihalts_iff_sentence", "ZP.zdl_quasihalts_iff_sentence", "ZP.zgi_quasihalts_iff_sentence", "ZP.zntt_quasihalts_iff_sentence", "ZP.zmul_quasihalts_iff_sentence", "ZP.zconp_quasihalts_iff_sentence", "ZP.zbpp_quasihalts_iff_sentence", "ZP.twin_quasihalts_iff"],
+  "theorem_names": ["ZP.zp_quasihalts_iff_sentence", "ZP.zpp_quasihalts_iff_sentence", "ZP.zps_quasihalts_iff_sentence", "ZP.zfac_quasihalts_iff_sentence", "ZP.zdl_quasihalts_iff_sentence", "ZP.zgi_quasihalts_iff_sentence", "ZP.zntt_quasihalts_iff_sentence", "ZP.zmul_quasihalts_iff_sentence", "ZP.zconp_quasihalts_iff_sentence", "ZP.zbpp_quasihalts_iff_sentence", "ZP.zppoly_quasihalts_iff_sentence", "ZP.zmm_quasihalts_iff_sentence", "ZP.zlp_quasihalts_iff_sentence", "ZP.twin_quasihalts_iff"],
   "definition_names": [],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
 }

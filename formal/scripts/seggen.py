@@ -83,6 +83,9 @@ class Gen:
             elif '@' in t:
                 nm, c = t.split('@')
                 out.append(('b', idx[nm], int(c)))
+            elif '->' in t:
+                nm, tgt = t.split('->')
+                out.append(('b', idx[nm], SYM[tgt]))
             elif t in idx:
                 v = vars_[idx[t]]
                 if v.kind == 'empty':
@@ -118,6 +121,10 @@ class Gen:
                 nm, c = t.split('@')
                 flush()
                 parts.append('List.replicate %s.length %s' % (idx[nm].expr, c))
+            elif '->' in t:
+                nm, tgt = t.split('->')
+                flush()
+                parts.append('List.replicate (%s).length %d' % (idx[nm].expr, SYM[tgt]))
             else:
                 v = idx[t]
                 if v.kind == 'empty':
@@ -184,11 +191,15 @@ class Gen:
             # the Lean fuel: mreachN with k steps; python reachN counts steps to reach target
             last = ('(by simp [cdn, dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app, rep_rep])'
                     if derived else '(by wsimp)')
+            ws = '(by wsimp)'
+            if '->' in (l + r + l2 + r2):
+                last = '(by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app, rep_rep, map_const_len])'
+                ws = last
             body = ('exact %s (env := %s) (E := []) (k := %d) hv trivial\n'
                     '        (ls := %s) (rs := %s)\n        (ls\' := %s) (rs\' := %s)\n'
-                    '        (by decide +kernel) (by wsimp) (by wsimp) (by wsimp) '
+                    '        (by decide +kernel) %s %s %s '
                     % (kind, env, k, self.lean_items(L), self.lean_items(R), self.lean_items(L2),
-                       self.lean_items(R2)))
+                       self.lean_items(R2), ws, ws, ws))
             calls.append(body + last)
         if not cases:
             lines.append('  ' + calls[0])
@@ -199,6 +210,9 @@ class Gen:
                     split.append('rcases mem_bits %s with rfl | rfl' % hyp)
                 elif sorted(vals) == [0, 2, 3]:
                     split.append('rcases %s with rfl | rfl | rfl' % hyp)
+                elif sorted(vals) == [1, 3]:
+                    split.append('rcases (show %s = 1 ∨ %s = 3 by simpa [O13] using %s) with rfl | rfl'
+                                 % (p, p, hyp))
                 elif sorted(vals) == [1, 2, 3]:
                     split.append('rcases (show %s = 1 ∨ %s = 2 ∨ %s = 3 by simpa [NB] using %s) with rfl | rfl | rfl'
                                  % (p, p, p, hyp))

@@ -44,3 +44,12 @@ theorem ZP.twin_quasihalts_iff : ZP.Quasihalts ZP.twinMachine ↔ ¬ ZP.TwinPrim
 
 theorem ZP.zbpp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zbppMachine ↔ ZP.SentenceBPP :=
   ZP.zbppQuasihalts_iff_sentence
+
+theorem ZP.zppoly_quasihalts_iff_sentence : ZP.Quasihalts ZP.zppolyMachine ↔ ZP.SentencePoly :=
+  ZP.zppolyQuasihalts_iff_sentence
+
+theorem ZP.zmm_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmmMachine ↔ ZP.SentenceMM :=
+  ZP.zmmQuasihalts_iff_sentence
+
+theorem ZP.zlp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zlpMachine ↔ ZP.SentenceLP :=
+  ZP.zlpQuasihalts_iff_sentence
