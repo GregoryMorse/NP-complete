@@ -117,12 +117,11 @@ def main():
                   cases=[('y', [1, 2, 3], 'hy')]))
     # ---- back over the erased cells
     vs = [V('j'), V('s'), Var('N', 'zeros')]
-    out('/-- Back over the erased cells to `M_2`: `s` is next. -/')
     out(G.theorem('ebsOk', 'Back over the erased cells to `M_2`.', '(j s : List Nat) (hj : Bits j) (hs : Bits s) (N : Nat)',
                   vs, ('EBs', True, 'M j M s M B N', ''), ('SINC', True, 'M j M s', '')))
     out(G.theorem('ebsBad', 'Back over the erased cells; `M_2`, `s` are erased, `J` is next.',
                   '(j s : List Nat) (hj : Bits j) (hs : Bits s) (N : Nat)',
-                  vs, ('EBs', True, 'M j M s 0 B N', ''), ('JINC', True, 'M j', 'M')))
+                  vs, ('EBs', True, 'M j M s M 0 B N', ''), ('JINC', True, 'M j', 'M s->B B B B N->B')))
     import re
     pair = open('ZP/Pair.lean').read()
     m = re.search(r'((?:/--[^\n]*-/\n)?theorem blkDecStep .*?)\n\n', pair, re.S)
