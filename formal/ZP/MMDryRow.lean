@@ -15,6 +15,16 @@ namespace ZP.Mul.MM
 
 open ZP
 
+theorem hdR_zero_left (q : Nat) (A R : List Nat) : hdR q (0 :: A) R = hdR q A R := by
+  rw [hdR_eq'', hdR_eq'', List.reverse_cons, sapp_append]
+  have : sapp [0] blank = blank := sapp_zeros' 1
+  rw [this]
+
+theorem hd_zero_left (q : Nat) (A R : List Nat) : hd q (0 :: A) R = hd q A R := by
+  rcases List.eq_nil_or_concat A with rfl | ⟨A', b, hA⟩
+  · rfl
+  · rw [hA, List.concat_eq_append, ← List.cons_append, hd_snoc, hd_snoc, hdR_zero_left]
+
 theorem zipWith_jc_one : ∀ (V C : List Nat), V.length = C.length → List.zipWith (jc 1) V C = C
   | [], [], _ => rfl
   | v :: V, x :: C, h => by
