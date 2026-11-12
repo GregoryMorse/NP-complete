@@ -158,9 +158,27 @@ macro simulation on the new state space, top theorem.
 
 ## Checklist
 
-- [ ] `DefsPoly` + `ChecksPoly`
-- [ ] `AbstractPoly`: four-level enumeration, `abstractPoly_quasihalts_iff`
-- [ ] generated files, certificate, `zpolyBase`
-- [ ] layout with `a` and reversed `K`, BLK dispatch, verifier phase, decider fuel
-- [ ] charge lemma, decider run
-- [ ] beep / wrong / correct successors, macro simulation, `zppoly_quasihalts_iff_sentence`
+- [x] `DefsPoly` + `ChecksPoly` (`ZP/DefsPoly.lean` is the trusted file; no `Decidable (goodLen ..)` instance was
+  added, the checks use `advOK` on enumerated `a`; `ZP/ChecksPoly.lean` imports `ZP.DevPolyDefs`, see below)
+- [x] `AbstractPoly`: four-level enumeration on Nat indices (`PSt K n A v`: `str K`, `n`, `str A`, `svec n v =
+  (ofBv n v).reverse`), `abstractPoly_quasihalts_iff` (axioms: propext, Classical.choice, Quot.sound);
+  `ZP/StrPoly.lean` (facts on `str`: length spec, `str_double`, `str_surj`), `sentencePoly_iff`
+  (`SentencePoly ↔ ∃ K ≥ 1, ∀ n, ∃ A ≥ 1, GoodA K n A`)
+- [x] generated files, certificate (`zppolyCert_ok` in `CompilePoly`, already current); top-level reduction
+  `zppolyQuasihalts_iff_of_pairData` in `ZP/ReducePoly.lean`: from a
+  `PairDataN zppolyLogic (fun k => polyOver (polyState k))` to `Quasihalts zppolyMachine ↔ SentencePoly`
+  (so the only missing piece is the pair data: `lay : Nat → ZC`, `k0`, `h0`, `step`)
+- [ ] `zpolyBase`; layout `layPoly k` of `polyState k` (`M_g rev(K) M_1 a M_a s M_2` with `a = str A`,
+  `s = svec n v`, `K = str K`) and `h0` (after `I0`/`JOV2`, `K = ''`)
+- [ ] BLK dispatch, verifier phase with the extra field (`blkStart .. vFull` of `Pair.lean`), decider fuel
+- [ ] charge lemma, decider run (`runFrom`; `EL2` meets a blank in a guest exhaustion, an `M_t` in a charge one)
+- [ ] pair step `step k : ∃ n, 0 < n ∧ Seg (layPoly k) n (layPoly (k+1)) (polyOver (polyState k))`: cases
+  over / next `s` / `n + 1` / next `a`; `zppoly_quasihalts_iff_sentence`; Challenge/Solution/comparator
+
+### Merging the dev copy (final minimal step)
+
+`ZP/DevPolyDefs.lean` is a copy of `ZP/DefsPoly.lean` that imports `ZP.AllDefs` instead of `ZP.Defs`/`ZP.TablePoly`
+(the proof modules import `ZP.AllDefs`, which cannot be mixed with `ZP.Defs`). In the final step: add `'ZP.DefsPoly'` to
+`ROOTS` in `gen_challenge.py`, run `python3 gen_challenge.py` (the poly defs then live in `AllDefs`), delete
+`ZP/DevPolyDefs.lean`, replace `import ZP.DevPolyDefs` by `import ZP.AllDefs` in `StrPoly`, `AbstractPoly`,
+`ChecksPoly`, and add the modules to `ZP.lean`. Order in `ROOTS` must put `ZP.DefsPoly` after `ZP.TablePoly`.

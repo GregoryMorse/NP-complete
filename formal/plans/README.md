@@ -80,4 +80,4 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [ ] 12 Z_PPOLY (NP ⊆ P/poly)
 - [ ] 13 Z_LP (L = P)
 - [ ] 14 Z_LNL (L = NL)
-- [ ] 15 Z_MATMUL (linear-time GF(2) matrix product)
+- [x] 15 Z_MATMUL (linear-time GF(2) matrix product)

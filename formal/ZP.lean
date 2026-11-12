@@ -120,6 +120,7 @@ public import ZP.MulRun
 public import ZP.PairMul
 public import ZP.MulCheck
 public import ZP.MainMul
+public import ZP.MainMM
 public import ZP.ConpRot
 public import ZP.ConpFuel
 public import ZP.ChecksConp
@@ -131,3 +132,19 @@ public import ZP.ConpRun
 public import ZP.ConpPair
 public import ZP.MainConp
 public import ZP.Cyclo
+public import ZP.AbstractPoly
+public import ZP.ChecksPoly
+public import ZP.MainPoly
+public import ZP.PairPoly
+public import ZP.PairPolyCharge
+public import ZP.PairPolyDec
+public import ZP.PairPolyPair
+public import ZP.PairPolyStep
+public import ZP.PairPolySucc
+public import ZP.PolyBase
+public import ZP.PolyFuel
+public import ZP.PolyInterp
+public import ZP.PolyRot
+public import ZP.PolyRun
+public import ZP.ReducePoly
+public import ZP.StrPoly
