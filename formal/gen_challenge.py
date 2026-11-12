@@ -37,12 +37,13 @@ def pack(lines):
     for ln in lines:
         s = ln.strip()
         if row.match(ln):
+            s = s.replace(' ', '')   # compact rows: the Challenge source is capped at 100 KiB
             if buf is None:
                 buf = '  ' + s if s.startswith('[') else '   ' + s
-            elif len(buf) + 1 + len(s) > WIDTH:
+            elif len(buf) + len(s) > WIDTH:
                 out.append(buf); buf = '   ' + s
             else:
-                buf += ' ' + s
+                buf += s
             if s.endswith(']'):
                 if out and out[-1].endswith(':=') and out[-1].startswith('def '):
                     out[-1] += ' ' + buf.strip()
@@ -63,6 +64,8 @@ for m in order:
     body += pack(t[k + 1:])
     body.append('')
 defs = '\n'.join(body)
+# module docs stay in the sources; the Challenge is capped at 100 KiB (definition docstrings are kept)
+defs = re.sub(r'/-!.*?-/\n?', '', defs, flags=re.S)
 defs = re.sub(r'\n{3,}', '\n\n', defs)
 defs = re.sub(r'(/- ## \S+ -/\n)\n', r'\1', defs)
 defs = re.sub(r'(namespace ZP\n)\n', r'\1', defs)
