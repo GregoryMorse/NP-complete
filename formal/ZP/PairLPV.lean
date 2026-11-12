@@ -73,4 +73,126 @@ theorem vPost (o : Bool) (j s Z : List Nat) (hj : Bits j) (hs : Bits s) (hZ : �
     refine (h1.ofEq (hdR_eq (by simp [dpOf, bn]) (by simp)) rfl).trans (h2.ofEq (hdR_eq (by simp) rfl) ?_)
     simp [tflag]
 
+/-! ## The verifier's units -/
+
+/-- The dispatch state with `k` counter cells used and `m` left. -/
+def GCk (j : List Nat) (x : List Bool) (F : List Nat) (k m : Nat) : ZC :=
+  hdR QLP.GC2 ([0, 1] ++ j ++ [1] ++ bitsOf x ++ [1])
+    (List.replicate k 2 ++ List.replicate m 3 ++ 1 :: (F ++ 0 :: ustoreN x k))
+
+theorem vUnit (j : List Nat) (x : List Bool) (F : List Nat) (hj : Bits j) (hF : NoB F) (k m : Nat) :
+    zlpLogic.Reach (GCk j x F k (m + 1)) (GCk j x F (k + 1) m) := by
+  have hs : Bits (bitsOf x) := Bits.ofB x
+  have h1u : (1 : Nat) ∈ ALL := by simp [ALL]
+  have h0u : (0 : Nat) ∈ ALL := by simp [ALL]
+  have hR : Sym4 (F ++ 0 :: ustoreN x k) := hF.sym4.app (Sym4.cons h0u (sym4_ustoreN x k))
+  have h2u : (2 : Nat) ∈ ALL := by simp [ALL]
+  have hMid : NoB (List.replicate (k + 1) 2 ++ List.replicate m 3 ++ 1 :: F) := by
+    have := (z2_noB (rep_z2 (k + 1))).app ((t3_noB (rep_t3 m)).app (NoB.cons one_nb hF))
+    simpa [List.append_assoc] using this
+  have hL : Sym4 ([1] ++ j ++ [1] ++ bitsOf x ++ [1, 2] ++ List.replicate k 2) := by
+    have : Sym4 (1 :: (j ++ 1 :: (bitsOf x ++ 1 :: 2 :: List.replicate k 2))) :=
+      Sym4.cons h1u (hj.sym4.app (Sym4.cons h1u (hs.sym4.app (Sym4.cons h1u (Sym4.cons h2u
+        (Sym4.rep k 2 h2u))))))
+    simpa using this
+  have hRt : NoB (List.replicate m 3 ++ 1 :: F) := (t3_noB (rep_t3 _)).app (NoB.cons one_nb hF)
+  -- the round: the first `1` of the counter becomes `0`, a unit is appended
+  have hA : zlpLogic.Reach (GCk j x F k (m + 1))
+      (hdR QMH.U0 ([0, 1] ++ j ++ [1] ++ bitsOf x ++ [1, 2] ++ List.replicate k 2)
+        (List.replicate m 3 ++ 1 :: (F ++ 0 :: ustoreN x k))) := by
+    cases k with
+    | zero =>
+      have := gcA j (bitsOf x) (List.replicate m 3) (F ++ 0 :: ustoreN x 0) hj hs (rep_t3 m) hR
+      exact this.ofEq (hdR_eq rfl (by simp [GCk, List.replicate_succ])) (hdR_eq (by simp) (by simp))
+    | succ k' =>
+      have := gcB j (bitsOf x) (List.replicate k' 2) (List.replicate m 3) (F ++ 0 :: ustoreN x (k' + 1)) hj hs
+        (rep_z2 k') (rep_t3 m) hR
+      refine this.ofEq (hdR_eq rfl ?_) (hdR_eq ?_ ?_)
+      · simp [GCk, List.replicate_succ, rep_cons_comm]
+      · simp [List.replicate_succ', rep_snoc_eq]
+      · simp
+  have hU := unitApp x [] j (List.replicate (k + 1) 2 ++ List.replicate m 3 ++ 1 :: F)
+    ([1] ++ j ++ [1] ++ bitsOf x ++ [1, 2] ++ List.replicate k 2) (List.replicate m 3 ++ 1 :: F)
+    Bits.nil hj hMid hL hRt
+    (by simp [List.replicate_succ]) k
+  have hW := walkUnits x (List.replicate (k + 1) 2 ++ List.replicate m 3 ++ 1 :: F) hMid [] j (k + 1) Bits.nil hj
+  have hR' : Sym4 (List.replicate (k + 1) 2 ++ List.replicate m 3 ++ 1 :: F ++ 0 :: ustoreN x (k + 1)) :=
+    hMid.sym4.app (Sym4.cons h0u (sym4_ustoreN x (k + 1)))
+  have hD := dispGC j (bitsOf x) (List.replicate (k + 1) 2 ++ List.replicate m 3 ++ 1 :: F ++ 0 :: ustoreN x (k + 1))
+    hj hs hR'
+  have hA1 : zlpLogic.Reach (GCk j x F k (m + 1))
+      (hdR QMH.U0 ([1] ++ j ++ [1] ++ bitsOf x ++ [1, 2] ++ List.replicate k 2)
+        (List.replicate m 3 ++ 1 :: (F ++ 0 :: ustoreN x k))) :=
+    hA.ofEq rfl (hdR_lead0 _ ([1] ++ j ++ [1] ++ bitsOf x ++ [1, 2] ++ List.replicate k 2) _)
+  have hU1 := (extLP.reach hU).trans_eq (hdR_eq (by first | rfl | simp) (by first | rfl | simp)) (extLP.reach hW)
+  have hB := (hA1.ofEq rfl (hdR_eq rfl (by first | rfl | simp))).trans hU1
+  refine hB.trans ((hD.ofEq (hd_eq (by first | rfl | simp) (by first | rfl | simp)) rfl).ofEq ?_ ?_)
+  · first | rfl | simp
+  · simp [GCk, List.replicate_succ]
+
+theorem vLoop (j : List Nat) (x : List Bool) (F : List Nat) (hj : Bits j) (hF : NoB F) :
+    ∀ m k, zlpLogic.Reach (GCk j x F k m) (GCk j x F (k + m) 0)
+  | 0, k => LTM.Reach.refl _ _
+  | m + 1, k => by
+    have h1 := vUnit j x F hj hF k m
+    have h2 := vLoop j x F hj hF m (k + 1)
+    exact h1.trans (h2.ofEq rfl (by rw [Nat.add_right_comm]; rfl))
+
+/-- The whole verifier: from the dispatch with `C = 1^(n+1)` to the truth flag. -/
+theorem verPhase (x : List Bool) (hx : x ≠ []) (j : List Nat) (hj : Bits j) :
+    zlpLogic.Reach (GCk j x (FWr [(x.length, x.length + 1)]) 0 (x.length + 1))
+      (hdR Q.GRB (1 :: (j ++ 1 :: (bitsOf x ++ 1 :: 1 :: (tflag (inLP x) ++ [1])))) []) := by
+  have hn : 1 ≤ x.length := by
+    cases x with
+    | nil => exact absurd rfl hx
+    | cons a t => simp
+  have hs : Bits (bitsOf x) := Bits.ofB x
+  have h0u : (0 : Nat) ∈ ALL := by simp [ALL]
+  have eF : FWr [(x.length, x.length + 1)] = 1 :: List.replicate (x.length + 1) 3 := by
+    simp [FWr, blkW_full]
+  have hF : NoB (FWr [(x.length, x.length + 1)]) := FWr_noB _
+  have hZb : Bits (2 :: List.replicate x.length 2) :=
+    Bits.cons (by simp [bits]) (fun a ha => by rw [List.eq_of_mem_replicate ha]; simp [bits])
+  have hR : Sym4 (FWr [(x.length, x.length + 1)] ++ 0 :: ustoreN x (x.length + 1)) :=
+    hF.sym4.app (Sym4.cons h0u (sym4_ustoreN x _))
+  have h1 := vLoop j x (FWr [(x.length, x.length + 1)]) hj hF (x.length + 1) 0
+  have h2 := setV j (bitsOf x) (List.replicate x.length 2) (FWr [(x.length, x.length + 1)] ++ 0 :: ustoreN x (x.length + 1))
+    hj hs (rep_z2 _) hR
+  obtain ⟨g, hg, h3⟩ := setupMH zlpLogic extLP (1 :: j) x (2 :: List.replicate x.length 2)
+    (FWr [(x.length, x.length + 1)]) (j ++ 1 :: (bitsOf x ++ 1 :: 2 :: List.replicate x.length 2))
+    (FWr [(x.length, x.length + 1)]) (ustoreN x (x.length + 1))
+    (NoB.cons one_nb hj.noB) hZb hF (sym4_ustoreN x _)
+    (hj.noB.app (NoB.cons one_nb (hs.noB.app (NoB.cons one_nb (NoB.cons (by simp [NB])
+      (z2_noB (rep_z2 _)))))))
+    hF (fw_bit [(x.length, x.length + 1)] (by simp)) (by simp)
+  have hW : NoB (j ++ 1 :: (bitsOf x ++ 1 :: 2 :: List.replicate x.length 2)) :=
+    hj.noB.app (NoB.cons one_nb (hs.noB.app (NoB.cons one_nb (NoB.cons (by simp [NB])
+      (z2_noB (rep_z2 _))))))
+  have hdig : Dig [(x.length, x.length + 1)] := by
+    intro p hp
+    simp at hp
+    subst hp
+    exact Nat.le_refl _
+  have hval : valr [(x.length, x.length + 1)] = x.length + 1 := by simp [valr]
+  obtain ⟨ds', pos', cur', -, -, -, -, -, h4⟩ := runMHI zlpLogic extLP ghLP x
+    (j ++ 1 :: (bitsOf x ++ 1 :: 2 :: List.replicate x.length 2)) hW x.length (x.length + 1)
+    (rot (x.reverse ++ [false])) g (List.replicate (x.length + 1) 0) 0 [(x.length, x.length + 1)]
+    (inv0 x) hg (by simp) (by simp) (by intro p hp; simp at hp; omega) hdig (by simp) hval
+  have h5 := vPost (runMHAux x.length x (x.length + 1) (rot (x.reverse ++ [false])) (List.replicate (x.length + 1) 0) 0)
+    j (bitsOf x) (List.replicate x.length 2) hj hs (rep_z2 _)
+    (by simp; omega) (FWr ds') (FWr_noB ds') x pos' cur'
+  have c1 := h1.trans_eq (by simp [GCk, List.replicate_succ]) h2
+  have c2 := c1.trans_eq (by simp) h3
+  have eB : Bd (rot (x.reverse ++ [false])) g none
+      (1 :: ((j ++ 1 :: (bitsOf x ++ 1 :: 2 :: List.replicate x.length 2)) ++ 1 :: FWr [(x.length, x.length + 1)]))
+      (0 :: ustoreN x (x.length + 1)) =
+      Bd (rot (x.reverse ++ [false])) g (mhRead x ((List.replicate (x.length + 1) 0).getD 0 0))
+        (1 :: ((j ++ 1 :: (bitsOf x ++ 1 :: 2 :: List.replicate x.length 2)) ++ 1 :: FWr [(x.length, x.length + 1)]))
+        (0 :: storeOf x (List.replicate (x.length + 1) 0) 0) := by
+    rw [← ustoreN_eq]
+    simp [mhRead]
+  have c3 := c2.trans_eq eB h4
+  have c4 := c3.trans_eq (by simp [RE]) h5
+  exact c4
+
 end ZP.MH
