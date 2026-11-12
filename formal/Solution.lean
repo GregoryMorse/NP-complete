@@ -53,3 +53,6 @@ theorem ZP.zmm_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmmMachine ↔ ZP.Sent
 
 theorem ZP.zlp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zlpMachine ↔ ZP.SentenceLP :=
   ZP.zlpQuasihalts_iff_sentence
+
+theorem ZP.zlnl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zlnlMachine ↔ ZP.SentenceLNL :=
+  ZP.zlnlQuasihalts_iff_sentence

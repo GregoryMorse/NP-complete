@@ -1419,3 +1419,9 @@ them) judged on whether, within the clock `(|s|+2)^(|J|+1) - 1`, its run on `s` 
 program `s` run on its own text. -/
 theorem ZP.zlp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zlpMachine ↔ ZP.SentenceLP := by
   sorry
+
+/-- Z_LNL: the nondeterministic multihead machine. `L_NL` is the set of `s` for which some certificate of length
+`|s|+1` makes the one-way program `s` accept within `|s|+1` steps; a candidate `J` is a multihead automaton judged on
+whether, within the clock `(|s|+2)^(|J|+1) - 1`, its run on `s` agrees with `L_NL`. -/
+theorem ZP.zlnl_quasihalts_iff_sentence : ZP.Quasihalts ZP.zlnlMachine ↔ ZP.SentenceLNL := by
+  sorry

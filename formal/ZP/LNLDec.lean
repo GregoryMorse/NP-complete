@@ -38,11 +38,6 @@ theorem stk_succ (x : List Bool) (m : Nat) :
     stk x (m + 2) = ucs (uOf x) (List.replicate m 0) ++ (1 :: 1 :: uOf x ++ (1 :: 0 :: uOf x)) := by
   simp [stk, uc, ucs_cons, List.replicate_succ, List.append_assoc]
 
-theorem uOf_cons (x : List Bool) : ∃ a ur, uOf x = a :: ur ∧ a ∈ bits ∧ Bits ur := by
-  cases x with
-  | nil => exact ⟨2, [], rfl, by simp [bits], Bits.nil⟩
-  | cons b x => exact ⟨bn b, bitsOf x ++ [2], by simp [uOf, bitsOf_cons], bn_bits b, Bits.uOf x⟩
-
 /-! ## One unit -/
 
 theorem ucpLoop (Jl Jr Y Z0 : List Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hY : NoB Y) (hZ0 : NoB Z0) :
@@ -72,7 +67,7 @@ theorem unitTail (Jl Jr : List Nat) (x : List Bool) (Y Z0 : List Nat) (hJl : Bit
   exact h1.trans h2
 
 /-- Append one unit to the storage. -/
-theorem unitApp (Jl Jr : List Nat) (x : List Bool) (Y : List Nat) (m : Nat) (hJl : Bits Jl) (hJr : Bits Jr)
+theorem unitAppL (Jl Jr : List Nat) (x : List Bool) (Y : List Nat) (m : Nat) (hJl : Bits Jl) (hJr : Bits Jr)
     (hY : NoB Y) :
     zlnlLogic.Reach (hdR QMH.U0 (Jl ++ 1 :: (Jr ++ [1])) (bitsOf x ++ 1 :: (Y ++ 0 :: stk x m)))
       (hdR QMH.UDW [] (Jl ++ 1 :: (Jr ++ 1 :: (bitsOf x ++ 1 :: (Y ++ 0 :: stk x (m + 1)))))) := by
@@ -116,7 +111,7 @@ theorem bwd (x : List Bool) (Y : List Nat) (hY : NoB Y) :
   | 0, Jl, Jr, m, hl, hJl, hJr => by
     have e : Jl = [] := List.length_eq_zero_iff.mp hl
     subst e
-    have h1 := unitApp [] Jr x Y m Bits.nil hJr hY
+    have h1 := unitAppL [] Jr x Y m Bits.nil hJr hY
     have h2 := walkEnd Jr hJr (bitsOf x) (Bits.ofB x) Y hY (stk x (m + 1)) (sym4_stk x _)
     simp only [List.append_assoc, List.cons_append, List.singleton_append, List.nil_append] at h1 h2 ⊢
     exact h1.trans h2
@@ -128,7 +123,7 @@ theorem bwd (x : List Bool) (Y : List Nat) (hY : NoB Y) :
     have hJl' : Bits Jl' := fun a ha => hJl a (List.mem_append_left _ ha)
     have hb : b ∈ bits := hJl b (by simp)
     have hl' : Jl'.length = n := by simpa using hl
-    have h1 := unitApp (Jl' ++ [b]) Jr x Y m hJl hJr hY
+    have h1 := unitAppL (Jl' ++ [b]) Jr x Y m hJl hJr hY
     have h2 := walkB b hb Jl' hJl' Jr hJr (bitsOf x) (Bits.ofB x) Y hY (stk x (m + 1)) (sym4_stk x _)
     have hL : Sym4 (Jl' ++ [1, b]) :=
       Sym4.app hJl'.sym4 (Sym4.cons (by simp [ALL]) (Sym4.cons (bits_all hb) Sym4.nil))
@@ -165,7 +160,7 @@ theorem decFuelL (s t : List Nat) (n : Nat) (hn : s.length = n) (hs : Bits s) (h
       · exact hBl a h
     have eF : FWn n (i + ([] : List Nat).length + 1) = FWn n i ++ 1 :: (List.replicate s.length 3 ++ [3]) := by
       rw [List.length_nil, Nat.add_zero, FWn_succ, hn, rep_snoc_eq, List.replicate_succ]
-    have hA := blkCopy Jl [] s _ hJl Bits.nil hs hT
+    have hA := blkCopyL Jl [] s _ hJl Bits.nil hs hT
     have hL := blkDecLastL Jl hJl s hs t ht (FWn n i) hBl
     rw [eF]
     simp only [List.append_assoc, List.cons_append, List.singleton_append, List.nil_append] at hA hL ⊢
@@ -184,8 +179,8 @@ theorem decFuelL (s t : List Nat) (n : Nat) (hn : s.length = n) (hs : Bits s) (h
       · exact hBl a h
     have eF : FWn n (i + 1) = FWn n i ++ 1 :: (List.replicate s.length 3 ++ [3]) := by
       rw [FWn_succ, hn, rep_snoc_eq, List.replicate_succ]
-    have hA := blkCopy Jl (b :: Jr') s _ hJl hJr hs hT
-    have hS := blkDecStep Jl Jr' s t (FWn n i) b hJl hJr.tail hs ht hBl hJr.head
+    have hA := blkCopyL Jl (b :: Jr') s _ hJl hJr hs hT
+    have hS := blkDecStepL Jl Jr' s t (FWn n i) b hJl hJr.tail hs ht hBl hJr.head
     have h2 := ih (Jl ++ [b]) (i + 1) (hJl.snoc hJr.head) hJr.tail
     have e : i + 1 + Jr'.length + 1 = i + (b :: Jr').length + 1 := by
       simp only [List.length_cons]; omega
@@ -207,9 +202,9 @@ theorem setupD (Pb Xb : List Bool) (R0 W F E : List Nat) (hR0 : NoB R0) (hE : Sy
   have hX : Bits (bitsOf Xb) := Bits.ofB Xb
   have hV1 : NoB [1] := NoB.cons one_nb NoB.nil
   have hRest : Sym4 (R0 ++ 0 :: E) := hR0.sym4.app (Sym4.cons (by simp [ALL]) hE)
-  have h3 := qcLoop [] [1] (bitsOf Xb) (R0 ++ 0 :: E) Bits.nil hV1 hX hRest (bitsOf Pb).reverse [] hP.rev
+  have h3 := qcLoopL [] [1] (bitsOf Xb) (R0 ++ 0 :: E) Bits.nil hV1 hX hRest (bitsOf Pb).reverse [] hP.rev
     Bits.nil
-  have h4 := qcEnd (bitsOf Pb) [] [] (bitsOf Xb) (R0 ++ 0 :: E) hP Bits.nil NoB.nil hX hRest
+  have h4 := qcEndL (bitsOf Pb) [] [] (bitsOf Xb) (R0 ++ 0 :: E) hP Bits.nil NoB.nil hX hRest
   simp only [List.reverse_reverse, List.nil_append, List.append_nil, List.cons_append, List.singleton_append,
     List.append_assoc] at h3 h4
   have hG : Sym4 (0 :: (1 :: (1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: (R0 ++ 0 :: E)))))) :=

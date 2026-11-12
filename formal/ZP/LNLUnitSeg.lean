@@ -266,7 +266,7 @@ theorem ebsBad (j s : List Nat) (hj : Bits j) (hs : Bits s) (N : Nat) :
         (by decide +kernel) (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app, rep_rep, map_const_len]) (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app, rep_rep, map_const_len]) (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app, rep_rep, map_const_len]) (by simp [dR, Item.den, List.getD, map_id_app, map_const_rep, Fn.app, rep_rep, map_const_len])
 
 /-- Decider fuel block done, the walker steps right. -/
-theorem blkDecStep (Jl : List Nat) (Jr : List Nat) (s : List Nat) (t : List Nat) (Bl : List Nat) (b : Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (ht : ∀ a ∈ t, a ∈ T3) (hBl : ∀ a ∈ Bl, a ∈ O13) (hb : b ∈ bits) :
+theorem blkDecStepL (Jl : List Nat) (Jr : List Nat) (s : List Nat) (t : List Nat) (Bl : List Nat) (b : Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (ht : ∀ a ∈ t, a ∈ T3) (hBl : ∀ a ∈ Bl, a ∈ O13) (hb : b ∈ bits) :
     zlnlLogic.Reach (hdR Q.COPY (Jl ++ (1 :: (b :: (Jr ++ (1 :: s))))) (1 :: (1 :: (t ++ (1 :: (Bl ++ (1 :: (List.replicate s.length 3))))))))
       (hdR Q.GRB (Jl ++ (b :: (1 :: (Jr ++ (1 :: (s ++ (1 :: (1 :: (t ++ (1 :: (Bl ++ (1 :: (List.replicate s.length 3 ++ [3]))))))))))))) []) := by
   have hV : Valid [bits, bits, bits, T3, O13] [Jl, Jr, s, t, Bl] := Valid.cons hJl (Valid.cons hJr (Valid.cons hs (Valid.cons ht (Valid.cons hBl (Valid.nil _)))))

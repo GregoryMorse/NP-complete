@@ -125,7 +125,7 @@ def main():
     import re
     pair = open('ZP/Pair.lean').read()
     m = re.search(r'((?:/--[^\n]*-/\n)?theorem blkDecStep .*?)\n\n', pair, re.S)
-    print(m.group(1).replace('zpLogic', 'zlnlLogic') + '\n')
+    print(m.group(1).replace('zpLogic', 'zlnlLogic').replace('theorem blkDecStep ', 'theorem blkDecStepL ') + '\n')
     print('end ZP.MH')
 
 

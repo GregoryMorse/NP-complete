@@ -79,5 +79,5 @@ For DLOG, `L_D` includes "p is prime", so the function version would need AKS.
 - [x] 11 Z_BPP (promise-P = promise-BPP) — `ZP.zbpp_quasihalts_iff_sentence`, axioms propext/Classical.choice/Quot.sound only
 - [ ] 12 Z_PPOLY (NP ⊆ P/poly)
 - [x] 13 Z_LP (L = P)
-- [ ] 14 Z_LNL (L = NL)
+- [x] 14 Z_LNL (L = NL)
 - [x] 15 Z_MATMUL (linear-time GF(2) matrix product)

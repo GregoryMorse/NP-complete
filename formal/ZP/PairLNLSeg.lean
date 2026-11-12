@@ -1,6 +1,7 @@
 module
 
 public import ZP.LNLRun
+public import ZP.MHDec
 
 @[expose] public section
 
@@ -15,16 +16,13 @@ namespace ZP.MH
 
 open ZP
 
-def O13 : List Nat := [1, 3]
-def T3 : List Nat := [3]
-def Z2 : List Nat := [2]
 
 macro "osimp" : tactic =>
   `(tactic| simp [dR, Item.den, List.getD, map_id_app, map_const_len, Fn.app])
 
 
 /-- `BLK` starts: `M` at the end, back to the first bit of `s`. -/
-theorem blkStart (Jl : List Nat) (Jr : List Nat) (s : List Nat) (T : List Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (hT : ∀ a ∈ T, a ∈ O13) :
+theorem blkStartL (Jl : List Nat) (Jr : List Nat) (s : List Nat) (T : List Nat) (hJl : Bits Jl) (hJr : Bits Jr) (hs : Bits s) (hT : ∀ a ∈ T, a ∈ O13) :
     zlnlLogic.Reach (hdR Q.GRB (Jl ++ (1 :: (Jr ++ (1 :: (s ++ (1 :: T)))))) [])
       (hdR Q.COPY (Jl ++ (1 :: (Jr ++ [1]))) (s ++ (1 :: (T ++ [1])))) := by
   have hV : Valid [bits, bits, bits, O13] [Jl, Jr, s, T] := Valid.cons hJl (Valid.cons hJr (Valid.cons hs (Valid.cons hT (Valid.nil _))))
@@ -34,7 +32,7 @@ theorem blkStart (Jl : List Nat) (Jr : List Nat) (s : List Nat) (T : List Nat) (
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- One `COPY` round: a `1` at the far end for each bit of `s`. -/
-theorem copyBody (P : List Nat) (u : List Nat) (v : List Nat) (T : List Nat) (b : Nat) (hP : NoB P) (hu : Bits u) (hv : Bits v) (hT : ∀ a ∈ T, a ∈ O13) (hb : b ∈ bits) :
+theorem copyBodyL (P : List Nat) (u : List Nat) (v : List Nat) (T : List Nat) (b : Nat) (hP : NoB P) (hu : Bits u) (hv : Bits v) (hT : ∀ a ∈ T, a ∈ O13) (hb : b ∈ bits) :
     zlnlLogic.Reach (hdR Q.COPY (P ++ u) (b :: (v ++ (1 :: (T ++ (1 :: (List.replicate u.length 3)))))))
       (hdR Q.COPY (P ++ (u ++ [b])) (v ++ (1 :: (T ++ (1 :: (List.replicate u.length 3 ++ [3])))))) := by
   have hV : Valid [NB, bits, bits, O13] [P, u, v, T] := Valid.cons hP (Valid.cons hu (Valid.cons hv (Valid.cons hT (Valid.nil _))))
@@ -73,7 +71,7 @@ theorem gcEnd (Xr : List Nat) (V : List Nat) (P : List Nat) (X : List Nat) (Rest
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- Code copy: one bit into `Q`. -/
-theorem qcBody (Qc : List Nat) (Xr : List Nat) (V : List Nat) (v : List Nat) (X : List Nat) (Rest : List Nat) (b : Nat) (hQc : Bits Qc) (hXr : Bits Xr) (hV : NoB V) (hv : Bits v) (hX : Bits X) (hRest : Sym4 Rest) (hb : b ∈ bits) :
+theorem qcBodyL (Qc : List Nat) (Xr : List Nat) (V : List Nat) (v : List Nat) (X : List Nat) (Rest : List Nat) (b : Nat) (hQc : Bits Qc) (hXr : Bits Xr) (hV : NoB V) (hv : Bits v) (hX : Bits X) (hRest : Sym4 Rest) (hb : b ∈ bits) :
     zlnlLogic.Reach (hd Q.QC (Qc ++ (1 :: (Xr ++ (1 :: (V ++ (v ++ [b])))))) (Qc ++ (1 :: (X ++ (1 :: Rest)))))
       (hd Q.QC (b :: (Qc ++ (1 :: (Xr ++ (1 :: (V ++ v)))))) (b :: (Qc ++ (1 :: (X ++ (1 :: Rest)))))) := by
   have hV : Valid [bits, bits, NB, bits, bits, ALL] [Qc, Xr, V, v, X, Rest] := Valid.cons hQc (Valid.cons hXr (Valid.cons hV (Valid.cons hv (Valid.cons hX (Valid.cons hRest (Valid.nil _))))))
@@ -88,7 +86,7 @@ theorem qcBody (Qc : List Nat) (Xr : List Nat) (V : List Nat) (v : List Nat) (X 
       (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
 /-- Code copied: the sentinel `0`, the separator becomes the gap, one rotation. -/
-theorem qcEnd (P : List Nat) (Xr : List Nat) (Vq : List Nat) (X : List Nat) (Rest : List Nat) (hP : Bits P) (hXr : Bits Xr) (hVq : NoB Vq) (hX : Bits X) (hRest : Sym4 Rest) :
+theorem qcEndL (P : List Nat) (Xr : List Nat) (Vq : List Nat) (X : List Nat) (Rest : List Nat) (hP : Bits P) (hXr : Bits Xr) (hVq : NoB Vq) (hX : Bits X) (hRest : Sym4 Rest) :
     zlnlLogic.Reach (hd Q.QC (P ++ (1 :: (Xr ++ (1 :: (Vq ++ [1]))))) (P ++ (1 :: (X ++ (1 :: Rest)))))
       (hd Q.TW (2 :: P) (0 :: (Xr ++ (1 :: (Vq ++ (1 :: (P ++ (1 :: (X ++ (1 :: Rest)))))))))) := by
   have hV : Valid [bits, bits, NB, bits, ALL] [P, Xr, Vq, X, Rest] := Valid.cons hP (Valid.cons hXr (Valid.cons hVq (Valid.cons hX (Valid.cons hRest (Valid.nil _)))))
@@ -172,7 +170,7 @@ theorem vUnder (j : List Nat) (s : List Nat) (Z : List Nat) (Fu : List Nat) (hj 
     (ls' := [.sym 1, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .sym 1, .sym 1]) (rs' := [])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-theorem sincE (A : List Nat) (Z : List Nat) (hA : NoB A) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+theorem sincEL (A : List Nat) (Z : List Nat) (hA : NoB A) (hZ : ∀ a ∈ Z, a ∈ Z2) :
     zlnlLogic.Reach (hd Q.SINC (A ++ [1]) Z)
       (hdR Q.GRB (A ++ (1 :: (Z ++ [2]))) []) := by
   have hV : Valid [NB, Z2] [A, Z] := Valid.cons hA (Valid.cons hZ (Valid.nil _))
@@ -181,7 +179,7 @@ theorem sincE (A : List Nat) (Z : List Nat) (hA : NoB A) (hZ : ∀ a ∈ Z, a �
     (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 2]) (rs' := [])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-theorem sinc0 (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+theorem sinc0L (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
     zlnlLogic.Reach (hd Q.SINC (A ++ (1 :: (r ++ [2]))) Z)
       (hdR Q.GRB (A ++ (1 :: (r ++ (3 :: Z)))) []) := by
   have hV : Valid [NB, bits, Z2] [A, r, Z] := Valid.cons hA (Valid.cons hr (Valid.cons hZ (Valid.nil _)))
@@ -190,7 +188,7 @@ theorem sinc0 (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bi
     (ls' := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 3, .blk 2 .id]) (rs' := [])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-theorem sinc1 (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+theorem sinc1L (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
     zlnlLogic.Reach (hd Q.SINC (A ++ (1 :: (r ++ [3]))) Z)
       (hd Q.SINC (A ++ (1 :: r)) (2 :: Z)) := by
   have hV : Valid [NB, bits, Z2] [A, r, Z] := Valid.cons hA (Valid.cons hr (Valid.cons hZ (Valid.nil _)))
@@ -199,7 +197,7 @@ theorem sinc1 (A : List Nat) (r : List Nat) (Z : List Nat) (hA : NoB A) (hr : Bi
     (ls' := [.blk 0 .id, .sym 1, .blk 1 .id]) (rs' := [.sym 2, .blk 2 .id])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-theorem jincE (Z : List Nat) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+theorem jincEL (Z : List Nat) (hZ : ∀ a ∈ Z, a ∈ Z2) :
     zlnlLogic.Reach (hd Q.JINC [1] (Z ++ [1]))
       (hdR Q.GRB (1 :: (Z ++ (2 :: [1]))) []) := by
   have hV : Valid [Z2] [Z] := Valid.cons hZ (Valid.nil _)
@@ -208,7 +206,7 @@ theorem jincE (Z : List Nat) (hZ : ∀ a ∈ Z, a ∈ Z2) :
     (ls' := [.sym 1, .blk 0 .id, .sym 2, .sym 1]) (rs' := [])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-theorem jinc0 (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+theorem jinc0L (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
     zlnlLogic.Reach (hd Q.JINC (1 :: (r ++ [2])) (Z ++ [1]))
       (hdR Q.GRB (1 :: (r ++ (3 :: (Z ++ [1])))) []) := by
   have hV : Valid [bits, Z2] [r, Z] := Valid.cons hr (Valid.cons hZ (Valid.nil _))
@@ -217,7 +215,7 @@ theorem jinc0 (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a �
     (ls' := [.sym 1, .blk 0 .id, .sym 3, .blk 1 .id, .sym 1]) (rs' := [])
     (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
 
-theorem jinc1 (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
+theorem jinc1L (r : List Nat) (Z : List Nat) (hr : Bits r) (hZ : ∀ a ∈ Z, a ∈ Z2) :
     zlnlLogic.Reach (hd Q.JINC (1 :: (r ++ [3])) (Z ++ [1]))
       (hd Q.JINC (1 :: r) (2 :: (Z ++ [1]))) := by
   have hV : Valid [bits, Z2] [r, Z] := Valid.cons hr (Valid.cons hZ (Valid.nil _))

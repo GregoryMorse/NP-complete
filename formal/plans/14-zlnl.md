@@ -78,4 +78,5 @@ and run lemma; (2) setup with the dummy cell, decider reuse, pair lemma, top.
 - [x] `DefsLNL` + `ChecksLNL`; generated files, certificate, base
 - [x] one-way act, `run1I` (`LNLSeg`, `LNLRun`), halt without storage; decider engine `runMHIL` (`MHLRun`)
 - [x] verifier setup with the dummy cell (`PairLNLSeg`, `PairLNLV`: `setupL`, `runFromL`, `vStepL`, `vLoopL`, `vFullL`, `vStartL`)
-- [ ] decider via plan 13, `pairLNL_main`, `zlnl_quasihalts_iff_sentence`
+- [x] decider (`LNLUnitSeg`, `LNLEraseSeg`, `LNLDec`, `PairLNLD`: `dPhaseL`, erase, successors), `pair_mainLNL`, `zlnlQuasihalts_iff_sentence` (`MainLNL`), Challenge/Solution/comparator
+- Names that clash with plan 13's shared `ZP.MH` files carry an `L` suffix (`blkCopyL`, `sincLL`, ...).
