@@ -244,4 +244,144 @@ theorem vStartLP (J S : Nat) :
     exact (h2.trans_eq (hdR_eq (by simp) e1) h3).ofEq (hdR_eq (by simp) rfl) (hdR_eq rfl e2)
   exact h1.trans hX
 
+
+
+/-! ## The decider -/
+
+theorem valrFull (n : Nat) : ∀ k, valr (List.replicate k (n, n + 1)) + 1 = (n + 2) ^ k
+  | 0 => rfl
+  | k + 1 => by
+    have ih := valrFull n k
+    show n + 1 + (n + 2) * valr (List.replicate k (n, n + 1)) + 1 = (n + 2) ^ (k + 1)
+    rw [Nat.pow_succ, ← ih, Nat.mul_comm (valr (List.replicate k (n, n + 1)) + 1), Nat.mul_add, Nat.mul_one]
+    omega
+
+theorem hd_trailz (q : Nat) (A : List Nat) : ∀ (k : Nat) (R : List Nat), hd q A (R ++ List.replicate k 0) = hd q A R
+  | 0, R => by simp
+  | k + 1, R => by
+    rw [List.replicate_succ', ← List.append_assoc, hd_trail0]
+    exact hd_trailz q A k R
+
+/-- Erase after agreement: back to the successor of `s`. -/
+theorem eraseOk (Jx s Y : List Nat) (hJx : Bits Jx) (hs : Bits s) (hY : Eras Y) :
+    zlpLogic.Reach (hd Q.EAs ([1] ++ Jx ++ [1] ++ s ++ [1, 1]) Y)
+      (hd Q.SINC (1 :: (Jx ++ 1 :: s)) []) := by
+  have h0 : (0 : Nat) ∈ ALL := by simp [ALL]
+  have h1u : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hA' : Sym4 ([1] ++ Jx ++ [1] ++ s) := by
+    have : Sym4 (1 :: (Jx ++ 1 :: s)) :=
+      Sym4.cons h1u (hJx.sym4.app (Sym4.cons h1u hs.sym4))
+    simpa using this
+  have hA0 : Sym4 ([1] ++ Jx ++ [1] ++ s ++ [1]) := hA'.app (Sym4.cons h1u Sym4.nil)
+  have e : [1] ++ Jx ++ [1] ++ s ++ [1, 1] = ([1] ++ Jx ++ [1] ++ s ++ [1]) ++ [1] := by simp
+  rw [e, hd_snoc]
+  obtain ⟨m, h1⟩ := eraseLoop zlpLogic Q.EAs QMH.EX Q.EBs
+    (fun c hc A R hA hR => eaN A R c hA hR hc) (fun A R hA hR => eaB A R hA hR)
+    (fun c hc A R hA hR => exN A R c hA hR hc) (fun A hA => exE A hA) (fun A hA => eaE A hA)
+    (1 :: Y).length (1 :: Y) rfl (Eras.nb one_nb hY) _ hA0
+  have h2 := skipBack zlpLogic Q.EBs (fun A R hA hR => ebB A R hA hR) m ([1] ++ Jx ++ [1] ++ s ++ [1]) [0] hA0
+    (Sym4.cons h0 Sym4.nil)
+  have hR0 : Sym4 (List.replicate m 0 ++ [0]) := (Sym4.rep m 0 h0).app (Sym4.cons h0 Sym4.nil)
+  have h3 := ebM ([1] ++ Jx ++ [1] ++ s) (List.replicate m 0 ++ [0]) hA' hR0
+  have e2 : [0] ++ (List.replicate m 0 ++ [0]) = List.replicate (m + 2) 0 := by
+    rw [← List.replicate_succ']; rfl
+  refine (h1.trans (h2.trans h3)).ofEq rfl ?_
+  rw [e2, hd_zeros]
+  exact hd_eq (by simp) rfl
+
+/-- Erase after the beep: the successor of `J` follows. -/
+theorem eraseBad (Jx s Y : List Nat) (hJx : Bits Jx) (hs : Bits s) (hY : Eras Y) :
+    zlpLogic.Reach (hdR Q.EAs ([1] ++ Jx ++ [1] ++ s ++ [1, 2]) Y)
+      (hd Q.JINC (1 :: Jx) [1]) := by
+  have h0 : (0 : Nat) ∈ ALL := by simp [ALL]
+  have h1u : (1 : Nat) ∈ ALL := by simp [ALL]
+  have h2u : (2 : Nat) ∈ ALL := by simp [ALL]
+  have hA0 : Sym4 ([1] ++ Jx ++ [1] ++ s ++ [1, 2]) := by
+    have : Sym4 (1 :: (Jx ++ 1 :: (s ++ [1, 2]))) :=
+      Sym4.cons h1u (hJx.sym4.app (Sym4.cons h1u (hs.sym4.app (Sym4.cons h1u (Sym4.cons h2u Sym4.nil)))))
+    simpa using this
+  obtain ⟨m, h1⟩ := eraseLoop zlpLogic Q.EAs QMH.EX Q.EBs
+    (fun c hc A R hA hR => eaN A R c hA hR hc) (fun A R hA hR => eaB A R hA hR)
+    (fun c hc A R hA hR => exN A R c hA hR hc) (fun A hA => exE A hA) (fun A hA => eaE A hA)
+    Y.length Y rfl hY _ hA0
+  have h2 := skipBack zlpLogic Q.EBs (fun A R hA hR => ebB A R hA hR) m ([1] ++ Jx ++ [1] ++ s ++ [1, 2]) [0] hA0
+    (Sym4.cons h0 Sym4.nil)
+  have hR0 : Sym4 (List.replicate m 0 ++ [0]) := (Sym4.rep m 0 h0).app (Sym4.cons h0 Sym4.nil)
+  have h3 := ebEnd Jx s (List.replicate m 0 ++ [0]) hJx hs hR0
+  refine (h1.trans (h2.trans h3)).ofEq rfl ?_
+  have e : [1] ++ List.replicate s.length 0 ++ [0, 0] ++ (List.replicate m 0 ++ [0]) =
+      [1] ++ List.replicate (s.length + 2 + (m + 1)) 0 := by
+    have z : ∀ a b : Nat, List.replicate a (0 : Nat) ++ List.replicate b 0 = List.replicate (a + b) 0 :=
+      fun a b => List.replicate_append_replicate
+    have t1 : ([0, 0] : List Nat) = List.replicate 2 0 := rfl
+    have t2 : (List.replicate m 0 ++ [0] : List Nat) = List.replicate (m + 1) 0 := (List.replicate_succ' ..).symm
+    rw [t1, t2, List.append_assoc, List.append_assoc, z, z, Nat.add_assoc]
+  refine (hd_eq rfl e).trans ?_
+  exact hd_trailz _ _ _ _
+
+
+/-- The decider: from the flag (`GRB` after it) to the dispatch with the output of `J` on `x`. -/
+theorem dPhaseLP (Jb x : List Bool) (hx : x ≠ []) (t : List Nat) (ht : ∀ a ∈ t, a ∈ T3) :
+    ∃ Fu, Eras Fu ∧ Sym4 Fu ∧
+      zlpLogic.Reach (hdR Q.GRB (1 :: (bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: (t ++ [1])))) [])
+        (hdR (dpOf (bn (runMH Jb x (clock Jb x)))) [1]
+          (bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: (t ++ 1 :: Fu)))) := by
+  have hj := Bits.ofB Jb
+  have hs := Bits.ofB x
+  have h0u : (0 : Nat) ∈ ALL := by simp [ALL]
+  have h1u : (1 : Nat) ∈ ALL := by simp [ALL]
+  have hn : 1 ≤ x.length := by
+    cases x with
+    | nil => exact absurd rfl hx
+    | cons a t => simp
+  have h1 := decFuelU x t ht (bitsOf Jb) [] 0 Bits.nil hj
+  have e0 : FWr (List.replicate 0 (x.length, x.length + 1)) = [] := rfl
+  have e : 0 + (bitsOf Jb).length + 1 = Jb.length + 1 := by rw [bitsOf_len]; omega
+  have e1 : ([] : List Nat).length + (bitsOf Jb).length + 1 = Jb.length + 1 := by simp [bitsOf_len]
+  rw [e0, e, e1] at h1
+  have h1' := extLP.reach h1
+  obtain ⟨Fd, hFd⟩ : ∃ Fd, Fd = FWr (List.replicate (Jb.length + 1) (x.length, x.length + 1)) := ⟨_, rfl⟩
+  rw [← hFd] at h1'
+  have hFdN : NoB Fd := by rw [hFd]; exact FWr_noB _
+  have hFb : ∃ a ∈ Fd, a ∈ bits := by rw [hFd]; exact fw_bit _ (by simp)
+  have hR' : Sym4 ((t ++ 1 :: Fd) ++ 0 :: ustoreN x (Jb.length + 1)) :=
+    ((t3_noB ht).app (NoB.cons one_nb hFdN)).sym4.app (Sym4.cons h0u (sym4_ustoreN x _))
+  have h2 := dispGC (bitsOf Jb) (bitsOf x) (1 :: ((t ++ 1 :: Fd) ++ 0 :: ustoreN x (Jb.length + 1))) hj hs
+    (Sym4.cons h1u hR')
+  have h3 := setD (bitsOf Jb) (bitsOf x) ((t ++ 1 :: Fd) ++ 0 :: ustoreN x (Jb.length + 1)) hj hs hR'
+  have hR0 : NoB (1 :: (t ++ 1 :: Fd)) := NoB.cons one_nb ((t3_noB ht).app (NoB.cons one_nb hFdN))
+  have hW : NoB (bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: t)) :=
+    hj.noB.app (NoB.cons one_nb (hs.noB.app (NoB.cons one_nb (NoB.cons one_nb (t3_noB ht)))))
+  obtain ⟨g, hg, h4⟩ := setupMH zlpLogic extLP [] Jb (bitsOf x) (1 :: (t ++ 1 :: Fd))
+    (bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: t)) Fd (ustoreN x (Jb.length + 1))
+    NoB.nil hs hR0 (sym4_ustoreN x _) hW hFdN hFb (by simp)
+  have hdig : Dig (List.replicate (Jb.length + 1) (x.length, x.length + 1)) := by
+    intro p hp
+    rw [List.eq_of_mem_replicate hp]
+    exact Nat.le_refl _
+  have hval : valr (List.replicate (Jb.length + 1) (x.length, x.length + 1)) = clock Jb x := by
+    have := valrFull x.length (Jb.length + 1)
+    unfold clock
+    omega
+  obtain ⟨ds', pos', cur', -, -, -, -, -, h5⟩ := runMHI zlpLogic extLP ghLP x
+    (bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: t)) hW Jb.length (clock Jb x)
+    (rot (Jb.reverse ++ [false])) g (List.replicate (Jb.length + 1) 0) 0
+    (List.replicate (Jb.length + 1) (x.length, x.length + 1)) (inv0 Jb) hg (by simp) (by simp)
+    (by intro p hp; simp at hp; omega) hdig (by simp) hval
+  have c1 := h1'.trans_eq (hd_eq rfl (by simp)) h2
+  have c2 := c1.trans_eq (hdR_eq (by simp) (by simp)) h3
+  have c3 := c2.trans_eq (hd_eq (by simp) (by simp)) h4
+  have eB : Bd (rot (Jb.reverse ++ [false])) g none
+      (1 :: ((bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: t)) ++ 1 :: Fd)) (0 :: ustoreN x (Jb.length + 1)) =
+      Bd (rot (Jb.reverse ++ [false])) g (mhRead x ((List.replicate (Jb.length + 1) 0).getD 0 0))
+        (1 :: ((bitsOf Jb ++ 1 :: (bitsOf x ++ 1 :: 1 :: t)) ++ 1 :: FWr (List.replicate (Jb.length + 1) (x.length, x.length + 1))))
+        (0 :: storeOf x (List.replicate (Jb.length + 1) 0) 0) := by
+    rw [← ustoreN_eq, hFd]
+    simp [mhRead]
+  have hE := Eras_gap_store (FWr_noB ds') x pos' cur'
+  refine ⟨FWr ds' ++ 0 :: storeOf x pos' cur', hE, hE.sym4, ?_⟩
+  refine (c3.trans_eq eB h5).ofEq (hdR_eq (by simp) rfl) ?_
+  unfold RE runMH
+  exact hdR_eq rfl (by simp)
+
 end ZP.MH
