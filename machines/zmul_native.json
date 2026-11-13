@@ -1,6 +1,6 @@
 {
  "name": "zmul_native",
- "logical_states": 169,
+ "logical_states": 170,
  "states": 403,
  "beep_state": 30,
  "merge": "exact",
@@ -11,6 +11,6 @@
   "1": "11"
  },
  "reference": "ref/zmul_ref.py",
- "sha256": "801271a574ffdd2483d897e177c8027bbe56413046a8a7a1cebcf08c8c76a708",
+ "sha256": "822a9500e4d320f0578a5e05c7434002e52ef3872d1cf70eedc2e42e64ccc622",
  "format": "states '_'-separated; state = 'w0M0n0,w1M1n1'; '---' undefined; start = 0"
 }

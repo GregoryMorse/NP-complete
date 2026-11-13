@@ -17,10 +17,13 @@ Guest model: Z_P v2 (zp2_ref) plus a queue of stacks.
 * Output of a proper halt: out = cells 0 .. h-1.
 
 Instance encoding: numbers(u) of zfac_ref (pairs '1b' append a binary digit,
-'0' starts the next number).  With U = out + '0' + s and N = numbers(U) padded
-with zeros, J is correct on s iff the run halts properly within
-T = (|s|+2) * 2^|J| - 1 steps and N[0] = N[1] * N[2].  So a correct J writes
-x * y (x, y the first two numbers of s) as pairs '1b' in front of the head.
+'0' starts the next number); x, y are the first two numbers of s (0 if
+missing).  The output must be a pair numeral: out = 1 b_1 1 b_2 .. 1 b_k
+(k >= 0), of value z = (b_1 .. b_k)_2.  J is correct on s iff the run halts
+properly within T = (|s|+2) * 2^|J| - 1 steps, out is a pair numeral and
+z = x * y.  (The machine checks this as: out is a pair numeral, read from its
+last cell, and N[0] = N[1] * N[2] for N = numbers(out + '0' + s), which is the
+same since out then contributes exactly the number z.)
 
 The machine enumerates J (shortlex) and, for each J, s (shortlex), and beeps
 at the first s on which J is wrong.  It quasihalts iff some J is correct on
@@ -78,9 +81,16 @@ def clock(J, s):
     return (len(s) + 2) * 2 ** len(J) - 1
 
 
+def pair_value(out):
+    """z if out = 1 b_1 .. 1 b_k is a pair numeral, else None."""
+    if len(out) % 2 or any(c != '1' for c in out[::2]):
+        return None
+    return int('0' + out[1::2], 2)
+
+
 def check(out, s):
-    N = numbers(out + '0' + s) + [0, 0]
-    return N[0] == N[1] * N[2]
+    N = numbers(s) + [0, 0]
+    return pair_value(out) == N[0] * N[1]
 
 
 def correct(J, s):

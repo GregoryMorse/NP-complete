@@ -13,10 +13,13 @@ project:
     polynomial clock on every instance. The equivalence of that sentence with P = NP
     is also proved in Lean (ZP.Cx.sentence_iff_PeqNP) for the Turing-machine models
     defined in the development. The same guest interpreter yields machines for further
-    Sigma_2 statements (P = PP and P = PSPACE, factoring, discrete
-    logarithm, graph isomorphism, an NTT-based variant over least primes 1 + n i,
-    multiplication, and a co-NP verifier variant), and a 19-state machine that
-    quasihalts iff there are finitely many twin primes.
+    Sigma_2 statements: P = PP and P = PSPACE, factoring, discrete logarithm, graph
+    isomorphism, an NTT-based variant over least primes 1 + n i, linear-time integer
+    multiplication on multitape machines, a co-NP verifier
+    variant, promise-P = promise-BPP, NP in P/poly, deterministic and nondeterministic
+    multihead log-space (L = NL), and linear-time multiplication of matrices over GF(2) on
+    multitape machines. A 19-state machine quasihalts iff there are finitely many twin
+    primes.
   authors:
     - "Gregory Morse"
   license: "Apache-2.0"
@@ -131,7 +134,7 @@ alignment:
       lean: "ZP.zmul_quasihalts_iff_sentence"
       module: "Challenge"
       status: "proved"
-      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean. The output must be a pair numeral (checked by the machine since 2026-11-13; the table of PALOMAR-2026-11-11-000006 lacked that check, so out = 0 passed every instance; the fixed table has the same 403 states)."
     - source: "docs/native.md and the Lean development (zconp)"
       lean: "ZP.zconp_quasihalts_iff_sentence"
       module: "Challenge"

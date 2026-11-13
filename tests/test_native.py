@@ -214,6 +214,10 @@ def test_mul_instances():
     writer = tm_code([[('W', b, '1', q + 1)] * 3 for q, b in enumerate('1111')] + [[('H',)] * 3])
     for s in (enc_numbers(1, 3), enc_numbers(3, 1), enc_numbers(3), enc_numbers(2, 1), enc_numbers(3, 1, 5)):
         cases.append((writer, s))   # writes 3 = '1111'
+    # degenerate outputs (no pair numeral: a stray 0, odd length) are refuted
+    for bits in ('0', '00', '1', '101', '0110'):
+        for s in (enc_numbers(0, 3), enc_numbers(2, 2), '', '0'):
+            cases.append((tm_code([[('W', b, '1', q + 1)] * 3 for q, b in enumerate(bits)] + [[('H',)] * 3]), s))
     want = [zmul_ref.correct(J, s) for J, s in cases]
     assert True in want and False in want
     for (J, s), w in zip(cases, want):

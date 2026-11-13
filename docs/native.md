@@ -240,10 +240,15 @@ Entries with `t = 0` change meaning:
 - `1 0 0` is a proper **halt**, with output `out` = cells `0 … h−1`. `0 0 0` and the
   time-out are failures.
 
-`J` is correct on `s` iff the run halts properly within `T` and, with `U = out 0 s`
-parsed by the FACTOR rule (pairs `1b` are binary digits, `0` starts the next number),
-`N[0] = N[1]·N[2]` (missing numbers are 0). So a correct `J` writes `x·y` in front of
-the head, where `x, y` are the first two numbers of `s`. Every run is a decider run, and
+`J` is correct on `s` iff the run halts properly within `T`, `out` is a pair numeral
+`1 b_1 1 b_2 … 1 b_k` (`k ≥ 0`), and, with `U = out 0 s` parsed by the FACTOR rule (pairs
+`1b` are binary digits, `0` starts the next number), `N[0] = N[1]·N[2]` (missing numbers
+are 0). Since a pair numeral contributes exactly one number, this says `out` is `x·y`
+written in pairs, where `x, y` are the first two numbers of `s`. The machine checks the
+pair form while it scans `out` from its last cell: a `0` where a token `1` belongs, or odd
+length, takes the outcome-0 path. (Without that check, an `out` with a stray `0` shifted
+the parse; `out = 0` gave `N = [0, 0, x, …]` and passed for every `s`. The table of
+2026-11-11 had that defect; the fixed table has the same 403 states.) Every run is a decider run, and
 the outcome 0 beeps. The machine therefore quasihalts iff some `J` is correct on every
 `s`. That holds iff multitape Turing machines multiply in linear time:
 

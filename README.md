@@ -45,7 +45,7 @@ wiki records a P = NP beeper by Mira (GPT-6.1 Terra) on 2026-10-31 (BBB(290); [T
 with a Lean-formalized 285-state P = NP beeper announced by Mira-Cult on 2026-11-04 and 284- and 266-state
 NP = coNP beepers on 2026-11-06 ([TMBR November 2026](https://wiki.bbchallenge.org/wiki/TMBR:_November_2026)).
 The same page records this repository's 278-, 295- and 291-state machines (P = NP, P = PP, P = PSPACE;
-announced 2026-11-01) and the ten Lean formalizations completed on 2026-11-09. State counts are not directly comparable:
+announced 2026-11-01) and the fifteen Lean formalizations completed on 2026-11-13. State counts are not directly comparable:
 this repository uses a designated beep state, Mira-Cult's headline counts use designated beep transitions.
 
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
@@ -112,9 +112,17 @@ See `docs/spec.md` §5 (earlier specification). In brief:
   against their references; Z_BPP's two counters on every instance up to the tested size;
   Z_PPOLY's advice events; the multihead act on every storage with |x| ≤ 3 and ≤ 3 heads;
   the matrix-product check on random instances with m ≤ 3.
-  Not yet formalized in Lean; the plans are `formal/plans/11`–`15`. The links from each
-  sentence to its complexity statement (promise classes, P/poly, log space) are on paper
-  (`docs/native.md`).
+  Lean-formalized: the equivalence of quasihalting with the sentence is proved for each
+  (`formal/Solution.lean`). The links from each sentence to its complexity statement (promise
+  classes, P/poly, log space) are on paper (`docs/native.md`).
+- **Z_MUL** (`tests/test_native.py`, `ref/zmul_ref.py`): the output must be a pair numeral
+  `1 b_1 … 1 b_k` whose value is `x·y` for the first two numbers `x, y` of `s`. The machine
+  checks the pair form while it scans `out` (a `0` in a token position, or odd length, is a
+  failure) and then `N[0] = N[1]·N[2]` on `numbers(out 0 s)`. Before 2026-11-13 the pair-form
+  check was missing, so `out = 0` passed for every `s` (it shifts the parse) and the sentence was
+  trivially true; that table is the one in the registry entry PALOMAR-2026-11-11-000006. The fixed
+  table has the same number of states (403) and a different sha256.
+  Lean-formalized (`ZP.zmul_quasihalts_iff_sentence`, `checkMul` in `ZP/DefsMul.lean`).
 
 ## Layout
 `docs/` spec and history · `formal/` Lean project (Palomar layout) ·

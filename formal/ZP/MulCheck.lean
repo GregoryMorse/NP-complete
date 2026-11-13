@@ -1,7 +1,6 @@
 module
 
-public import ZP.PairMul
-public import ZP.PairF
+public import ZP.MulGuard
 
 @[expose] public section
 
@@ -489,8 +488,6 @@ def chkB (Sb : List Bool) : Bool :=
   let N := numbers Sb ++ [0, 0]
   N.getD 0 0 == N.getD 1 0 * N.getD 2 0
 
-theorem checkMul_eq (out s : List Bool) : checkMul out s = chkB (out ++ false :: s) := rfl
-
 theorem mulPhase (Sb : List Bool) (Rt : List Nat) (hRt : Sym4 Rt) :
     ∃ Lc Mr, NoB Lc ∧ NoB Mr ∧
       zmulLogic.Reach (hd QMul.HPF (1 :: crev Sb) Rt)
@@ -558,16 +555,6 @@ theorem mulPhase (Sb : List Bool) (Rt : List Nat) (hRt : Sym4 Rt) :
 
 /-! ## The check: set-up (generated) -/
 
-/-- The check begins: over the output, `J` and `s`, back to the start of `s`. -/
-theorem mkChain (Rw : List Nat) (j : List Nat) (s : List Nat) (Y : List Nat) (hRw : Bits Rw) (hj : Bits j) (hs : Bits s) (hY : Sym4 Y) :
-    zmulLogic.Reach (hdR QMul.mK1 ([2]) (Rw ++ (1 :: (j ++ (1 :: (s ++ (1 :: (Y))))))))
-      (hdR Q.GC (2 :: (Rw ++ (1 :: (j ++ ([1]))))) (s ++ (0 :: (Y)))) := by
-  have hV : Valid [bits, bits, bits, ALL] [Rw, j, s, Y] := Valid.cons hRw (Valid.cons hj (Valid.cons hs (Valid.cons hY (Valid.nil _))))
-  exact checkFF (env := [Rw, j, s, Y]) (E := []) (k := 8) hV trivial
-    (ls := [.sym 2]) (rs := [.blk 0 .id, .sym 1, .blk 1 .id, .sym 1, .blk 2 .id, .sym 1, .blk 3 .id])
-    (ls' := [.sym 2, .blk 0 .id, .sym 1, .blk 1 .id, .sym 1]) (rs' := [.blk 2 .id, .sym 0, .blk 3 .id])
-    (by decide +kernel) (by osimp) (by osimp) (by osimp) (by osimp)
-
 /-- Copy one bit of `s` to the far left. -/
 theorem gcBodyC (Ur : List Nat) (V : List Nat) (u : List Nat) (v : List Nat) (Y : List Nat) (b : Nat) (hUr : Bits Ur) (hV : NoB V) (hu : Bits u) (hv : Bits v) (hY : Sym4 Y) (hb : b ∈ bits) :
     zmulLogic.Reach (hdR Q.GC (Ur ++ (V ++ (u))) (b :: (v ++ (0 :: (Y)))))
@@ -607,21 +594,17 @@ theorem gcLoopC (V Y : List Nat) (hV : NoB V) (hY : Sym4 Y) :
     exact h1.trans (h2.of_eq (by simp) (by simp only [List.append_assoc, List.singleton_append]))
 
 theorem checkPre (Rw J s Y : List Nat) (hRw : Bits Rw) (hJ : Bits J) (hs : Bits s) (hY : Sym4 Y) :
-    zmulLogic.Reach (hdR QMul.mK1 [2] (Rw ++ 1 :: (J ++ 1 :: (s ++ 1 :: Y))))
+    zmulLogic.Reach (hdR QMul.mK1 (2 :: Rw) (1 :: (J ++ 1 :: (s ++ 1 :: Y))))
       (hd QMul.HPF (1 :: (s.reverse ++ 2 :: Rw)) (1 :: (J ++ 1 :: (s ++ 0 :: Y)))) := by
-  have h1 := mkChain Rw J s Y hRw hJ hs hY
+  have h1 := (mkChain Rw J s Y hRw hJ hs hY).of_eq
+    (show _ = hdR QMul.mK1 (2 :: Rw) (1 :: (J ++ 1 :: (s ++ 1 :: Y))) by simp)
+    (show _ = hdR Q.GC (2 :: (Rw ++ 1 :: (J ++ [1]))) (s ++ 0 :: Y) by simp)
   have hV : NoB (2 :: (Rw ++ 1 :: (J ++ [1]))) :=
     NoB.cons (by simp [NB]) (hRw.noB.app (NoB.cons one_nb (hJ.noB.app nb1)))
   have h2 := gcLoopC (2 :: (Rw ++ 1 :: (J ++ [1]))) Y hV hY s [] Bits.nil hs
   have h3 := tsEnd s.reverse Rw J s Y hs.rev hRw hJ hs hY
   have h2' := h2.of_eq (show _ = hdR Q.GC (2 :: (Rw ++ 1 :: (J ++ [1]))) (s ++ 0 :: Y) by simp) (show _ = hdR Q.GC (s.reverse ++ 2 :: (Rw ++ 1 :: (J ++ 1 :: s))) (0 :: Y) by simp)
   exact h1.trans (h2'.trans h3)
-
-theorem hdR_rep0 (q n : Nat) (A R : List Nat) : hdR q (List.replicate n 0 ++ A) R = hdR q A R :=
-  ZP.F.hdR_zeros q (List.replicate n 0) A R (fun a ha => by
-    have := List.eq_of_mem_replicate ha
-    subst this
-    simp [ZP.F.B0])
 
 /-- The outcome of a finished run, as the dispatch sees it. -/
 def okB (r : Option (List Bool)) (Xb : List Bool) : Bool :=
@@ -645,6 +628,29 @@ theorem haltPhase (Pb Xb : List Bool) (r : Option (List Bool)) (Fy ST : List Nat
     have h := dHalt0 (bitsOf Pb) (bitsOf Xb) (Fy ++ 0 :: ST) hj hs hY
     exact (h.of_eq (by simp [REm, REn, dpOf]) rfl)
   | some out =>
+    have hW : Sym4 (bitsOf Pb ++ [1] ++ (bitsOf Xb ++ 1 :: (1 :: (Fy ++ 0 :: ST)))) := by
+      rw [List.append_assoc]
+      exact hj.sym4.app (Sym4.cons (by simp [ALL]) (hs.sym4.app (Sym4.cons (by simp [ALL])
+        (Sym4.cons (by simp [ALL]) hY))))
+    have hg := guardRun _ hW out.reverse true [] (fun _ h => by simp at h)
+    rw [MulGuard.scan_rev] at hg
+    have hcm := MulGuard.checkMul_machine out Xb
+    have hREm : REm (some out) (bitsOf Pb ++ 1 :: bitsOf Xb) (1 :: Fy) ST =
+        hdR QMul.mK1 ([2] ++ []) (bitsOf out.reverse ++ [1] ++
+          (bitsOf Pb ++ [1] ++ (bitsOf Xb ++ 1 :: (1 :: (Fy ++ 0 :: ST))))) := by
+      simp [REm, REn]
+    cases hp : MulGuard.pairOk out with
+    | false =>
+      rw [hp] at hg
+      simp only [ite_true, Bool.false_eq_true, ite_false] at hg
+      refine ⟨Q.DP30, Or.inr rfl, by simp [okB, hcm, hp, Q.DP31, Q.DP30], ?_⟩
+      have h3 := dHalt0 (bitsOf Pb) (bitsOf Xb) (Fy ++ 0 :: ST) hj hs hY
+      rw [hREm]
+      exact hg.trans (h3.of_eq (by simp) rfl)
+    | true =>
+    rw [hp] at hg
+    simp only [ite_true] at hg
+    have hce : checkMul out Xb = chkB (out ++ false :: Xb) := by rw [hcm, hp]; rfl
     have h1 := checkPre (bitsOf out.reverse) (bitsOf Pb) (bitsOf Xb) (1 :: (Fy ++ 0 :: ST))
       (Bits.ofB _) hj hs (Sym4.cons (by simp [ALL]) hY)
     have hT : Sym4 (1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 0 :: (1 :: (Fy ++ 0 :: ST))))) :=
@@ -656,11 +662,9 @@ theorem haltPhase (Pb Xb : List Bool) (r : Option (List Bool)) (Fy ST : List Nat
     rw [hcr] at h2
     have hlen : (out ++ false :: Xb).length = (out.length + Xb.length) + 1 := by simp; omega
     rw [hlen, List.replicate_succ] at h2
-    have hREm : REm (some out) (bitsOf Pb ++ 1 :: bitsOf Xb) (1 :: Fy) ST =
-        hdR QMul.mK1 [2] (bitsOf out.reverse ++ 1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 1 :: (1 :: (Fy ++ 0 :: ST))))) := by
-      simp [REm, REn]
+    have h1 := hg.trans (h1.of_eq (by simp) rfl)
     by_cases hc : chkB (out ++ false :: Xb) = true
-    · have hc' : checkMul out Xb = true := hc
+    · have hc' : checkMul out Xb = true := hce ▸ hc
       refine ⟨Q.DP31, Or.inl rfl, by simp [okB, hc'], ?_⟩
       have h3 := frPath1M Lc Mr (List.replicate (out.length + Xb.length) 0) (bitsOf Pb) (bitsOf Xb)
         (Fy ++ 0 :: ST) hLc hMr (rep_b0 _) hj hs hY
@@ -669,7 +673,7 @@ theorem haltPhase (Pb Xb : List Bool) (r : Option (List Bool)) (Fy ST : List Nat
       have h2' := h2.of_eq rfl (show _ = hdR QMul.FR1 Lc (Mr ++ 0 :: (List.replicate (out.length + Xb.length) 0 ++
         1 :: (bitsOf Pb ++ 1 :: (bitsOf Xb ++ 0 :: 1 :: (Fy ++ 0 :: ST))))) by simp)
       exact (h1.trans (h2'.trans h3)).of_eq rfl (hdR_rep0 _ _ _ _)
-    · have hc' : ¬ checkMul out Xb = true := hc
+    · have hc' : ¬ checkMul out Xb = true := hce ▸ hc
       refine ⟨Q.DP30, Or.inr rfl, by simp [okB, hc', Q.DP31, Q.DP30], ?_⟩
       have h3 := frPath0M Lc Mr (List.replicate (out.length + Xb.length) 0) (bitsOf Pb) (bitsOf Xb)
         (Fy ++ 0 :: ST) hLc hMr (rep_b0 _) hj hs hY
