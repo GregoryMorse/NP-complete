@@ -7,7 +7,7 @@ public import ZP.PairMul
 /-!
 # Z_MUL: the output guard (generated)
 
-`mK1` reads a digit of the output (scanned from its last cell), `mKP` the `1` before it. A `0` there, or
+`mK1` reads a digit of the output (scanned from its last cell), `mZP` the `1` before it. A `0` there, or
 the `M` after an odd number of cells, fails: back to the separator `0`, which `ER1` takes as the
 outcome 0, and `ER20` erases the output up to `M_J`.
 
@@ -23,7 +23,7 @@ open ZP
 theorem gDig (A R : List Nat) (b : Nat) (hA : Sym4 A) (hR : Sym4 R) (hb : b ∈ bits) :
     zmulLogic.Reach (hdR QMul.mK1 (A)
         ([b] ++ R))
-      (hdR QMul.mKP (A ++ [b])
+      (hdR QMul.mZP (A ++ [b])
         (R)) := by
   have hv : Valid [ALL, ALL] [A, R] := (Valid.cons hA (Valid.cons hR (Valid.nil _)))
   rcases mem_bits hb with rfl | rfl
@@ -38,7 +38,7 @@ theorem gDig (A R : List Nat) (b : Nat) (hA : Sym4 A) (hR : Sym4 R) (hb : b ∈ 
 
 /-- Guard: the `1` before a digit. -/
 theorem gOne (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
-    zmulLogic.Reach (hdR QMul.mKP (A)
+    zmulLogic.Reach (hdR QMul.mZP (A)
         ([3] ++ R))
       (hdR QMul.mK1 (A ++ [3])
         (R)) := by
@@ -50,7 +50,7 @@ theorem gOne (A R : List Nat) (hA : Sym4 A) (hR : Sym4 R) :
 
 /-- Guard: a `0` where the `1` belongs; the output is erased. -/
 theorem gFail0 (P Qw W : List Nat) (hP : Bits P) (hQw : Bits Qw) (hW : Sym4 W) :
-    zmulLogic.Reach (hdR QMul.mKP ([0, 2] ++ P)
+    zmulLogic.Reach (hdR QMul.mZP ([0, 2] ++ P)
         ([2] ++ Qw ++ [1] ++ W))
       (hdR Q.DP10 ([0, 0] ++ List.replicate (P).length 0 ++ [0] ++ List.replicate (Qw).length 0 ++ [1])
         (W)) := by
@@ -62,7 +62,7 @@ theorem gFail0 (P Qw W : List Nat) (hP : Bits P) (hQw : Bits Qw) (hW : Sym4 W) :
 
 /-- Guard: odd length; the output is erased. -/
 theorem gFailM (P W : List Nat) (hP : Bits P) (hW : Sym4 W) :
-    zmulLogic.Reach (hdR QMul.mKP ([0, 2] ++ P)
+    zmulLogic.Reach (hdR QMul.mZP ([0, 2] ++ P)
         ([1] ++ W))
       (hdR Q.DP10 ([0, 0] ++ List.replicate (P).length 0 ++ [1])
         (W)) := by

@@ -134,11 +134,11 @@ theorem sw (r : List Bool) (W : List Nat) (hW : Sym4 W) : Sym4 (bitsOf r ++ [1] 
 
 theorem bit_mem (b : Bool) : (if b then 3 else 2) ∈ bits := by cases b <;> simp [bits]
 
-/-- The guard on the logical machine, from `mK1` (`p`) or `mKP` (`¬ p`) with the scanned cells `P` on the
+/-- The guard on the logical machine, from `mK1` (`p`) or `mZP` (`¬ p`) with the scanned cells `P` on the
 left. -/
 theorem guardRun (W : List Nat) (hW : Sym4 W) :
     ∀ (l : List Bool) (p : Bool) (P : List Nat), Bits P →
-      zmulLogic.Reach (hdR (if p then QMul.mK1 else QMul.mKP) ([2] ++ P) (bitsOf l ++ [1] ++ W))
+      zmulLogic.Reach (hdR (if p then QMul.mK1 else QMul.mZP) ([2] ++ P) (bitsOf l ++ [1] ++ W))
         (if MulGuard.scan p l then hdR QMul.mK1 ([2] ++ P ++ bitsOf l) ([1] ++ W) else hdR Q.DP10 [1] W)
   | [], true, P, _ => by
     simp only [MulGuard.scan, ite_true]

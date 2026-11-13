@@ -15,7 +15,7 @@ public import ZP.PairMul
 /-!
 # Z_MUL: the output guard (generated)
 
-`mK1` reads a digit of the output (scanned from its last cell), `mKP` the `1` before it. A `0` there, or
+`mK1` reads a digit of the output (scanned from its last cell), `mZP` the `1` before it. A `0` there, or
 the `M` after an odd number of cells, fails: back to the separator `0`, which `ER1` takes as the
 outcome 0, and `ER20` erases the output up to `M_J`.
 
@@ -41,15 +41,15 @@ def main():
     print(HEAD)
     A, R, P, Qw, W = V('A', 'ALL'), V('R', 'ALL'), V('P'), V('Qw'), V('W', 'ALL')
     T('gDig', 'Guard: a digit cell.', '(A R : List Nat) (b : Nat) (hA : Sym4 A) (hR : Sym4 R) (hb : b ∈ bits)',
-      [A, R], ('mK1', False, 'A', '$b R'), ('mKP', False, 'A $b', 'R'), cases=[('b', [2, 3], 'hb')])
+      [A, R], ('mK1', False, 'A', '$b R'), ('mZP', False, 'A $b', 'R'), cases=[('b', [2, 3], 'hb')])
     T('gOne', 'Guard: the `1` before a digit.', '(A R : List Nat) (hA : Sym4 A) (hR : Sym4 R)',
-      [A, R], ('mKP', False, 'A', '1 R'), ('mK1', False, 'A 1', 'R'))
+      [A, R], ('mZP', False, 'A', '1 R'), ('mK1', False, 'A 1', 'R'))
     T('gFail0', 'Guard: a `0` where the `1` belongs; the output is erased.',
       '(P Qw W : List Nat) (hP : Bits P) (hQw : Bits Qw) (hW : Sym4 W)', [P, Qw, W],
-      ('mKP', False, 'B 0 P', '0 Qw M W'), ('DP10', False, 'B B P->B B Qw->B M', 'W'))
+      ('mZP', False, 'B 0 P', '0 Qw M W'), ('DP10', False, 'B B P->B B Qw->B M', 'W'))
     T('gFailM', 'Guard: odd length; the output is erased.',
       '(P W : List Nat) (hP : Bits P) (hW : Sym4 W)', [P, W],
-      ('mKP', False, 'B 0 P', 'M W'), ('DP10', False, 'B B P->B M', 'W'))
+      ('mZP', False, 'B 0 P', 'M W'), ('DP10', False, 'B B P->B M', 'W'))
     j, s, Y = V('j'), V('s'), V('Y', 'ALL')
     T('mkChain', 'The guard passed: over `J` and `s`, back to the start of `s`.',
       '(P j s Y : List Nat) (hP : Bits P) (hj : Bits j) (hs : Bits s) (hY : Sym4 Y)', [P, j, s, Y],

@@ -108,12 +108,14 @@ def build():
     t('GHH1', M, '.', 'L', 'EL1')
     t('ER1', M, '0', 'R', 'mK1')
     # guard: out must be a pair numeral 1 b_1 .. 1 b_k.  mK1 scans out from its
-    # last cell: mK1 reads a digit b_i, mKP the 1 before it.  A 0 there, or odd
-    # length (mKP meets M), fails: mK4 walks back to the blank before the
+    # last cell: mK1 reads a digit b_i, mZP the 1 before it.  A 0 there, or odd
+    # length (mZP meets M), fails: mK4 walks back to the blank before the
     # separator 0, ER1 takes that 0 as the outcome and erases out.
-    t('mK1', BITS, '.', 'R', 'mKP')
-    t('mKP', '1', '.', 'R', 'mK1')
-    t('mKP', '0M', '.', 'L', 'mK4')
+    # (mZP sorts after every other state name, so the numbers of the states that
+    # Z_MATMUL shares with this machine, and its Lean files, do not move.)
+    t('mK1', BITS, '.', 'R', 'mZP')
+    t('mZP', '1', '.', 'R', 'mK1')
+    t('mZP', '0M', '.', 'L', 'mK4')
     t('mK4', B, '.', 'R', 'ER1')
     t('mK1', M, '.', 'R', 'mK2')
     t('mK2', BITS, '.', 'R', 'mK2')
