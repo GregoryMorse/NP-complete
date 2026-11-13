@@ -71,13 +71,20 @@ Plans for the rest are in `plans/`.
 | Z_DLOG (400) | `ZP.zdl_quasihalts_iff_sentence` | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
 | Z_GI (415) | `ZP.zgi_quasihalts_iff_sentence` | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
 | Z_NTT (469) | `ZP.zntt_quasihalts_iff_sentence` | `ZP.NTT.znttQuasihalts_iff_sentence`, `ZP.primeEx` | `PrimeNum Totient Cyclo DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
-| Z_MUL (403) | `ZP.zmul_quasihalts_iff_sentence` | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulCheck MainMul` |
+| Z_PPOLY | `ZP.zppoly_quasihalts_iff_sentence` | `ZP.zppolyQuasihalts_iff_sentence` | `DefsPoly TablePoly … MainPoly` |
+| Z_MATMUL | `ZP.zmm_quasihalts_iff_sentence` | | `DefsMM TableMM … MainMM` |
+| Z_LP | `ZP.zlp_quasihalts_iff_sentence` | `ZP.zlpQuasihalts_iff_sentence` | `DefsMH DefsLP TableLP … MainLP` |
+| Z_LNL | `ZP.zlnl_quasihalts_iff_sentence` | `ZP.zlnlQuasihalts_iff_sentence` | `DefsLNL TableLNL … MainLNL` |
 | Z_coNP (317) | `ZP.zconp_quasihalts_iff_sentence` | `ZP.zconpQuasihalts_iff_sentence` | `DefsConp TableConp LogicBaseConp LogicConp CompileConp ChecksConp ConpRot ConpFuel ConpInterp ConpRun ConpGad ConpSearch ConpPair MainConp` |
 | twin primes (19) | `ZP.twin_quasihalts_iff` | | `DefsTwin TableTwin TwinRound MainTwin` |
 
-State counts are those of the literal tables selected in `Challenge.lean` (`machines/*_native.tbl`). All ten Challenge
-theorems are proved in `Solution.lean`; the older state counts quoted in `plans/` (e.g. 550 for Z_NTT, 408 for Z_MUL)
+State counts are those of the literal tables selected in `Challenge.lean` (`machines/*_native.tbl`). All fourteen Challenge
+theorems are proved in `Solution.lean`; the older state counts quoted in `plans/` (e.g. 550 for Z_NTT)
 refer to earlier designs.
+
+The multiplication machine (Z_MUL) is not a Challenge theorem: its output check lets an output with a stray
+`0` shift the number parse (see the top-level README), so its sentence is degenerate. `ZP/MainMul.lean` is kept as a library
+result only.
 
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
 transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair

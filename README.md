@@ -20,7 +20,7 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_coNP (counter-machine compile) | 1738 | `machines/zconp.txt` |
 | **Z_DLOG native (quasihalts iff discrete log mod primes is in P)** | **400** | `machines/zdlog_native.txt` (`native/zdl.py`, ref `ref/zdl_ref.py`) |
 | Z_DLOG (counter-machine compile) | 2958 | `machines/zdlog.txt` |
-| **Z_MUL native (quasihalts iff multitape TMs multiply in linear time)** | **403** | `machines/zmul_native.txt` (`native/zmul.py`, ref `ref/zmul_ref.py`) |
+| **Z_MUL native (intended: multitape TMs multiply in linear time; the output check is degenerate, see below)** | **403** | `machines/zmul_native.txt` (`native/zmul.py`, ref `ref/zmul_ref.py`) |
 | Z_MUL (counter-machine compile) | 3623 | `machines/zmul.txt` |
 | **Z_NTT native (quasihalts iff the number-theoretic transform has linear-size linear circuits)** | **469** | `machines/zntt_native.txt` (`native/zntt.py`, ref `ref/zntt_ref.py`) |
 | Z_NTT (counter-machine compile) | 6106 | `machines/zntt.txt` |
@@ -45,7 +45,7 @@ wiki records a P = NP beeper by Mira (GPT-6.1 Terra) on 2026-10-31 (BBB(290); [T
 with a Lean-formalized 285-state P = NP beeper announced by Mira-Cult on 2026-11-04 and 284- and 266-state
 NP = coNP beepers on 2026-11-06 ([TMBR November 2026](https://wiki.bbchallenge.org/wiki/TMBR:_November_2026)).
 The same page records this repository's 278-, 295- and 291-state machines (P = NP, P = PP, P = PSPACE;
-announced 2026-11-01) and the ten Lean formalizations completed on 2026-11-09. State counts are not directly comparable:
+announced 2026-11-01) and the fourteen Lean formalizations completed on 2026-11-13. State counts are not directly comparable:
 this repository uses a designated beep state, Mira-Cult's headline counts use designated beep transitions.
 
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
@@ -112,9 +112,15 @@ See `docs/spec.md` §5 (earlier specification). In brief:
   against their references; Z_BPP's two counters on every instance up to the tested size;
   Z_PPOLY's advice events; the multihead act on every storage with |x| ≤ 3 and ≤ 3 heads;
   the matrix-product check on random instances with m ≤ 3.
-  Not yet formalized in Lean; the plans are `formal/plans/11`–`15`. The links from each
-  sentence to its complexity statement (promise classes, P/poly, log space) are on paper
-  (`docs/native.md`).
+  Lean-formalized: the equivalence of quasihalting with the sentence is proved for each
+  (`formal/Solution.lean`). The links from each sentence to its complexity statement (promise
+  classes, P/poly, log space) are on paper (`docs/native.md`).
+- **Z_MUL (withdrawn from the Lean submission):** its output check compares `N[0]` with `N[1]*N[2]` of
+  `numbers(out 0 s)`, so an output containing a stray `0` shifts the parse and `out = 0` passes for every
+  `s`; the sentence is therefore degenerate and no theorem about it is claimed. The linear-time
+  statement is carried by Z_MATMUL, whose check compares the output with the product computed from `s`.
+  The earlier `ZP.zmulQuasihalts_iff_sentence` remains in the library (`ZP/MainMul.lean`) but is not a
+  Challenge theorem.
 
 ## Layout
 `docs/` spec and history · `formal/` Lean project (Palomar layout) ·

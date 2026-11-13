@@ -229,6 +229,8 @@ turned into separators.
 
 ### Linear-time multiplication (`native/zmul.py`, 403 states)
 
+> **Known defect.** The output check below parses `out 0 s` with `numbers` and tests `N[0] = N[1] N[2]`. An output with a stray `0` shifts the parse, so `out = 0` passes for every `s` and the sentence is degenerate (trivially true). Do not read this machine as encoding the linear-time multiplication question; Z_MATMUL (below) fixes the check by comparing `out` with the product computed from `s`. No Lean theorem about Z_MUL is claimed.
+
 The guest is Z_P v2 plus a queue of `|J|` stacks; the clock is
 `T = (|s|+2)·2^|J| − 1`, one fuel block `M 1^(|s|+1)` and `|J|` short blocks `M 1`.
 Entries with `t = 0` change meaning:

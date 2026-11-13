@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 ROOTS = ['ZP.Defs', 'ZP.Table', 'ZP.DefsPP', 'ZP.DefsBPP', 'ZP.DefsMH', 'ZP.DefsLP', 'ZP.DefsLNL', 'ZP.TablePoly', 'ZP.TableLP', 'ZP.TableLNL', 'ZP.TableMM', 'ZP.DefsPS', 'ZP.DefsF', 'ZP.DefsD', 'ZP.DefsG',
-         'ZP.DefsNTT', 'ZP.TableNTT', 'ZP.DefsTwin', 'ZP.TableTwin', 'ZP.DefsMul', 'ZP.DefsMM', 'ZP.TableMul',
+         'ZP.DefsNTT', 'ZP.TableNTT', 'ZP.DefsTwin', 'ZP.TableTwin', 'ZP.DefsMul', 'ZP.DefsMM',
          'ZP.DefsConp', 'ZP.TableConp', 'ZP.DefsPoly']
 WIDTH = 600
 
@@ -22,62 +22,68 @@ def path(m): return ROOT / (m.replace('.', '/') + '.lean')
 def imports(m):
     return re.findall(r'^public import (\S+)$', path(m).read_text(), re.M)
 
-order, seen = [], set()
-def visit(m):
-    if m in seen: return
-    seen.add(m)
-    for i in imports(m): visit(i)
-    order.append(m)
-for r in ROOTS: visit(r)
+EXTRA = ['ZP.DefsMulSent', 'ZP.TableMul']   # the retired Z_MUL sentence and table: in the library, not in the Challenge
+def build(roots):
+    order, seen = [], set()
+    def visit(m):
+        if m in seen: return
+        seen.add(m)
+        for i in imports(m): visit(i)
+        order.append(m)
+    for r in roots: visit(r)
 
-row = re.compile(r'^\s*\[?\(\d+, \d+\)(,|\])*$')
+    row = re.compile(r'^\s*\[?\(\d+, \d+\)(,|\])*$')
 
-def pack(lines):
-    out, buf, i = [], None, 0
-    for ln in lines:
-        s = ln.strip()
-        if row.match(ln):
-            s = s.replace(' ', '')   # compact rows: the Challenge source is capped at 100 KiB
-            if buf is None:
-                buf = '  ' + s if s.startswith('[') else '   ' + s
-            elif len(buf) + len(s) > WIDTH:
-                out.append(buf); buf = '   ' + s
-            else:
-                buf += s
-            if s.endswith(']'):
-                if out and out[-1].endswith(':=') and out[-1].startswith('def '):
-                    out[-1] += ' ' + buf.strip()
+    def pack(lines):
+        out, buf, i = [], None, 0
+        for ln in lines:
+            s = ln.strip()
+            if row.match(ln):
+                s = s.replace(' ', '')   # compact rows: the Challenge source is capped at 100 KiB
+                if buf is None:
+                    buf = '  ' + s if s.startswith('[') else '   ' + s
+                elif len(buf) + len(s) > WIDTH:
+                    out.append(buf); buf = '   ' + s
                 else:
-                    out.append(buf)
-                buf = None
-        else:
-            if buf is not None: out.append(buf); buf = None
-            out.append(ln.rstrip())
-    return out
+                    buf += s
+                if s.endswith(']'):
+                    if out and out[-1].endswith(':=') and out[-1].startswith('def '):
+                        out[-1] += ' ' + buf.strip()
+                    else:
+                        out.append(buf)
+                    buf = None
+            else:
+                if buf is not None: out.append(buf); buf = None
+                out.append(ln.rstrip())
+        return out
 
-body = []
-for m in order:
-    t = path(m).read_text().split('\n')
-    k = next(i for i, l in enumerate(t) if l.startswith('@[expose] public section'))
-    assert all(l.startswith(('module', 'public import', '')) and not l.strip().startswith('import ') for l in t[:k])
-    body.append('/- ## ' + m + ' -/')
-    body += pack(t[k + 1:])
-    body.append('')
-defs = '\n'.join(body)
-# module docs stay in the sources; the Challenge is capped at 100 KiB (definition docstrings are kept)
-defs = re.sub(r'/-!.*?-/\n?', '', defs, flags=re.S)
-defs = re.sub(r'\n{3,}', '\n\n', defs)
-# one namespace block (the sources only open and close `namespace ZP`) and no provenance headers: the Challenge is
-# capped at 1,000 lines and 100 KiB
-defs = re.sub(r'/- ## \S+ -/\n', '', defs)
-defs = re.sub(r'end ZP\n\s*namespace ZP\n', '', defs)
-defs = re.sub(r'\n\n+', '\n', defs)
-defs = re.sub(r'(/- ## \S+ -/\n)\n', r'\1', defs)
-defs = re.sub(r'(namespace ZP\n)\n', r'\1', defs)
-defs = re.sub(r'(\]\n)\n(?=def \w+Rows\d+ )', r'\1', defs)
+    body = []
+    for m in order:
+        t = path(m).read_text().split('\n')
+        k = next(i for i, l in enumerate(t) if l.startswith('@[expose] public section'))
+        assert all(l.startswith(('module', 'public import', '')) and not l.strip().startswith('import ') for l in t[:k])
+        body.append('/- ## ' + m + ' -/')
+        body += pack(t[k + 1:])
+        body.append('')
+    defs = '\n'.join(body)
+    # module docs stay in the sources; the Challenge is capped at 100 KiB (definition docstrings are kept)
+    defs = re.sub(r'/-!.*?-/\n?', '', defs, flags=re.S)
+    defs = re.sub(r'\n{3,}', '\n\n', defs)
+    # one namespace block (the sources only open and close `namespace ZP`) and no provenance headers: the Challenge is
+    # capped at 1,000 lines and 100 KiB
+    defs = re.sub(r'/- ## \S+ -/\n', '', defs)
+    defs = re.sub(r'end ZP\n\s*namespace ZP\n', '', defs)
+    defs = re.sub(r'\n\n+', '\n', defs)
+    defs = re.sub(r'(/- ## \S+ -/\n)\n', r'\1', defs)
+    defs = re.sub(r'(namespace ZP\n)\n', r'\1', defs)
+    defs = re.sub(r'(\]\n)\n(?=def \w+Rows\d+ )', r'\1', defs)
+    return defs
+
+defs = build(ROOTS)
+alldefs_body = build(ROOTS + EXTRA)
 stm = (ROOT / 'challenge_statements.lean.in').read_text()
 out = ('module\n\n@[expose] public section\n\n' + defs.strip('\n') + '\n\n' + stm)
-alldefs = 'module\n\n@[expose] public section\n\n' + defs.strip('\n') + '\n'
+alldefs = 'module\n\n@[expose] public section\n\n' + alldefs_body.strip('\n') + '\n'
 f = ROOT / 'Challenge.lean'
 fa = ROOT / 'ZP' / 'AllDefs.lean'
 if '--check' in sys.argv:
