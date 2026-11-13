@@ -2,7 +2,6 @@ module
 
 @[expose] public section
 
-/- ## ZP.Defs -/
 namespace ZP
 /-- A machine is a table of rows `(code on 0, code on 1)`, start state 0, and a
 beep state. A transition code is `0` (undefined: the machine halts) or
@@ -11,13 +10,11 @@ state `q'`. A state past the end of the table also halts. -/
 structure TM where
   table : List (Nat × Nat)
   beep  : Nat
-
 /-- Configuration: state, tape (`true` = 1), head position. -/
 structure Conf where
   q    : Nat
   tape : Int → Bool
   head : Int
-
 /-- One step; `none` means the machine has halted. -/
 def TM.step (M : TM) (c : Conf) : Option Conf :=
   match M.table[c.q]? with
@@ -30,42 +27,33 @@ def TM.step (M : TM) (c : Conf) : Option Conf :=
       some { q := x / 4
              tape := fun i => if i = c.head then decide (x % 2 = 1) else c.tape i
              head := if (x / 2) % 2 = 1 then c.head + 1 else c.head - 1 }
-
 /-- Configuration after `k` steps from the blank tape (`none` once halted). -/
 def TM.conf (M : TM) : Nat → Option Conf
   | 0 => some ⟨0, fun _ => false, 0⟩
   | k + 1 => (M.conf k).bind M.step
-
 /-- The machine is in its beep state at only finitely many times. -/
 def Quasihalts (M : TM) : Prop :=
   ∃ N, ∀ k, N ≤ k → ∀ c, M.conf k = some c → c.q ≠ M.beep
-
 /-- Cyclic bit `i` of `R`. -/
 def cyc (R : List Bool) (i : Nat) : Bool := R.getD (i % R.length) false
-
 /-- Length of the run of 1s in `R` starting at cyclic position `i`, capped at `f`. -/
 def onesFrom (R : List Bool) : Nat → Nat → Nat
   | 0, _ => 0
   | f + 1, i => if cyc R i then onesFrom R f (i + 1) + 1 else 0
-
 /-- The one-count `k` of the entry `w d 1^k 0` at the front of `R`. -/
 def entryOnes (R : List Bool) : Nat := onesFrom R R.length 2
-
 /-- `R` rotated past the entry at its front. -/
 def rot (R : List Bool) : List Bool :=
   R.drop ((entryOnes R + 3) % R.length) ++ R.take ((entryOnes R + 3) % R.length)
-
 /-- `n` rotations. -/
 def rotN : Nat → List Bool → List Bool
   | 0, R => R
   | n + 1, R => rotN n (rot R)
-
 /-- ι(blank, 0, 1) = 0, 1, 2. -/
 def iota : Option Bool → Nat
   | none => 0
   | some false => 1
   | some true => 2
-
 /-- At most `T` guest steps; `true` = accept. Guest tape cells are `none` (blank)
 or a bit; the head `h` is a natural number and a left move at cell 0 stays. -/
 def runAux : Nat → List Bool → (Nat → Option Bool) → Nat → Bool
@@ -77,46 +65,32 @@ def runAux : Nat → List Bool → (Nat → Option Bool) → Nat → Bool
         (fun i => if i = h then some (R.getD 0 false) else tape i)
         (if R.getD 1 false then h + 1 else h - 1)
     else R.getD 0 false
-
 /-- Guest program `P` on input `x` for at most `T` steps (a time-out rejects). -/
 def run (P x : List Bool) (T : Nat) : Bool :=
   runAux T (rot (P.reverse ++ [false])) (fun i => x[i]?) 0
-
 /-- All bit strings of length `n`. -/
 def strings : Nat → List (List Bool)
   | 0 => [[]]
   | n + 1 => (strings n).flatMap fun c => [false :: c, true :: c]
-
 /-- `s ∈ L`: some certificate of length `|s|+1` makes program `s` accept within
 `|s|+1` steps. -/
 def inL (s : List Bool) : Bool :=
   (strings (s.length + 1)).any fun c => run s c (s.length + 1)
-
 /-- Clock for candidate `J` on instance `s`: `(|s|+2)^(|J|+1) - 1`. -/
 def clock (J s : List Bool) : Nat := (s.length + 2) ^ (J.length + 1) - 1
-
 def strAux : Nat → Nat → List Bool → List Bool
   | 0, _, acc => acc
   | f + 1, N, acc => if N ≤ 1 then acc else strAux f (N / 2) ((N % 2 == 1) :: acc)
-
 /-- The `N`-th bit string in shortlex order (`N ≥ 1`; `str 1 = []`): the binary
 digits of `N` after its leading 1. Shortlex successor is `N + 1`. -/
 def str (N : Nat) : List Bool := strAux N N []
-
 /-- Candidate number `J` answers instance number `S` correctly within its clock. -/
 def Correct (J S : Nat) : Prop :=
   run (str J) (str S) (clock (str J) (str S)) = inL (str S)
-
 instance (J S : Nat) : Decidable (Correct J S) :=
   inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = inL (str S)))
-
 /-- The Σ₂ sentence of docs/native.md. On paper it is equivalent to P = NP. -/
 def Sentence : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → Correct J S
-
-end ZP
-
-/- ## ZP.Table -/
-namespace ZP
 def zpMachineRows0 : List (Nat × Nat) := [(475,184),(479,40),(13,484),(342,486),(489,494),(499,504),(507,512),(515,508),(161,8),(519,8),(0,521),(525,530),(533,538),(543,548),(551,544),(556,558),(561,566),(569,574),(173,174),(577,310),(581,586),(589,594),(307,598),(603,1107),(111,460),(455,608),(611,616),(619,112),(621,2),(621,626),(631,1056),(635,632)]
 def zpMachineRows1 : List (Nat × Nat) := [(639,644),(523,648),(651,640),(655,660),(663,668),(671,675),(677,42),(41,678),(681,686),(691,696),(441,700),(708,74),(711,715),(293,717),(185,181),(721,946),(725,725),(729,1065),(733,1065),(207,740),(643,743),(647,747),(749,754),(757,762),(765,772),(775,780),(783,788),(791,796),(799,804),(807,812),(815,820),(823,828)]
 def zpMachineRows2 : List (Nat × Nat) := [(829,834),(837,842),(845,850),(853,702),(859,864),(867,872),(875,880),(883,888),(889,894),(284,898),(904,672),(907,46),(911,916),(917,78),(921,926),(929,934),(937,942),(251,236),(251,240),(255,244),(255,248),(486,69),(949,954),(459,960),(961,966),(969,974),(979,984),(987,992),(995,556),(323,1000),(69,1004),(389,1006)]
@@ -126,7 +100,6 @@ def zpMachineRows5 : List (Nat × Nat) := [(131,132),(135,136),(457,148),(771,15
 def zpMachineRows6 : List (Nat × Nat) := [(227,228),(1097,1009),(1073,425),(235,650),(235,236),(239,1093),(239,240),(243,386),(243,244),(247,1094),(247,248),(251,1101),(251,252),(255,1102),(255,256),(864,258),(257,258),(928,262),(261,262),(1099,266),(265,266),(1013,270),(449,276),(275,276),(890,280),(279,280),(538,284),(283,284),(690,288),(287,288),(636,289),(293,183)]
 def zpMachineRows7 : List (Nat × Nat) := [(1091,792),(283,127),(1065,304),(307,304),(307,308),(313,310),(313,318),(280,322),(327,326),(100,330),(397,334),(385,338),(345,451),(960,346),(345,346),(351,352),(984,354),(353,354),(480,358),(357,358),(1101,364),(363,364),(1102,368),(367,368),(621,10),(375,376),(380,440),(381,382),(265,73),(401,402),(662,412),(412,412)]
 def zpMachineRows8 : List (Nat × Nat) := [(413,411),(411,411),(1045,420),(420,420),(1083,422),(421,422),(23,124),(123,124),(7,434),(1003,1104),(445,201),(1060,607),(36,257),(376,465),(428,1109),(357,701),(89,300),(342,294),(288,557),(190,419),(452,456),(469,470)]
-
 /-- `machines/zp_native.txt` (278 states, beep state 10, SHA-256 of the
 standard text 19e467a329e02c289b01182fbba29aeef7f6a95e5d44641be64ea28fba0b7572). Row q is (code on 0, code on 1). -/
 def zpMachineTable : List (Nat × Nat) :=
@@ -139,14 +112,8 @@ def zpMachineTable : List (Nat × Nat) :=
   zpMachineRows6 ++
   zpMachineRows7 ++
   zpMachineRows8
-
 /-- zp_native as a machine with its designated beep state. -/
 def zpMachine : TM := ⟨zpMachineTable, 10⟩
-
-end ZP
-
-/- ## ZP.TablePP -/
-namespace ZP
 def zppMachineRows0 : List (Nat × Nat) := [(503,688),(507,1157),(509,514),(518,521),(509,526),(529,534),(29,540),(1129,542),(545,550),(499,556),(559,564),(195,560),(177,56),(567,56),(571,60),(0,573),(577,582),(585,590),(595,600),(603,596),(524,606),(609,614),(617,290),(621,626),(629,634),(327,638),(643,791),(455,648),(651,656),(487,660),(663,456),(665,670)]
 def zppMachineRows1 : List (Nat × Nat) := [(665,674),(679,1120),(683,680),(687,692),(695,700),(703,696),(707,712),(715,720),(721,62),(61,722),(727,720),(13,728),(729,734),(739,744),(477,748),(309,641),(752,52),(755,759),(115,189),(761,765),(769,773),(777,637),(781,637),(223,788),(691,791),(699,795),(797,802),(807,1108),(809,814),(817,824),(7,828),(831,836)]
 def zppMachineRows2 : List (Nat × Nat) := [(839,844),(847,852),(855,860),(863,868),(871,876),(877,882),(885,890),(893,898),(901,90),(907,912),(915,920),(751,924),(927,932),(489,766),(304,934),(940,944),(947,66),(951,956),(957,962),(965,970),(973,978),(981,986),(271,256),(271,260),(275,264),(275,268),(542,89),(989,994),(997,1002),(215,1008),(1009,1014),(1017,1022)]
@@ -157,7 +124,6 @@ def zppMachineRows6 : List (Nat × Nat) := [(213,209),(34,209),(213,217),(223,21
 def zppMachineRows7 : List (Nat × Nat) := [(285,286),(1073,290),(737,296),(295,296),(622,300),(299,300),(303,304),(810,308),(307,308),(943,8),(303,239),(319,320),(969,324),(327,324),(327,328),(333,330),(365,330),(333,338),(1177,342),(347,346),(605,350),(425,354),(413,358),(484,377),(369,1079),(1008,370),(369,370),(375,376),(1032,378),(377,378),(1164,382),(381,382)]
 def zppMachineRows8 : List (Nat × Nat) := [(705,388),(387,388),(706,392),(391,392),(395,396),(399,400),(404,277),(405,406),(409,21),(421,85),(417,1143),(381,17),(429,430),(481,1069),(440,440),(444,444),(445,443),(443,443),(1109,452),(452,452),(239,240),(457,458),(464,136),(135,136),(936,470),(819,1164),(435,991),(252,809),(400,436),(978,1169),(39,281),(101,478)]
 def zppMachineRows9 : List (Nat × Nat) := [(251,404),(285,314),(392,455),(119,488),(497,498),(193,194),(105,106)]
-
 /-- `machines/zpp_native.txt` (295 states, beep state 15, SHA-256 of the
 standard text f1d33474cdce176de48367440358bbb8e74196e6ea6c2509214f312a8a3c002e). Row q is (code on 0, code on 1). -/
 def zppMachineTable : List (Nat × Nat) :=
@@ -171,33 +137,18 @@ def zppMachineTable : List (Nat × Nat) :=
   zppMachineRows7 ++
   zppMachineRows8 ++
   zppMachineRows9
-
 /-- zpp_native as a machine with its designated beep state. -/
 def zppMachine : TM := ⟨zppMachineTable, 15⟩
-
-end ZP
-
-/- ## ZP.DefsPP -/
-namespace ZP
 /-- The number of certificates of length `|s|+1` that the guest `s` accepts. -/
 def accCount (s : List Bool) : Nat :=
   ((strings (s.length + 1)).filter fun c => run s c (s.length + 1)).length
-
 /-- `s ∈ L_PP`: at least half of the certificates are accepted. -/
 def inPP (s : List Bool) : Bool := decide (2 ^ (s.length + 1) ≤ 2 * accCount s)
-
 def CorrectPP (J S : Nat) : Prop :=
   run (str J) (str S) (clock (str J) (str S)) = inPP (str S)
-
 instance (J S : Nat) : Decidable (CorrectPP J S) :=
   inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = inPP (str S)))
-
 def SentencePP : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectPP J S
-
-end ZP
-
-/- ## ZP.TableBPP -/
-namespace ZP
 def zbppMachineRows0 : List (Nat × Nat) := [(539,317),(543,378),(546,550),(505,554),(557,562),(25,568),(1294,570),(573,578),(583,588),(591,584),(595,592),(597,492),(603,492),(607,612),(615,620),(0,469),(621,626),(629,634),(639,644),(647,652),(653,658),(661,666),(669,670),(673,674),(521,678),(681,686),(691,506),(693,698),(703,708),(711,716),(719,724),(725,730)]
 def zbppMachineRows1 : List (Nat × Nat) := [(725,734),(739,1232),(743,740),(747,752),(755,760),(763,768),(771,756),(395,776),(779,784),(785,62),(61,786),(791,784),(9,796),(799,776),(803,808),(425,804),(811,598),(815,820),(513,28),(1121,777),(827,831),(1169,833),(837,841),(845,1034),(849,849),(853,533),(857,533),(863,868),(751,871),(759,875),(877,882),(887,890)]
 def zbppMachineRows2 : List (Nat × Nat) := [(893,900),(1287,262),(437,904),(69,908),(477,910),(115,284),(823,916),(907,920),(923,928),(931,936),(939,944),(947,952),(955,960),(963,968),(969,974),(977,982),(985,990),(993,998),(1003,1008),(1011,1016),(1019,1024),(1027,1032),(340,1038),(1044,728),(1047,66),(1051,1056),(1057,1062),(1065,1070),(5,1074),(1077,1082),(307,292),(307,296)]
@@ -209,7 +160,6 @@ def zbppMachineRows7 : List (Nat × Nat) := [(259,260),(268,272),(1131,1297),(12
 def zbppMachineRows8 : List (Nat × Nat) := [(770,344),(343,344),(345,215),(1311,956),(339,75),(1285,356),(359,356),(359,360),(365,362),(397,362),(365,370),(0,374),(1264,382),(213,386),(449,390),(336,409),(401,1295),(1108,402),(401,402),(0,461),(407,408),(908,410),(409,410),(1310,206),(413,414),(398,908),(419,420),(1126,424),(423,424),(0,426),(81,1292),(1253,1258)]
 def zbppMachineRows9 : List (Nat × Nat) := [(431,432),(435,436),(441,442),(1225,85),(889,17),(453,527),(461,462),(1305,569),(472,472),(211,476),(476,476),(273,475),(475,475),(1225,468),(483,484),(495,496),(487,488),(860,1166),(497,498),(135,136),(503,504),(1267,1316),(517,8),(1263,1249),(596,514),(457,1317),(445,997),(111,112),(359,212),(436,253),(1321,1328),(136,124)]
 def zbppMachineRows10 : List (Nat × Nat) := [(524,119),(1329,268),(597,661),(344,205),(321,70),(222,346),(331,81),(1136,352),(0,491),(533,534),(105,106),(279,280),(1,2)]
-
 /-- `machines/zbpp_native.txt` (333 states, beep state 15, SHA-256 of the
 standard text e7b23f6a37a6970401e1d8d8b8ba894e548e49d9253f3e223a5a7d70079571fd). Row q is (code on 0, code on 1). -/
 def zbppMachineTable : List (Nat × Nat) :=
@@ -224,41 +174,26 @@ def zbppMachineTable : List (Nat × Nat) :=
   zbppMachineRows8 ++
   zbppMachineRows9 ++
   zbppMachineRows10
-
 /-- zbpp_native as a machine with its designated beep state. -/
 def zbppMachine : TM := ⟨zbppMachineTable, 15⟩
-
-end ZP
-
-/- ## ZP.DefsBPP -/
-namespace ZP
 /-- `some true` (YES), `some false` (NO) or `none` (outside the promise). -/
 def capp (s : List Bool) : Option Bool :=
   if 3 * 2 ^ (s.length + 1) ≤ 4 * accCount s then some true
   else if 3 * 2 ^ (s.length + 1) ≤ 4 * (2 ^ (s.length + 1) - accCount s) then some false
   else none
-
 def CorrectBPP (J S : Nat) : Prop :=
   match capp (str S) with
   | none => True
   | some t => run (str J) (str S) (clock (str J) (str S)) = t
-
 instance (J S : Nat) : Decidable (CorrectBPP J S) := by
   unfold CorrectBPP
   cases capp (str S) with
   | none => exact isTrue trivial
   | some t => exact inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = t))
-
 def SentenceBPP : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectBPP J S
-
-end ZP
-
-/- ## ZP.DefsMH -/
-namespace ZP
 /-- The symbol at position `p` of `⊢x⊣`: blank at both end markers. -/
 def mhRead (x : List Bool) (p : Nat) : Option Bool :=
   if p = 0 ∨ p = x.length + 1 then none else x[p - 1]?
-
 /-- `np` is `|P|`; `pos` holds the head positions, `c` is the current head. -/
 def runMHAux (np : Nat) (x : List Bool) : Nat → List Bool → List Nat → Nat → Bool
   | 0, _, _, _ => false
@@ -273,16 +208,10 @@ def runMHAux (np : Nat) (x : List Bool) : Nat → List Bool → List Nat → Nat
         runMHAux np x T (rotN (entryOnes R + 1) (rot R)) pos
           (if R.getD 1 false then min (c + 1) np else c - 1)
     else R.getD 0 false
-
 /-- Guest program `P` on read-only input `x` with `|P| + 1` heads for at most `T` steps
 (a time-out rejects). -/
 def runMH (P x : List Bool) (T : Nat) : Bool :=
   runMHAux P.length x T (rot (P.reverse ++ [false])) (List.replicate (P.length + 1) 0) 0
-
-end ZP
-
-/- ## ZP.TableLP -/
-namespace ZP
 def zlpMachineRows0 : List (Nat × Nat) := [(575,588),(579,582),(591,596),(599,604),(145,564),(607,564),(0,545),(609,614),(617,622),(327,628),(107,632),(636,638),(641,646),(649,654),(657,662),(665,670),(673,678),(681,686),(347,690),(817,693),(183,168),(699,704),(707,712),(715,184),(717,722),(717,726),(187,84),(331,732),(339,736),(739,744),(747,752),(755,740)]
 def zlpMachineRows1 : List (Nat × Nat) := [(759,747),(763,755),(765,26),(25,766),(769,774),(779,784),(787,792),(821,793),(799,803),(689,805),(809,813),(825,793),(179,832),(735,96),(743,112),(835,803),(837,842),(847,851),(853,858),(861,868),(871,876),(879,884),(887,892),(895,900),(903,908),(911,916),(919,924),(927,932),(933,940),(831,940),(943,948),(951,956)]
 def zlpMachineRows2 : List (Nat × Nat) := [(959,964),(967,972),(975,980),(983,988),(991,996),(997,1002),(1005,1010),(1015,1020),(1023,1028),(1085,1030),(288,1034),(1040,764),(1041,1046),(1049,1054),(1057,1062),(1065,1066),(1069,1074),(1078,44),(326,252),(321,1084),(1086,124),(1091,30),(1095,1100),(1101,1206),(1105,1110),(1113,1118),(1121,1126),(271,256),(271,260),(275,264),(275,268),(1129,1134)]
@@ -295,7 +224,6 @@ def zlpMachineRows8 : List (Nat × Nat) := [(291,292),(297,167),(1455,984),(287,
 def zlpMachineRows9 : List (Nat × Nat) := [(1480,394),(393,394),(1484,398),(397,398),(382,1480),(403,404),(1170,408),(407,408),(411,412),(453,1120),(445,1448),(421,422),(425,426),(313,310),(653,440),(435,436),(435,431),(439,440),(84,49),(449,791),(1201,57),(457,458),(1457,1233),(463,464),(472,468),(467,468),(1266,468),(1273,474),(473,474),(483,1262),(477,478),(487,488)]
 def zlpMachineRows10 : List (Nat × Nat) := [(483,484),(66,508),(491,492),(503,496),(495,496),(522,1432),(499,500),(942,504),(503,504),(1339,516),(1477,1481),(511,512),(515,516),(62,1320),(519,520),(529,522),(521,522),(533,526),(525,526),(1472,530),(529,530),(1476,534),(533,534),(541,538),(537,538),(1327,542),(541,542),(163,552),(199,551),(43,1467),(70,19),(1202,566)]
 def zlpMachineRows11 : List (Nat × Nat) := [(565,566),(1024,570),(569,570),(83,1377),(582,83),(1307,420),(1291,429),(637,157),(281,107),(53,1488),(78,298),(292,304),(1002,637),(57,1202),(48,1491),(507,337),(508,1165),(1175,1435),(408,1299),(415,416),(331,332)]
-
 /-- `machines/zlp_native.txt` (373 states, beep state 6, SHA-256 of the
 standard text 5bceca1ed7fe79c28b817574105843d55a1d1a3f9b94af6bff60905521957af2). Row q is (code on 0, code on 1). -/
 def zlpMachineTable : List (Nat × Nat) :=
@@ -311,28 +239,14 @@ def zlpMachineTable : List (Nat × Nat) :=
   zlpMachineRows9 ++
   zlpMachineRows10 ++
   zlpMachineRows11
-
 /-- zlp_native as a machine with its designated beep state. -/
 def zlpMachine : TM := ⟨zlpMachineTable, 6⟩
-
-end ZP
-
-/- ## ZP.DefsLP -/
-namespace ZP
 def inLP (s : List Bool) : Bool := runMH s s (s.length + 1)
-
 def CorrectLP (J S : Nat) : Prop :=
   runMH (str J) (str S) (clock (str J) (str S)) = inLP (str S)
-
 instance (J S : Nat) : Decidable (CorrectLP J S) :=
   inferInstanceAs (Decidable (runMH (str J) (str S) (clock (str J) (str S)) = inLP (str S)))
-
 def SentenceLP : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectLP J S
-
-end ZP
-
-/- ## ZP.TableLNL -/
-namespace ZP
 def zlnlMachineRows0 : List (Nat × Nat) := [(639,652),(641,646),(655,660),(663,668),(149,672),(675,672),(0,669),(677,682),(685,690),(583,696),(339,700),(704,706),(709,714),(717,722),(725,730),(733,738),(741,746),(749,754),(359,474),(175,873),(95,760),(763,768),(771,776),(779,96),(781,786),(781,790),(795,885),(799,796),(803,808),(811,816),(819,824),(827,812)]
 def zlnlMachineRows1 : List (Nat × Nat) := [(831,820),(835,840),(843,847),(161,26),(25,162),(849,854),(859,864),(867,872),(877,881),(889,893),(897,901),(905,909),(913,909),(183,920),(815,923),(823,927),(931,935),(937,942),(945,950),(953,960),(963,968),(971,976),(977,984),(987,992),(993,1000),(1003,1008),(1011,1016),(1019,1024),(759,1028),(759,800),(1031,1036),(1039,1044)]
 def zlnlMachineRows2 : List (Nat × Nat) := [(1047,1052),(1055,1060),(1063,1068),(1071,1076),(1077,1082),(1085,1090),(1093,1098),(1101,874),(1107,1112),(1115,1120),(1123,1128),(1131,1136),(1137,1142),(300,1146),(1152,828),(1153,1158),(1161,1166),(1171,1174),(1177,1178),(1181,1186),(1190,84),(338,978),(333,1196),(1198,1326),(1203,30),(1207,1212),(1213,362),(1217,446),(379,1224),(1225,1230),(267,252),(267,256)]
@@ -346,7 +260,6 @@ def zlnlMachineRows9 : List (Nat × Nat) := [(613,318),(317,318),(617,322),(321,
 def zlnlMachineRows10 : List (Nat × Nat) := [(1638,424),(423,424),(427,428),(431,432),(1333,1234),(437,438),(1173,322),(713,456),(451,452),(451,447),(455,456),(349,61),(465,49),(461,871),(70,57),(473,474),(1641,1337),(483,480),(479,480),(488,484),(483,484),(1374,484),(493,490),(489,490),(1391,494),(493,494),(503,504),(499,500),(6,524),(1419,508),(507,508),(519,512)]
 def zlnlMachineRows11 : List (Nat × Nat) := [(511,512),(538,1400),(515,516),(1646,520),(519,520),(1451,532),(1645,1621),(527,528),(531,532),(62,1432),(535,536),(545,538),(537,538),(549,542),(541,542),(1644,546),(545,546),(1652,550),(549,550),(1497,554),(553,554),(527,1486),(557,558),(568,568),(569,567),(567,567),(829,576),(576,576),(561,578),(577,578),(587,588),(435,1616)]
 def zlnlMachineRows12 : List (Nat × Nat) := [(1615,1619),(195,1639),(243,479),(1302,614),(613,614),(1132,618),(617,618),(452,767),(281,775),(49,436),(705,77),(98,705),(163,164),(235,576),(983,1656),(296,273),(413,277),(304,316),(53,1302),(108,1655),(608,349),(1657,1411),(369,370),(469,378),(457,382),(398,612),(523,705),(542,1403),(524,1489),(343,344),(77,78)]
-
 /-- `machines/zlnl_native.txt` (415 states, beep state 6, SHA-256 of the
 standard text c0c078ba64fcf57a7deea426262b85701e22043e9f521942bef7d1a9f88e9778). Row q is (code on 0, code on 1). -/
 def zlnlMachineTable : List (Nat × Nat) :=
@@ -363,14 +276,8 @@ def zlnlMachineTable : List (Nat × Nat) :=
   zlnlMachineRows10 ++
   zlnlMachineRows11 ++
   zlnlMachineRows12
-
 /-- zlnl_native as a machine with its designated beep state. -/
 def zlnlMachine : TM := ⟨zlnlMachineTable, 6⟩
-
-end ZP
-
-/- ## ZP.DefsLNL -/
-namespace ZP
 /-- `runAux` with a one-way head: `d = 0` leaves the head in place. -/
 def run1Aux : Nat → List Bool → (Nat → Option Bool) → Nat → Bool
   | 0, _, _, _ => false
@@ -381,28 +288,18 @@ def run1Aux : Nat → List Bool → (Nat → Option Bool) → Nat → Bool
         (fun i => if i = h then some (R.getD 0 false) else tape i)
         (if R.getD 1 false then h + 1 else h)
     else R.getD 0 false
-
 /-- Guest program `P` on input `x` with a one-way head, at most `T` steps. -/
 def run1 (P x : List Bool) (T : Nat) : Bool :=
   run1Aux T (rot (P.reverse ++ [false])) (fun i => x[i]?) 0
-
 /-- `s ∈ L_NL`: some certificate of length `|s|+1` makes the one-way program `s` accept
 within `|s|+1` steps. -/
 def inLNL (s : List Bool) : Bool :=
   (strings (s.length + 1)).any fun c => run1 s c (s.length + 1)
-
 def CorrectLNL (J S : Nat) : Prop :=
   runMH (str J) (str S) (clock (str J) (str S)) = inLNL (str S)
-
 instance (J S : Nat) : Decidable (CorrectLNL J S) :=
   inferInstanceAs (Decidable (runMH (str J) (str S) (clock (str J) (str S)) = inLNL (str S)))
-
 def SentenceLNL : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectLNL J S
-
-end ZP
-
-/- ## ZP.TablePoly -/
-namespace ZP
 def zppolyMachineRows0 : List (Nat × Nat) := [(535,1212),(539,80),(544,548),(550,554),(221,558),(505,537),(76,564),(565,570),(573,578),(583,588),(591,584),(227,592),(596,598),(601,606),(213,214),(609,614),(617,310),(623,626),(7,335),(631,636),(639,632),(643,646),(649,654),(657,662),(347,666),(671,859),(675,640),(679,684),(687,692),(695,516),(699,516),(703,132)]
 def zppolyMachineRows1 : List (Nat × Nat) := [(707,128),(709,714),(709,718),(723,728),(643,732),(734,734),(739,744),(1133,1245),(747,752),(755,760),(763,768),(559,772),(775,780),(783,787),(789,22),(21,790),(767,748),(771,796),(799,802),(807,810),(185,816),(824,58),(827,831),(837,841),(721,108),(847,851),(853,857),(861,857),(527,868),(751,871),(875,879),(881,886)]
 def zppolyMachineRows2 : List (Nat × Nat) := [(101,102),(889,894),(897,904),(907,520),(911,914),(919,924),(927,930),(935,940),(943,948),(951,956),(957,962),(965,970),(973,978),(665,66),(983,988),(991,996),(999,544),(1003,1008),(1011,1016),(1011,1011),(76,564),(1019,30),(1023,1028),(1031,1034),(1037,1042),(1045,382),(1049,1054),(291,912),(291,280),(295,928),(295,288),(558,370)]
@@ -414,7 +311,6 @@ def zppolyMachineRows7 : List (Nat × Nat) := [(137,1172),(267,268),(754,977),(2
 def zppolyMachineRows8 : List (Nat × Nat) := [(347,348),(1037,463),(349,350),(353,358),(412,362),(371,366),(1187,374),(1126,378),(416,397),(389,551),(1080,390),(389,390),(61,665),(395,396),(1240,398),(397,398),(1044,402),(401,402),(386,1240),(407,408),(1098,412),(411,412),(1281,1134),(1273,1226),(419,420),(429,430),(597,57),(433,53),(441,435),(744,61),(547,452),(54,764)]
 def zppolyMachineRows9 : List (Nat × Nat) := [(1052,446),(457,458),(4,4),(468,468),(903,903),(467,468),(477,475),(475,475),(259,260),(1265,484),(484,484),(1296,484),(496,1266),(489,490),(3,4),(1236,498),(423,1264),(339,511),(437,123),(76,297),(28,8),(1103,530),(15,16),(94,65),(645,691),(107,212),(108,683),(90,487),(1205,424),(801,156),(157,597),(328,509)]
 def zppolyMachineRows10 : List (Nat × Nat) := [(453,57),(229,230),(226,1237),(271,1188),(451,452)]
-
 /-- `machines/zppoly_native.txt` (325 states, beep state 6, SHA-256 of the
 standard text e9e7b265e9dd0e9e3ed9bd86368781802fffe8ef934b3c18781bd6c3336df2a2). Row q is (code on 0, code on 1). -/
 def zppolyMachineTable : List (Nat × Nat) :=
@@ -429,14 +325,8 @@ def zppolyMachineTable : List (Nat × Nat) :=
   zppolyMachineRows8 ++
   zppolyMachineRows9 ++
   zppolyMachineRows10
-
 /-- zppoly_native as a machine with its designated beep state. -/
 def zppolyMachine : TM := ⟨zppolyMachineTable, 6⟩
-
-end ZP
-
-/- ## ZP.TableMM -/
-namespace ZP
 def zmmMachineRows0 : List (Nat × Nat) := [(727,734),(1,732),(737,742),(745,750),(755,760),(763,768),(772,774),(777,782),(785,790),(793,798),(801,806),(1417,810),(813,818),(823,518),(143,585),(827,832),(835,840),(843,848),(851,828),(855,860),(863,868),(389,872),(873,878),(873,882),(447,973),(887,892),(483,896),(343,900),(903,908),(911,916),(920,0),(919,1556)]
 def zmmMachineRows1 : List (Nat × Nat) := [(921,926),(591,932),(565,472),(933,937),(941,946),(949,149),(953,957),(961,965),(969,965),(977,981),(985,169),(173,177),(989,177),(995,1000),(1003,1007),(1011,1015),(1017,1022),(1025,1030),(1033,1038),(1041,1046),(1049,1054),(1059,1064),(1067,1072),(1075,1080),(1083,1088),(1089,1096),(1097,1102),(1105,1110),(1113,1118),(1123,1128),(1131,1136),(1139,1144)]
 def zmmMachineRows2 : List (Nat × Nat) := [(1147,1150),(1155,1160),(1163,1168),(1171,1174),(1177,1182),(1185,1190),(1193,1198),(1201,974),(1207,1212),(1215,1220),(1223,1228),(1231,1236),(1237,1242),(1245,1250),(352,1254),(1260,1488),(1263,10),(1265,1270),(1273,1278),(1281,1286),(1289,1278),(1295,120),(823,1298),(1303,1308),(1309,354),(1313,602),(1317,486),(1321,574),(267,252),(1327,256),(1171,1148),(1327,264)]
@@ -453,7 +343,6 @@ def zmmMachineRows12 : List (Nat × Nat) := [(539,1910),(543,1909),(543,544),(54
 def zmmMachineRows13 : List (Nat × Nat) := [(1604,654),(653,654),(1940,658),(657,658),(1941,668),(667,668),(671,675),(1514,802),(672,676),(1734,680),(1946,1474),(1721,682),(681,682),(691,1710),(685,686),(691,692),(1951,694),(693,694),(708,704),(703,704),(715,712),(711,712),(1714,716),(715,716),(1955,718),(717,718),(1095,623),(1053,1241),(452,1957),(456,680),(63,24),(64,839)]
 def zmmMachineRows14 : List (Nat × Nat) := [(145,847),(46,130),(50,390),(130,1906),(237,1594),(1963,460),(159,160),(1819,488),(215,1633),(216,1661),(615,220),(281,314),(90,273),(33,277),(386,773),(296,1172),(304,824),(1968,1389),(888,137),(37,445),(619,487),(440,320),(1969,45),(1399,469),(509,1328),(385,0),(473,0),(1974,676),(21,22),(142,0),(1556,0),(553,0)]
 def zmmMachineRows15 : List (Nat × Nat) := [(181,182),(100,0),(484,0),(3,0),(612,0),(661,0),(773,1967),(699,0),(723,0),(593,594),(163,164),(247,672),(57,58),(493,494)]
-
 /-- `machines/zmm_native.txt` (494 states, beep state 30, SHA-256 of the
 standard text 20f3e666338eb602fb98cb3b3f910e444743c6d8842da295a666fc9166400941). Row q is (code on 0, code on 1). -/
 def zmmMachineTable : List (Nat × Nat) :=
@@ -473,14 +362,8 @@ def zmmMachineTable : List (Nat × Nat) :=
   zmmMachineRows13 ++
   zmmMachineRows14 ++
   zmmMachineRows15
-
 /-- zmm_native as a machine with its designated beep state. -/
 def zmmMachine : TM := ⟨zmmMachineTable, 30⟩
-
-end ZP
-
-/- ## ZP.TablePS -/
-namespace ZP
 def zpsMachineRows0 : List (Nat × Nat) := [(487,676),(491,270),(13,496),(1017,498),(501,506),(511,516),(427,512),(519,524),(165,40),(527,40),(0,529),(533,538),(541,546),(551,556),(559,552),(564,566),(569,274),(573,74),(577,70),(581,582),(585,590),(593,598),(307,602),(607,166),(611,616),(619,624),(627,632),(611,612),(633,638),(633,642),(647,1153),(651,648)]
 def zpsMachineRows1 : List (Nat × Nat) := [(655,660),(663,668),(531,656),(671,664),(451,680),(681,42),(41,682),(469,676),(477,680),(93,686),(691,696),(313,700),(293,701),(711,715),(397,717),(721,177),(725,882),(729,729),(733,481),(437,481),(739,744),(659,747),(751,755),(757,762),(765,770),(773,780),(459,460),(783,788),(1147,792),(795,800),(803,808),(811,816)]
 def zpsMachineRows2 : List (Nat × Nat) := [(819,824),(825,830),(833,838),(5,842),(845,66),(851,856),(859,864),(867,872),(875,880),(288,886),(892,896),(899,46),(903,908),(909,914),(917,922),(925,702),(929,894),(255,240),(255,244),(259,248),(259,252),(498,1035),(933,938),(941,946),(743,952),(953,958),(961,966),(971,976),(979,984),(987,564),(991,996),(385,1000)]
@@ -491,7 +374,6 @@ def zpsMachineRows6 : List (Nat × Nat) := [(225,226),(117,1108),(231,232),(239,
 def zpsMachineRows7 : List (Nat × Nat) := [(1029,304),(307,304),(307,308),(313,310),(345,310),(313,318),(445,322),(327,326),(82,334),(189,357),(349,1127),(952,350),(349,350),(355,356),(976,358),(357,358),(1072,362),(361,362),(557,368),(367,368),(558,372),(371,372),(1009,1150),(689,186),(379,380),(384,474),(117,386),(389,390),(401,69),(565,77),(13,1123),(409,410)]
 def zpsMachineRows8 : List (Nat × Nat) := [(461,497),(1161,420),(424,424),(425,423),(423,423),(1101,432),(432,432),(1083,434),(433,434),(443,444),(451,1155),(372,643),(1100,261),(1143,470),(440,466),(1143,1120),(1151,1120),(1151,474),(7,1157),(433,65),(779,300),(376,623),(99,8),(89,431),(1014,631),(86,965),(457,384),(269,265),(342,294),(652,344),(243,1137),(393,416)]
 def zpsMachineRows9 : List (Nat × Nat) := [(452,314),(481,482),(93,94)]
-
 /-- `machines/zps_native.txt` (291 states, beep state 10, SHA-256 of the
 standard text 95d0850ed880b5eaa176e023c6bea647e208eeaa6cc8d31ae164ca9e41644ddf). Row q is (code on 0, code on 1). -/
 def zpsMachineTable : List (Nat × Nat) :=
@@ -505,14 +387,8 @@ def zpsMachineTable : List (Nat × Nat) :=
   zpsMachineRows7 ++
   zpsMachineRows8 ++
   zpsMachineRows9
-
 /-- zps_native as a machine with its designated beep state. -/
 def zpsMachine : TM := ⟨zpsMachineTable, 10⟩
-
-end ZP
-
-/- ## ZP.DefsPS -/
-namespace ZP
 /-- Value of the game node with certificate prefix `p` and `d` levels below it
 (`ref/zps_ref.val`): the player is ∃ iff `d` is even, and a dominant first child
 (value `= player`) short-circuits. -/
@@ -522,21 +398,12 @@ def gval (s : List Bool) : Nat → List Bool → Bool
     let ex := d % 2 == 0
     let a := gval s d (p ++ [true])
     if a == ex then a else gval s d (p ++ [false])
-
 def inPS (s : List Bool) : Bool := gval s (s.length + 1) []
-
 def CorrectPS (J S : Nat) : Prop :=
   run (str J) (str S) (clock (str J) (str S)) = inPS (str S)
-
 instance (J S : Nat) : Decidable (CorrectPS J S) :=
   inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = inPS (str S)))
-
 def SentencePS : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectPS J S
-
-end ZP
-
-/- ## ZP.TableF -/
-namespace ZP
 def zfacMachineRows0 : List (Nat × Nat) := [(523,421),(527,466),(529,534),(17,540),(1145,542),(0,545),(549,554),(557,562),(567,572),(575,568),(577,286),(581,586),(589,594),(597,598),(601,606),(609,614),(619,524),(621,626),(629,634),(331,638),(643,1211),(135,648),(651,656),(659,664),(667,136),(1217,670),(1217,674),(679,684),(687,692),(695,700),(675,704),(99,708)]
 def zfacMachineRows1 : List (Nat × Nat) := [(711,637),(715,100),(717,22),(21,718),(149,724),(725,465),(729,734),(739,744),(497,748),(296,749),(756,394),(759,763),(927,765),(647,177),(769,966),(773,773),(777,777),(203,783),(203,788),(791,795),(799,803),(805,810),(507,508),(813,818),(821,825),(829,836),(839,1268),(843,848),(851,856),(378,857),(863,830),(867,872)]
 def zfacMachineRows2 : List (Nat × Nat) := [(875,880),(883,888),(891,896),(899,904),(905,910),(913,918),(921,858),(929,42),(935,940),(943,948),(951,956),(959,964),(149,970),(973,978),(340,982),(988,992),(995,1000),(1003,26),(1007,1012),(453,1016),(1019,1024),(1025,1030),(1033,750),(1037,1042),(509,1046),(267,864),(267,256),(271,260),(271,264),(542,150),(1049,1054),(1057,1062)]
@@ -548,7 +415,6 @@ def zfacMachineRows7 : List (Nat × Nat) := [(271,694),(271,272),(940,274),(273,
 def zfacMachineRows8 : List (Nat × Nat) := [(345,342),(377,342),(345,350),(359,358),(88,362),(226,370),(469,389),(381,1263),(1068,382),(381,382),(387,388),(1088,390),(389,390),(393,394),(245,400),(399,400),(246,404),(403,404),(1049,994),(407,408),(973,14),(411,412),(417,418),(1267,1172),(1267,426),(1267,1272),(1267,430),(449,430),(87,434),(1264,9),(154,45),(441,747)]
 def zfacMachineRows9 : List (Nat × Nat) := [(513,448),(447,448),(1275,450),(1259,1276),(1122,460),(459,463),(465,466),(643,474),(473,474),(851,482),(481,482),(487,488),(489,490),(989,493),(220,512),(501,1285),(1280,102),(74,1281),(835,864),(408,799),(1289,655),(313,663),(374,273),(41,165),(197,198),(1249,737),(304,68),(243,1077),(235,236),(1130,320),(67,459),(7,8)]
 def zfacMachineRows10 : List (Nat × Nat) := [(517,518),(169,170),(181,182),(77,314)]
-
 /-- `machines/zfactor_native.txt` (324 states, beep state 5, SHA-256 of the
 standard text c7424078a7da5c6789e726a8be88e01bda4146d912253f5a2023226bfe3d3cff). Row q is (code on 0, code on 1). -/
 def zfacMachineTable : List (Nat × Nat) :=
@@ -563,14 +429,8 @@ def zfacMachineTable : List (Nat × Nat) :=
   zfacMachineRows8 ++
   zfacMachineRows9 ++
   zfacMachineRows10
-
 /-- zfactor_native as a machine with its designated beep state. -/
 def zfacMachine : TM := ⟨zfacMachineTable, 5⟩
-
-end ZP
-
-/- ## ZP.DefsF -/
-namespace ZP
 /-- Fuel-structured parser (one step consumes one or two bits, so `s.length` fuel suffices). -/
 def numsAux : Nat → List Bool → Nat → List Nat
   | 0, _, cur => [cur]
@@ -578,27 +438,17 @@ def numsAux : Nat → List Bool → Nat → List Nat
   | _ + 1, [true], cur => [cur]
   | f + 1, true :: b :: r, cur => numsAux f r (2 * cur + if b then 1 else 0)
   | f + 1, false :: r, cur => cur :: numsAux f r 0
-
 /-- `ref/zfac_ref.numbers`. -/
 def numbers (s : List Bool) : List Nat := numsAux s.length s 0
-
 def inLF (s : List Bool) : Bool :=
   match numbers s with
   | k :: a :: _ => (List.range (k + 1)).any fun d => decide (2 ≤ d) && a % d == 0
   | _ => false
-
 def CorrectF (J S : Nat) : Prop :=
   run (str J) (str S) (clock (str J) (str S)) = inLF (str S)
-
 instance (J S : Nat) : Decidable (CorrectF J S) :=
   inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = inLF (str S)))
-
 def SentenceF : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectF J S
-
-end ZP
-
-/- ## ZP.TableD -/
-namespace ZP
 def zdlMachineRows0 : List (Nat × Nat) := [(639,1532),(643,1496),(13,648),(1427,650),(0,653),(657,662),(665,670),(1547,676),(679,684),(688,690),(693,698),(701,706),(709,714),(717,722),(725,730),(733,738),(741,746),(647,750),(367,754),(759,1587),(375,764),(97,632),(767,770),(599,556),(774,774),(777,784),(787,792),(795,376),(800,802),(805,810),(805,814),(590,820)]
 def zdlMachineRows1 : List (Nat × Nat) := [(819,822),(827,832),(835,840),(843,848),(851,836),(855,947),(859,1136),(861,18),(17,862),(169,868),(869,432),(875,878),(883,888),(198,890),(341,893),(899,902),(907,911),(345,185),(201,197),(913,501),(917,921),(925,921),(931,936),(939,943),(947,951),(953,958),(963,1484),(965,970),(973,980),(983,988),(991,996),(999,1004)]
 def zdlMachineRows2 : List (Nat × Nat) := [(214,1005),(1011,1016),(1019,1024),(1027,1030),(1035,1040),(1043,1048),(1051,1056),(1057,1062),(1065,1070),(1073,1006),(1079,352),(753,754),(1081,1088),(1091,1096),(1099,1104),(1107,1112),(1113,1118),(1121,1126),(337,1132),(581,358),(1345,1350),(1137,1142),(372,1146),(1152,1156),(983,1160),(1161,1166),(1171,22),(1175,1180),(1183,1188),(1191,112),(1195,1192),(497,1200)]
@@ -612,7 +462,6 @@ def zdlMachineRows9 : List (Nat × Nat) := [(351,516),(355,709),(1131,358),(357,
 def zdlMachineRows10 : List (Nat × Nat) := [(451,452),(455,456),(1235,458),(457,458),(1328,462),(461,462),(1408,466),(465,466),(1496,470),(441,470),(1569,476),(475,476),(1570,480),(479,480),(1211,482),(53,482),(83,1092),(1552,338),(487,488),(257,496),(491,492),(257,252),(495,456),(689,498),(1401,1410),(997,706),(511,512),(516,604),(121,518),(521,522),(557,45),(480,53)]
 def zdlMachineRows11 : List (Nat × Nat) := [(525,41),(533,499),(31,49),(325,16),(539,540),(1428,1582),(541,542),(1442,548),(1548,550),(549,550),(759,562),(561,562),(1195,570),(569,570),(575,576),(577,578),(585,1417),(1394,582),(236,236),(195,897),(1584,170),(7,515),(603,604),(607,1513),(312,610),(987,482),(1495,618),(617,618),(1499,1480),(3,3),(628,628),(749,1589)]
 def zdlMachineRows12 : List (Nat × Nat) := [(73,285),(255,1219),(556,36),(418,256),(750,1113),(878,289),(122,965),(183,184),(442,1593),(325,458),(107,1309),(1433,8),(656,128),(633,634),(61,346),(127,128)]
-
 /-- `machines/zdlog_native.txt` (400 states, beep state 4, SHA-256 of the
 standard text 7a71e23466feefa5dc360a5fbd9ffcd33ec2d696a92b67c9021d282072845d28). Row q is (code on 0, code on 1). -/
 def zdlMachineTable : List (Nat × Nat) :=
@@ -629,39 +478,23 @@ def zdlMachineTable : List (Nat × Nat) :=
   zdlMachineRows10 ++
   zdlMachineRows11 ++
   zdlMachineRows12
-
 /-- zdlog_native as a machine with its designated beep state. -/
 def zdlMachine : TM := ⟨zdlMachineTable, 4⟩
-
-end ZP
-
-/- ## ZP.DefsD -/
-namespace ZP
 def isPrime (p : Nat) : Bool :=
   decide (2 ≤ p) && (List.range p).all fun d => decide (d < 2) || p % d != 0
-
 /-- `ref/zdl_ref.in_LD`'s loop: `f` more tries; `y` is the current power. -/
 def dlogLoop : Nat → Nat → Nat → Nat → Nat → Bool
   | 0, _, _, _, _ => false
   | f + 1, y, g, h, p => if y = h then true else dlogLoop f (y * g % p) g h p
-
 def inLD (s : List Bool) : Bool :=
   match (numbers s).reverse with
   | p :: g :: h :: r => isPrime p && dlogLoop (r.headD 0 + 1) 1 g h p
   | _ => false
-
 def CorrectD (J S : Nat) : Prop :=
   run (str J) (str S) (clock (str J) (str S)) = inLD (str S)
-
 instance (J S : Nat) : Decidable (CorrectD J S) :=
   inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = inLD (str S)))
-
 def SentenceD : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectD J S
-
-end ZP
-
-/- ## ZP.TableG -/
-namespace ZP
 def zgiMachineRows0 : List (Nat × Nat) := [(699,680),(703,632),(13,708),(1253,710),(0,713),(717,722),(725,730),(735,740),(743,736),(748,750),(753,758),(761,762),(765,766),(769,774),(777,782),(785,790),(307,458),(795,1635),(799,804),(807,812),(815,820),(823,800),(825,830),(825,834),(839,138),(843,848),(851,856),(859,864),(867,872),(723,876),(879,1434),(883,1085)]
 def zgiMachineRows1 : List (Nat × Nat) := [(885,18),(17,886),(97,890),(895,900),(321,904),(285,905),(911,915),(289,149),(161,157),(917,1174),(921,425),(925,929),(933,929),(183,940),(943,947),(951,955),(957,962),(967,1464),(971,974),(977,984),(987,992),(995,1000),(1003,1008),(448,429),(1011,1014),(1019,1024),(1027,1030),(1035,1040),(1043,1048),(1051,1056),(1057,1062),(1065,1070)]
 def zgiMachineRows2 : List (Nat × Nat) := [(1073,1078),(1083,1529),(1085,1086),(1091,1096),(1099,1104),(1107,1112),(1115,1120),(713,1122),(312,1258),(1128,556),(1131,8),(1135,22),(1139,1144),(1147,1152),(1153,1154),(1157,418),(1161,1286),(1165,1170),(243,1012),(243,232),(247,1028),(247,240),(710,41),(1177,1182),(1187,1192),(1193,1198),(1201,1206),(1211,1216),(1219,1224),(1227,1232),(327,1236),(53,1240)]
@@ -675,7 +508,6 @@ def zgiMachineRows9 : List (Nat × Nat) := [(317,314),(317,322),(335,330),(405,3
 def zgiMachineRows10 : List (Nat × Nat) := [(1597,709),(421,334),(439,440),(7,452),(447,448),(1657,456),(138,616),(65,456),(83,467),(531,532),(1333,472),(471,472),(1607,1344),(473,474),(372,484),(1602,480),(487,472),(487,488),(799,490),(489,490),(1301,472),(471,1357),(504,496),(1301,500),(503,504),(515,578),(505,506),(380,516),(511,519),(599,600),(1447,542),(521,522)]
 def zgiMachineRows11 : List (Nat × Nat) := [(571,526),(525,526),(1425,536),(539,543),(561,562),(555,867),(1425,1432),(560,560),(559,1418),(567,568),(571,572),(851,582),(581,582),(199,591),(1327,594),(593,264),(75,604),(1301,612),(607,608),(1301,640),(1301,620),(615,616),(1644,622),(621,622),(627,1497),(307,300),(633,634),(643,505),(643,644),(1627,650),(649,650),(973,660)]
 def zgiMachineRows12 : List (Nat × Nat) := [(655,1618),(1395,1116),(665,666),(62,676),(672,672),(1602,684),(680,680),(691,575),(695,579),(1301,688),(389,1649),(346,811),(58,253),(467,384),(1514,201),(276,749),(178,474),(463,249),(166,608),(284,290),(41,662),(1642,1613),(659,1205),(1646,648),(1656,428),(491,492),(632,666),(749,1631),(433,434),(171,172),(469,470)]
-
 /-- `machines/zgi_native.txt` (415 states, beep state 4, SHA-256 of the
 standard text f81a8f1f40aced86cb5e828e94bb404505a64de6b78440e6e5a4569de4bdeddc). Row q is (code on 0, code on 1). -/
 def zgiMachineTable : List (Nat × Nat) :=
@@ -692,20 +524,13 @@ def zgiMachineTable : List (Nat × Nat) :=
   zgiMachineRows10 ++
   zgiMachineRows11 ++
   zgiMachineRows12
-
 /-- zgi_native as a machine with its designated beep state. -/
 def zgiMachine : TM := ⟨zgiMachineTable, 4⟩
-
-end ZP
-
-/- ## ZP.DefsG -/
-namespace ZP
 /-- Run lengths of `s` split at `false`, in order. -/
 def runsAux : List Bool → Nat → List Nat
   | [], c => [c]
   | true :: r, c => runsAux r (c + 1)
   | false :: r, c => c :: runsAux r 0
-
 /-- `ref/zgi_ref.parse`: `(m, X, H)`. -/
 def parseG (s : List Bool) : Nat × List Nat × List Nat :=
   let T := (runsAux s 0).reverse
@@ -715,12 +540,10 @@ def parseG (s : List Bool) : Nat × List Nat × List Nat :=
   let rest2 := rest.drop (X.length + 1)
   let H := rest2.takeWhile (· != 0)
   (m, X, H)
-
 /-- Pairs of consecutive entries. -/
 def pairsOf : List Nat → List (Nat × Nat)
   | x :: y :: r => (x, y) :: pairsOf r
   | _ => []
-
 /-- `ref/zgi_ref.check`: scan the edges of `X`, collecting the used entries `k` of `H`. -/
 def checkEdges (w : List Nat) (m : Nat) (H : List Nat) :
     List (Nat × Nat) → List Nat → Option (List Nat)
@@ -730,44 +553,31 @@ def checkEdges (w : List Nat) (m : Nat) (H : List Nat) :
     let k := (w.getD (x - 1) 0 - 1) * m + w.getD (y - 1) 0
     if k > H.length ∨ H.getD (k - 1) 0 < 2 ∨ k ∈ used then none
     else checkEdges w m H r (k :: used)
-
 def checkG (w : List Nat) (m : Nat) (X H : List Nat) : Bool :=
   decide (X.length % 2 = 0) &&
   match checkEdges w m H (pairsOf X) [] with
   | none => false
   | some used => (List.range H.length).all fun k => decide (H.getD k 0 < 2) || decide (k + 1 ∈ used)
-
 /-- All injective lists of length `t` with entries in `1..m`. -/
 def injL (m : Nat) : Nat → List (List Nat)
   | 0 => [[]]
   | t + 1 => (injL m t).flatMap fun w =>
     ((List.range m).map (· + 1)).filterMap fun v => if v ∈ w then none else some (w ++ [v])
-
 def inLG (s : List Bool) : Bool :=
   let r := parseG s
   (List.range (r.1 + 1)).any fun t => (injL r.1 t).any fun w => checkG w r.1 r.2.1 r.2.2
-
 def CorrectG (J S : Nat) : Prop :=
   run (str J) (str S) (clock (str J) (str S)) = inLG (str S)
-
 instance (J S : Nat) : Decidable (CorrectG J S) :=
   inferInstanceAs (Decidable (run (str J) (str S) (clock (str J) (str S)) = inLG (str S)))
-
 def SentenceG : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectG J S
-
-end ZP
-
-/- ## ZP.DefsNTT -/
-namespace ZP
 /-- A record: pointer `u` (`none` or an earlier index) and coefficient `b`. -/
 abbrev Rec := Option Nat × Nat
-
 /-- The contribution of a pointer. -/
 def ptrVal (u : Option Nat) (j b : Nat) (vs : List Nat) : Nat :=
   match u with
   | some u => if u < j then b * vs.getD u 0 else 0
   | none => 0
-
 /-- Node values of pass `t`: `valsAux t p j recs vs` appends the values of `recs` (starting at
 index `j`) to `vs`. -/
 def valsAux (t p : Nat) : Nat → List Rec → List Nat → List Nat
@@ -775,7 +585,6 @@ def valsAux (t p : Nat) : Nat → List Rec → List Nat → List Nat
   | j, (u, b) :: rs, vs =>
     let v := ((if j = t then 1 else 0) + vs.getLastD 0 + ptrVal u j b vs) % p
     valsAux t p (j + 1) rs (vs ++ [v])
-
 /-- One pass `t`: compare outputs with `E`, update `E`, check the power sum. -/
 def evalPass (n p : Nat) (recs : List Rec) (t : Nat) (E : List Nat) : Option (List Nat) :=
   let N := recs.length
@@ -785,32 +594,24 @@ def evalPass (n p : Nat) (recs : List Rec) (t : Nat) (E : List Nat) : Option (Li
     let E' := (List.range n).map fun k => E.getD k 0 * zs.getD k 0 % p
     if ((E'.foldl (· + ·) 0 % p == 0) == (t == n - 1)) then none else some E'
   else none
-
 def evalC (n p : Nat) (recs : List Rec) : Bool :=
   ((List.range n).foldl (fun st t => st.bind fun E => evalPass n p recs t E) (some (List.replicate n 1))).isSome
-
 /-- The choices for the record at index `j`. -/
 def recChoices (j p : Nat) : List Rec :=
   (List.range p).map (fun b => ((none : Option Nat), b)) ++
     (List.range j).flatMap fun u => (List.range p).map fun b => (some u, b)
-
 /-- All record lists of length `k` starting at index `j`. -/
 def allRecs (p : Nat) : Nat → Nat → List (List Rec)
   | 0, _ => [[]]
   | k + 1, j => (recChoices j p).flatMap fun r => (allRecs p k (j + 1)).map (r :: ·)
-
 /-- `pr n` is the prime used for `n`. -/
 def hasCircuit (pr : Nat → Nat) (c n : Nat) : Bool :=
   (allRecs (pr n) (c * n) 0).any (evalC n (pr n))
-
 /-- The sentence: some `c` gives a circuit for every `n ≥ 1`. -/
 def SentenceN (pr : Nat → Nat) : Prop := ∃ c, ∀ n, 1 ≤ n → hasCircuit pr c n = true
-
 def isPrimeN (p : Nat) : Bool := decide (2 ≤ p) && (List.range p).all fun d => decide (d < 2) || decide (p % d ≠ 0)
-
 /-- The hypothesis: every `n ≥ 1` has a prime `1 + n i` with `i ≥ 1` (Dirichlet for `≡ 1 (mod n)`). -/
 def PrimeEx : Prop := ∀ n, 1 ≤ n → ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true
-
 theorem exists_least (P : Nat → Prop) (h : ∃ i, P i) : ∃ i, P i ∧ ∀ j, P j → i ≤ j := by
   obtain ⟨i0, hi0⟩ := h
   induction i0 using Nat.strongRecOn with
@@ -820,18 +621,12 @@ theorem exists_least (P : Nat → Prop) (h : ∃ i, P i) : ∃ i, P i ∧ ∀ j,
       exact ih j hj hpj
     · refine ⟨i, hi0, fun j hj => ?_⟩
       exact Nat.le_of_not_lt fun hlt => hl ⟨j, hlt, hj⟩
-
 open Classical in
 /-- `ref.prime`: the least prime `1 + n i`, `i ≥ 1`. -/
 noncomputable def primeN (n : Nat) : Nat :=
   if h : ∃ i, 1 ≤ i ∧ isPrimeN (1 + n * i) = true then
     1 + n * Classical.choose (exists_least (fun i => 1 ≤ i ∧ isPrimeN (1 + n * i) = true) h)
   else 0
-
-end ZP
-
-/- ## ZP.TableNTT -/
-namespace ZP
 def znttMachineRows0 : List (Nat × Nat) := [(759,172),(9,762),(765,766),(0,772),(37,1008),(773,778),(781,782),(791,788),(1723,792),(793,794),(437,976),(799,804),(805,806),(811,816),(819,816),(1099,820),(827,76),(121,1648),(121,832),(1690,760),(843,836),(839,844),(847,96),(849,776),(1749,854),(859,850),(429,864),(1513,866),(869,870),(875,55),(877,882),(0,892)]
 def znttMachineRows1 : List (Nat × Nat) := [(899,903),(905,910),(143,916),(1137,920),(349,928),(733,932),(937,938),(1755,944),(1572,948),(709,952),(983,960),(761,964),(967,972),(975,980),(983,800),(197,988),(989,994),(1006,1010),(1811,1024),(1015,1020),(1023,1696),(1171,1028),(1015,1032),(1500,207),(1041,1046),(1051,1056),(1059,1064),(895,1064),(1067,1070),(0,1080),(500,502),(1084,1428)]
 def znttMachineRows2 : List (Nat × Nat) := [(1087,1076),(1092,1332),(269,1100),(1725,1102),(915,1108),(1109,284),(1116,1116),(1121,1125),(1133,1130),(1090,648),(1127,1134),(1139,1144),(1147,1152),(293,1156),(1159,1168),(79,1164),(1803,1160),(1167,1172),(1175,1180),(1183,1180),(1403,1184),(1183,1188),(353,1192),(1193,1698),(1197,1202),(1207,1210),(1215,1220),(1221,1228),(1229,1234),(1873,1238),(1241,1246),(1251,1776)]
@@ -847,7 +642,6 @@ def znttMachineRows11 : List (Nat × Nat) := [(0,256),(539,540),(524,548),(547,5
 def znttMachineRows12 : List (Nat × Nat) := [(1831,638),(637,638),(1718,644),(643,644),(1834,648),(647,648),(1839,650),(649,650),(1215,660),(655,656),(659,663),(0,666),(551,552),(676,676),(699,700),(675,675),(679,680),(683,684),(693,532),(687,1842),(688,688),(1845,704),(437,1852),(707,708),(737,710),(1856,734),(723,1857),(877,726),(437,55),(879,738),(729,730),(1863,712)]
 def znttMachineRows13 : List (Nat × Nat) := [(1859,738),(1703,738),(747,747),(752,752),(756,756),(264,44),(109,1738),(377,148),(349,350),(0,1844),(1811,1706),(492,1808),(1866,1304),(134,564),(1004,16),(221,222),(235,1040),(1823,594),(276,1690),(0,1869),(1083,284),(1109,497),(1121,164),(1615,1310),(331,424),(49,1873),(1227,1292),(383,384),(419,420),(415,416),(192,404),(455,456)]
 def znttMachineRows14 : List (Nat × Nat) := [(491,492),(535,536),(225,320),(559,1388),(1449,184),(583,448),(577,828),(599,876),(631,715),(587,458),(637,1400),(655,1756),(1309,1316),(553,924),(1631,724),(260,1632),(743,730),(719,720),(0,1138),(631,270),(1500,374)]
-
 /-- `machines/zntt_native.txt` (469 states, beep state 12, SHA-256 of the
 standard text f20e4a151fbbfea29bbde5f050829b6ee4a18facc7914f5cdd3639d1e6cc0c93). Row q is (code on 0, code on 1). -/
 def znttMachineTable : List (Nat × Nat) :=
@@ -866,42 +660,22 @@ def znttMachineTable : List (Nat × Nat) :=
   znttMachineRows12 ++
   znttMachineRows13 ++
   znttMachineRows14
-
 /-- zntt_native as a machine with its designated beep state. -/
 def znttMachine : TM := ⟨znttMachineTable, 12⟩
-
-end ZP
-
-/- ## ZP.DefsTwin -/
-namespace ZP
 /-- `p` is prime. -/
 def IsPrime (p : Nat) : Prop := 2 ≤ p ∧ ∀ d, d < p → 2 ≤ d → p % d ≠ 0
-
 instance (p : Nat) : Decidable (IsPrime p) := by
   unfold IsPrime
   exact inferInstance
-
 /-- There are infinitely many twin primes. -/
 def TwinPrimes : Prop := ∀ n, ∃ p, n ≤ p ∧ IsPrime p ∧ IsPrime (p + 2)
-
-end ZP
-
-/- ## ZP.TableTwin -/
-namespace ZP
 def twinMachineRows0 : List (Nat × Nat) := [(8,2),(12,15),(2,12),(0,19),(21,29),(57,0),(53,29),(33,30),(40,34),(41,47),(39,42),(51,48),(28,52),(57,54),(12,62),(76,66),(12,70),(76,70),(15,76)]
-
 /-- `machines/twinprime_native.txt` (19 states, beep state 5, SHA-256 of the
 standard text 41157fa5e3a4c7fe525c6e68771a6846725b04d77e7349c14c95531740ba76d3). Row q is (code on 0, code on 1). -/
 def twinMachineTable : List (Nat × Nat) :=
   twinMachineRows0
-
 /-- twinprime_native as a machine with its designated beep state. -/
 def twinMachine : TM := ⟨twinMachineTable, 5⟩
-
-end ZP
-
-/- ## ZP.DefsMul -/
-namespace ZP
 /-- `zmul_ref.run`: at most `T` steps; `some out` iff the run halts properly. -/
 def runMulAux : Nat → List Bool → List Bool → Nat → List (List Bool) → Option (List Bool)
   | 0, _, _, _, _ => none
@@ -918,27 +692,19 @@ def runMulAux : Nat → List Bool → List Bool → Nat → List (List Bool) →
       let q2 := queue ++ [st]
       runMulAux T (rotN (entryOnes R + 1) (rot R)) (tape.take h ++ (q2.headD []).reverse) h q2.tail
     else if w then some (tape.take h) else none
-
 def runMul (P x : List Bool) (T r : Nat) : Option (List Bool) :=
   runMulAux T (rot (P.reverse ++ [false])) x 0 (List.replicate r [])
-
 def clockMul (J s : List Bool) : Nat := (s.length + 2) * 2 ^ J.length - 1
-
 def checkMul (out s : List Bool) : Bool :=
   let N := numbers (out ++ false :: s) ++ [0, 0]
   N.getD 0 0 == N.getD 1 0 * N.getD 2 0
-
 def correctMulB (J S : Nat) : Bool :=
   match runMul (str J) (str S) (clockMul (str J) (str S)) (str J).length with
   | some out => checkMul out (str S)
   | none => false
-
 def CorrectMul (J S : Nat) : Prop := correctMulB J S = true
-
 instance (J S : Nat) : Decidable (CorrectMul J S) := inferInstanceAs (Decidable (correctMulB J S = true))
-
 def SentenceMul : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectMul J S
-
 -- first refutations: (J, s) = ('', ''), ('0', ''), ('1', '11011'), ('00', '')
 example : ¬ CorrectMul 1 1 := by decide
 example : ¬ CorrectMul 2 1 := by decide
@@ -947,53 +713,35 @@ example : CorrectMul 3 1 := by decide
 example : runMul [] [] (clockMul [] []) 0 = none := by decide
 example : checkMul [] [false] = true := by decide
 example : checkMul [true, false] [true, true, false] = true := by decide
-
 example : ¬ CorrectMul 4 1 := by decide
 example : (List.range 58).all (fun i => correctMulB 3 (i + 1)) = true := by decide +kernel
-
-end ZP
-
-/- ## ZP.DefsMM -/
-namespace ZP
 /-- `m`, the number of leading `1`s of `s`. -/
 def mmM (s : List Bool) : Nat := (s.takeWhile id).length
-
 /-- `w`: what follows the first `0` of `s`. -/
 def mmW (s : List Bool) : List Bool := s.drop (mmM s + 1)
-
 /-- The first `n` entries of `l`, padded with `false`. -/
 def padTo (n : Nat) (l : List Bool) : List Bool := (l ++ List.replicate n false).take n
-
 /-- `B[k][j]`. -/
 def mmB (s : List Bool) (k j : Nat) : Bool :=
   (padTo (mmM s ^ 2) (mmW s)).getD (k * mmM s + j) false
-
 /-- The number of rows of `A`. -/
 def mmRows (s : List Bool) : Nat :=
   if mmM s = 0 then 0 else ((mmW s).length - mmM s ^ 2 + mmM s - 1) / mmM s
-
 /-- `A[i][k]`. -/
 def mmA (s : List Bool) (i k : Nat) : Bool :=
   ((mmW s).drop (mmM s ^ 2)).getD (i * mmM s + k) false
-
 /-- `C = A B` over GF(2), row-major. -/
 def mmC (s : List Bool) : List Bool :=
   (List.range (mmRows s)).flatMap fun i => (List.range (mmM s)).map fun j =>
     (List.range (mmM s)).foldl (fun acc k => xor acc (mmA s i k && mmB s k j)) false
-
 def checkMM (out s : List Bool) : Bool := padTo (mmC s).length out == mmC s
-
 def correctMMB (J S : Nat) : Bool :=
   match runMul (str J) (str S) (clockMul (str J) (str S)) (str J).length with
   | some out => checkMM out (str S)
   | none => false
-
 def CorrectMM (J S : Nat) : Prop := correctMMB J S = true
-
 instance (J S : Nat) : Decidable (CorrectMM J S) := inferInstanceAs (Decidable (correctMMB J S = true))
-
 def SentenceMM : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectMM J S
-
 -- `s = 110 1011 0110 1`: `m = 2`, `B = [[1,0],[1,1]]`, `A` has three rows `01, 10, 10`
 example : mmM [true, true, false, true, false, true, true, false, true, true, false, true] = 2 := by decide
 example : mmRows [true, true, false, true, false, true, true, false, true, true, false, true] = 3 := by decide
@@ -1016,7 +764,6 @@ example : mmC [true, false, true] = [] := by decide
 example : mmC [true, true, false, true, true] = [] := by decide
 -- a short last row of `A` is padded: `m = 1`, `B = 1`, `A = 1 0 1`
 example : mmC [true, false, true, true, false, true] = [true, false, true] := by decide
-
 -- first beeps: `('', '')`, `('0', '')`, `('1', '1011')`, `('00', '')`
 example : ¬ CorrectMM 1 1 := by decide
 example : ¬ CorrectMM 2 1 := by decide
@@ -1024,11 +771,6 @@ example : ¬ CorrectMM 3 27 := by decide
 example : ¬ CorrectMM 4 1 := by decide
 example : CorrectMM 3 1 := by decide
 example : (List.range 26).all (fun i => correctMMB 3 (i + 1)) = true := by decide +kernel
-
-end ZP
-
-/- ## ZP.TableMul -/
-namespace ZP
 def zmulMachineRows0 : List (Nat × Nat) := [(627,824),(631,120),(13,636),(253,638),(641,646),(649,654),(659,664),(667,672),(676,678),(681,38),(685,602),(689,694),(149,150),(125,698),(701,706),(709,714),(441,718),(307,722),(611,732),(735,740),(743,748),(751,612),(753,758),(753,762),(767,1592),(771,768),(775,780),(7,784),(787,792),(795,800),(804,0),(803,54)]
 def zmulMachineRows1 : List (Nat × Nat) := [(133,808),(809,592),(813,818),(433,828),(469,829),(836,50),(839,843),(847,843),(195,849),(853,857),(861,1134),(865,449),(869,873),(877,873),(883,888),(891,895),(899,903),(905,910),(913,918),(921,928),(931,936),(939,944),(947,952),(955,958),(963,968),(971,382),(975,980),(983,988),(991,996),(997,1002),(445,1006),(1009,1014)]
 def zmulMachineRows2 : List (Nat × Nat) := [(1017,830),(1023,1028),(1031,1036),(1039,1044),(1047,1052),(1053,1058),(1061,1066),(565,858),(312,298),(1072,1076),(1079,964),(1083,18),(1087,1092),(1095,1100),(1101,1106),(1109,1114),(1117,1122),(1125,1130),(239,956),(475,228),(243,972),(475,236),(638,1594),(1137,1142),(1147,1152),(1153,1158),(1161,1166),(1171,1176),(1179,1184),(1187,1192),(1195,1200),(385,1204)]
@@ -1042,7 +784,6 @@ def zmulMachineRows9 : List (Nat × Nat) := [(1176,358),(357,358),(772,362),(361
 def zmulMachineRows10 : List (Nat × Nat) := [(1399,456),(455,456),(531,460),(459,460),(535,464),(463,464),(1591,468),(467,468),(1213,470),(469,470),(475,522),(475,476),(1446,488),(483,484),(491,492),(487,488),(771,494),(505,498),(497,498),(1377,502),(501,502),(1288,506),(505,506),(1366,1358),(509,510),(517,514),(1593,518),(1559,723),(521,1284),(527,528),(1145,1581),(531,535)]
 def zmulMachineRows11 : List (Nat × Nat) := [(1146,726),(1331,1599),(99,1599),(1433,542),(541,542),(551,1422),(545,546),(551,552),(1539,554),(553,554),(568,564),(563,564),(575,572),(571,572),(1426,576),(575,576),(1555,578),(577,578),(75,1295),(1543,1603),(591,619),(563,594),(607,608),(345,587),(417,616),(413,216),(615,212),(276,624),(69,620),(623,689),(421,1605),(376,917)]
 def zmulMachineRows12 : List (Nat × Nat) := [(559,747),(62,467),(66,138),(1560,384),(1611,58),(219,145),(1336,245),(277,249),(346,290),(170,677),(428,705),(1308,1165),(444,448),(539,540),(597,598),(532,536),(79,463),(449,450),(583,584)]
-
 /-- `machines/zmul_native.txt` (403 states, beep state 30, SHA-256 of the
 standard text 801271a574ffdd2483d897e177c8027bbe56413046a8a7a1cebcf08c8c76a708). Row q is (code on 0, code on 1). -/
 def zmulMachineTable : List (Nat × Nat) :=
@@ -1059,17 +800,10 @@ def zmulMachineTable : List (Nat × Nat) :=
   zmulMachineRows10 ++
   zmulMachineRows11 ++
   zmulMachineRows12
-
 /-- zmul_native as a machine with its designated beep state. -/
 def zmulMachine : TM := ⟨zmulMachineTable, 30⟩
-
-end ZP
-
-/- ## ZP.DefsConp -/
-namespace ZP
 /-- `P.rstrip('1')`. -/
 def core (P : List Bool) : List Bool := (P.reverse.dropWhile (· == true)).reverse
-
 /-- `zconp_ref.run_choice`: at most `T` steps; the choice string `D` is extended lazily with `1`s.
 `used` is the list of choices consumed so far; the result is `(accepted, choices used)`. -/
 def runChoiceAux : Nat → List Bool → (Nat → Option Bool) → Nat → Nat → List Bool → List Bool →
@@ -1088,29 +822,18 @@ def runChoiceAux : Nat → List Bool → (Nat → Option Bool) → Nat → Nat �
         else runChoiceAux T R' tape' (h + 1) top D used
       else runChoiceAux T R' tape' (h - 1) top D used
     else (R.getD 0 false, used)
-
 /-- One run of `P` on `x` for at most `T` steps with the choices `D`. -/
 def runChoice (P x : List Bool) (T : Nat) (D : List Bool) : Bool × List Bool :=
   runChoiceAux T (rot (P.reverse ++ [false])) (fun i => x[i]?) 0 (x.length - 1) D []
-
 /-- `run_nd`: some choice string makes the run of `core P` accept. -/
 def runND (P x : List Bool) (T : Nat) : Prop := ∃ D : List Bool, (runChoice (core P) x T D).1 = true
-
 /-- `s ∈ L`: the program `s` accepts the empty input within `|s| + 1` steps, for some choices. -/
 def inLC (s : List Bool) : Prop := runND s [] (s.length + 1)
-
 /-- Candidate `J` is a nondeterministic verifier for the complement of `L` on `s`. -/
 def CorrectConp (J S : Nat) : Prop := runND (str J) (str S) (clock (str J) (str S)) ↔ ¬ inLC (str S)
-
 open Classical in
 noncomputable instance (J S : Nat) : Decidable (CorrectConp J S) := Classical.propDecidable _
-
 def SentenceConp : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectConp J S
-
-end ZP
-
-/- ## ZP.TableConp -/
-namespace ZP
 def zconpMachineRows0 : List (Nat × Nat) := [(507,548),(511,668),(13,516),(1137,518),(333,522),(525,138),(461,138),(531,0),(533,538),(89,542),(551,556),(557,562),(675,568),(571,576),(580,582),(585,74),(589,294),(593,598),(217,62),(603,606),(609,614),(331,618),(623,38),(627,632),(635,640),(641,648),(651,656),(321,658),(321,662),(7,557),(667,670),(679,684)]
 def zconpMachineRows1 : List (Nat × Nat) := [(687,680),(692,696),(697,702),(707,712),(477,716),(720,286),(723,727),(731,727),(195,497),(733,738),(741,1038),(745,749),(177,181),(753,181),(187,760),(675,763),(683,767),(769,774),(769,778),(781,786),(213,791),(31,794),(800,74),(801,806),(813,818),(821,828),(831,836),(839,844),(847,852),(853,858),(863,866),(871,876)]
 def zconpMachineRows2 : List (Nat × Nat) := [(879,882),(887,892),(895,900),(903,908),(911,916),(919,924),(925,930),(149,934),(939,942),(617,66),(947,952),(491,956),(959,964),(967,972),(493,974),(984,988),(447,110),(991,34),(995,1000),(1001,1006),(1009,338),(1013,986),(1017,1022),(1025,1030),(275,880),(605,1036),(279,268),(279,272),(18,485),(1041,1046),(1051,1056),(1057,1062)]
@@ -1121,7 +844,6 @@ def zconpMachineRows6 : List (Nat × Nat) := [(120,197),(1191,1199),(719,1199),(
 def zconpMachineRows7 : List (Nat × Nat) := [(267,268),(271,1230),(271,272),(275,689),(275,276),(279,690),(279,280),(952,282),(281,282),(285,286),(312,1226),(289,290),(477,300),(299,300),(303,304),(542,308),(307,308),(1022,312),(311,312),(445,163),(1239,888),(475,323),(319,350),(1125,328),(331,328),(331,332),(835,418),(417,418),(341,338),(341,346),(911,354),(69,1234)]
 def zconpMachineRows8 : List (Nat × Nat) := [(453,362),(441,366),(275,264),(373,1227),(1056,374),(373,374),(865,617),(379,380),(1180,382),(381,382),(512,386),(385,386),(170,1180),(391,392),(690,396),(395,396),(373,398),(749,1222),(403,404),(407,408),(412,660),(13,418),(197,1239),(429,659),(433,434),(1261,65),(45,73),(606,61),(13,715),(457,458),(465,517),(783,462)]
 def zconpMachineRows9 : List (Nat × Nat) := [(461,462),(471,472),(660,476),(475,476),(307,1245),(21,22),(1079,1256),(404,8),(708,285),(96,881),(614,1257),(647,1113),(255,256),(581,369),(120,220),(840,281),(1121,865),(437,853),(941,1069),(370,446),(357,358),(1256,320),(99,492),(1265,478),(501,502),(423,424),(149,150),(89,90),(209,210)]
-
 /-- `machines/zconp_native.txt` (317 states, beep state 7, SHA-256 of the
 standard text 904ed5a9605e61712679b0b498c1a06858785d3047e29d21495379103ab9aee3). Row q is (code on 0, code on 1). -/
 def zconpMachineTable : List (Nat × Nat) :=
@@ -1135,28 +857,16 @@ def zconpMachineTable : List (Nat × Nat) :=
   zconpMachineRows7 ++
   zconpMachineRows8 ++
   zconpMachineRows9
-
 /-- zconp_native as a machine with its designated beep state. -/
 def zconpMachine : TM := ⟨zconpMachineTable, 7⟩
-
-end ZP
-
-/- ## ZP.DefsPoly -/
-namespace ZP
 def budget (K : List Bool) (n : Nat) : Nat := (n + 2) ^ (K.length + 1) - 1
-
 /-- Charged run: `|a|` steps up front, then `run a s` with the rest of the budget. -/
 def prun (a s : List Bool) (t : Nat) : Bool := if a.length ≤ t then run a s (t - a.length) else false
-
 /-- `a` decides `L` on all of `{0,1}^n` within the budget of degree `K`. -/
 def advOK (K a : List Bool) (n : Nat) : Prop :=
   ∀ s ∈ strings n, prun a s (budget K n) = inL s
-
 instance (K a : List Bool) (n : Nat) : Decidable (advOK K a n) := by
   unfold advOK; infer_instance
-
 def goodLen (K : List Bool) (n : Nat) : Prop := ∃ a, a.length ≤ budget K n ∧ advOK K a n
-
 def SentencePoly : Prop := ∃ K : List Bool, ∀ n, goodLen K n
-
 end ZP
