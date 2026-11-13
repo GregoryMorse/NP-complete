@@ -67,6 +67,11 @@ defs = '\n'.join(body)
 # module docs stay in the sources; the Challenge is capped at 100 KiB (definition docstrings are kept)
 defs = re.sub(r'/-!.*?-/\n?', '', defs, flags=re.S)
 defs = re.sub(r'\n{3,}', '\n\n', defs)
+# one namespace block (the sources only open and close `namespace ZP`) and no provenance headers: the Challenge is
+# capped at 1,000 lines and 100 KiB
+defs = re.sub(r'/- ## \S+ -/\n', '', defs)
+defs = re.sub(r'end ZP\n\s*namespace ZP\n', '', defs)
+defs = re.sub(r'\n\n+', '\n', defs)
 defs = re.sub(r'(/- ## \S+ -/\n)\n', r'\1', defs)
 defs = re.sub(r'(namespace ZP\n)\n', r'\1', defs)
 defs = re.sub(r'(\]\n)\n(?=def \w+Rows\d+ )', r'\1', defs)

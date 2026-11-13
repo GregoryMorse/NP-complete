@@ -49,13 +49,13 @@ related_formalizations:
     note: "Records Mira's (GPT-6.1 Terra) P = NP beeper (BBB(290)) and NP = coNP beeper (BBB(284)) of 2026-10-31, initially unformalized. Parallel, independent work on the same problem; this repository does not build on it."
   - id: "https://wiki.bbchallenge.org/wiki/TMBR:_November_2026"
     relationship: "independent"
-    note: "Records Mira-Cult's Lean formalization of a 285-state P = NP beeper (2026-11-04) and 284-/266-state NP = coNP beepers (2026-11-06; the 284-state table is Lean-formalized), parallel to this repository's 278-state P = NP, P = PP and P = PSPACE machines (announced 2026-11-01) and its ten Lean formalizations (completed 2026-11-09). State counts differ in convention: designated beep state here, designated beep transition there. The prior-art relationship was checked against the bbchallenge Discord and wiki by the author."
+    note: "Records Mira-Cult's Lean formalization of a 285-state P = NP beeper (2026-11-04) and 284-/266-state NP = coNP beepers (2026-11-06; the 284-state table is Lean-formalized), parallel to this repository's 278-state P = NP, P = PP and P = PSPACE machines (announced 2026-11-01) and its fifteen Lean formalizations (completed 2026-11-13). State counts differ in convention: designated beep state here, designated beep transition there. The prior-art relationship was checked against the bbchallenge Discord and wiki by the author."
 
 status:
   scope: >-
     Formalized and proved, with no remaining sorry outside the deliberate Challenge
     placeholders: the definitions of the machines, quasihalting, the guest semantics
-    and the sentences (ZP/Defs*.lean, tables in ZP/Table*.lean); for each of the ten
+    and the sentences (ZP/Defs*.lean, tables in ZP/Table*.lean); for each of the fifteen
     advertised machines, quasihalting of the literal table is equivalent to its
     sentence (abstract program, logical-machine macro simulation, compilation to the
     table); and Sentence iff P = NP for the flagship machine (ZP/Hard.lean). The
@@ -139,6 +139,31 @@ alignment:
       note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
     - source: "docs/native.md and the Lean development (twin)"
       lean: "ZP.twin_quasihalts_iff"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and the Lean development (zbpp)"
+      lean: "ZP.zbpp_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and the Lean development (zlnl)"
+      lean: "ZP.zlnl_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and the Lean development (zlp)"
+      lean: "ZP.zlp_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and the Lean development (zmm)"
+      lean: "ZP.zmm_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and the Lean development (zppoly)"
+      lean: "ZP.zppoly_quasihalts_iff_sentence"
       module: "Challenge"
       status: "proved"
       note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
