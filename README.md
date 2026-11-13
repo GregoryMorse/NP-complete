@@ -20,7 +20,7 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_coNP (counter-machine compile) | 1738 | `machines/zconp.txt` |
 | **Z_DLOG native (quasihalts iff discrete log mod primes is in P)** | **400** | `machines/zdlog_native.txt` (`native/zdl.py`, ref `ref/zdl_ref.py`) |
 | Z_DLOG (counter-machine compile) | 2958 | `machines/zdlog.txt` |
-| **Z_MUL native (quasihalts iff multitape TMs multiply in linear time)** | **408** | `machines/zmul_native.txt` (`native/zmul.py`, ref `ref/zmul_ref.py`) |
+| **Z_MUL native (quasihalts iff multitape TMs multiply in linear time)** | **403** | `machines/zmul_native.txt` (`native/zmul.py`, ref `ref/zmul_ref.py`) |
 | Z_MUL (counter-machine compile) | 3623 | `machines/zmul.txt` |
 | **Z_NTT native (quasihalts iff the number-theoretic transform has linear-size linear circuits)** | **469** | `machines/zntt_native.txt` (`native/zntt.py`, ref `ref/zntt_ref.py`) |
 | Z_NTT (counter-machine compile) | 6106 | `machines/zntt.txt` |
@@ -120,7 +120,8 @@ See `docs/spec.md` §5 (earlier specification). In brief:
   checks the pair form while it scans `out` (a `0` in a token position, or odd length, is a
   failure) and then `N[0] = N[1]·N[2]` on `numbers(out 0 s)`. Before 2026-11-13 the pair-form
   check was missing, so `out = 0` passed for every `s` (it shifts the parse) and the sentence was
-  trivially true; that table (403 states) is the one in the registry entry PALOMAR-2026-11-11-000006.
+  trivially true; that table is the one in the registry entry PALOMAR-2026-11-11-000006. The fixed
+  table has the same number of states (403) and a different sha256.
   Lean-formalized (`ZP.zmul_quasihalts_iff_sentence`, `checkMul` in `ZP/DefsMul.lean`).
 
 ## Layout

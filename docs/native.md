@@ -227,7 +227,7 @@ turned into separators.
   it). Finally every edge of `H` must be deleted. A failure unmarks everything and
   decrements the top.
 
-### Linear-time multiplication (`native/zmul.py`, 408 states)
+### Linear-time multiplication (`native/zmul.py`, 403 states)
 
 The guest is Z_P v2 plus a queue of `|J|` stacks; the clock is
 `T = (|s|+2)·2^|J| − 1`, one fuel block `M 1^(|s|+1)` and `|J|` short blocks `M 1`.
@@ -247,8 +247,8 @@ are 0). Since a pair numeral contributes exactly one number, this says `out` is 
 written in pairs, where `x, y` are the first two numbers of `s`. The machine checks the
 pair form while it scans `out` from its last cell: a `0` where a token `1` belongs, or odd
 length, takes the outcome-0 path. (Without that check, an `out` with a stray `0` shifted
-the parse; `out = 0` gave `N = [0, 0, x, …]` and passed for every `s`. The 403-state table
-of 2026-11-11 had that defect.) Every run is a decider run, and
+the parse; `out = 0` gave `N = [0, 0, x, …]` and passed for every `s`. The table of
+2026-11-11 had that defect; the fixed table has the same 403 states.) Every run is a decider run, and
 the outcome 0 beeps. The machine therefore quasihalts iff some `J` is correct on every
 `s`. That holds iff multitape Turing machines multiply in linear time:
 

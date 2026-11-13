@@ -134,7 +134,7 @@ alignment:
       lean: "ZP.zmul_quasihalts_iff_sentence"
       module: "Challenge"
       status: "proved"
-      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean. The output must be a pair numeral (checked by the machine since 2026-11-13; the 403-state table of PALOMAR-2026-11-11-000006 lacked that check, so out = 0 passed every instance)."
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean. The output must be a pair numeral (checked by the machine since 2026-11-13; the table of PALOMAR-2026-11-11-000006 lacked that check, so out = 0 passed every instance; the fixed table has the same 403 states)."
     - source: "docs/native.md and the Lean development (zconp)"
       lean: "ZP.zconp_quasihalts_iff_sentence"
       module: "Challenge"

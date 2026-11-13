@@ -71,7 +71,7 @@ Plans for the rest are in `plans/`.
 | Z_DLOG (400) | `ZP.zdl_quasihalts_iff_sentence` | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
 | Z_GI (415) | `ZP.zgi_quasihalts_iff_sentence` | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
 | Z_NTT (469) | `ZP.zntt_quasihalts_iff_sentence` | `ZP.NTT.znttQuasihalts_iff_sentence`, `ZP.primeEx` | `PrimeNum Totient Cyclo DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
-| Z_MUL (408) | `ZP.zmul_quasihalts_iff_sentence` | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulGuard MulCheck MainMul` |
+| Z_MUL (403) | `ZP.zmul_quasihalts_iff_sentence` | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulGuard MulCheck MainMul` |
 | Z_PPOLY (325) | `ZP.zppoly_quasihalts_iff_sentence` | `ZP.zppolyQuasihalts_iff_sentence` | `DefsPoly TablePoly … MainPoly` |
 | Z_MATMUL (494) | `ZP.zmm_quasihalts_iff_sentence` | | `DefsMM TableMM … MainMM` |
 | Z_LP (373) | `ZP.zlp_quasihalts_iff_sentence` | `ZP.zlpQuasihalts_iff_sentence` | `DefsMH DefsLP TableLP … MainLP` |
@@ -80,12 +80,13 @@ Plans for the rest are in `plans/`.
 | twin primes (19) | `ZP.twin_quasihalts_iff` | | `DefsTwin TableTwin TwinRound MainTwin` |
 
 State counts are those of the literal tables selected in `Challenge.lean` (`machines/*_native.tbl`). All fifteen Challenge
-theorems are proved in `Solution.lean`; the older state counts quoted in `plans/` (e.g. 550 for Z_NTT, 408 for Z_MUL)
+theorems are proved in `Solution.lean`; the older state counts quoted in `plans/` (e.g. 550 for Z_NTT)
 refer to earlier designs.
 
 Z_MUL's output must be a pair numeral (`pairVal` in `ZP/DefsMul.lean`). The registered table of
-PALOMAR-2026-11-11-000006 (403 states) lacked the machine's pair-form check, so `out = 0` passed for every `s`;
-`ZP/MulGuard.lean` proves that the check the machine now makes equals `checkMul`.
+PALOMAR-2026-11-11-000006 lacked the machine's pair-form check, so `out = 0` passed for every `s`;
+`ZP/MulGuard.lean` proves that the check the machine now makes equals `checkMul`. The fixed table has the same
+number of states (403).
 
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
 transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair
