@@ -33,6 +33,9 @@ theorem ZP.zntt_quasihalts_iff_sentence :
     ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN :=
   ZP.NTT.znttQuasihalts_iff_sentence
 
+theorem ZP.zmul_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmulMachine ↔ ZP.SentenceMul :=
+  ZP.zmulQuasihalts_iff_sentence
+
 theorem ZP.zconp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zconpMachine ↔ ZP.SentenceConp :=
   ZP.zconpQuasihalts_iff_sentence
 

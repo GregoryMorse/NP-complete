@@ -57,6 +57,8 @@ jobs:
           persist-credentials: false
       - name: Source rules and sorry census
         run: python3 formal/scripts/check_sources.py
+      - name: Palomar pre-check (caps, comparator, theorem sets, README counts and state counts)
+        run: python3 formal/scripts/palomar_precheck.py
       - name: Challenge.lean and ZP/AllDefs.lean match the definition sources
         run: python3 formal/gen_challenge.py --check
       - name: Generated tables match machines/*.tbl

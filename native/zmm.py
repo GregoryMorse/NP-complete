@@ -47,15 +47,18 @@ DROP = {'TS', 'TS2', 'RW', 'HPF', 'HPD', 'SW', 'CA0', 'CA1', 'DR', 'DE', 'DU',
 
 def build():
     m = zmul.build()
-    redo = {('GC', B), ('ER1', M)}
+    redo = {('GC', B), ('ER1', M),
+            # zmul's output guard (mK1/mKP/mK4) is not used: Z_MM checks out itself
+            ('mK1', '0'), ('mK1', '1'), ('mK4', B), ('mKP', '0'), ('mKP', '1'), ('mKP', M)}
     for k in [k for k in m.d if k[0] in DROP or k in redo]:
         del m.d[k]
     base = set(q for q, _ in m.d)
 
     def t(q, syms, w, mv, n):
-        assert q not in base or q in ('GC', 'ER1'), q
+        assert q not in base or q in ('GC', 'ER1', 'mK1'), q
         m.t(q, syms, w, mv, n)
     t('ER1', M, '.', 'R', 'mK1')                # H stays M (Ms)
+    t('mK1', BITS, '.', 'R', 'mK1')
     t('GC', B, '.', F, 'X0')
     # ---------------- setup: Ms 1^m 0 w  ->  Ms 1^m H Mr P w ----------------
     t('X0', BITS, '.', F, 'X0')

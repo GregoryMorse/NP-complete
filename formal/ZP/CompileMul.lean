@@ -17,20 +17,20 @@ theorem zmulChk1 : Cert.allFrom 32 32 (Cert.checkQ zmulCert) = true := by decide
 theorem zmulChk2 : Cert.allFrom 64 32 (Cert.checkQ zmulCert) = true := by decide +kernel
 theorem zmulChk3 : Cert.allFrom 96 32 (Cert.checkQ zmulCert) = true := by decide +kernel
 theorem zmulChk4 : Cert.allFrom 128 32 (Cert.checkQ zmulCert) = true := by decide +kernel
-theorem zmulChk5 : Cert.allFrom 160 30 (Cert.checkQ zmulCert) = true := by decide +kernel
+theorem zmulChk5 : Cert.allFrom 160 31 (Cert.checkQ zmulCert) = true := by decide +kernel
 
-theorem zmulLogic_len : zmulLogic.table.length = 190 := by decide +kernel
+theorem zmulLogic_len : zmulLogic.table.length = 191 := by decide +kernel
 
 def zmulBeepOK : Bool :=
-  Cert.allFrom 0 190 fun q =>
+  Cert.allFrom 0 191 fun q =>
     decide ((Cert.cEntry zmulCert q = zmulMachine.beep) ↔ (q = zmulLogic.beep))
 
 theorem zmulBeepOK_true : zmulBeepOK = true := by decide +kernel
 
 theorem zmulCert_ok : zmulCert.OK where
   chk q hq := by
-    have hq' : q < 190 := by
-      have : zmulCert.L.table.length = 190 := zmulLogic_len
+    have hq' : q < 191 := by
+      have : zmulCert.L.table.length = 191 := zmulLogic_len
       omega
     by_cases h0 : q < 32
     · exact Cert.allFrom_spec _ _ 0 q zmulChk0 (by omega) (by omega)
@@ -44,8 +44,8 @@ theorem zmulCert_ok : zmulCert.OK where
             · exact Cert.allFrom_spec _ _ 128 q zmulChk4 (by omega) (by omega)
             · exact Cert.allFrom_spec _ _ 160 q zmulChk5 (by omega) (by omega)
   beep q hq := by
-    have hq' : q < 190 := by
-      have : zmulCert.L.table.length = 190 := zmulLogic_len
+    have hq' : q < 191 := by
+      have : zmulCert.L.table.length = 191 := zmulLogic_len
       omega
     exact of_decide_eq_true (Cert.allFrom_spec _ _ 0 q zmulBeepOK_true (by omega) (by omega))
   e0 := by decide +kernel

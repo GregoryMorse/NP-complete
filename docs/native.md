@@ -227,9 +227,7 @@ turned into separators.
   it). Finally every edge of `H` must be deleted. A failure unmarks everything and
   decrements the top.
 
-### Linear-time multiplication (`native/zmul.py`, 403 states)
-
-> **Known defect.** The output check below parses `out 0 s` with `numbers` and tests `N[0] = N[1] N[2]`. An output with a stray `0` shifts the parse, so `out = 0` passes for every `s` and the sentence is degenerate (trivially true). Do not read this machine as encoding the linear-time multiplication question; Z_MATMUL (below) fixes the check by comparing `out` with the product computed from `s`. No Lean theorem about Z_MUL is claimed.
+### Linear-time multiplication (`native/zmul.py`, 419 states)
 
 The guest is Z_P v2 plus a queue of `|J|` stacks; the clock is
 `T = (|s|+2)·2^|J| − 1`, one fuel block `M 1^(|s|+1)` and `|J|` short blocks `M 1`.
@@ -242,10 +240,15 @@ Entries with `t = 0` change meaning:
 - `1 0 0` is a proper **halt**, with output `out` = cells `0 … h−1`. `0 0 0` and the
   time-out are failures.
 
-`J` is correct on `s` iff the run halts properly within `T` and, with `U = out 0 s`
-parsed by the FACTOR rule (pairs `1b` are binary digits, `0` starts the next number),
-`N[0] = N[1]·N[2]` (missing numbers are 0). So a correct `J` writes `x·y` in front of
-the head, where `x, y` are the first two numbers of `s`. Every run is a decider run, and
+`J` is correct on `s` iff the run halts properly within `T`, `out` is a pair numeral
+`1 b_1 1 b_2 … 1 b_k` (`k ≥ 0`), and, with `U = out 0 s` parsed by the FACTOR rule (pairs
+`1b` are binary digits, `0` starts the next number), `N[0] = N[1]·N[2]` (missing numbers
+are 0). Since a pair numeral contributes exactly one number, this says `out` is `x·y`
+written in pairs, where `x, y` are the first two numbers of `s`. The machine checks the
+pair form while it scans `out` from its last cell: a `0` where a token `1` belongs, or odd
+length, takes the outcome-0 path. (Without that check, an `out` with a stray `0` shifted
+the parse; `out = 0` gave `N = [0, 0, x, …]` and passed for every `s`. The 403-state table
+of 2026-11-11 had that defect.) Every run is a decider run, and
 the outcome 0 beeps. The machine therefore quasihalts iff some `J` is correct on every
 `s`. That holds iff multitape Turing machines multiply in linear time:
 

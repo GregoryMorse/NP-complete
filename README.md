@@ -20,7 +20,7 @@ An explicit 1-tape, 2-symbol Turing machine **Z_P** with a designated beep state
 | Z_coNP (counter-machine compile) | 1738 | `machines/zconp.txt` |
 | **Z_DLOG native (quasihalts iff discrete log mod primes is in P)** | **400** | `machines/zdlog_native.txt` (`native/zdl.py`, ref `ref/zdl_ref.py`) |
 | Z_DLOG (counter-machine compile) | 2958 | `machines/zdlog.txt` |
-| **Z_MUL native (intended: multitape TMs multiply in linear time; the output check is degenerate, see below)** | **403** | `machines/zmul_native.txt` (`native/zmul.py`, ref `ref/zmul_ref.py`) |
+| **Z_MUL native (quasihalts iff multitape TMs multiply in linear time)** | **419** | `machines/zmul_native.txt` (`native/zmul.py`, ref `ref/zmul_ref.py`) |
 | Z_MUL (counter-machine compile) | 3623 | `machines/zmul.txt` |
 | **Z_NTT native (quasihalts iff the number-theoretic transform has linear-size linear circuits)** | **469** | `machines/zntt_native.txt` (`native/zntt.py`, ref `ref/zntt_ref.py`) |
 | Z_NTT (counter-machine compile) | 6106 | `machines/zntt.txt` |
@@ -45,7 +45,7 @@ wiki records a P = NP beeper by Mira (GPT-6.1 Terra) on 2026-10-31 (BBB(290); [T
 with a Lean-formalized 285-state P = NP beeper announced by Mira-Cult on 2026-11-04 and 284- and 266-state
 NP = coNP beepers on 2026-11-06 ([TMBR November 2026](https://wiki.bbchallenge.org/wiki/TMBR:_November_2026)).
 The same page records this repository's 278-, 295- and 291-state machines (P = NP, P = PP, P = PSPACE;
-announced 2026-11-01) and the fourteen Lean formalizations completed on 2026-11-13. State counts are not directly comparable:
+announced 2026-11-01) and the fifteen Lean formalizations completed on 2026-11-13. State counts are not directly comparable:
 this repository uses a designated beep state, Mira-Cult's headline counts use designated beep transitions.
 
 **What this does not do.** Knowing BBB(n) does not settle P vs NP by simulation alone
@@ -115,12 +115,13 @@ See `docs/spec.md` §5 (earlier specification). In brief:
   Lean-formalized: the equivalence of quasihalting with the sentence is proved for each
   (`formal/Solution.lean`). The links from each sentence to its complexity statement (promise
   classes, P/poly, log space) are on paper (`docs/native.md`).
-- **Z_MUL (withdrawn from the Lean submission):** its output check compares `N[0]` with `N[1]*N[2]` of
-  `numbers(out 0 s)`, so an output containing a stray `0` shifts the parse and `out = 0` passes for every
-  `s`; the sentence is therefore degenerate and no theorem about it is claimed. The linear-time
-  statement is carried by Z_MATMUL, whose check compares the output with the product computed from `s`.
-  The earlier `ZP.zmulQuasihalts_iff_sentence` remains in the library (`ZP/MainMul.lean`) but is not a
-  Challenge theorem.
+- **Z_MUL** (`tests/test_native.py`, `ref/zmul_ref.py`): the output must be a pair numeral
+  `1 b_1 … 1 b_k` whose value is `x·y` for the first two numbers `x, y` of `s`. The machine
+  checks the pair form while it scans `out` (a `0` in a token position, or odd length, is a
+  failure) and then `N[0] = N[1]·N[2]` on `numbers(out 0 s)`. Before 2026-11-13 the pair-form
+  check was missing, so `out = 0` passed for every `s` (it shifts the parse) and the sentence was
+  trivially true; that table (403 states) is the one in the registry entry PALOMAR-2026-11-11-000006.
+  Lean-formalized (`ZP.zmul_quasihalts_iff_sentence`, `checkMul` in `ZP/DefsMul.lean`).
 
 ## Layout
 `docs/` spec and history · `formal/` Lean project (Palomar layout) ·

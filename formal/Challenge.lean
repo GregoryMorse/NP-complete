@@ -695,6 +695,39 @@ def runMulAux : Nat → List Bool → List Bool → Nat → List (List Bool) →
 def runMul (P x : List Bool) (T r : Nat) : Option (List Bool) :=
   runMulAux T (rot (P.reverse ++ [false])) x 0 (List.replicate r [])
 def clockMul (J s : List Bool) : Nat := (s.length + 2) * 2 ^ J.length - 1
+/-- `zmul_ref.pair_value`: the value of the pair numeral `1 b₁ 1 b₂ … 1 bₖ` (most significant digit first,
+`acc` the digits read so far), or `none` if the word is not a pair numeral. -/
+def pairVal : Nat → List Bool → Option Nat
+  | acc, [] => some acc
+  | acc, true :: b :: r => pairVal (2 * acc + if b then 1 else 0) r
+  | _, _ => none
+/-- The output check: `out` is a pair numeral whose value is `x * y`, where `x` and `y` are the first two
+numbers of the input `s` (`0` if missing). -/
+def checkMul (out s : List Bool) : Bool :=
+  let N := numbers s ++ [0, 0]
+  pairVal 0 out == some (N.getD 0 0 * N.getD 1 0)
+def correctMulB (J S : Nat) : Bool :=
+  match runMul (str J) (str S) (clockMul (str J) (str S)) (str J).length with
+  | some out => checkMul out (str S)
+  | none => false
+def CorrectMul (J S : Nat) : Prop := correctMulB J S = true
+instance (J S : Nat) : Decidable (CorrectMul J S) := inferInstanceAs (Decidable (correctMulB J S = true))
+def SentenceMul : Prop := ∃ J, 1 ≤ J ∧ ∀ S, 1 ≤ S → CorrectMul J S
+-- first refutations: (J, s) = ('', ''), ('0', ''), ('1', '11011'), ('00', '')
+example : ¬ CorrectMul 1 1 := by decide
+example : ¬ CorrectMul 2 1 := by decide
+example : ¬ CorrectMul 3 59 := by decide
+example : CorrectMul 3 1 := by decide
+example : runMul [] [] (clockMul [] []) 0 = none := by decide
+example : checkMul [] [false] = true := by decide
+example : checkMul [true, false] [true, true, false] = true := by decide
+-- an output that is not a pair numeral fails, whatever the input
+example : checkMul [false] [true, true, false, true, true] = false := by decide
+example : checkMul [true] [] = false := by decide
+-- 3 * 2 = 6 = (110)₂
+example : checkMul [true, true, true, true, true, false] [true, true, true, true, false, true, true, true, false] = true := by decide
+example : ¬ CorrectMul 4 1 := by decide
+example : (List.range 58).all (fun i => correctMulB 3 (i + 1)) = true := by decide +kernel
 /-- `m`, the number of leading `1`s of `s`. -/
 def mmM (s : List Bool) : Nat := (s.takeWhile id).length
 /-- `w`: what follows the first `0` of `s`. -/
@@ -751,6 +784,39 @@ example : ¬ CorrectMM 3 27 := by decide
 example : ¬ CorrectMM 4 1 := by decide
 example : CorrectMM 3 1 := by decide
 example : (List.range 26).all (fun i => correctMMB 3 (i + 1)) = true := by decide +kernel
+def zmulMachineRows0 : List (Nat × Nat) := [(707,1657),(587,157),(13,1512),(332,1034),(589,594),(597,602),(607,612),(615,608),(620,622),(625,630),(645,650),(657,662),(1521,666),(275,1462),(151,0),(671,1564),(675,1624),(679,684),(689,654),(693,698),(693,702),(711,716),(1607,720),(723,728),(731,736),(739,744),(748,0),(747,514),(1281,1456),(753,1602),(401,760),(1098,761)]
+def zmulMachineRows1 : List (Nat × Nat) := [(768,1630),(771,775),(779,775),(785,1017),(789,1038),(793,797),(801,805),(5,805),(811,816),(819,823),(1639,827),(829,834),(1525,838),(841,848),(851,856),(859,864),(1151,868),(871,1534),(875,880),(883,1538),(887,892),(1499,896),(899,904),(905,910),(913,918),(921,926),(929,934),(939,944),(947,952),(955,960),(963,968),(969,974)]
+def zmulMachineRows2 : List (Nat × Nat) := [(977,982),(1585,986),(991,1480),(995,18),(999,1004),(1007,1012),(1013,1018),(1021,1026),(1029,1034),(215,872),(439,204),(439,212),(409,1042),(1047,1052),(1053,1058),(1061,1066),(1069,1074),(1079,1532),(1475,1084),(1087,620),(1091,1444),(345,1380),(81,346),(1095,1098),(1102,1106),(1485,1106),(1541,1110),(1115,1472),(280,1118),(1124,1552),(1125,1130),(1101,1105)]
+def zmulMachineRows3 : List (Nat × Nat) := [(1485,1105),(1133,1138),(257,1144),(1145,1152),(1649,1154),(1157,1162),(1168,306),(1172,376),(1583,1572),(1175,1180),(1183,1188),(1191,1196),(1197,1202),(1207,1212),(1214,1623),(1219,1224),(1227,1232),(1431,1236),(1237,1242),(457,1248),(1249,1254),(1257,1666),(1261,1266),(1271,1274),(579,1278),(575,1394),(1281,1286),(1299,1304),(1307,1312),(1313,1318),(1597,1322),(1327,1330)]
+def zmulMachineRows4 : List (Nat × Nat) := [(109,1338),(1343,1390),(1347,1352),(1356,0),(1359,1172),(1363,1368),(1369,1214),(1373,1490),(1379,1384),(553,1388),(1390,1394),(1411,1400),(1661,1438),(551,1402),(1407,1412),(1415,1408),(1419,1428),(1427,1580),(163,12),(1163,233),(17,1440),(1031,22),(21,22),(31,32),(27,28),(1418,64),(335,336),(33,34),(1444,38),(633,38),(1448,630),(1452,642)]
+def zmulMachineRows5 : List (Nat × Nat) := [(637,642),(1455,42),(41,42),(73,74),(1460,46),(45,46),(49,50),(687,672),(1402,68),(978,72),(71,72),(1610,672),(1456,74),(1675,78),(1463,1468),(173,1468),(268,88),(64,196),(87,88),(91,92),(4,104),(95,96),(108,108),(99,100),(112,112),(103,104),(519,135),(1471,1476),(1479,118),(1482,1486),(1504,0),(275,524)]
+def zmulMachineRows6 : List (Nat × Nat) := [(139,135),(135,135),(785,135),(261,74),(141,1453),(149,313),(153,149),(53,149),(153,157),(157,157),(163,1413),(1489,1493),(167,92),(167,167),(171,171),(1499,174),(173,174),(177,178),(81,1164),(183,184),(1589,188),(187,188),(1590,192),(191,192),(1625,1501),(199,200),(203,1509),(203,204),(207,208),(211,1510),(211,212),(215,216)]
+def zmulMachineRows7 : List (Nat × Nat) := [(219,1218),(219,220),(1468,222),(221,222),(1028,226),(225,226),(1495,230),(229,230),(1145,234),(317,234),(1593,240),(239,240),(1522,244),(243,244),(1506,248),(247,248),(1526,252),(251,252),(412,41),(481,1563),(50,377),(481,3),(369,1455),(280,124),(401,272),(275,272),(275,276),(248,280),(279,280),(281,286),(369,290),(1499,294)]
+def zmulMachineRows8 : List (Nat × Nat) := [(244,298),(27,1514),(1097,302),(305,1439),(305,306),(496,1461),(311,312),(1532,314),(313,314),(16,318),(317,318),(281,322),(145,322),(1517,328),(331,332),(1533,1538),(1433,1226),(1541,1034),(349,350),(1556,37),(514,641),(229,629),(393,368),(415,4),(279,267),(1423,378),(377,378),(1615,390),(389,390),(395,396),(397,398),(1545,1109)]
+def zmulMachineRows9 : List (Nat × Nat) := [(405,1336),(723,971),(847,1551),(311,531),(531,532),(495,424),(423,424),(499,428),(427,428),(1559,432),(431,432),(1097,434),(433,434),(439,1562),(439,440),(537,538),(145,452),(463,464),(357,456),(451,452),(455,456),(587,458),(711,458),(1565,448),(473,466),(465,466),(1273,470),(1572,474),(473,474),(1586,1258),(477,478),(485,482)]
+def zmulMachineRows10 : List (Nat × Nat) := [(749,465),(1579,1655),(489,1584),(1343,1344),(1105,1585),(495,499),(1106,1566),(496,500),(615,1047),(1591,1595),(505,506),(1155,1598),(509,510),(1155,1156),(513,514),(1289,1296),(528,524),(523,524),(1602,0),(535,532),(1322,536),(535,536),(695,538),(1654,1607),(344,552),(547,0),(551,1407),(1213,554),(1573,486),(1613,547),(46,566),(1423,576)]
+def zmulMachineRows11 : List (Nat × Nat) := [(571,572),(1488,580),(513,192),(368,584),(579,188),(1034,1481),(385,1617),(565,933),(339,340),(336,0),(340,0),(115,781),(63,178),(1145,344),(239,1457),(367,368),(1518,332),(267,268),(457,125),(447,1629),(1611,1635),(252,1639),(215,1517),(523,225),(21,872),(1430,1434),(219,884),(146,1282),(712,50),(321,178),(327,328),(381,1508)]
+def zmulMachineRows12 : List (Nat × Nat) := [(353,1516),(361,1375),(389,621),(375,416),(7,8),(503,504),(441,1645),(1592,458),(419,420),(557,558),(583,1661),(1295,420),(1672,261),(158,1560),(1644,500),(1329,506),(117,118),(423,100),(118,431),(396,1574),(125,126),(67,68),(71,221),(129,130),(167,427),(171,96),(195,0),(73,1627),(57,58),(621,1665),(253,370),(433,562)]
+def zmulMachineRows13 : List (Nat × Nat) := [(469,470),(1559,420),(543,544)]
+/-- `machines/zmul_native.txt` (419 states, beep state 26, SHA-256 of the
+standard text ee02666f467c409ebec5742bbf955f19516be874c4b18854bb697a90ad9d7127). Row q is (code on 0, code on 1). -/
+def zmulMachineTable : List (Nat × Nat) :=
+  zmulMachineRows0 ++
+  zmulMachineRows1 ++
+  zmulMachineRows2 ++
+  zmulMachineRows3 ++
+  zmulMachineRows4 ++
+  zmulMachineRows5 ++
+  zmulMachineRows6 ++
+  zmulMachineRows7 ++
+  zmulMachineRows8 ++
+  zmulMachineRows9 ++
+  zmulMachineRows10 ++
+  zmulMachineRows11 ++
+  zmulMachineRows12 ++
+  zmulMachineRows13
+/-- zmul_native as a machine with its designated beep state. -/
+def zmulMachine : TM := ⟨zmulMachineTable, 26⟩
 /-- `P.rstrip('1')`. -/
 def core (P : List Bool) : List Bool := (P.reverse.dropWhile (· == true)).reverse
 /-- `zconp_ref.run_choice`: at most `T` steps; the choice string `D` is extended lazily with `1`s.
@@ -856,6 +922,11 @@ theorem ZP.zgi_quasihalts_iff_sentence : ZP.Quasihalts ZP.zgiMachine ↔ ZP.Sent
 /-- Z_NTT: `primeN n` is the least prime `1 + n i`, `i ≥ 1` (it exists for every `n ≥ 1`; proved in the solution). -/
 theorem ZP.zntt_quasihalts_iff_sentence :
     ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN := by
+  sorry
+
+/-- Z_MUL: the guest also has a queue of stacks; the output must be a pair numeral `1 b₁ … 1 bₖ`
+whose value is `x y`, for the first two numbers `x, y` of the instance. -/
+theorem ZP.zmul_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmulMachine ↔ ZP.SentenceMul := by
   sorry
 
 /-- Z_coNP: the guest is `zp2` with nondeterministic choices at fresh cells; `J` is a verifier for the complement

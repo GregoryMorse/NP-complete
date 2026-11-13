@@ -14,7 +14,8 @@ project:
     is also proved in Lean (ZP.Cx.sentence_iff_PeqNP) for the Turing-machine models
     defined in the development. The same guest interpreter yields machines for further
     Sigma_2 statements: P = PP and P = PSPACE, factoring, discrete logarithm, graph
-    isomorphism, an NTT-based variant over least primes 1 + n i, a co-NP verifier
+    isomorphism, an NTT-based variant over least primes 1 + n i, linear-time integer
+    multiplication on multitape machines, a co-NP verifier
     variant, promise-P = promise-BPP, NP in P/poly, deterministic and nondeterministic
     multihead log-space (L = NL), and linear-time multiplication of matrices over GF(2) on
     multitape machines. A 19-state machine quasihalts iff there are finitely many twin
@@ -51,13 +52,13 @@ related_formalizations:
     note: "Records Mira's (GPT-6.1 Terra) P = NP beeper (BBB(290)) and NP = coNP beeper (BBB(284)) of 2026-10-31, initially unformalized. Parallel, independent work on the same problem; this repository does not build on it."
   - id: "https://wiki.bbchallenge.org/wiki/TMBR:_November_2026"
     relationship: "independent"
-    note: "Records Mira-Cult's Lean formalization of a 285-state P = NP beeper (2026-11-04) and 284-/266-state NP = coNP beepers (2026-11-06; the 284-state table is Lean-formalized), parallel to this repository's 278-state P = NP, P = PP and P = PSPACE machines (announced 2026-11-01) and its fourteen Lean formalizations (completed 2026-11-13). State counts differ in convention: designated beep state here, designated beep transition there. The prior-art relationship was checked against the bbchallenge Discord and wiki by the author."
+    note: "Records Mira-Cult's Lean formalization of a 285-state P = NP beeper (2026-11-04) and 284-/266-state NP = coNP beepers (2026-11-06; the 284-state table is Lean-formalized), parallel to this repository's 278-state P = NP, P = PP and P = PSPACE machines (announced 2026-11-01) and its fifteen Lean formalizations (completed 2026-11-13). State counts differ in convention: designated beep state here, designated beep transition there. The prior-art relationship was checked against the bbchallenge Discord and wiki by the author."
 
 status:
   scope: >-
     Formalized and proved, with no remaining sorry outside the deliberate Challenge
     placeholders: the definitions of the machines, quasihalting, the guest semantics
-    and the sentences (ZP/Defs*.lean, tables in ZP/Table*.lean); for each of the fourteen
+    and the sentences (ZP/Defs*.lean, tables in ZP/Table*.lean); for each of the fifteen
     advertised machines, quasihalting of the literal table is equivalent to its
     sentence (abstract program, logical-machine macro simulation, compilation to the
     table); and Sentence iff P = NP for the flagship machine (ZP/Hard.lean). The
@@ -129,6 +130,11 @@ alignment:
       module: "Challenge"
       status: "proved"
       note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean."
+    - source: "docs/native.md and the Lean development (zmul)"
+      lean: "ZP.zmul_quasihalts_iff_sentence"
+      module: "Challenge"
+      status: "proved"
+      note: "Proved in Solution.lean from the development; the machine is the literal table in ZP/Table*.lean. The output must be a pair numeral (checked by the machine since 2026-11-13; the 403-state table of PALOMAR-2026-11-11-000006 lacked that check, so out = 0 passed every instance)."
     - source: "docs/native.md and the Lean development (zconp)"
       lean: "ZP.zconp_quasihalts_iff_sentence"
       module: "Challenge"

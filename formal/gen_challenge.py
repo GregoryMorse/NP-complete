@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 ROOTS = ['ZP.Defs', 'ZP.Table', 'ZP.DefsPP', 'ZP.DefsBPP', 'ZP.DefsMH', 'ZP.DefsLP', 'ZP.DefsLNL', 'ZP.TablePoly', 'ZP.TableLP', 'ZP.TableLNL', 'ZP.TableMM', 'ZP.DefsPS', 'ZP.DefsF', 'ZP.DefsD', 'ZP.DefsG',
-         'ZP.DefsNTT', 'ZP.TableNTT', 'ZP.DefsTwin', 'ZP.TableTwin', 'ZP.DefsMul', 'ZP.DefsMM',
+         'ZP.DefsNTT', 'ZP.TableNTT', 'ZP.DefsTwin', 'ZP.TableTwin', 'ZP.DefsMul', 'ZP.DefsMM', 'ZP.TableMul',
          'ZP.DefsConp', 'ZP.TableConp', 'ZP.DefsPoly']
 WIDTH = 600
 
@@ -22,7 +22,6 @@ def path(m): return ROOT / (m.replace('.', '/') + '.lean')
 def imports(m):
     return re.findall(r'^public import (\S+)$', path(m).read_text(), re.M)
 
-EXTRA = ['ZP.DefsMulSent', 'ZP.TableMul']   # the retired Z_MUL sentence and table: in the library, not in the Challenge
 def build(roots):
     order, seen = [], set()
     def visit(m):
@@ -80,7 +79,7 @@ def build(roots):
     return defs
 
 defs = build(ROOTS)
-alldefs_body = build(ROOTS + EXTRA)
+alldefs_body = defs
 stm = (ROOT / 'challenge_statements.lean.in').read_text()
 out = ('module\n\n@[expose] public section\n\n' + defs.strip('\n') + '\n\n' + stm)
 alldefs = 'module\n\n@[expose] public section\n\n' + alldefs_body.strip('\n') + '\n'

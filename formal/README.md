@@ -71,20 +71,21 @@ Plans for the rest are in `plans/`.
 | Z_DLOG (400) | `ZP.zdl_quasihalts_iff_sentence` | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
 | Z_GI (415) | `ZP.zgi_quasihalts_iff_sentence` | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
 | Z_NTT (469) | `ZP.zntt_quasihalts_iff_sentence` | `ZP.NTT.znttQuasihalts_iff_sentence`, `ZP.primeEx` | `PrimeNum Totient Cyclo DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
-| Z_PPOLY | `ZP.zppoly_quasihalts_iff_sentence` | `ZP.zppolyQuasihalts_iff_sentence` | `DefsPoly TablePoly … MainPoly` |
-| Z_MATMUL | `ZP.zmm_quasihalts_iff_sentence` | | `DefsMM TableMM … MainMM` |
-| Z_LP | `ZP.zlp_quasihalts_iff_sentence` | `ZP.zlpQuasihalts_iff_sentence` | `DefsMH DefsLP TableLP … MainLP` |
-| Z_LNL | `ZP.zlnl_quasihalts_iff_sentence` | `ZP.zlnlQuasihalts_iff_sentence` | `DefsLNL TableLNL … MainLNL` |
+| Z_MUL (419) | `ZP.zmul_quasihalts_iff_sentence` | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulGuard MulCheck MainMul` |
+| Z_PPOLY (325) | `ZP.zppoly_quasihalts_iff_sentence` | `ZP.zppolyQuasihalts_iff_sentence` | `DefsPoly TablePoly … MainPoly` |
+| Z_MATMUL (494) | `ZP.zmm_quasihalts_iff_sentence` | | `DefsMM TableMM … MainMM` |
+| Z_LP (373) | `ZP.zlp_quasihalts_iff_sentence` | `ZP.zlpQuasihalts_iff_sentence` | `DefsMH DefsLP TableLP … MainLP` |
+| Z_LNL (415) | `ZP.zlnl_quasihalts_iff_sentence` | `ZP.zlnlQuasihalts_iff_sentence` | `DefsLNL TableLNL … MainLNL` |
 | Z_coNP (317) | `ZP.zconp_quasihalts_iff_sentence` | `ZP.zconpQuasihalts_iff_sentence` | `DefsConp TableConp LogicBaseConp LogicConp CompileConp ChecksConp ConpRot ConpFuel ConpInterp ConpRun ConpGad ConpSearch ConpPair MainConp` |
 | twin primes (19) | `ZP.twin_quasihalts_iff` | | `DefsTwin TableTwin TwinRound MainTwin` |
 
-State counts are those of the literal tables selected in `Challenge.lean` (`machines/*_native.tbl`). All fourteen Challenge
-theorems are proved in `Solution.lean`; the older state counts quoted in `plans/` (e.g. 550 for Z_NTT)
+State counts are those of the literal tables selected in `Challenge.lean` (`machines/*_native.tbl`). All fifteen Challenge
+theorems are proved in `Solution.lean`; the older state counts quoted in `plans/` (e.g. 550 for Z_NTT, 408 for Z_MUL)
 refer to earlier designs.
 
-The multiplication machine (Z_MUL) is not a Challenge theorem: its output check lets an output with a stray
-`0` shift the number parse (see the top-level README), so its sentence is degenerate. `ZP/MainMul.lean` is kept as a library
-result only.
+Z_MUL's output must be a pair numeral (`pairVal` in `ZP/DefsMul.lean`). The registered table of
+PALOMAR-2026-11-11-000006 (403 states) lacked the machine's pair-form check, so `out = 0` passed for every `s`;
+`ZP/MulGuard.lean` proves that the check the machine now makes equals `checkMul`.
 
 Shared infrastructure: `Ext` (extension of logical machines), `LogicBase` (zp2 without the
 transitions that the derived machines change), `LogicalG` (generic simulation from a per-pair
@@ -98,6 +99,10 @@ lemma), `Compile` (generic over a `Cert`), `GenericP` (any truth function).
   required. The development has no `sorry` left (it passes), so the repository
   can be submitted at <https://submit.palomar-registry.org/> with config path
   `formal/comparator.json`.
+* Before any submission run `python3 formal/scripts/palomar_precheck.py` (also a CI step). It checks
+  Palomar's hard caps on the Challenge (100 KiB, 1,000 lines), the comparator keys and axioms, the module
+  headers, and that the Challenge, `Solution.lean`, `comparator.json`, `formalization.yaml` and the table above
+  name the same theorems, that the prose states their number, and that every state count matches `machines/*.json`.
 
 ## Local use
 In a cloud session, install the toolchain from GitHub as in `plans/00-setup.md` (elan's own

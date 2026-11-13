@@ -11,8 +11,9 @@ Built from the zp2 interpreter.  Changes:
   the storage, then the terminator M; when the storage front shows M the
   stack at the back is popped from its end into the blank cells left of H.
 * Halt  1 0 0: H stays M; after the left side is erased, ER1 finds H, makes
-  it the separator 0, blanks M_2 and copies s to the left with the copy loop
-  GC.  The conversion of zfac turns  out 0 s  into unary numbers
+  it the separator 0 and checks that out is a pair numeral 1 b_1 .. 1 b_k
+  (else the outcome is 0), blanks M_2 and copies s to the left with the copy
+  loop GC.  The conversion of zfac turns  out 0 s  into unary numbers
   ..  y M x M z M  and z = x y is checked by marking (y outer, x inner).
 * Every run is a decider run; the outcome 0 beeps (DP30) and starts J++.
 """
@@ -106,7 +107,14 @@ def build():
     # ---------------- halt: output check ----------------
     t('GHH1', M, '.', 'L', 'EL1')
     t('ER1', M, '0', 'R', 'mK1')
-    t('mK1', BITS, '.', 'R', 'mK1')
+    # guard: out must be a pair numeral 1 b_1 .. 1 b_k.  mK1 scans out from its
+    # last cell: mK1 reads a digit b_i, mKP the 1 before it.  A 0 there, or odd
+    # length (mKP meets M), fails: mK4 walks back to the blank before the
+    # separator 0, ER1 takes that 0 as the outcome and erases out.
+    t('mK1', BITS, '.', 'R', 'mKP')
+    t('mKP', '1', '.', 'R', 'mK1')
+    t('mKP', '0M', '.', 'L', 'mK4')
+    t('mK4', B, '.', 'R', 'ER1')
     t('mK1', M, '.', 'R', 'mK2')
     t('mK2', BITS, '.', 'R', 'mK2')
     t('mK2', M, '.', 'R', 'mK3')

@@ -118,6 +118,8 @@ public import ZP.Hard
 public import ZP.MulSwitch
 public import ZP.MulRun
 public import ZP.PairMul
+public import ZP.MulGuardSeg
+public import ZP.MulGuard
 public import ZP.MulCheck
 public import ZP.MainMul
 public import ZP.MainMM

@@ -36,6 +36,11 @@ theorem ZP.zntt_quasihalts_iff_sentence :
     ZP.Quasihalts ZP.znttMachine ↔ ZP.SentenceN ZP.primeN := by
   sorry
 
+/-- Z_MUL: the guest also has a queue of stacks; the output must be a pair numeral `1 b₁ … 1 bₖ`
+whose value is `x y`, for the first two numbers `x, y` of the instance. -/
+theorem ZP.zmul_quasihalts_iff_sentence : ZP.Quasihalts ZP.zmulMachine ↔ ZP.SentenceMul := by
+  sorry
+
 /-- Z_coNP: the guest is `zp2` with nondeterministic choices at fresh cells; `J` is a verifier for the complement
 of `L`. -/
 theorem ZP.zconp_quasihalts_iff_sentence : ZP.Quasihalts ZP.zconpMachine ↔ ZP.SentenceConp := by
