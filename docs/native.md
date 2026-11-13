@@ -227,7 +227,7 @@ turned into separators.
   it). Finally every edge of `H` must be deleted. A failure unmarks everything and
   decrements the top.
 
-### Linear-time multiplication (`native/zmul.py`, 419 states)
+### Linear-time multiplication (`native/zmul.py`, 408 states)
 
 The guest is Z_P v2 plus a queue of `|J|` stacks; the clock is
 `T = (|s|+2)·2^|J| − 1`, one fuel block `M 1^(|s|+1)` and `|J|` short blocks `M 1`.

@@ -71,7 +71,7 @@ Plans for the rest are in `plans/`.
 | Z_DLOG (400) | `ZP.zdl_quasihalts_iff_sentence` | `ZP.zdlQuasihalts_iff_sentence`, `ZP.zdl_quasihalts_iff_InP` | `DefsD ChecksD TableD LogicD CompileD PairD MainD` |
 | Z_GI (415) | `ZP.zgi_quasihalts_iff_sentence` | `ZP.zgiQuasihalts_iff_sentence`, `ZP.zgi_quasihalts_iff_InP` | `DefsG ChecksG TableG LogicG CompileG PairG SearchG CheckG…CheckG12 PairMainG MainG` |
 | Z_NTT (469) | `ZP.zntt_quasihalts_iff_sentence` | `ZP.NTT.znttQuasihalts_iff_sentence`, `ZP.primeEx` | `PrimeNum Totient Cyclo DefsNTT PadNTT AbstractNTT TableNTT LogicNTT CompileNTT RulerNTT PrimeNTT RecordNTT EvalNTT GenStep MainNTT` |
-| Z_MUL (419) | `ZP.zmul_quasihalts_iff_sentence` | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulGuard MulCheck MainMul` |
+| Z_MUL (408) | `ZP.zmul_quasihalts_iff_sentence` | `ZP.zmulQuasihalts_iff_sentence` | `DefsMul TableMul LogicMul LogicBaseMul CompileMul MulInterp MulRot MulFuel MulSwitch MulRun PairMul MulGuard MulCheck MainMul` |
 | Z_PPOLY (325) | `ZP.zppoly_quasihalts_iff_sentence` | `ZP.zppolyQuasihalts_iff_sentence` | `DefsPoly TablePoly … MainPoly` |
 | Z_MATMUL (494) | `ZP.zmm_quasihalts_iff_sentence` | | `DefsMM TableMM … MainMM` |
 | Z_LP (373) | `ZP.zlp_quasihalts_iff_sentence` | `ZP.zlpQuasihalts_iff_sentence` | `DefsMH DefsLP TableLP … MainLP` |
